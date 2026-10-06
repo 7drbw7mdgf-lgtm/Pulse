@@ -1,0 +1,11 @@
+{
+  "name": "pulse-lite-literature",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local scientific literature discovery and paper linkage workspace",
+  "scripts": {
+    "start": "python3 pulse_backend.py",
+    "test": "python3 -m unittest discover -s tests -p 'test_*.py' && node tests/ui.cjs && node tests/lite-cap.cjs"
+  },
+  "devDependencies": { "playwright": "1.62.1" }
+}
