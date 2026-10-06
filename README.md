@@ -1,6 +1,6 @@
 # Pulse
 
-Pulse replaces Iratxe with a local paper library, an interactive linkage map and literature discovery. This repair keeps the supplied Pulse v1 interface and its Iratxe-derived Python backend, with working controls and persistence.
+Pulse replaces Iratxe with a local paper library, an interactive linkage map and literature discovery. The redesigned workspaces build on the supplied Pulse interface and its Iratxe-derived Python backend, with working controls and persistence.
 
 ## Run from source
 
@@ -22,13 +22,16 @@ Ollama and installed chat/embedding models are optional for local AI extraction 
 
 The macOS release carries forward the native Apple Silicon launcher, Ollama binary and PDF dependencies from the supplied Pulse v1 bundle. It is signed ad hoc and is not notarized. The original launcher source was not present in the supplied DMG; the included packaging script therefore takes that bundle as its template.
 
-## Repaired interactions
+## Workspaces and interactions
 
 - Add papers by title/text, DOI or PMID, with duplicate detection and visible lookup errors.
 - Import PDF, BibTeX, RIS, CSV, JSON and EndNote records; export the map and bibliography.
-- Select Network, Clusters, Radial or Bibliography. Library navigation opens the bibliography.
+- Discover fills the main panel with a starting-paper selector, methods, depth and an explicit search action. Select candidates before adding them.
+- Network uses the full canvas without a library sidebar. Full screen expands it across the window; Escape exits. Click a paper to inspect it and discover related work.
+- Timeline arranges the shared papers by publication date, oldest first, with year fallback and undated papers last. Its papers can start a new discovery.
+- Library opens the bibliography. Network supports Network, Clusters and Radial layouts. Collections navigation has been removed.
 - Filter papers by metadata, filter graph links by type, and synchronize labels with graph settings.
-- Expand/compress the graph, fit the view, inspect links, create map areas and edit paper tags.
+- Expand/compress the graph, fit the view, inspect links and edit paper tags.
 - Run Direct, 2-Hop, 3-Hop or bounded Iterative discovery. Iterative explores up to four hops and stops when its frontier is empty; expansion is limited to four papers per direction per hop.
 - Toggle discovery methods consistently across the ribbon and inspector. Disabled Concepts stays disabled in the backend.
 - Pin a discovery seed, review results and retain the resulting link evidence after reload.
@@ -39,6 +42,8 @@ Map similarity bars use local text-vector cosine similarity, verified citation/c
 
 Settings and the library live under `~/Library/Application Support/pulse/`. On the first default launch, the backend can migrate the previous Iratxe directory. An explicit `PULSE_CONFIG_DIR` selects an isolated directory and disables automatic migration. No personal library, settings or API keys are included in the repository or release.
 
+Discover and Network share one paper library. Discover finds and reviews candidates; Network shows relationships and can start discovery from any selected paper. Adding candidates returns them to the same map, with the discovery evidence saved.
+
 ## Tests
 
 ```sh
@@ -47,7 +52,7 @@ npx playwright install chromium
 npm test
 ```
 
-For an installed Chrome browser, use `PULSE_BROWSER_CHANNEL=chrome npm test`. The UI suite launches its own backend and temporary library. Python tests cover discovery depth, disabled branches, PMID parsing, storage and reset. Browser tests exercise controls, discovery result selection, import/export, settings, responsive layouts and reload persistence. Discovery responses in browser tests are deterministic fixtures; the PMID lookup was also checked against a live PubMed record.
+For an installed Chrome browser, use `PULSE_BROWSER_CHANNEL=chrome npm test`. The UI suite launches its own backend and temporary library. Python tests cover discovery depth, disabled branches, PMID parsing, storage and reset. Browser tests exercise workspace navigation, fullscreen, chronological ordering, discovery from map nodes and timeline papers, result selection, import/export, settings, responsive layouts and reload persistence. Discovery responses in browser tests are deterministic fixtures; the PMID lookup was also checked against a live PubMed record.
 
 ## macOS packaging
 

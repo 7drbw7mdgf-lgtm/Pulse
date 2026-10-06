@@ -7,6 +7,10 @@ const state = {
       linkTypeFilter: 'all',
       librarySearch: '',
       explorationDepth: '2',
+      workspaceView: 'discover',
+      inspectorOpen: false,
+      discoveryHasRun: false,
+      discoveryError: '',
       clusters: [],
       selectedId: null,
       selectedLinkId: null,
@@ -98,6 +102,10 @@ const state = {
       tableView: document.getElementById('tableView'),
       emptyState: document.getElementById('emptyState'),
       details: document.getElementById('details'),
+      timelineView: document.getElementById('timelineView'),
+      discoveryRunButton: document.getElementById('discoveryRunButton'),
+      discoverySeedSelect: document.getElementById('discoverySeedSelect'),
+      discoveryProgress: document.getElementById('discoveryProgress'),
       quickSearchInput: document.getElementById('quickSearchInput'),
       quickAddBtn: document.getElementById('quickAddBtn'),
       railLibraryBadge: document.getElementById('railLibraryBadge'),
@@ -367,11 +375,8 @@ const state = {
       state.discoveryQuickTag = '';
       state.discoveryExpandedAbstracts = new Set();
 
-      state.discoverySelectedKeys = new Set(
-        (results || [])
-          .filter(item => !recommendationAlreadyOnMap(item))
-          .map(item => discoveryPaperKey(item))
-      );
+      state.discoverySelectedKeys = new Set();
+      state.discoveryHasRun = true;
 
       if (els.discoveryFilterText) els.discoveryFilterText.value = '';
       if (els.discoveryClearTextBtn) els.discoveryClearTextBtn.hidden = true;
@@ -379,13 +384,13 @@ const state = {
       if (els.discoveryFilterYear) els.discoveryFilterYear.value = 'all';
       if (els.discoverySortBy) els.discoverySortBy.value = 'score';
 
-      if (els.discoveryModal) els.discoveryModal.hidden = false;
+      setWorkspaceView('discover');
       renderDiscoveryModal();
       if (els.discoveryFilterText) els.discoveryFilterText.focus();
     }
 
     function closeDiscoveryModal() {
-      if (els.discoveryModal) els.discoveryModal.hidden = true;
+      setWorkspaceView('network');
     }
 
     function getFilteredDiscoveryPapers() {
@@ -489,8 +494,8 @@ const state = {
       const filtered = getFilteredDiscoveryPapers();
 
       if (els.discoveryModalSubtitle) {
-        const seedTitle = state.discoverySeed?.title || 'Selected seed paper';
-        els.discoveryModalSubtitle.textContent = `${totalItems.length} papers discovered via S2AG for "${seedTitle.slice(0, 60)}${seedTitle.length > 60 ? '...' : ''}" across all 5 branches.`;
+        const seedTitle = state.discoverySeed?.title || '';
+        els.discoveryModalSubtitle.textContent = totalItems.length ? `${totalItems.length} candidates found from “${seedTitle}”. Review them before adding them to your map.` : 'Start with a paper, choose your search methods, then review related work.';
       }
 
       const countSpecter = totalItems.filter(item => item.branch === 'semanticSearch' || item.branchHits?.semanticSearch || (item.discoveryBadges || []).some(b => b.includes('SPECTER2'))).length;
@@ -542,19 +547,21 @@ const state = {
         els.discoverySelectedCount.textContent = `${selectedCount} selected`;
       }
       if (els.discoveryAddSelectedMapBtn) {
-        els.discoveryAddSelectedMapBtn.textContent = `⭐ Add Selected to Map (${selectedCount})`;
+        els.discoveryAddSelectedMapBtn.textContent = `Add selected & open network (${selectedCount})`;
+        els.discoveryAddSelectedMapBtn.disabled = selectedCount === 0;
       }
       if (els.discoveryAddSelectedLibraryBtn) {
         els.discoveryAddSelectedLibraryBtn.textContent = `+ Add to Library (${selectedCount})`;
+        els.discoveryAddSelectedLibraryBtn.disabled = selectedCount === 0;
       }
 
       if (!els.discoveryPaperList) return;
       if (!filtered.length) {
         els.discoveryPaperList.innerHTML = `
           <div class="discovery-empty-state">
-            <span class="discovery-empty-icon">🔎</span>
-            <div class="discovery-empty-text">No papers match your filter criteria</div>
-            <div class="discovery-empty-subtext">Try clearing the search query, adjusting the year or branch filter.</div>
+            <span class="discovery-empty-icon">${state.discoveryLoading ? '◌' : '↗'}</span>
+            <div class="discovery-empty-text">${state.discoveryLoading ? 'Finding related work…' : totalItems.length ? 'No papers match these filters' : state.discoveryError ? 'This search could not finish' : state.discoveryHasRun ? 'No related papers found' : 'One paper is enough to begin'}</div>
+            <div class="discovery-empty-subtext">${escapeHtml(state.discoveryError || (totalItems.length ? 'Clear a filter to see more results.' : state.discoveryHasRun ? 'Try another starting paper or enable another search method.' : 'Add a title, DOI, PMID or PDF above. Choose your starting paper, then find related work.'))}</div>
           </div>
         `;
         return;
@@ -760,7 +767,7 @@ const state = {
         addedCount++;
       });
 
-      closeDiscoveryModal();
+      setWorkspaceView('library');
       render();
       if (addedCount > 0) {
         showToast(`Added ${addedCount} discovered paper${addedCount === 1 ? '' : 's'} to library.`);
@@ -1270,7 +1277,109 @@ const state = {
       return state.links.filter(link => state.linkTypeFilter === 'all' || link.type === state.linkTypeFilter);
     }
 
+    function setWorkspaceView(view) {
+      els.app.classList.remove('network-fullscreen');
+      const fullButton = document.getElementById('networkFullscreenButton');
+      fullButton.textContent = 'Full screen';
+      fullButton.setAttribute('aria-pressed', 'false');
+      state.workspaceView = view;
+      state.inspectorOpen = false;
+      if (view === 'timeline') state.mode = 'timeline';
+      else if (view === 'library') state.mode = 'table';
+      else if (view === 'network' && !['network', 'clusters', 'radial'].includes(state.mode)) state.mode = 'network';
+      render();
+    }
+
+    function toggleNetworkFullscreen(force) {
+      const full = typeof force === 'boolean' ? force : !els.app.classList.contains('network-fullscreen');
+      els.app.classList.toggle('network-fullscreen', full);
+      const button = document.getElementById('networkFullscreenButton');
+      button.textContent = full ? 'Exit full screen' : 'Full screen';
+      button.setAttribute('aria-pressed', String(full));
+      render();
+    }
+
+    function setDiscoverySeed(id) {
+      state.selectedId = id;
+      state.pinnedSeedId = id;
+      state.selectedLinkId = null;
+      if (state.discoverySeed?.id !== id) {
+        state.discoveryResults = [];
+        state.discoverySelectedKeys = new Set();
+        state.discoveryHasRun = false;
+        state.discoveryError = '';
+      }
+    }
+
+    function renderDiscoveryWorkspace() {
+      const seedId = state.pinnedSeedId || state.selectedId || state.papers[0]?.id || '';
+      const seed = state.papers.find(paper => paper.id === seedId) || state.papers[0];
+      els.discoverySeedSelect.innerHTML = state.papers.length ? state.papers.map(paper => `<option value="${escapeHtml(paper.id)}">${escapeHtml(paper.title)}${paper.year ? ` (${escapeHtml(paper.year)})` : ''}</option>`).join('') : '<option value="">Add a paper above to begin</option>';
+      els.discoverySeedSelect.value = seed?.id || '';
+      const busy = state.discoveryLoading || state.citationLoading;
+      els.discoverySeedSelect.disabled = !state.papers.length || busy;
+      els.discoveryRunButton.disabled = !seed || busy || !Object.values(state.discoveryBranches).some(Boolean);
+      els.discoveryRunButton.textContent = busy ? 'Finding papers…' : 'Find related papers';
+      els.discoveryProgress.hidden = !busy;
+      els.discoveryProgress.textContent = busy ? `Searching from “${seed?.title || 'your paper'}”. Results will appear below.` : '';
+      const hasResults = state.discoveryResults.length > 0;
+      els.discoveryModal.querySelector('.discovery-modal-toolbar').hidden = !hasResults;
+      els.discoveryModal.querySelector('.discovery-status-bar').hidden = !hasResults;
+      els.discoveryModal.querySelector('.discovery-modal-footer').hidden = !hasResults;
+      document.querySelectorAll('[data-depth], [data-method], [data-special]').forEach(button => button.disabled = busy || (!seed && Boolean(button.dataset.special)));
+      renderDiscoveryModal();
+    }
+
+    function publicationDate(paper) {
+      const raw = String(paper.date || '').trim();
+      const iso = raw.match(/^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/);
+      if (iso && Number(iso[1]) >= 1000) {
+        return {time: Date.UTC(Number(iso[1]), Number(iso[2] || 1) - 1, Number(iso[3] || 1)), year: iso[1], label: raw};
+      }
+      const parsed = raw ? Date.parse(raw) : NaN;
+      if (Number.isFinite(parsed)) return {time: parsed, year: String(new Date(parsed).getUTCFullYear()), label: raw};
+      const year = String(paper.year || '').match(/\b([12]\d{3})\b/)?.[1];
+      return year ? {time: Date.UTC(Number(year), 0, 1), year, label: year} : null;
+    }
+
+    function chronologicalPapers() {
+      return state.papers.map(paper => ({paper, date: publicationDate(paper)})).sort((left, right) => {
+        if (!left.date && right.date) return 1;
+        if (left.date && !right.date) return -1;
+        return (left.date?.time || 0) - (right.date?.time || 0) || left.paper.title.localeCompare(right.paper.title);
+      });
+    }
+
+    function renderTimeline() {
+      const ordered = chronologicalPapers();
+      let previousYear = null;
+      els.timelineView.innerHTML = `<header class="timeline-header"><span class="discovery-source-pill">Your research over time</span><h1>Timeline</h1><p>Oldest to newest · ${ordered.length} papers. Papers without a publication date appear at the end.</p></header><div class="timeline-track">${ordered.map(({paper, date}) => {
+        const year = date?.year || 'Undated';
+        const heading = year !== previousYear ? `<h2 class="timeline-year">${escapeHtml(year)}</h2>` : '';
+        previousYear = year;
+        return `${heading}<article class="timeline-paper" data-timeline-id="${escapeHtml(paper.id)}"><span class="timeline-date">${escapeHtml(date?.label || 'Date unknown')}</span><div><button type="button" class="timeline-paper-title" data-timeline-inspect="${escapeHtml(paper.id)}">${escapeHtml(paper.title)}</button><p>${escapeHtml([paperAuthorSummary(paper), paper.journal].filter(Boolean).join(' · '))}</p>${paper.abstract ? `<p class="timeline-abstract">${escapeHtml(paper.abstract.slice(0, 180))}${paper.abstract.length > 180 ? '…' : ''}</p>` : ''}</div><button type="button" class="button secondary" data-timeline-discover="${escapeHtml(paper.id)}">Discover related</button></article>`;
+      }).join('') || '<div class="timeline-empty">Add papers to see how the literature develops over time.</div>'}</div>`;
+      els.timelineView.querySelectorAll('[data-timeline-inspect]').forEach(button => button.addEventListener('click', () => {
+        state.selectedId = button.dataset.timelineInspect;
+        state.inspectorOpen = true;
+        renderDetails();
+      }));
+      els.timelineView.querySelectorAll('[data-timeline-discover]').forEach(button => button.addEventListener('click', () => {
+        setDiscoverySeed(button.dataset.timelineDiscover);
+        setWorkspaceView('discover');
+      }));
+    }
+
     function syncWorkspaceControls() {
+      els.app.dataset.workspace = state.workspaceView;
+      els.discoveryModal.hidden = state.workspaceView !== 'discover';
+      document.querySelector('.pulse-workspace-cols').hidden = state.workspaceView === 'discover';
+      document.querySelectorAll('[data-rail]').forEach(button => {
+        const active = button.dataset.rail === state.workspaceView;
+        button.classList.toggle('active', active);
+        if (active) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+      });
       document.querySelectorAll('[data-mode]').forEach(button => {
         const active = button.dataset.mode === state.mode;
         button.classList.toggle('is-active', active);
@@ -1301,6 +1410,7 @@ const state = {
       if (els.railRecentList) {
         els.railRecentList.innerHTML = state.papers.slice(-4).reverse().map(paper => `<button type="button" class="recent-session-item" data-session-query="${escapeHtml(paper.doi || paper.pmid || paper.title)}"><span class="session-dot"></span><span class="session-info"><strong class="session-name">${escapeHtml(compactTitle(paper.title))}</strong><small class="session-time">${escapeHtml(paper.year || 'In library')}</small></span></button>`).join('') || '<p class="rail-empty">Recent papers will appear here.</p>';
       }
+      renderDiscoveryWorkspace();
     }
 
     function renderBackendStatus(settings, message) {
@@ -1624,7 +1734,8 @@ const state = {
     }
 
     function setMapMode(mode) {
-      if (!['network', 'clusters', 'radial', 'table'].includes(mode)) return false;
+      if (!['network', 'clusters', 'radial', 'table', 'timeline'].includes(mode)) return false;
+      state.workspaceView = mode === 'table' ? 'library' : mode === 'timeline' ? 'timeline' : 'network';
       state.mode = mode;
       state.centerId = null;
       document.querySelectorAll('[data-mode]').forEach(item => item.classList.toggle('is-active', item.dataset.mode === mode));
@@ -3249,12 +3360,15 @@ const state = {
         state.selectedLinkId = null;
       }
       const isTableMode = state.mode === 'table';
-      els.map.hidden = isTableMode;
-      els.map.style.display = isTableMode ? 'none' : '';
+      const isTimelineMode = state.workspaceView === 'timeline';
+      els.timelineView.hidden = !isTimelineMode;
+      if (isTimelineMode) renderTimeline();
+      els.map.hidden = isTableMode || isTimelineMode;
+      els.map.style.display = isTableMode || isTimelineMode ? 'none' : '';
       els.tableView.hidden = !isTableMode;
       const titleHeading = (els.canvasTitle || document.querySelector('.canvas-title'))?.querySelector('h1');
       if (titleHeading) {
-        titleHeading.textContent = isTableMode ? 'Biolography' : (state.mode === 'radial' ? 'Radial hierarchy' : (state.mode === 'clusters' ? 'Topic clusters' : 'Relatedness graph'));
+        titleHeading.textContent = isTableMode ? 'Bibliography' : (state.mode === 'radial' ? 'Radial hierarchy' : (state.mode === 'clusters' ? 'Topic clusters' : 'Relatedness graph'));
       }
       if (isTableMode) {
         renderTableView();
@@ -3266,8 +3380,10 @@ const state = {
       updateViewSize(width, height);
       els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
       els.map.classList.toggle('no-grid', !state.graphStyle.showGrid);
-      layout(width, safeHeight);
-      applyAreaContainment();
+      if (state.workspaceView === 'network') {
+        layout(width, safeHeight);
+        applyAreaContainment();
+      }
 
       const clusterByPaper = new Map();
       state.clusters.forEach((cluster, index) => cluster.forEach(id => clusterByPaper.set(id, index)));
@@ -3372,14 +3488,14 @@ const state = {
     function renderTableView(focusColumn = '') {
       if (!els.tableView) return;
       if (!state.papers.length) {
-        els.tableView.innerHTML = '<div class="table-empty">Drop papers to build an extracted Biolography table.</div>';
+        els.tableView.innerHTML = '<div class="table-empty">Drop papers to build an extracted Bibliography table.</div>';
         return;
       }
       const rows = filteredTablePapers();
       const columns = activeTableColumns();
       const isCompact = state.paperView === 'compact';
       els.tableView.innerHTML = `
-        <table class="findings-table${isCompact ? ' is-compact' : ''}" aria-label="Extracted Biolography findings">
+        <table class="findings-table${isCompact ? ' is-compact' : ''}" aria-label="Extracted Bibliography findings">
           <thead>
             <tr>
               ${columns.map(column => `
@@ -3402,7 +3518,7 @@ const state = {
             }).join('')}
           </tbody>
         </table>
-        ${rows.length ? '' : '<div class="table-empty">No papers match those Biolography filters.</div>'}
+        ${rows.length ? '' : '<div class="table-empty">No papers match those Bibliography filters.</div>'}
       `;
       bindTableFilters();
       bindTableHeaders();
@@ -3417,8 +3533,9 @@ const state = {
       els.tableView.querySelectorAll('[data-table-paper]').forEach(row => {
         row.addEventListener('click', () => {
           state.selectedId = row.dataset.tablePaper;
+          state.inspectorOpen = true;
           renderDetails();
-          showToast('Selected paper from Biolography.');
+          showToast('Selected paper from Bibliography.');
         });
       });
       els.tableView.querySelectorAll('[data-action="table-edit-tags"]').forEach(btn => {
@@ -3795,6 +3912,7 @@ const state = {
           els.map.classList.add('is-panning');
           state.selectedId = id;
           state.selectedLinkId = null;
+          state.inspectorOpen = true;
           renderDetails();
           renderSelection();
         });
@@ -4185,6 +4303,7 @@ const state = {
     }
 
     function selectLinkage(id) {
+      state.inspectorOpen = true;
       state.selectedLinkId = id;
       state.selectedId = null;
       render();
@@ -4913,6 +5032,10 @@ const state = {
     }
 
     function renderDetails() {
+      if (!state.inspectorOpen || state.workspaceView === 'discover') {
+        els.details.hidden = true;
+        return;
+      }
       if (state.selectedLinkId) {
         renderLinkageDetails();
         return;
@@ -5306,6 +5429,7 @@ const state = {
     }
 
     function closePaperPopup() {
+      state.inspectorOpen = false;
       state.selectedId = null;
       state.selectedLinkId = null;
       els.details.hidden = true;
@@ -5610,11 +5734,13 @@ const state = {
     }
 
     async function findMissingSeminal() {
+      if (state.citationLoading || state.discoveryLoading || !state.papers.length) return;
+      state.discoveryError = '';
       if (!state.papers.some(paper => (paper.referenceIds || []).length)) {
         await mapCitationTopology();
       }
       state.citationLoading = true;
-      renderDetails();
+      render();
       try {
         const response = await fetch(backendUrl('/api/citations/seminal'), {
           method: 'POST',
@@ -5624,8 +5750,13 @@ const state = {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Could not find missing seminal papers.');
         state.seminalSuggestions = data.recommendations || [];
+        openDiscoveryModal(state.seminalSuggestions, selectedPapersForRecommendation()[0] || state.papers[0]);
         showToast(state.seminalSuggestions.length ? `Found ${state.seminalSuggestions.length} missing foundational paper${state.seminalSuggestions.length === 1 ? '' : 's'}.` : 'No common missing reference found yet.');
       } catch (error) {
+        state.discoveryError = error.message;
+        state.discoveryHasRun = true;
+        state.discoveryResults = [];
+        setWorkspaceView('discover');
         showToast(error.message);
       } finally {
         state.citationLoading = false;
@@ -5759,6 +5890,8 @@ const state = {
         showToast('Enable at least one discovery method.');
         return;
       }
+      if (state.workspaceView === 'discover') setDiscoverySeed(els.discoverySeedSelect.value);
+      else if (state.workspaceView === 'network' && state.selectedId && !state.selectedLinkId) setDiscoverySeed(state.selectedId);
       const seeds = selectedPapersForRecommendation();
       if (!seeds.length) {
         showToast('Select a paper first to run literature discovery.');
@@ -5766,6 +5899,10 @@ const state = {
       }
       const key = recommendationKey(seeds);
       state.discoveryLoading = true;
+      state.discoveryError = '';
+      state.discoveryResults = [];
+      state.discoverySelectedKeys = new Set();
+      setWorkspaceView('discover');
       state.recommendationLoadingKey = key;
       renderDetails();
       try {
@@ -5791,8 +5928,10 @@ const state = {
         state.discoveryResults = recs;
         state.discoverySeed = seeds[0];
         openDiscoveryModal(recs, seeds[0]);
-        showToast(`Literature discovery surfaced ${recs.length} papers. Review and choose papers to add in the popup.`);
+        showToast(`Literature discovery surfaced ${recs.length} papers. Review and choose papers to add in Discover.`);
       } catch (error) {
+        state.discoveryError = error.message;
+        state.discoveryHasRun = true;
         showToast(error.message);
         state.recommendations.set(key, [{ title: 'Discovery search failed', reason: error.message }]);
       } finally {
@@ -6089,10 +6228,11 @@ const state = {
     function serializeMap() {
       return {
         format: 'pulse-map',
-        version: '1.1.0',
+        version: '1.2.0',
         generatedAt: new Date().toISOString(),
         threshold: state.threshold,
         mode: state.mode,
+        workspaceView: state.workspaceView,
         linkTypeFilter: state.linkTypeFilter,
         discoveryBranches: { ...state.discoveryBranches },
         explorationDepth: state.explorationDepth,
@@ -6172,7 +6312,8 @@ const state = {
       if (!data.papers.length && !(Array.isArray(data.areas) && data.areas.length) && !data.reset && source !== 'Autosaved library') return false;
       state.threshold = Math.min(0.75, Math.max(0.01, Number(data.threshold || 0.05)));
       els.threshold.value = Math.round(state.threshold * 100);
-      state.mode = ['network', 'clusters', 'radial', 'table'].includes(data.mode) ? data.mode : 'network';
+      state.mode = ['network', 'clusters', 'radial', 'table', 'timeline'].includes(data.mode) ? data.mode : 'network';
+      state.workspaceView = ['discover', 'network', 'library', 'timeline'].includes(data.workspaceView) ? data.workspaceView : state.mode === 'table' ? 'library' : state.mode === 'timeline' ? 'timeline' : 'discover';
       state.linkTypeFilter = ['all', 'similarity', 'citation', 'bibliographic', 'cocitation'].includes(data.linkTypeFilter) ? data.linkTypeFilter : 'all';
       if (data.discoveryBranches) state.discoveryBranches = { ...state.discoveryBranches, ...data.discoveryBranches };
       state.explorationDepth = ['1', '2', '3', 'iterative'].includes(String(data.explorationDepth)) ? String(data.explorationDepth) : '2';
@@ -6381,6 +6522,11 @@ const state = {
       state.citationLoading = false;
       state.discoveryLoading = false;
       state.discoveryResults = [];
+      state.discoveryHasRun = false;
+      state.discoveryError = '';
+      state.workspaceView = 'discover';
+      state.mode = 'network';
+      state.inspectorOpen = false;
       state.discoverySeed = null;
       state.pinnedSeedId = null;
       state.discoverySelectedKeys = new Set();
@@ -6397,7 +6543,7 @@ const state = {
         localStorage.removeItem('iratxe-autosave-library');
         localStorage.setItem('pulse-autosave-library', JSON.stringify({
           format: 'pulse-map',
-          version: '1.1.0',
+          version: '1.2.0',
           papers: [],
           areas: []
         }));
@@ -6414,7 +6560,7 @@ const state = {
             papers: [],
             areas: [],
             format: 'pulse-map',
-            version: '1.1.0',
+            version: '1.2.0',
             savedAt: new Date().toISOString()
           })
         });
@@ -6599,6 +6745,7 @@ const state = {
       button.addEventListener('click', () => {
         document.querySelectorAll('[data-mode]').forEach(item => item.classList.toggle('is-active', item === button));
         state.mode = button.dataset.mode;
+        state.workspaceView = 'network';
         state.centerId = null;
         render();
         showToast(`Map mode: ${button.textContent.trim()}.`);
@@ -6764,8 +6911,7 @@ const state = {
       if (event.key === 'Escape') {
         if (els.tagActionMenu && !els.tagActionMenu.hidden) {
           closeTagActionMenu();
-        } else if (els.discoveryModal && !els.discoveryModal.hidden) {
-          closeDiscoveryModal();
+
         } else if (!els.keywordModal?.hidden) {
           closeKeywordModal();
         } else if (!els.settingsPanel?.hidden) {
@@ -6846,6 +6992,7 @@ const state = {
     // Subbar dropdown controls & mode tabs
     els.canvasLayoutSelect?.addEventListener('change', event => {
       state.mode = event.target.value;
+      state.workspaceView = 'network';
       document.querySelectorAll('.subbar-tab').forEach(t => t.classList.toggle('is-active', t.dataset.mode === state.mode));
       render();
     });
@@ -6887,7 +7034,7 @@ const state = {
         const depth = pill.dataset.depth;
         state.explorationDepth = depth;
         render();
-        runDiscoveryPipeline();
+        showToast('Exploration depth updated. Use Find related papers to search.');
       });
     });
 
@@ -6898,40 +7045,41 @@ const state = {
           findMissingSeminal();
         } else if (special === 'recent') {
           state.recommendationRecencyTilt = 2;
-          recommendSelectedPapers();
+          runDiscoveryPipeline();
           showToast('Finding recent publications');
         }
       });
     });
 
-    // Left Navigation Rail
+    // Navigation changes workspaces; searching is an explicit action.
     document.querySelectorAll('.pulse-nav-rail .rail-item').forEach(item => {
       item.addEventListener('click', () => {
-        document.querySelectorAll('.pulse-nav-rail .rail-item').forEach(i => i.classList.toggle('active', i === item));
-        const rail = item.dataset.rail;
-        if (rail === 'discover') {
-          if (state.papers.length) {
-            runDiscoveryPipeline();
-          } else {
-            els.quickSearchInput?.focus();
-            showToast('Enter a paper title or DOI to start discovery');
-          }
-        } else if (rail === 'network') {
-          state.mode = 'network';
-          render();
-        } else if (rail === 'library') {
-          state.mode = 'table';
-          render();
-        } else if (rail === 'trends') {
-          state.mode = 'clusters';
-          render();
-          showToast('Topic clusters & trends');
-        } else if (rail === 'collections') {
-          setAreaPanelOpen(true);
-        } else if (rail === 'settings') {
-          setSettingsOpen(true);
-        }
+        const view = item.dataset.rail;
+        if (view === 'settings') { setSettingsOpen(true); return; }
+        if (view === 'trends') { state.mode = 'clusters'; setWorkspaceView('network'); return; }
+        if (view === 'network') state.mode = 'network';
+        setWorkspaceView(view);
       });
+    });
+    els.discoveryRunButton.addEventListener('click', () => {
+      setDiscoverySeed(els.discoverySeedSelect.value);
+      runDiscoveryPipeline();
+    });
+    els.discoverySeedSelect.addEventListener('change', event => {
+      setDiscoverySeed(event.target.value);
+      render();
+    });
+    document.getElementById('discoveryAddSeedButton').addEventListener('click', () => {
+      els.quickSearchInput.focus();
+      showToast('Enter a paper title, DOI or PMID above, or use Import for a PDF.');
+    });
+    document.getElementById('networkDiscoverButton').addEventListener('click', () => {
+      setDiscoverySeed(state.selectedId || state.papers[0]?.id || null);
+      setWorkspaceView('discover');
+    });
+    document.getElementById('networkFullscreenButton').addEventListener('click', () => toggleNetworkFullscreen());
+    window.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && els.app.classList.contains('network-fullscreen')) toggleNetworkFullscreen(false);
     });
 
     els.railRecentList?.addEventListener('click', event => {
