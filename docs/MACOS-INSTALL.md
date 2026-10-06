@@ -1,19 +1,19 @@
-# Install Pulse 1.2.1 on macOS without notarization
+# Install Pulse 1.3.0 on macOS without notarization
 
-Pulse 1.2.1 is an Apple Silicon macOS app. Its signature is **ad hoc** and it has **not been notarized by Apple**. macOS may block a downloaded copy on first launch. The procedures below let you approve this specific app locally; they do not give it an Apple notarization ticket or bypass Apple's notary service limits.
+Pulse 1.3.0 is an Apple Silicon macOS app. Its signature is **ad hoc** and it has **not been notarized by Apple**. macOS may block a downloaded copy on first launch. The procedures below let you approve this specific app locally; they do not give it an Apple notarization ticket or bypass Apple's notary service limits.
 
-Download the DMG, checksum file and helper only from the [official Pulse 1.2.1 release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.2.1). Trust the publisher before approving the app. A checksum confirms that your download matches the release file; an ad hoc signature checks bundle integrity, not developer identity or malware safety.
+Download the DMG, checksum file and helper only from the [official Pulse 1.3.0 release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.3.0). Trust the publisher before approving the app. A checksum confirms that your download matches the release file; an ad hoc signature checks bundle integrity, not developer identity or malware safety.
 
 ## 1. Verify the download and install
 
-Download `Pulse-1.2.1.dmg` and `Pulse-1.2.1-SHA256SUMS.txt` into the same folder. In Terminal:
+Download `Pulse-1.3.0.dmg` and `Pulse-1.3.0-SHA256SUMS.txt` into the same folder. In Terminal:
 
 ```sh
 cd ~/Downloads
-shasum -a 256 -c Pulse-1.2.1-SHA256SUMS.txt
+shasum -a 256 -c Pulse-1.3.0-SHA256SUMS.txt
 ```
 
-Continue only if it prints `Pulse-1.2.1.dmg: OK`. If verification fails, discard the download and download it again from the release page.
+Continue only if it prints `Pulse-1.3.0.dmg: OK`. If verification fails, discard the download and download it again from the release page.
 
 Open the DMG and drag `Pulse.app` into **Applications**. Replace the previous Pulse app if prompted, after quitting it. Your paper library remains in `~/Library/Application Support/pulse/`. Do not run Pulse directly from the mounted DMG.
 
@@ -49,7 +49,7 @@ For a copy installed in your personal Applications folder:
 bash ~/Downloads/Allow-Pulse.command "$HOME/Applications/Pulse.app"
 ```
 
-The helper checks that the target is a `Pulse.app` bundle with identifier `local.pulse.paper-linkage`, version `1.2.1` and a valid deep code signature. It refuses other apps, other versions, symlink targets and execution as root. It uses this command only on the verified app:
+The helper checks that the target is a `Pulse.app` bundle with identifier `local.pulse.paper-linkage`, version `1.3.0` and a valid deep code signature. It refuses other apps, other versions, symlink targets and execution as root. It uses this command only on the verified app:
 
 ```sh
 /usr/bin/xattr -drs com.apple.quarantine "/Applications/Pulse.app"

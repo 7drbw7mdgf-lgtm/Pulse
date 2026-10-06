@@ -1,0 +1,7 @@
+const assert=require('node:assert/strict');const {createEngine}=require('../graph-engine.js');const engine=createEngine();
+const papers=[{id:'a',title:'Graph learning evaluation',text:'graph learning evaluation',authors:[],openAlexId:'W1',referenceIds:['W3']},{id:'b',title:'Graph learning evaluation',text:'graph learning evaluation',authors:[],openAlexId:'W2',referenceIds:['W3']},{id:'c',title:'Unrelated seasonal weather',text:'rain snow clouds weather',authors:[],openAlexId:'W3'}];
+const payload={papers,explicitLinks:[{source:'a',target:'b',score:.1,type:'citation'}],threshold:.75,graphSteerKeywords:[],stopwords:[]};
+let result=engine.analyse(payload);assert.ok(result.links.some(l=>l.source==='a'&&l.target==='b'&&l.score>.9),'Weak explicit edges must not suppress qualifying similarity');assert.ok(result.links.some(l=>l.source==='a'&&l.target==='c'&&l.type==='citation'),'Direct citation retained');const revision=result.revision;
+result=engine.analyse({...payload,papers:papers.map(p=>({...p,x:100,y:200}))});assert.equal(result.revision,revision,'Position-only changes reuse analysis');
+const lower=engine.analyse({...payload,threshold:.05});assert.equal(lower.links.find(l=>l.source==='a'&&l.target==='b').type,'mixed','Qualifying explicit edge combines with shared-reference evidence according to the existing rule');
+result=engine.analyse({...payload,papers:papers.slice(0,2)});assert.ok(result.links.every(l=>l.source!=='c'&&l.target!=='c'),'Deleted papers leave no dangling links');console.log('PASS: cache, threshold evidence, topology, removal');

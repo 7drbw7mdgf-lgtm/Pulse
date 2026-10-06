@@ -4,7 +4,9 @@ Pulse Lite helps you find related research papers, see how they connect, and arr
 
 It is a useful starting point for trying Pulse or exploring a tightly focused topic.
 
-**[Download Pulse Lite 1.0.0](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/lite-v1.0.0/Pulse-Lite-1.0.0.dmg)** · [Installation guide](docs/MACOS-INSTALL.md) · [Explore Full](../README.md)
+**[Download Pulse Lite 1.1.0](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/lite-v1.1.0/Pulse-Lite-1.1.0.dmg)** · [Installation guide](docs/MACOS-INSTALL.md) · [Explore Full](../README.md)
+
+Discovery shows progress, partial candidates, and a cancel button. Both editions reuse analysis and model vectors and report save failures clearly.
 
 ## A simple way to begin
 

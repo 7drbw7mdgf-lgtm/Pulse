@@ -64,8 +64,18 @@ bash scripts/package-macos.sh "/Volumes/Pulse v1/Pulse.app" /tmp/pulse-release
 
 This copies the supplied native template, replaces the app resources, updates the version and rebuilds its signature and DMG. The disk image includes the macOS guide and app-specific quarantine helper. Build output is ignored by Git.
 
-Download the latest DMG from [GitHub Releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest). For first-launch approval of this ad hoc signed build, read [the macOS installation guide](MACOS-INSTALL.md). The included [Allow-Pulse.command](../scripts/Allow-Pulse.command) verifies Pulse 1.2.1 before offering to remove only its quarantine attribute; it does not notarize the app or disable system-wide security settings.
+Download the latest DMG from [GitHub Releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest). For first-launch approval of this ad hoc signed build, read [the macOS installation guide](MACOS-INSTALL.md). The included [Allow-Pulse.command](../scripts/Allow-Pulse.command) verifies Pulse 1.3.0 before offering to remove only its quarantine attribute; it does not notarize the app or disable system-wide security settings.
 
 ## Sources and provenance
 
 The app resources originate from the user-supplied `pulse-v1.dmg`; the backend was compared with the supplied Iratxe 3.2 bundle. External metadata/discovery uses Semantic Scholar, OpenAlex, Crossref and [NCBI PubMed E-utilities](https://www.ncbi.nlm.nih.gov/books/NBK25499/). API keys remain local. Bundled third-party binaries and their licence metadata remain in the native template/release; they are not part of the source checkout.
+
+## Performance and reliability
+
+The shared graph engine caches text analysis and citation evidence. Libraries above 100 papers use a background worker for analysis and force layout; selection changes preserve SVG elements and settled positions. Dense networks draw up to 2,500 of the strongest visible links while retaining all calculated relationships for counts, inspector metrics and JSON export.
+
+Discovery runs at most three methods concurrently, with at most two JSON requests per provider. The interface polls progress, shows partial candidates and supports cancellation. Cancellation stops further requests and discards late results; an already running HTTP request can take until its timeout to finish. Successful JSON responses have a bounded, ten-minute memory cache. Model vectors are reused in a bounded SQLite cache keyed by text, provider, endpoint and model, without storing the original document text.
+
+Library writes are serialised, coalesced and protected against stale revisions, including unload beacons. Autosaves omit derived links and clusters, which are rebuilt from papers and explicit evidence on load. JSON exports retain calculated links. Save failures distinguish a successful browser fallback from a complete persistence failure.
+
+The test suite includes worker responsiveness, stale results, cancellation, partial discovery, model-cache invalidation, save ordering and fallback failures.

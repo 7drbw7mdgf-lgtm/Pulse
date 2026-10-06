@@ -1,10 +1,10 @@
 #!/bin/bash
-# Allow a trusted Pulse Lite 1.0.0 installation to open on this Mac.
+# Allow a trusted Pulse Lite 1.1.0 installation to open on this Mac.
 # This does not notarize Pulse Lite or change system-wide security settings.
 set -euo pipefail
 
 expected_id='local.pulse.paper-linkage.lite'
-expected_version='1.0.0'
+expected_version='1.1.0'
 check_only=false
 confirmed=false
 app_path=''
@@ -18,7 +18,7 @@ Usage: bash Allow-Pulse-Lite.command [--check | --yes] ["/Applications/Pulse Lit
   --help   Show this help.
 
 Without a path, checks /Applications/Pulse Lite.app, then ~/Applications/Pulse Lite.app.
-Only Pulse Lite 1.0.0 with a valid bundle signature is accepted. This script removes
+Only Pulse Lite 1.1.0 with a valid bundle signature is accepted. This script removes
 only com.apple.quarantine from that app. It never uses sudo, disables Gatekeeper,
 changes SIP, re-signs the app, downloads code or launches it automatically.
 HELP

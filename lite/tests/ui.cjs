@@ -116,9 +116,9 @@ const { chromium } = require('playwright');
     await page.route('**/api/recommendations', route => route.fulfill({json:{recommendations:[]}}));
     // Check discovery wiring without relying on rate-limited providers.
     const requests = [];
-    await page.route('**/api/discovery/pipeline', route => {
+    await page.route('**/api/discovery/start', route => {
       requests.push(route.request().postDataJSON());
-      return route.fulfill({json:{recommendations:[{title:'New graph literature paper',score:85,branch:'citationGraph',subType:'Forward',reason:'Cites seed'}]}});
+      return route.fulfill({json:{status:'complete',recommendations:[{title:'New graph literature paper',score:85,branch:'citationGraph',subType:'Forward',reason:'Cites seed'}]}});
     });
     await page.locator('[data-rail="discover"]').click();
     assert.equal(requests.length, 0, 'Navigation does not launch a search');

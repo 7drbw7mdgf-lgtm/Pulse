@@ -15,7 +15,7 @@
         <img src="favicon.png" alt="Pulse icon" class="rail-logo">
         <div class="rail-brand-text">
           <span class="rail-title">Pulse</span>
-          <span class="rail-version">v1.2</span>
+          <span class="rail-version">v1.3</span>
         </div>
       </div>
 
@@ -201,7 +201,7 @@
           </div>
         </div>
       </section>
-        <div class="discovery-run-row"><p>Find candidates here. Add the papers you want, then explore their connections on the network.</p><button id="discoveryRunButton" type="button" class="button primary">Find related papers</button></div>
+        <div class="discovery-run-row"><p>Find candidates here. Add the papers you want, then explore their connections on the network.</p><button id="discoveryCancelButton" type="button" class="button" hidden>Cancel search</button><button id="discoveryRunButton" type="button" class="button primary">Find related papers</button></div>
         <p id="discoveryProgress" class="discovery-progress" role="status" hidden></p>
       </div>
 
@@ -775,6 +775,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js"></script>
+  <script src="graph-engine.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

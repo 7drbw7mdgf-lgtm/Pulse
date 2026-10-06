@@ -11,6 +11,9 @@ const state = {
       inspectorOpen: false,
       discoveryHasRun: false,
       discoveryError: '',
+      discoveryJob: null,
+      discoveryStatus: '',
+      discoveryWarnings: [],
       clusters: [],
       selectedId: null,
       selectedLinkId: null,
@@ -106,6 +109,7 @@ const state = {
       discoveryRunButton: document.getElementById('discoveryRunButton'),
       discoverySeedSelect: document.getElementById('discoverySeedSelect'),
       discoveryProgress: document.getElementById('discoveryProgress'),
+      discoveryCancelButton: document.getElementById('discoveryCancelButton'),
       quickSearchInput: document.getElementById('quickSearchInput'),
       quickAddBtn: document.getElementById('quickAddBtn'),
       railLibraryBadge: document.getElementById('railLibraryBadge'),
@@ -548,11 +552,11 @@ const state = {
       }
       if (els.discoveryAddSelectedMapBtn) {
         els.discoveryAddSelectedMapBtn.textContent = `Add selected & open network (${selectedCount})`;
-        els.discoveryAddSelectedMapBtn.disabled = selectedCount === 0;
+        els.discoveryAddSelectedMapBtn.disabled = selectedCount === 0 || state.discoveryLoading;
       }
       if (els.discoveryAddSelectedLibraryBtn) {
         els.discoveryAddSelectedLibraryBtn.textContent = `+ Add to Library (${selectedCount})`;
-        els.discoveryAddSelectedLibraryBtn.disabled = selectedCount === 0;
+        els.discoveryAddSelectedLibraryBtn.disabled = selectedCount === 0 || state.discoveryLoading;
       }
 
       if (!els.discoveryPaperList) return;
@@ -1300,10 +1304,12 @@ const state = {
     }
 
     function setDiscoverySeed(id) {
+      if(state.discoveryLoading && state.pinnedSeedId!==id)cancelDiscovery();
       state.selectedId = id;
       state.pinnedSeedId = id;
       state.selectedLinkId = null;
       if (state.discoverySeed?.id !== id) {
+        state.discoveryStatus='';state.discoveryWarnings=[];
         state.discoveryResults = [];
         state.discoverySelectedKeys = new Set();
         state.discoveryHasRun = false;
@@ -1320,8 +1326,10 @@ const state = {
       els.discoverySeedSelect.disabled = !state.papers.length || busy;
       els.discoveryRunButton.disabled = !seed || busy || !Object.values(state.discoveryBranches).some(Boolean);
       els.discoveryRunButton.textContent = busy ? 'Finding papers…' : 'Find related papers';
-      els.discoveryProgress.hidden = !busy;
-      els.discoveryProgress.textContent = busy ? `Searching from “${seed?.title || 'your paper'}”. Results will appear below.` : '';
+      els.discoveryCancelButton.hidden = !state.discoveryLoading;
+      els.discoveryProgress.hidden = !busy && !state.discoveryStatus && !state.discoveryWarnings.length;
+      els.discoveryProgress.textContent = state.discoveryStatus || (busy ? `Searching from “${seed?.title || 'your paper'}”. Results will appear below.` : '');
+      if(state.discoveryWarnings.length)els.discoveryProgress.textContent += ` ${state.discoveryWarnings.join(' ')}`;
       const hasResults = state.discoveryResults.length > 0;
       els.discoveryModal.querySelector('.discovery-modal-toolbar').hidden = !hasResults;
       els.discoveryModal.querySelector('.discovery-status-bar').hidden = !hasResults;
@@ -1410,7 +1418,7 @@ const state = {
       if (els.railRecentList) {
         els.railRecentList.innerHTML = state.papers.slice(-4).reverse().map(paper => `<button type="button" class="recent-session-item" data-session-query="${escapeHtml(paper.doi || paper.pmid || paper.title)}"><span class="session-dot"></span><span class="session-info"><strong class="session-name">${escapeHtml(compactTitle(paper.title))}</strong><small class="session-time">${escapeHtml(paper.year || 'In library')}</small></span></button>`).join('') || '<p class="rail-empty">Recent papers will appear here.</p>';
       }
-      renderDiscoveryWorkspace();
+      if(state.workspaceView==='discover')renderDiscoveryWorkspace();
     }
 
     function renderBackendStatus(settings, message) {
@@ -1654,9 +1662,9 @@ const state = {
           text: paper.text.slice(0, 12000),
           keywords: mergedKeywords(paper),
         })),
-        links: state.links.map(link => {
-          const source = state.papers.find(paper => paper.id === link.source);
-          const target = state.papers.find(paper => paper.id === link.target);
+        links: state.links.slice().sort((a,b)=>b.score-a.score).slice(0,2500).map(link => {
+          const source = papersById.get(link.source);
+          const target = papersById.get(link.target);
           return {
             source: source?.title || link.source,
             target: target?.title || link.target,
@@ -2836,108 +2844,79 @@ const state = {
       return tokens.concat(grams.filter(gram => gram.length < 42));
     }
 
-    function calculateRelatedness() {
-      const graphSteerTerms = dedupeList(state.graphSteerKeywords.flatMap(term => tokenize(term))).slice(0, 24);
-      const docs = state.papers.map(paper => ({
-        id: paper.id,
-        tokens: tokenize(`${paper.title} ${(paper.authors || []).join(' ')} ${paper.year || ''} ${paper.journal || ''} ${paper.abstract || ''} ${(paper.paperKeywords || []).join(' ')} ${paper.text}`)
-      }));
-      const docFreq = new Map();
-      docs.forEach(doc => new Set(doc.tokens).forEach(term => docFreq.set(term, (docFreq.get(term) || 0) + 1)));
-
-      state.vectors.clear();
-      state.keywords.clear();
-      const documentCount = Math.max(docs.length, 1);
-
-      docs.forEach(doc => {
-        const counts = new Map();
-        doc.tokens.forEach(term => counts.set(term, (counts.get(term) || 0) + 1));
-        graphSteerTerms.forEach(term => {
-          if (counts.has(term)) counts.set(term, counts.get(term) + 6);
-        });
-        const vector = new Map();
-        let norm = 0;
-        counts.forEach((count, term) => {
-          const tf = 1 + Math.log(count);
-          const idf = Math.log((1 + documentCount) / (1 + (docFreq.get(term) || 0))) + 1;
-          const weight = tf * idf;
-          vector.set(term, weight);
-          norm += weight * weight;
-        });
-
-        const normalized = new Map();
-        const divisor = Math.sqrt(norm) || 1;
-        vector.forEach((weight, term) => normalized.set(term, weight / divisor));
-        state.vectors.set(doc.id, normalized);
-        state.keywords.set(doc.id, [...vector.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([term]) => term));
-      });
-
-      const paperIds = new Set(state.papers.map(paper => paper.id));
-      state.explicitLinks = state.explicitLinks.filter(link => paperIds.has(link.source) && paperIds.has(link.target));
-      const uniqueLinks = new Map();
-      state.explicitLinks.forEach(link => {
-        const key = `${pairKey(link.source, link.target)}:${link.type}`;
-        const previous = uniqueLinks.get(key);
-        if (!previous || link.score > previous.score) uniqueLinks.set(key, link);
-      });
-      state.explicitLinks = [...uniqueLinks.values()];
-      state.links = state.explicitLinks.filter(link => link.score >= state.threshold).map(link => ({ ...link }));
-      for (let i = 0; i < state.papers.length; i += 1) {
-        for (let j = i + 1; j < state.papers.length; j += 1) {
-          const source = state.papers[i].id;
-          const target = state.papers[j].id;
-          const score = cosine(state.vectors.get(source), state.vectors.get(target));
-          if (score >= state.threshold && !state.links.some(link => pairKey(link.source, link.target) === pairKey(source, target))) state.links.push({ source, target, score, type: 'similarity' });
-        }
-      }
-      addCitationTopologyEdges();
-
-      state.clusters = findClusters();
-    }
-
-    function addCitationTopologyEdges() {
-      const byOpenAlex = new Map(state.papers.map(paper => [normalizeOpenAlexId(paper.openAlexId || paper.openAlexUrl || ''), paper]).filter(([id]) => id));
-      const byPair = new Map(state.links.map(link => [pairKey(link.source, link.target), link]));
-      const upsert = (source, target, type, score, evidence = '') => {
-        if (!source || !target || source === target) return;
-        const key = pairKey(source, target);
-        const existing = byPair.get(key);
-        const rank = { similarity: 0, cocitation: 1, bibliographic: 2, citation: 3, mixed: 4 };
-        if (existing) {
-          existing.score = Math.max(existing.score || 0, score);
-          existing.evidence = dedupeList([existing.evidence, evidence].filter(Boolean)).join(' | ');
-          if (existing.type !== type) existing.type = rank[type] > rank[existing.type] ? type : (rank[type] === rank[existing.type] ? existing.type : 'mixed');
-          return;
-        }
-        const link = { source, target, score, type, evidence };
-        if (score < state.threshold) return;
-        state.links.push(link);
-        byPair.set(key, link);
+    const graphEngine = PulseGraph.createEngine();
+    let analysisKey = '', requestedAnalysisKey = '', graphRevision = 0, analysisGeneration = 0;
+    let layoutKey = '', graphMarkupKey = '', workerSerial = 0;
+    let paintedSelectedLinkId=null, edgeElementsById=new Map(), linksById=new Map();
+    let graphWorker = null, activeAnalysis = null, activeLayout = null;
+    const graphTasks = new Map();
+    const graphStats = {analyses:0, layouts:0, paints:0, workerFailures:0};
+    let papersById = new Map(), linksByPaper = new Map();
+    try {
+      graphWorker = new Worker('graph-worker.js');
+      graphWorker.onmessage = ({data}) => {
+        const task = graphTasks.get(data.id);
+        if (!task) return;
+        graphTasks.delete(data.id);
+        if (data.error){graphStats.workerFailures++;task.reject(new Error(data.error));} else task.resolve(data);
       };
-
-      state.papers.forEach(paper => {
-        const references = new Set((paper.referenceIds || []).map(normalizeOpenAlexId).filter(Boolean));
-        references.forEach(referenceId => {
-          const cited = byOpenAlex.get(referenceId);
-          if (cited) upsert(paper.id, cited.id, 'citation', 0.98, `${compactTitle(paper.title)} cites ${compactTitle(cited.title)}`);
-        });
+      graphWorker.onerror = () => {
+        graphStats.workerFailures++;
+        graphWorker.terminate(); graphWorker = null;
+        for (const task of graphTasks.values()) task.reject(new Error('Background graph calculation unavailable.'));
+        graphTasks.clear();
+      };
+    } catch (_) {}
+    function graphTask(action, payload) {
+      return new Promise((resolve,reject) => {
+        const id=++workerSerial;graphTasks.set(id,{resolve,reject});graphWorker.postMessage({id,action,payload});
       });
-
-      for (let i = 0; i < state.papers.length; i += 1) {
-        for (let j = i + 1; j < state.papers.length; j += 1) {
-          const left = state.papers[i];
-          const right = state.papers[j];
-          const sharedRefs = intersectIds(left.referenceIds, right.referenceIds);
-          if (sharedRefs.length) {
-            upsert(left.id, right.id, 'bibliographic', Math.min(0.9, 0.42 + sharedRefs.length * 0.08), `${sharedRefs.length} shared reference${sharedRefs.length === 1 ? '' : 's'}`);
-          }
-          const sharedCiters = intersectIds(left.citedByIds, right.citedByIds);
-          if (sharedCiters.length) {
-            upsert(left.id, right.id, 'cocitation', Math.min(0.88, 0.38 + sharedCiters.length * 0.08), `${sharedCiters.length} shared citing paper${sharedCiters.length === 1 ? '' : 's'}`);
-          }
-        }
-      }
     }
+    async function waitForGraphIdle() {
+      while(activeAnalysis || activeLayout) await Promise.all([activeAnalysis,activeLayout].filter(Boolean));
+    }
+    function applyGraphAnalysis(result, key) {
+      analysisKey=key; graphRevision++;
+      state.links=result.links;state.clusters=result.clusters;state.explicitLinks=result.explicitLinks;
+      linksById=new Map();state.links.forEach(link=>{if(!linksById.has(linkId(link)))linksById.set(linkId(link),link);});
+      state.vectors=new Map(result.vectors.map(([id,v])=>[id,new Map(v)]));state.keywords=new Map(result.keywords);
+      linksByPaper=new Map(state.papers.map(p=>[p.id,[]]));
+      state.links.forEach(link=>{linksByPaper.get(link.source)?.push(link);linksByPaper.get(link.target)?.push(link);});
+      graphStats.analyses++;
+    }
+    const paperAnalysisCache=new WeakMap();let paperAnalysisRevision=0;
+    function analysisPaper(p) {
+      const fields=[p.id,p.title,p.year,p.journal,p.abstract,p.text,p.openAlexId,p.openAlexUrl,(p.authors||[]).join('\0'),(p.paperKeywords||[]).join('\0'),(p.referenceIds||[]).join('\0'),(p.citedByIds||[]).join('\0')];
+      let cached=paperAnalysisCache.get(p);
+      if(!cached || fields.some((value,index)=>value!==cached.fields[index])) {
+        cached={fields,revision:++paperAnalysisRevision,paper:{id:p.id,title:p.title,authors:[...(p.authors||[])],year:p.year,journal:p.journal,abstract:p.abstract,paperKeywords:[...(p.paperKeywords||[])],text:p.text,openAlexId:p.openAlexId,openAlexUrl:p.openAlexUrl,referenceIds:[...(p.referenceIds||[])],citedByIds:[...(p.citedByIds||[])]}};
+        paperAnalysisCache.set(p,cached);
+      }
+      return cached;
+    }
+    function calculateRelatedness() {
+      state.papers.forEach(p=>{p.x=Number.isFinite(Number(p.x))?Number(p.x):0;p.y=Number.isFinite(Number(p.y))?Number(p.y):0;});
+      papersById=new Map(state.papers.map(p=>[p.id,p]));
+      const records=state.papers.map(analysisPaper),papers=records.map(record=>record.paper);
+      const payload={papers,explicitLinks:state.explicitLinks,threshold:state.threshold,graphSteerKeywords:state.graphSteerKeywords,stopwords:[...stopwords]};
+      const key=JSON.stringify([records.map(record=>[record.paper.id,record.revision]),payload.explicitLinks,payload.threshold,payload.graphSteerKeywords]);
+      if(key===analysisKey){if(requestedAnalysisKey && requestedAnalysisKey!==key){++analysisGeneration;requestedAnalysisKey='';}return;}
+      if(key===requestedAnalysisKey)return;
+      const generation=++analysisGeneration;
+      if(graphWorker && papers.length>100) {
+        requestedAnalysisKey=key;
+        state.links=state.links.filter(link=>papersById.has(link.source)&&papersById.has(link.target));
+        if(activeAnalysis)return; // Coalesce rapid slider/data changes into the latest snapshot.
+        const job=graphTask('analyse',payload).then(({result})=>{
+          if(generation===analysisGeneration){if(activeAnalysis===job)activeAnalysis=null;applyGraphAnalysis(result,key);render();}
+        }).catch(()=>{if(generation===analysisGeneration){if(activeAnalysis===job)activeAnalysis=null;applyGraphAnalysis(graphEngine.analyse(payload),key);render();}}).finally(()=>{
+          if(activeAnalysis===job){activeAnalysis=null;requestedAnalysisKey='';render();}
+          else if(generation===analysisGeneration)requestedAnalysisKey='';
+        });
+        activeAnalysis=job;
+      } else { requestedAnalysisKey='';applyGraphAnalysis(graphEngine.analyse(payload),key); }
+    }
+    function paperLinks(id) { return linksByPaper.get(id) || []; }
 
     function pairKey(source, target) {
       return [source, target].sort().join('__');
@@ -2956,35 +2935,6 @@ const state = {
       return score;
     }
 
-    function findClusters() {
-      const adjacency = new Map(state.papers.map(paper => [paper.id, new Set()]));
-      state.links.forEach(link => {
-        adjacency.get(link.source)?.add(link.target);
-        adjacency.get(link.target)?.add(link.source);
-      });
-
-      const clusters = [];
-      const seen = new Set();
-      state.papers.forEach(paper => {
-        if (seen.has(paper.id)) return;
-        const stack = [paper.id];
-        const group = [];
-        seen.add(paper.id);
-        while (stack.length) {
-          const id = stack.pop();
-          group.push(id);
-          adjacency.get(id)?.forEach(next => {
-            if (!seen.has(next)) {
-              seen.add(next);
-              stack.push(next);
-            }
-          });
-        }
-        clusters.push(group);
-      });
-      return clusters;
-    }
-
     let bouncingNodeId = null;
     let bounceAnimationTimer = null;
     let recenterAnimId = null;
@@ -2993,6 +2943,23 @@ const state = {
     let lastNodeClickId = null;
 
     function layout(width, height) {
+      if (activeAnalysis || isRecenteringAnimation) return;
+      const key=JSON.stringify([graphRevision,width,height,state.mode,state.centerId,state.graphStyle.spacing,state.papers.map(p=>[p.id,!!p.pinnedPosition])]);
+      if (key===layoutKey) return;
+      layoutKey=key;graphStats.layouts++;
+      if(graphWorker && state.papers.length>100 && state.mode==='network' && !state.centerId) {
+        const payload={papers:state.papers.map(p=>({id:p.id,x:p.x,y:p.y,pinnedPosition:p.pinnedPosition})),links:state.links,width,height,spacing:state.graphStyle.spacing||1};
+        const job=graphTask('layout',payload).then(({positions})=>{
+          if(layoutKey!==key)return;
+          if(activeLayout===job)activeLayout=null;
+          positions.forEach(pos=>{const paper=papersById.get(pos.id);if(paper&&!paper.pinnedPosition){paper.x=pos.x;paper.y=pos.y;}});
+          graphMarkupKey='';render();
+        }).catch(()=>{if(layoutKey!==key)return;if(activeLayout===job)activeLayout=null;layoutSmallGraph(width,height);graphMarkupKey='';render();}).finally(()=>{if(activeLayout===job)activeLayout=null;});
+        activeLayout=job;return;
+      }
+      layoutSmallGraph(width,height);
+    }
+    function layoutSmallGraph(width, height) {
       const papers = state.papers;
       if (!papers.length) return;
       if (isRecenteringAnimation) return;
@@ -3037,6 +3004,7 @@ const state = {
         }
       });
 
+      if(papers.length>100)return; // A usable static layout if worker loading fails.
       for (let tick = 0; tick < 58; tick += 1) {
         const forces = new Map(papers.map(paper => [paper.id, { x: 0, y: 0 }]));
 
@@ -3070,8 +3038,8 @@ const state = {
         }
 
         state.links.forEach(link => {
-          const a = papers.find(paper => paper.id === link.source);
-          const b = papers.find(paper => paper.id === link.target);
+          const a = papersById.get(link.source);
+          const b = papersById.get(link.target);
           const dx = b.x - a.x;
           const dy = b.y - a.y;
           const distance = Math.max(1, Math.hypot(dx, dy));
@@ -3373,6 +3341,10 @@ const state = {
       if (isTableMode) {
         renderTableView();
       }
+      if (state.workspaceView !== 'network') {
+        renderTagFilterBar(); if(state.workspaceView==='library')renderTableView();
+        renderPapers();renderDetails();updateMetrics();scheduleAutosave();return;
+      }
       const rect = els.map.getBoundingClientRect();
       const width = Math.max(rect.width, 640);
       const height = Math.max(rect.height, 520);
@@ -3385,6 +3357,11 @@ const state = {
         applyAreaContainment();
       }
 
+      const paintKey=JSON.stringify([graphRevision,state.linkTypeFilter,state.librarySearch,state.filterTags,state.filterMode,state.graphStyle,state.areas,bouncingNodeId,state.papers.map(p=>[p.id,p.title,p.authors,p.year,p.journal,p.x,p.y,p.color,p.areaId,p.gemmaKeywords])]);
+      if(paintKey===graphMarkupKey) {
+        renderDetails();renderSelection();syncWorkspaceControls();updateMetrics();scheduleAutosave();return;
+      }
+      graphMarkupKey=paintKey;graphStats.paints++;
       const clusterByPaper = new Map();
       state.clusters.forEach((cluster, index) => cluster.forEach(id => clusterByPaper.set(id, index)));
 
@@ -3398,10 +3375,11 @@ const state = {
       }).join('') : '';
 
       const hasFilter = Boolean(state.librarySearch || (state.filterTags && state.filterTags.length > 0));
-      const sortedLinks = visibleLinks().sort((a, b) => a.score - b.score);
+      const availableLinks = visibleLinks();
+      const sortedLinks = availableLinks.length > 2500 ? availableLinks.slice().sort((a,b)=>b.score-a.score).slice(0,2500).sort((a,b)=>a.score-b.score) : availableLinks.sort((a,b)=>a.score-b.score);
       const linkMarkup = sortedLinks.map(link => {
-        const source = state.papers.find(paper => paper.id === link.source);
-        const target = state.papers.find(paper => paper.id === link.target);
+        const source = papersById.get(link.source);
+        const target = papersById.get(link.target);
         const sourceMatches = !hasFilter || (source && paperMatchesFilters(source));
         const targetMatches = !hasFilter || (target && paperMatchesFilters(target));
         const filterDimmed = hasFilter && (!sourceMatches || !targetMatches) ? ' is-filter-dimmed' : '';
@@ -3427,7 +3405,7 @@ const state = {
         let labelPos = 'bottom';
         let neighborBelow = false;
         let neighborAbove = false;
-        for (let j = 0; j < state.papers.length; j++) {
+        for (let j = 0; state.papers.length <= 100 && j < state.papers.length; j++) {
           if (j === idx) continue;
           const other = state.papers[j];
           const dist = Math.hypot(paper.x - other.x, paper.y - other.y);
@@ -3472,15 +3450,16 @@ const state = {
       }).join('');
 
       els.map.innerHTML = `<g>${areaMarkup}</g><g>${linkMarkup}</g><g>${nodeMarkup}</g>`;
+      paintedSelectedLinkId=state.selectedLinkId;edgeElementsById=new Map();
+      els.map.querySelectorAll('.edge').forEach(edge=>{const id=edge.dataset.link;if(!edgeElementsById.has(id))edgeElementsById.set(id,[]);edgeElementsById.get(id).push(edge);});
       bindAreaEvents();
       bindEdgeEvents();
       bindNodeEvents();
       renderTagFilterBar();
-      renderTableView();
       renderPapers();
       renderDetails();
-      renderLinkages();
-      renderAreasPanel();
+      if(!els.linkagePanel.hidden)renderLinkages();
+      if(!els.areaPanel.hidden)renderAreasPanel();
       updateMetrics();
       scheduleAutosave();
     }
@@ -3647,7 +3626,7 @@ const state = {
     }
 
     function tableLinkCount(paper) {
-      return state.links.filter(link => link.source === paper.id || link.target === paper.id).length;
+      return paperLinks(paper.id).length;
     }
 
     function filteredTablePapers() {
@@ -3765,7 +3744,7 @@ const state = {
     }
 
     function selectedLinkEndpoints() {
-      const link = state.links.find(item => linkId(item) === state.selectedLinkId);
+      const link = linksById.get(state.selectedLinkId);
       return new Set(link ? [link.source, link.target] : []);
     }
 
@@ -3895,7 +3874,7 @@ const state = {
         node.addEventListener('pointerdown', event => {
           if (event.button !== 0) return;
           event.stopPropagation();
-          const paper = state.papers.find(item => item.id === id);
+          const paper = papersById.get(id);
           if (!paper) return;
           node.parentNode.appendChild(node);
           node.classList.add('is-dragging');
@@ -3914,7 +3893,7 @@ const state = {
           state.selectedLinkId = null;
           state.inspectorOpen = true;
           renderDetails();
-          renderSelection();
+          renderSelection();scheduleAutosave();
         });
 
         node.addEventListener('pointermove', event => {
@@ -4114,7 +4093,7 @@ const state = {
         }
         if (!state.panDrag || state.panDrag.pointerId !== event.pointerId) return;
         state.panDrag = null;
-        els.map.classList.remove('is-panning');
+        els.map.classList.remove('is-panning');scheduleAutosave();
       };
       els.map.addEventListener('pointerup', endPan);
       els.map.addEventListener('pointercancel', endPan);
@@ -4132,11 +4111,11 @@ const state = {
       state.view.height = nextHeight;
       state.view.x = anchorX - ratioX * state.view.width;
       state.view.y = anchorY - ratioY * state.view.height;
-      els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
+      els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);scheduleAutosave();
     }
 
     function centerGraphOnPaper(id, withBounce = true) {
-      const paper = state.papers.find(item => item.id === id);
+      const paper = papersById.get(id);
       if (!paper) return;
 
       if (recenterAnimId) {
@@ -4148,6 +4127,7 @@ const state = {
         bounceAnimationTimer = null;
       }
 
+      layoutKey=''; // Discard a layout result that started before this centering action.
       state.centerId = id;
       state.selectedId = id;
 
@@ -4383,8 +4363,8 @@ const state = {
 
     function renderEdgesOnly() {
       els.map.querySelectorAll('.edge, .edge-hit').forEach(edge => {
-        const source = state.papers.find(paper => paper.id === edge.dataset.source);
-        const target = state.papers.find(paper => paper.id === edge.dataset.target);
+        const source = papersById.get(edge.dataset.source);
+        const target = papersById.get(edge.dataset.target);
         if (source && target) {
           edge.setAttribute('x1', source.x);
           edge.setAttribute('y1', source.y);
@@ -4395,7 +4375,22 @@ const state = {
     }
 
     function renderSelection() {
+      if(paintedSelectedLinkId!==state.selectedLinkId) {
+        for(const id of new Set([paintedSelectedLinkId,state.selectedLinkId].filter(Boolean))) {
+          const link=linksById.get(id);if(!link)continue;
+          const selected=id===state.selectedLinkId;
+          const width=(.55+link.score*3.15)*(state.graphStyle.edgeScale||.65);
+          for(const edge of edgeElementsById.get(id)||[]) {
+            edge.classList.toggle('is-selected',selected);
+            edge.setAttribute('stroke-width',(selected?width+2.4:width).toFixed(2));
+            edge.setAttribute('opacity',selected?'1':Math.min(.72,.18+link.score*.48).toFixed(2));
+          }
+        }
+        paintedSelectedLinkId=state.selectedLinkId;
+      }
+      const linked=selectedLinkEndpoints();
       els.map.querySelectorAll('.node').forEach(node => {
+        node.classList.toggle('is-linked',linked.has(node.dataset.id));
         node.classList.toggle('is-selected', node.dataset.id === state.selectedId);
         node.classList.toggle('is-centered', node.dataset.id === state.centerId);
       });
@@ -4454,14 +4449,14 @@ const state = {
 
     function renderLinkages() {
       if (!els.linkageList) return;
-      const sorted = [...state.links].sort((a, b) => b.score - a.score);
+      const sorted = [...state.links].sort((a, b) => b.score - a.score).slice(0,2500);
       els.linkageSummary.textContent = sorted.length
         ? `${sorted.length} link${sorted.length === 1 ? '' : 's'} at ${Math.round(state.threshold * 100)}% threshold.`
         : (state.papers.length < 2 ? 'Add at least two papers to create links.' : 'No links above the current threshold.');
 
       els.linkageList.innerHTML = sorted.length ? sorted.map(link => {
-        const source = state.papers.find(paper => paper.id === link.source);
-        const target = state.papers.find(paper => paper.id === link.target);
+        const source = papersById.get(link.source);
+        const target = papersById.get(link.target);
         const id = linkId(link);
         const selected = state.selectedLinkId === id ? ' is-selected' : '';
         const sharedTerms = sharedKeywords(source, target).slice(0, 5);
@@ -5884,6 +5879,31 @@ const state = {
       }
     }
 
+    let discoveryGeneration = 0, discoveryController = null;
+    function discoveryPause(signal) {
+      return new Promise((resolve,reject)=>{
+        if(signal.aborted){reject(new DOMException('Cancelled','AbortError'));return;}
+        const abort=()=>{clearTimeout(timer);reject(new DOMException('Cancelled','AbortError'));};
+        const timer=setTimeout(()=>{signal.removeEventListener('abort',abort);resolve();},500);
+        signal.addEventListener('abort',abort,{once:true});
+      });
+    }
+    function applyDiscoveryProgress(data) {
+      state.discoveryResults=data.recommendations||[];
+      state.discoveryWarnings=Object.entries(data.errors||{}).map(([name,message])=>`${name}: ${message}`);
+      const completed=data.completed||0,total=data.total||0;
+      state.discoveryStatus=data.status==='complete' ? `Search complete · ${state.discoveryResults.length} candidates.` : `${completed} of ${total} discovery methods finished · ${state.discoveryResults.length} candidates so far.`;
+      renderDiscoveryWorkspace();
+    }
+    function cancelDiscovery() {
+      ++discoveryGeneration;discoveryController?.abort();
+      if(state.discoveryJob)fetch(backendUrl('/api/discovery/cancel'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({id:state.discoveryJob})}).catch(()=>{});
+      state.discoveryLoading=false;state.discoveryJob=null;state.recommendationLoadingKey=null;
+      state.discoveryHasRun=true;state.discoveryStatus='Search cancelled. Completed candidates are available to review.';
+      renderDiscoveryWorkspace();
+    }
+    els.discoveryCancelButton.addEventListener('click',cancelDiscovery);
+
     async function runDiscoveryPipeline() {
       if (state.discoveryLoading) return;
       if (!Object.values(state.discoveryBranches).some(Boolean)) {
@@ -5898,6 +5918,9 @@ const state = {
         return;
       }
       const key = recommendationKey(seeds);
+      const generation=++discoveryGeneration;
+      discoveryController = new AbortController();
+      state.discoveryJob = null;state.discoveryStatus='Starting search…';state.discoveryWarnings=[];
       state.discoveryLoading = true;
       state.discoveryError = '';
       state.discoveryResults = [];
@@ -5906,7 +5929,7 @@ const state = {
       state.recommendationLoadingKey = key;
       renderDetails();
       try {
-        const response = await fetch(backendUrl('/api/discovery/pipeline'), {
+        const response = await fetch(backendUrl('/api/discovery/start'), {
           method: 'POST',
           headers: apiHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
@@ -5921,8 +5944,24 @@ const state = {
             limit: 50
           })
         });
-        const data = await response.json();
+        let data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Discovery pipeline failed.');
+        if(generation!==discoveryGeneration) {
+          if(data.id)fetch(backendUrl('/api/discovery/cancel'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({id:data.id})}).catch(()=>{});
+          return;
+        }
+        state.discoveryJob=data.id;
+        while(data.status==='running') {
+          applyDiscoveryProgress(data);
+          await discoveryPause(discoveryController.signal);
+          const poll=await fetch(backendUrl('/api/discovery/jobs/'+data.id),{headers:apiHeaders(),signal:discoveryController.signal});
+          data=await poll.json();
+          if(!poll.ok)throw new Error(data.error || 'Could not read discovery progress.');
+          if(generation!==discoveryGeneration)return;
+        }
+        if(data.status==='failed')throw new Error(data.error || 'Discovery search failed.');
+        if(data.status==='cancelled'){state.discoveryStatus='Search cancelled. Completed candidates are available to review.';return;}
+        applyDiscoveryProgress(data);
         const recs = data.recommendations || [];
         state.recommendations.set(key, recs);
         state.discoveryResults = recs;
@@ -5930,14 +5969,14 @@ const state = {
         openDiscoveryModal(recs, seeds[0]);
         showToast(`Literature discovery surfaced ${recs.length} papers. Review and choose papers to add in Discover.`);
       } catch (error) {
+        if(generation!==discoveryGeneration || error.name==='AbortError')return;
+        state.discoveryStatus='Search could not finish.';
         state.discoveryError = error.message;
         state.discoveryHasRun = true;
         showToast(error.message);
         state.recommendations.set(key, [{ title: 'Discovery search failed', reason: error.message }]);
       } finally {
-        state.discoveryLoading = false;
-        state.recommendationLoadingKey = null;
-        render();
+        if(generation===discoveryGeneration){state.discoveryLoading=false;state.discoveryJob=null;state.recommendationLoadingKey=null;render();}
       }
     }
 
@@ -6150,6 +6189,10 @@ const state = {
       } finally {
         window.setTimeout(() => setLoadProgress(0, 0), 700);
       }
+      if(state.workspaceView==='network') {
+        if(activeAnalysis || activeLayout)els.statusText.textContent='Updating network in the background… You can keep using Pulse.';
+        else if(visibleLinks().length>2500)els.statusText.textContent += ' Network shows the 2,500 strongest visible links; all evidence remains available in the library and export.';
+      }
     }
 
     function loadSample() {
@@ -6225,10 +6268,10 @@ const state = {
       showToast('Loaded sample papers.');
     }
 
-    function serializeMap() {
+    function serializeMap({includeDerived = true} = {}) {
       return {
         format: 'pulse-map',
-        version: '1.2.1',
+        version: '1.3.0',
         generatedAt: new Date().toISOString(),
         threshold: state.threshold,
         mode: state.mode,
@@ -6287,8 +6330,8 @@ const state = {
           metadataSource: paper.metadataSource || '',
           metadataNote: paper.metadataNote || ''
         })),
-        links: state.links.map(link => ({ ...link, score: Number(link.score.toFixed(4)) })),
-        clusters: state.clusters
+        links: includeDerived ? state.links.map(link => ({ ...link, score: Number(link.score.toFixed(4)) })) : [],
+        clusters: includeDerived ? state.clusters : []
       };
     }
 
@@ -6428,51 +6471,47 @@ const state = {
       state.autosaveTimer = setTimeout(saveLibrary, 800);
     }
 
-    async function saveLibrary() {
-      if (!state.autosaveReady) return;
-      const payload = {
-        ...serializeMap(),
-        paperView: state.paperView,
-        centerId: state.centerId,
-        selectedId: state.selectedId,
-        selectedAreaId: state.selectedAreaId
-      };
-      try {
-        localStorage.setItem('pulse-autosave-library', JSON.stringify(payload));
-      } catch (e) {}
-      updateSaveStatePill('Saving...');
-      try {
-        const response = await fetch(backendUrl('/api/library'), {
-          method: 'POST',
-          headers: apiHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(payload)
-        });
-        if (!response.ok) throw new Error('Library save failed');
-        updateSaveStatePill('Saved');
-        setTimeout(() => updateSaveStatePill('Ready'), 1800);
-      } catch {
-        updateSaveStatePill('Saved locally');
-      }
+    const saveSession=window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+    let saveRevision=0, saveLoop=null, pendingSave=null, lastRemoteSave='', saveStatusTimer=null;
+    function libraryPayload() {
+      const payload={...serializeMap({includeDerived:false}),paperView:state.paperView,centerId:state.centerId,selectedId:state.selectedId,selectedAreaId:state.selectedAreaId};
+      delete payload.generatedAt;
+      return payload;
+    }
+    function saveLibrary() {
+      if(!state.autosaveReady)return Promise.resolve();
+      const payload=libraryPayload(), signature=JSON.stringify(payload);
+      if(signature===lastRemoteSave && !pendingSave && !saveLoop)return Promise.resolve();
+      pendingSave={payload,signature,revision:++saveRevision};
+      if(saveLoop)return saveLoop;
+      saveLoop=(async()=>{
+        while(pendingSave) {
+          const item=pendingSave;pendingSave=null;
+          const body=JSON.stringify({...item.payload,_saveSession:saveSession,_saveRevision:item.revision});
+          let localSaved=false;
+          try{localStorage.setItem('pulse-autosave-library',body);localSaved=true;}catch(_){}
+          clearTimeout(saveStatusTimer);updateSaveStatePill('Saving…');
+          try {
+            const response=await fetch(backendUrl('/api/library'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body});
+            if(!response.ok)throw new Error('Library save failed');
+            lastRemoteSave=item.signature;updateSaveStatePill('Saved');
+            saveStatusTimer=setTimeout(()=>updateSaveStatePill('Ready'),1800);
+          } catch(_) {
+            updateSaveStatePill(localSaved?'Saved locally · backend unavailable':'Save failed · export a backup');
+            if(!localSaved)showToast('Your changes could not be saved. Export a backup before closing Pulse.');
+          }
+        }
+      })().finally(()=>{saveLoop=null;});
+      return saveLoop;
     }
 
     function saveLibrarySync() {
-      if (!state.autosaveReady) return;
-      const payload = {
-        ...serializeMap(),
-        paperView: state.paperView,
-        centerId: state.centerId,
-        selectedId: state.selectedId,
-        selectedAreaId: state.selectedAreaId
-      };
-      try {
-        localStorage.setItem('pulse-autosave-library', JSON.stringify(payload));
-      } catch (e) {}
-      try {
-        if (navigator.sendBeacon) {
-          const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-          navigator.sendBeacon(backendNavigationUrl('/api/library'), blob);
-        }
-      } catch (e) {}
+      if(!state.autosaveReady)return;
+      const payload={...libraryPayload(),_saveSession:saveSession,_saveRevision:++saveRevision};
+      pendingSave=null; // A queued older snapshot must not follow the final unload snapshot.
+      const body=JSON.stringify(payload);
+      try{localStorage.setItem('pulse-autosave-library',body);}catch(_){}
+      try{navigator.sendBeacon?.(backendNavigationUrl('/api/library'),new Blob([body],{type:'application/json'}));}catch(_){}
     }
 
     async function promptClearLibrary() {
@@ -6497,6 +6536,9 @@ const state = {
         if (!confirmed) return;
       }
 
+      if(state.discoveryLoading)cancelDiscovery();
+      state.discoveryStatus='';state.discoveryWarnings=[];
+      pendingSave=null;lastRemoteSave='';
       // 1. Immediately cancel any scheduled autosave
       clearTimeout(state.autosaveTimer);
       state.autosaveTimer = null;
@@ -6538,36 +6580,42 @@ const state = {
       state.graphSteerKeywords = [];
 
       // 3. Reset browser local storage
+      let resetLocalSaved=false,resetRemoteSaved=false;
       try {
         localStorage.removeItem('pulse-autosave-library');
         localStorage.removeItem('iratxe-autosave-library');
         localStorage.setItem('pulse-autosave-library', JSON.stringify({
           format: 'pulse-map',
-          version: '1.2.1',
+          version: '1.3.0',
           papers: [],
           areas: []
         }));
+        resetLocalSaved=true;
       } catch (e) {}
 
       // 4. Reset backend storage & remove old snapshots
       updateSaveStatePill('Resetting...');
       try {
-        await fetch(backendUrl('/api/library'), {
+        const resetResponse=await fetch(backendUrl('/api/library'), {
           method: 'POST',
           headers: apiHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             reset: true,
+            _saveSession:saveSession,
+            _saveRevision:++saveRevision,
             papers: [],
             areas: [],
             format: 'pulse-map',
-            version: '1.2.1',
+            version: '1.3.0',
             savedAt: new Date().toISOString()
           })
         });
+        if(!resetResponse.ok)throw new Error('Reset could not be saved');
+        resetRemoteSaved=true;
       } catch (e) {
         console.error('Failed to notify backend of library reset:', e);
       }
-      updateSaveStatePill('Ready');
+      updateSaveStatePill(resetRemoteSaved?'Ready':resetLocalSaved?'Reset saved locally · backend unavailable':'Reset could not be saved');
 
       // 5. Hide all popups & inspector panels
       if (els.settingsPanel) els.settingsPanel.hidden = true;

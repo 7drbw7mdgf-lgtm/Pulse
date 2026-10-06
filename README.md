@@ -4,7 +4,7 @@ Pulse is a Mac app for finding related research papers, mapping how they connect
 
 It is designed for researchers, students, and anyone getting to grips with a new field, planning a literature review, or following a citation trail.
 
-**[Download Pulse Full](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.2.1/Pulse-1.2.1.dmg)** · **[Download Pulse Lite](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/lite-v1.0.0/Pulse-Lite-1.0.0.dmg)** · [Installation guide](docs/MACOS-INSTALL.md)
+**[Download Pulse Full](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.3.0/Pulse-1.3.0.dmg)** · **[Download Pulse Lite](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/lite-v1.1.0/Pulse-Lite-1.1.0.dmg)** · [Installation guide](docs/MACOS-INSTALL.md)
 
 ![Pulse's Discover workspace: choose a starting paper, search methods, and exploration depth.](docs/images/discover.png)
 
@@ -31,14 +31,16 @@ For example, you could start with a review article, look for the work it cites a
 
 Discover and Network work together. Select a paper on the map to start a discovery, review the candidates, and add your choices to the same network. You can also start a discovery from Timeline.
 
+Pulse reuses network analysis, calculates larger maps in the background, and shows discovery progress with partial results and cancellation. See the [performance measurements](docs/PERFORMANCE.md).
+
 ## Choose your edition
 
-| | Pulse Full 1.2.1 | Pulse Lite 1.0.0 |
+| | Pulse Full 1.3.0 | Pulse Lite 1.1.0 |
 | --- | --- | --- |
 | Discover, Network, Timeline, and Library | Included | Included |
 | Saved-paper limit | No built-in paper cap | **15 papers total** |
 | Best suited to | An expanding reading list or literature review | Trying the workflow or exploring a small topic |
-| Download | [Full DMG](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.2.1/Pulse-1.2.1.dmg) | [Lite DMG](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/lite-v1.0.0/Pulse-Lite-1.0.0.dmg) |
+| Download | [Full DMG](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.3.0/Pulse-1.3.0.dmg) | [Lite DMG](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/lite-v1.1.0/Pulse-Lite-1.1.0.dmg) |
 | Help | [Full installation guide](docs/MACOS-INSTALL.md) | [Lite guide and details](lite/) |
 
 Lite has its own saved library and can coexist with Full. Its 15-paper limit applies across every workspace; removing a paper in Library frees a slot. Lite exports can be opened in Full.

@@ -24,6 +24,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from pulse_performance import DiscoveryJobs, DiscoveryCancelled, request_json, parallel_branches, cached_embedding, parallel_lookup, LIBRARY_WRITE_LOCK
 
 
 ROOT = Path("/private/tmp/pulse-native-root/Pulse.app/Contents/Resources")
@@ -55,7 +56,7 @@ LOCAL_BACKEND_DEFAULTS = {
     "autoGemmaExtraction": True,
 }
 DEFAULT_GEMMA_MODEL = LOCAL_BACKEND_DEFAULTS["chatModel"]
-APP_VERSION = os.environ.get("PULSE_APP_VERSION") or os.environ.get("IRATXE_APP_VERSION") or "1.2.1"
+APP_VERSION = os.environ.get("PULSE_APP_VERSION") or os.environ.get("IRATXE_APP_VERSION") or "1.3.0"
 CONTACT_EMAIL = (os.environ.get("PULSE_CONTACT_EMAIL") or os.environ.get("IRATXE_CONTACT_EMAIL") or "").strip()
 API_TOKEN = (os.environ.get("PULSE_API_TOKEN") or os.environ.get("IRATXE_API_TOKEN") or "").strip() or secrets.token_urlsafe(32)
 BOUND_PORT = int(os.environ.get("PULSE_PORT") or os.environ.get("IRATXE_PORT") or "8000")
@@ -66,6 +67,10 @@ BUNDLED_OLLAMA = ROOT / "bin" / "ollama"
 OLLAMA_MODELS_DIR = Path(os.environ.get("PULSE_OLLAMA_MODELS") or os.environ.get("IRATXE_OLLAMA_MODELS") or (CONFIG_DIR / "models"))
 OLLAMA_PROCESS = None
 OLLAMA_BOOT_STATUS = {"started": False, "reason": "not-started"}
+
+
+DISCOVERY_JOBS = DiscoveryJobs()
+SAVE_REVISIONS = {}
 
 
 class PulseHandler(SimpleHTTPRequestHandler):
@@ -87,6 +92,12 @@ class PulseHandler(SimpleHTTPRequestHandler):
         if not self.request_is_allowed(parsed):
             return
         path = parsed.path
+        if path.startswith('/api/discovery/jobs/'):
+            try:
+                self.write_json(200, DISCOVERY_JOBS.read(path.rsplit('/', 1)[-1]))
+            except KeyError:
+                self.write_json(404, {'error': 'Discovery search expired or was not found.'})
+            return
         if path in {"/api/settings", "/api/providers"}:
             settings = load_settings()
             self.write_json(200, public_settings(settings))
@@ -135,6 +146,8 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/citations/seminal",
             "/api/citations/snowball",
             "/api/discovery/pipeline",
+            "/api/discovery/start",
+            "/api/discovery/cancel",
             "/api/citations/chase",
             "/api/citations/network",
         }:
@@ -193,6 +206,20 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 self.write_json(200, result)
                 return
 
+            if path == '/api/discovery/start':
+                if not payload.get('seedPapers'):
+                    raise ClientError(400, 'Select a seed paper first.')
+                try:
+                    self.write_json(202, DISCOVERY_JOBS.start(payload, run_discovery_pipeline))
+                except ValueError as error:
+                    raise ClientError(429, str(error))
+                return
+            if path == '/api/discovery/cancel':
+                try:
+                    self.write_json(200, DISCOVERY_JOBS.cancel(payload.get('id', '')))
+                except KeyError:
+                    self.write_json(404, {'error': 'Discovery search was not found.'})
+                return
             if path == "/api/discovery/pipeline":
                 result = run_discovery_pipeline(payload)
                 self.write_json(200, result)
@@ -319,6 +346,22 @@ def load_library():
 
 
 def save_library(payload):
+    # Ordered revision checks also cover final unload beacons arriving before earlier HTTP saves.
+    with LIBRARY_WRITE_LOCK:
+        session = payload.get('_saveSession') if isinstance(payload, dict) else None
+        revision = payload.get('_saveRevision') if isinstance(payload, dict) else None
+        ordered = isinstance(session, str) and 0 < len(session) <= 100 and isinstance(revision, int)
+        if ordered and revision <= SAVE_REVISIONS.get(session, -1):
+            return {'ok': True, 'superseded': True}
+        result = _save_library(payload)
+        if ordered:
+            SAVE_REVISIONS[session] = revision
+            if len(SAVE_REVISIONS) > 64:
+                SAVE_REVISIONS.pop(next(iter(SAVE_REVISIONS)))
+        return result
+
+
+def _save_library(payload):
     if not isinstance(payload, dict):
         raise ClientError(400, 'Library payload must be a JSON object.')
     if not isinstance(payload.get('papers'), list) or not all(isinstance(paper, dict) for paper in payload['papers']):
@@ -1257,10 +1300,7 @@ def fetch_s2_json(url, api_key=None, timeout=14):
         return cached
     request = urllib.request.Request(url, headers=s2_request_headers(api_key), method="GET")
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            data = json.loads(response.read().decode("utf-8"))
-            s2_cache_set(url, data)
-            return data
+        return request_json(request, timeout=timeout)
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         if error.code == 404:
@@ -1282,10 +1322,7 @@ def post_s2_json(url, payload, api_key=None, timeout=14):
     data = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            result = json.loads(response.read().decode("utf-8"))
-            s2_cache_set(cache_key, result)
-            return result
+        return request_json(request, timeout=timeout)
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         if error.code == 429:
@@ -1497,9 +1534,10 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
             work = openalex_work_for_paper(paper)
             if work:
                 work_id = openalex_work_id(work.get("id"))
-                for ref_id in (work.get("referenced_works") or [])[:limit]:
+                for ref_id, ref_work in parallel_lookup(fetch_openalex_work_by_id, (work.get("referenced_works") or [])[:limit]):
+                    if not ref_work:
+                        continue
                     try:
-                        ref_work = fetch_openalex_work_by_id(ref_id)
                         record = recommendation_record(*openalex_recommendation_item(ref_work), source="OpenAlex references")
                         record["branch"] = "citationGraph"
                         record["subType"] = "Backward"
@@ -1575,9 +1613,10 @@ def fetch_citation_network_branch(seed_papers, api_key=None, limit=30):
 
         # Papers co-cited by >= 2 citing works
         top_cocited_ids = [ref_norm for ref_norm, count in sorted(cocite_counts.items(), key=lambda x: -x[1]) if count >= 2][:20]
-        for ref_norm in top_cocited_ids:
+        for ref_norm, co_work in parallel_lookup(fetch_openalex_work_by_id, top_cocited_ids):
+            if not co_work:
+                continue
             try:
-                co_work = fetch_openalex_work_by_id(ref_norm)
                 record = recommendation_record(*openalex_recommendation_item(co_work), source="Citation Network (Co-citation)")
                 record["branch"] = "citationNetwork"
                 record["subType"] = "Co-citation"
@@ -1840,7 +1879,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
     return ranked[:limit]
 
 
-def run_discovery_pipeline(payload):
+def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     seed_papers = payload.get("seedPapers") or payload.get("papers") or []
     if not seed_papers:
         raise ClientError(400, "Select at least one seed paper to run the literature discovery pipeline.")
@@ -1858,71 +1897,34 @@ def run_discovery_pipeline(payload):
     exclude_keywords = steering_terms(payload.get("excludeKeywords") or [])
     limit = min(max(int(payload.get("limit") or 50), 1), 100)
 
-    candidates_by_branch = {
-        "citationGraph": [],
-        "citationNetwork": [],
-        "semanticSearch": [],
-        "lexicalConceptual": [],
+    tasks = {}
+    if branches.get('citationGraph', True):
+        tasks['citationGraph'] = lambda: fetch_citation_graph_branch(seed_papers, api_key=api_key, include_iterative_chase=include_iterative, limit=limit, depth=payload.get('depth'))
+    if branches.get('citationNetwork', True):
+        tasks['citationNetwork'] = lambda: fetch_citation_network_branch(seed_papers, api_key=api_key, limit=limit)
+    if branches.get('semanticSearch', True):
+        tasks['semanticSearch'] = lambda: fetch_semantic_search_branch(seed_papers, api_key=api_key, limit=limit)
+    if branches.get('lexicalSearch', branches.get('lexicalConceptual', True)):
+        tasks['lexicalConceptual'] = lambda: fetch_conceptual_search_branch(seed_papers, api_key=api_key, steer_keywords=steer_keywords, limit=limit)
+    options = {
+        'steerKeywords': steer_keywords, 'excludeKeywords': exclude_keywords,
+        'excludeDois': payload.get('excludeDois') or [], 'excludeTitles': payload.get('excludeTitles') or [],
+        'recencyTilt': payload.get('recencyTilt') or 0, 'impactTilt': payload.get('impactTilt') or 0, 'limit': limit,
     }
-    executed_branches = []
-
-    if branches.get("citationGraph", True):
-        try:
-            candidates_by_branch["citationGraph"] = fetch_citation_graph_branch(
-                seed_papers, api_key=api_key, include_iterative_chase=include_iterative, limit=limit, depth=payload.get('depth')
-            )
-            executed_branches.append("citationGraph")
-        except Exception:
-            pass
-
-    if branches.get("citationNetwork", True):
-        try:
-            candidates_by_branch["citationNetwork"] = fetch_citation_network_branch(
-                seed_papers, api_key=api_key, limit=limit
-            )
-            executed_branches.append("citationNetwork")
-        except Exception:
-            pass
-
-    if branches.get("semanticSearch", True):
-        try:
-            candidates_by_branch["semanticSearch"] = fetch_semantic_search_branch(
-                seed_papers, api_key=api_key, limit=limit
-            )
-            executed_branches.append("semanticSearch")
-        except Exception:
-            pass
-
-    if branches.get("lexicalSearch", branches.get("lexicalConceptual", True)):
-        try:
-            candidates_by_branch["lexicalConceptual"] = fetch_conceptual_search_branch(
-                seed_papers, api_key=api_key, steer_keywords=steer_keywords, limit=limit
-            )
-            executed_branches.append("lexicalConceptual")
-        except Exception:
-            pass
-
-    ranked = merge_and_rank_pipeline_candidates(
-        candidates_by_branch,
-        seed_papers,
-        {
-            "steerKeywords": steer_keywords,
-            "excludeKeywords": exclude_keywords,
-            "excludeDois": payload.get("excludeDois") or [],
-            "excludeTitles": payload.get("excludeTitles") or [],
-            "recencyTilt": payload.get("recencyTilt") or 0,
-            "impactTilt": payload.get("impactTilt") or 0,
-            "limit": limit,
-        },
-    )
-
-    return {
-        "ok": True,
-        "provider": "Semantic Scholar Academic Graph (S2AG) + Hybrid Pipeline",
-        "seedCount": len(seed_papers),
-        "branchesExecuted": executed_branches,
-        "recommendations": ranked,
-    }
+    def progress(results, completed, errors, total):
+        if on_progress:
+            ordered = {name: results.get(name, []) for name in tasks}
+            on_progress({'recommendations': merge_and_rank_pipeline_candidates(ordered, seed_papers, options),
+                         'branchesExecuted': [name for name in tasks if name in completed],
+                         'errors': errors, 'completed': len(completed) + len(errors), 'total': total})
+    if on_progress:
+        on_progress({'total': len(tasks)})
+    results, executed, errors = parallel_branches(tasks, progress, cancel_event)
+    ordered = {name: results.get(name, []) for name in tasks}
+    return {'ok': True, 'provider': 'Semantic Scholar Academic Graph (S2AG) + Hybrid Pipeline',
+            'seedCount': len(seed_papers), 'branchesExecuted': executed,
+            'recommendations': merge_and_rank_pipeline_candidates(ordered, seed_papers, options),
+            'errors': errors, 'completed': len(executed) + len(errors), 'total': len(tasks)}
 
 
 def iterative_citation_chase(payload):
@@ -2428,8 +2430,7 @@ def fetch_json(url):
         method="GET",
     )
     try:
-        with urllib.request.urlopen(request, timeout=12) as response:
-            return json.loads(response.read().decode("utf-8"))
+        return request_json(request, timeout=12)
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         raise ClientError(error.code, f"DOI lookup failed: {details[:500]}")
@@ -3177,6 +3178,10 @@ def cosine(left, right):
 
 
 def gemini_embedding(settings, text):
+    return cached_embedding(CONFIG_DIR, ['cloud', settings.get('cloudProvider'), settings.get('apiKey'), 'text-embedding-004'], text, lambda: _gemini_embedding(settings, text))
+
+
+def _gemini_embedding(settings, text):
     api_key = resolve_gemini_api_key(settings)
     if not api_key:
         return None
@@ -3482,6 +3487,10 @@ def gemma_extraction_to_metadata(data):
 
 
 def ollama_embedding(settings, text):
+    return cached_embedding(CONFIG_DIR, ['local', resolve_ollama_embeddings_endpoint(settings), resolve_embedding_model(settings)], text, lambda: _ollama_embedding(settings, text))
+
+
+def _ollama_embedding(settings, text):
     model = resolve_embedding_model(settings)
     payload = {
         "model": model,

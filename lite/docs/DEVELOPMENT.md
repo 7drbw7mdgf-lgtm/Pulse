@@ -16,7 +16,7 @@ Lite uses `~/Library/Application Support/pulse-lite/` and independent browser-st
 
 ## Install
 
-Download the [Pulse Lite release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/lite-v1.0.0), or the identical installer under [dist/](../dist/). Verify `Pulse-Lite-1.0.0-SHA256SUMS.txt`, open the DMG and drag **Pulse Lite.app** into Applications. It has its own bundle identifier and can coexist with full Pulse.
+Download the [Pulse Lite release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/lite-v1.1.0), or the identical installer under [dist/](../dist/). Verify `Pulse-Lite-1.1.0-SHA256SUMS.txt`, open the DMG and drag **Pulse Lite.app** into Applications. It has its own bundle identifier and can coexist with full Pulse.
 
 The Apple Silicon build is signed ad hoc and is not notarized. Read [MACOS-INSTALL.md](MACOS-INSTALL.md) for first-launch approval. The DMG also contains [Allow-Pulse-Lite.command](../scripts/Allow-Pulse-Lite.command), which verifies the Lite app before offering to remove only its quarantine attribute.
 
@@ -47,3 +47,13 @@ bash scripts/package-macos.sh "/Volumes/Pulse v1/Pulse.app" /tmp/pulse-lite-rele
 ```
 
 The supplied Pulse v1 native bundle is the template because its launcher source was not included in the original DMG. Packaging replaces the resources, sets the Lite bundle name and identifier, signs the bundle, includes the guide/helper and verifies the disk image. Third-party licence files remain in the native template. No personal libraries, settings or API keys are bundled.
+
+## Performance and reliability
+
+The shared graph engine caches text analysis and citation evidence. Libraries above 100 papers use a background worker for analysis and force layout; selection changes preserve SVG elements and settled positions. Dense networks draw up to 2,500 of the strongest visible links while retaining all calculated relationships for counts, inspector metrics and JSON export.
+
+Discovery runs at most three methods concurrently, with at most two JSON requests per provider. The interface polls progress, shows partial candidates and supports cancellation. Cancellation stops further requests and discards late results; an already running HTTP request can take until its timeout to finish. Successful JSON responses have a bounded, ten-minute memory cache. Model vectors are reused in a bounded SQLite cache keyed by text, provider, endpoint and model, without storing the original document text.
+
+Library writes are serialised, coalesced and protected against stale revisions, including unload beacons. Autosaves omit derived links and clusters, which are rebuilt from papers and explicit evidence on load. JSON exports retain calculated links. Save failures distinguish a successful browser fallback from a complete persistence failure.
+
+The test suite includes worker responsiveness, stale results, cancellation, partial discovery, model-cache invalidation, save ordering and fallback failures.
