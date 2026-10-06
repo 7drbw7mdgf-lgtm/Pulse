@@ -3,16 +3,17 @@ set -euo pipefail
 template_app=${1:?Pass the path to the supplied Pulse.app template}
 release_dir=${2:?Pass an output directory outside the source checkout}
 source_root=$(cd "$(dirname "$0")/.." && pwd)
+rm -rf "$release_dir/staging"
 mkdir -p "$release_dir/staging"
 app_path="$release_dir/staging/Pulse.app"
-if [ -e "$app_path" ]; then
-  echo "Build destination already exists: $app_path" >&2
-  exit 1
-fi
 ditto "$template_app" "$app_path"
 for resource in app.js index.html style.css pulse_backend.py iratxe_backend.py pulse_performance.py graph-engine.js graph-worker.js favicon.png; do
   cp "$source_root/$resource" "$app_path/Contents/Resources/$resource"
 done
+rm -rf "$app_path/Contents/Resources/pulse_core" "$app_path/Contents/Resources/css" "$app_path/Contents/Resources/js"
+cp -r "$source_root/pulse_core" "$app_path/Contents/Resources/pulse_core"
+cp -r "$source_root/css" "$app_path/Contents/Resources/css"
+cp -r "$source_root/js" "$app_path/Contents/Resources/js"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 1.3.0' "$app_path/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 1.3.0' "$app_path/Contents/Info.plist"
 codesign --force --deep --sign - "$app_path"

@@ -1,0 +1,300 @@
+}
+.cloud-tag-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.cloud-tag-chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.cloud-tag-count {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  opacity: 0.8;
+}
+
+/* Canvas filter status bar */
+.canvas-filter-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--accent-line);
+  box-shadow: var(--shadow-sm);
+  animation: card-in 0.18s ease;
+}
+.canvas-filter-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1;
+}
+.canvas-filter-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.canvas-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+}
+.canvas-filter-pill button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+}
+.canvas-filter-clear {
+  background: none;
+  border: 0;
+  padding: 0 3px;
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border-left: 1px solid var(--line);
+  margin-left: 2px;
+}
+.canvas-filter-clear:hover {
+  color: var(--danger);
+}
+
+/* Graph filter states */
+.node.is-filter-dimmed {
+  opacity: 0.15 !important;
+  transition: opacity 0.2s ease;
+}
+.node.is-filter-dimmed circle {
+  filter: none !important;
+}
+.node.is-filter-dimmed text {
+  opacity: 0.2 !important;
+}
+.node.is-filter-match circle {
+  stroke: var(--accent) !important;
+  stroke-width: 3.5px !important;
+  filter: drop-shadow(0 0 6px rgba(43, 130, 91, 0.6)) !important;
+}
+.edge.is-filter-dimmed {
+  opacity: 0.04 !important;
+}
+
+/* ─── Floating Tag Action Menu ─────────────────────────────────────── */
+
+.tag-action-menu {
+  position: fixed;
+  z-index: 70;
+  min-width: 220px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg), 0 8px 24px rgba(0, 0, 0, 0.14);
+  padding: 5px;
+  animation: card-in 0.15s var(--ease);
+}
+.tag-action-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 3px;
+}
+.tag-action-menu-icon {
+  font-size: 12px;
+}
+.tag-action-menu-title {
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--ink);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tag-menu-close-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+}
+.tag-menu-close-btn:hover {
+  color: var(--ink);
+}
+.tag-action-menu-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tag-action-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.tag-action-item:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.tag-action-item.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.tag-action-item .action-icon {
+  font-size: 12px;
+  width: 15px;
+  text-align: center;
+}
+.tag-action-item .action-label {
+  flex: 1;
+}
+
+/* ─── Actions Mini Grid in Details ─────────────────────────────────── */
+
+.actions-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  margin-bottom: 8px;
+}
+.actions-mini-grid .button {
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Streamlined Steering Workspace in Details ─────────────────────── */
+
+.recommend-steer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  margin-top: 6px;
+  animation: card-in 0.18s ease;
+}
+.steer-compact-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.steer-compact-head h3 {
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--ink);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.steer-chips-unified {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-height: 20px;
+  align-items: center;
+}
+.subtle-empty {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-style: italic;
+  padding: 2px 0;
+}
+.steer-mini-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 550;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  transition: all 0.12s;
+}
+.steer-mini-chip button.chip-label {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.steer-mini-chip button.chip-label:hover {
+  text-decoration: underline;
+}
+.steer-mini-chip .chip-remove-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+.steer-mini-chip .chip-remove-btn:hover {
+  color: var(--danger);
+}
+
+.steer-mini-chip.chip-steer {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.steer-mini-chip.chip-graph {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+.steer-mini-chip.chip-exclude {
+  border-color: var(--danger-soft);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.steer-input-compact-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.steer-input-compact-bar input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: var(--r-sm);

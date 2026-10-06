@@ -4,7 +4,7 @@ Pulse is a Mac app for finding related research papers, mapping how they connect
 
 It is designed for researchers, students, and anyone getting to grips with a new field, planning a literature review, or following a citation trail.
 
-**[Download Pulse Full](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.3.0/Pulse-1.3.0.dmg)** · **[Download Pulse Lite](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/lite-v1.1.0/Pulse-Lite-1.1.0.dmg)** · [Installation guide](docs/MACOS-INSTALL.md)
+**[Download Pulse (DMG)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.3.0/Pulse-1.3.0.dmg)** · [Installation guide](docs/MACOS-INSTALL.md)
 
 ![Pulse's Discover workspace: choose a starting paper, search methods, and exploration depth.](docs/images/discover.png)
 
@@ -33,21 +33,9 @@ Discover and Network work together. Select a paper on the map to start a discove
 
 Pulse reuses network analysis, calculates larger maps in the background, and shows discovery progress with partial results and cancellation. See the [performance measurements](docs/PERFORMANCE.md).
 
-## Choose your edition
-
-| | Pulse Full 1.3.0 | Pulse Lite 1.1.0 |
-| --- | --- | --- |
-| Discover, Network, Timeline, and Library | Included | Included |
-| Saved-paper limit | No built-in paper cap | **15 papers total** |
-| Best suited to | An expanding reading list or literature review | Trying the workflow or exploring a small topic |
-| Download | [Full DMG](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.3.0/Pulse-1.3.0.dmg) | [Lite DMG](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/lite-v1.1.0/Pulse-Lite-1.1.0.dmg) |
-| Help | [Full installation guide](docs/MACOS-INSTALL.md) | [Lite guide and details](lite/) |
-
-Lite has its own saved library and can coexist with Full. Its 15-paper limit applies across every workspace; removing a paper in Library frees a slot. Lite exports can be opened in Full.
-
 ## Get started
 
-1. Download the edition you want, open its DMG, and drag the app into **Applications**.
+1. Download the [Pulse DMG](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.3.0/Pulse-1.3.0.dmg), open it, and drag the app into **Applications**.
 2. Launch Pulse and add a starting paper by title, DOI, PubMed ID, or PDF.
 3. Open **Discover**, choose your starting paper and search methods, then click **Find related papers**. Select the candidates you want to keep and explore them in Network or Timeline.
 
@@ -65,4 +53,4 @@ AI features are optional. You can configure local models through Ollama or the s
 
 Found a problem or have an idea? [Open an issue](https://github.com/7drbw7mdgf-lgtm/Pulse/issues) and describe what you were trying to do, your app version, and what happened.
 
-For Python setup, storage locations, tests, packaging, and implementation provenance, see the [development notes](docs/DEVELOPMENT.md). [Pulse Lite](lite/) has its own limit and development documentation.
+For Python setup, storage locations, tests, packaging, and implementation provenance, see the [development notes](docs/DEVELOPMENT.md).

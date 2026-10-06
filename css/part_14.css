@@ -1,0 +1,300 @@
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.header-search-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  padding: 2px 4px 2px 12px;
+  width: min(460px, 42vw);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.header-search-wrap:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.header-search-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.header-search-wrap input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 12.5px;
+  color: var(--ink);
+  flex: 1;
+  padding: 5px 8px;
+}
+
+.header-search-wrap input::placeholder {
+  color: var(--faint);
+}
+
+.pill-btn.primary {
+  background: #4f46e5;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  padding: 5px 13px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.pill-btn.primary:hover {
+  background: #4338ca;
+}
+
+.pill-btn.primary:active {
+  transform: scale(0.97);
+}
+
+.header-right-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.header-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.header-tool-btn svg, .header-tool-btn .feather-icon {
+  width: 12.5px;
+  height: 12.5px;
+}
+
+.header-tool-btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.header-tool-btn.danger {
+  color: var(--danger);
+}
+
+.header-tool-btn.danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+.header-tool-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.header-v-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+  margin: 0 2px;
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  user-select: none;
+}
+
+/* ─── 3. Discovery Methods Ribbon ─── */
+.pulse-discovery-ribbon {
+  height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  z-index: 10;
+}
+
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ribbon-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.ribbon-cards {
+  display: flex;
+  gap: 5px;
+}
+
+.ribbon-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.ribbon-card:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+}
+
+.ribbon-card.active {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.08);
+  box-shadow: 0 0 0 1px #6366f1;
+}
+
+.ribbon-card-icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.icon-cit { background: #3b82f6; }
+.icon-net { background: #8b5cf6; }
+.icon-sem { background: #10b981; }
+.icon-con { background: #f59e0b; }
+
+.ribbon-card-text strong {
+  display: block;
+  font-size: 11px;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.ribbon-card-text small {
+  display: block;
+  font-size: 9.5px;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.ribbon-v-divider {
+  width: 1px;
+  height: 36px;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+.ribbon-pills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pill-btn-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.pill-btn-sm svg, .pill-btn-sm .feather-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.pill-btn-sm:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.pill-btn-sm.active {
+  background: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+  font-weight: 600;
+}
+
+.pill-btn-sm small {
+  color: inherit;
+  opacity: 0.75;
+  font-size: 9.5px;
+}
+
+/* ─── 4. Three-Column Workspace Layout ─── */
+.pulse-workspace-cols {
+  --bottom-dock-space: 84px;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ─── Column 1: Library List ─── */
+.pulse-col-library {
+  width: 270px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.col-library-header {
+  padding: 10px 12px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.col-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;

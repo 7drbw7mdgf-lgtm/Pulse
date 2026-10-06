@@ -1,0 +1,300 @@
+.discovery-badge.badge-bibcoupling {
+  background: rgba(96, 165, 250, 0.12);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+}
+.discovery-badge.badge-chase {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+.discovery-badge.badge-influential {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+.discovery-badge.badge-concept {
+  background: rgba(251, 146, 60, 0.12);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.35);
+}
+.discovery-badge.badge-citation {
+  background: var(--surface-3);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+/* ─── Unified Literature Discovery Hub ──────────────────────────────── */
+.discovery-hub,
+.discovery-pipeline-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  margin-top: 8px;
+  box-shadow: var(--shadow-sm);
+}
+.discovery-hub-head,
+.discovery-pipeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.discovery-hub-tag,
+.discovery-title-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--accent);
+}
+.discovery-hub-head h3,
+.discovery-title-text {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+  margin: 2px 0 0;
+}
+.discovery-run-btn,
+.discovery-pipeline-btn {
+  background: var(--accent) !important;
+  color: var(--accent-ink) !important;
+  font-weight: 600;
+  font-size: 11.5px;
+  padding: 4px 11px;
+  border: 1px solid var(--accent-line) !important;
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.discovery-run-btn:hover,
+.discovery-pipeline-btn:hover {
+  background: var(--accent-hover) !important;
+}
+.discovery-view-results-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.discovery-view-results-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.discovery-branches-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.discovery-branches-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+.discovery-branch-chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.discovery-branch-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  font-size: 10.5px;
+  font-weight: 550;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+.discovery-branch-chip:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+.discovery-branch-chip.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-line);
+  font-weight: 600;
+}
+.discovery-branch-chip .branch-icon {
+  font-size: 12px;
+}
+
+/* Quick Citation Tools */
+.quick-tools-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 2px 0;
+}
+.qtool-btn {
+  flex: 1;
+  min-width: 52px;
+  height: 25px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 10.5px;
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+.qtool-btn:hover:not(:disabled) {
+  background: var(--surface-3);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+.qtool-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.discovery-steer-toggle-row {
+  display: flex;
+  margin-top: 2px;
+}
+.steer-toggle-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  height: 25px;
+  padding: 0 8px;
+}
+.steer-toggle-arrow {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+/* Details Header & Pills */
+.details-meta-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.details-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-size: 10.5px;
+  font-weight: 550;
+  border: 1px solid var(--line);
+  text-decoration: none;
+}
+.details-pill.year {
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+.details-pill.doi {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+.details-pill.doi:hover {
+  text-decoration: underline;
+  background: rgba(56, 189, 248, 0.1);
+}
+.details-authors {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin: 4px 0 6px;
+  line-height: 1.4;
+}
+.details-abstract-wrap {
+  position: relative;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.details-abstract-text {
+  margin: 0;
+}
+.details-abstract-toggle {
+  display: inline-block;
+  margin-top: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.details-abstract-toggle:hover {
+  text-decoration: underline;
+}
+
+.recommendation-meta { color: var(--muted); font-size: 11px; }
+.recommendation-reason { color: var(--ink-2); font-size: 12px; line-height: 1.45; }
+.recommend-feedback { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.recommendation-item .button { min-height: 28px; font-size: 12px; }
+
+/* Graph style */
+.graph-control-grid { display: grid; gap: 14px; }
+.graph-control { display: grid; gap: 6px; }
+.graph-control-row { display: flex; justify-content: space-between; color: var(--ink-2); font-size: 12px; font-weight: 550; }
+.graph-control-row strong { color: var(--accent); font: 600 12px var(--font-mono); }
+.graph-toggle { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 12.5px; }
+.edge-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.edge-legend span { display: flex; align-items: center; gap: 8px; }
+.edge-legend i { width: 22px; height: 0; border-top: 2px solid var(--edge); }
+.edge-legend .lg-cit { border-color: var(--edge-citation); }
+.edge-legend .lg-bib { border-top-style: dashed; border-color: var(--edge-biblio); }
+.edge-legend .lg-coc { border-top-style: dotted; border-color: var(--edge-cocite); }
+
+/* Areas */
+.area-toolbar { margin-bottom: 10px; }
+.area-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.area-row.is-selected { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+.area-row > .metadata-line, .area-size-presets, .area-size-row { grid-column: 1 / -1; }
+.area-size-presets { display: flex; gap: 4px; }
+.area-size-presets button {

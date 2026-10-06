@@ -1,4 +1,4 @@
-# Pulse optimisation — Full 1.3.0 and Lite 1.1.0
+# Pulse optimisation — Pulse 1.3.0
 
 Measured on 6 October 2026 using isolated synthetic libraries. These are local development measurements, not promises for every Mac or research topic. No personal libraries were used.
 
@@ -12,7 +12,6 @@ Measured on 6 October 2026 using isolated synthetic libraries. These are local d
 - Model vectors use a persistent, bounded SQLite cache keyed by content, provider, endpoint, and model. The cache stores vectors and hashes rather than the original document text.
 - Saves are serialised and coalesced. The backend rejects stale revisions, including late saves after a reset or final unload snapshot. Autosaves exclude derived links and clusters, which are reconstructed on load; exported JSON retains them.
 - A complete save failure is reported as a failure. “Saved locally” is shown only when browser storage actually succeeded.
-- Lite retains its hard 15-paper cap across entry points and its separate storage.
 
 ## Browser benchmark
 
@@ -33,19 +32,18 @@ Run the benchmark from the source folder with:
 PULSE_BROWSER_CHANNEL=chrome node scripts/benchmark-network.cjs
 ```
 
-Omit the browser-channel setting to use Playwright's installed Chromium. Full exercises 15, 100, 500 and 1,000 papers. The benchmark disables persistence and uses temporary storage; Lite benchmarks its 15-paper maximum.
+Omit the browser-channel setting to use Playwright's installed Chromium. Full exercises 15, 100, 500 and 1,000 papers. The benchmark disables persistence and uses temporary storage.
 
 ## Actual macOS app checks
 
 Both generated app bundles were also tested in the native macOS WebView using disposable copies and isolated storage:
 
 - **Full, 500 synthetic papers:** 219 ms initial calculation and 17 ms selection refresh. The background worker completed without errors, the UI event-loop heartbeat continued, and selection retained existing nodes without new analysis or layout.
-- **Lite, 12 synthetic papers:** 21 ms initial calculation and 3 ms selection refresh, again retaining graph elements and cached analysis.
 
 These native fixtures differ from the browser benchmark and should not be compared as a browser-versus-native contest.
 
 ## Verification
 
-The Full suite includes 17 Python tests plus browser workspace, graph and performance suites. Lite includes 20 Python tests plus workspace, strict-cap, graph and performance suites. Coverage includes cancellation, partial results, provider errors, cache invalidation, stale worker results, ordered and coalesced saves, fallback failures, imports, exports, timeline, and persistence.
+The test suite includes 17 Python tests plus browser workspace, graph and performance suites. Coverage includes cancellation, partial results, provider errors, cache invalidation, stale worker results, ordered and coalesced saves, fallback failures, imports, exports, timeline, and persistence.
 
 DMGs are built from the existing native templates with updated resources. Packaging verifies code signatures and disk-image checksums; each download includes a version-specific installation guide and approval helper. Both remain ad hoc signed, Apple Silicon builds for macOS 11 or later, with the existing system-Python requirement.

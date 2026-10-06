@@ -1,0 +1,300 @@
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 11px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.steer-input-compact-bar input:focus {
+  border-color: var(--accent);
+}
+.steer-action-btn-group {
+  display: flex;
+  gap: 3px;
+  flex: none;
+}
+
+.steer-paper-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 2px 0;
+}
+.steer-subtle-hint {
+  font-size: 9.5px;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+  flex: none;
+}
+.steer-paper-tags-list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 3px;
+  overflow-x: auto;
+}
+.mini-tag-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 9.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.mini-tag-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.steer-sliders-compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.steer-compact-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.steer-compact-slider input[type="range"] {
+  height: 14px;
+}
+
+.steer-advanced-details {
+  font-size: 10px;
+  color: var(--muted);
+  border-top: 1px dashed var(--line);
+  padding-top: 3px;
+}
+.steer-advanced-details summary {
+  cursor: pointer;
+  font-weight: 550;
+  user-select: none;
+}
+.steer-advanced-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-top: 3px;
+}
+.steer-advanced-grid input {
+  height: 22px;
+  font-size: 10px;
+  padding: 0 6px;
+}
+
+/* ==========================================================================
+   PaperPulse Template Layout System (Three-Column + Dark Rail Navigation)
+   ========================================================================== */
+
+.pulse-app-root {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: var(--font-ui);
+  color: var(--ink);
+}
+
+/* ─── 1. Left Vertical Navigation Rail (Dark Indigo Theme) ─── */
+.pulse-nav-rail {
+  width: 200px;
+  height: 100vh;
+  background: #0f172a;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  user-select: none;
+  z-index: 30;
+}
+
+.rail-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 14px;
+}
+
+.rail-logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
+}
+
+.rail-brand-text {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.rail-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.3px;
+}
+
+.rail-version {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.18);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.rail-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.rail-item svg, .rail-item .feather-icon {
+  width: 16px;
+  height: 16px;
+  color: inherit;
+}
+
+.rail-item:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rail-item.active {
+  background: #4f46e5;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+}
+
+.rail-badge {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+
+.rail-item.active .rail-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.rail-recent {
+  margin-top: auto;
+  padding: 14px 12px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.rail-section-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #64748b;
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+
+.rail-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-session-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.recent-session-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.session-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.5px solid #6366f1;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.session-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.session-name {
+  font-size: 11.5px;
+  color: #cbd5e1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-time {
+  font-size: 10px;
+  color: #64748b;
+}
+
+/* ─── 2. Main Viewport & Header Bar ─── */
+.pulse-main-viewport {
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+  min-width: 0;
+}
+
+.pulse-top-header {
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;

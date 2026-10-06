@@ -1,0 +1,300 @@
+}
+
+.why-paper-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: -1px;
+}
+
+/* Bottom Inspector Buttons */
+.inspector-footer-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.inspector-action-large {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 32px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.inspector-action-large.primary {
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+}
+
+.inspector-action-large.primary:hover {
+  background: #4338ca;
+}
+
+.inspector-action-large.secondary {
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.inspector-action-large.secondary:hover {
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+}
+
+/* Floating Overlay Panels */
+.floating-overlay-card {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 330px;
+  max-height: calc(100% - 24px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  z-index: 25;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+/* ─── Toolbar Icon Buttons (.tool-icon-btn) ─── */
+.tool-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tool-icon-btn svg, .tool-icon-btn .feather-icon {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+.tool-icon-btn:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.tool-icon-btn:active {
+  transform: scale(0.97);
+}
+
+.tool-icon-btn.accent {
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.tool-icon-btn.accent:hover {
+  background: rgba(99, 102, 241, 0.14);
+}
+
+.btn-label-compact {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* ─── Header Theme Switch & Save Pill ─── */
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.theme-icon-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.theme-icon-btn svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.theme-icon-btn:hover {
+  color: var(--ink);
+}
+
+.theme-icon-btn.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.save-state-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.save-state-pill.saving {
+  color: #4f46e5;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+/* ─── Canvas Dock Elements ─── */
+.toggle-checkbox {
+  accent-color: #4f46e5;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+/* ─── Graph Panel Button Row ─── */
+.graph-btn-row {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.graph-btn-row .button {
+  flex: 1;
+  font-size: 11px;
+  padding: 6px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ─── Inspector Placeholder ─── */
+.inspector-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  min-height: 320px;
+  padding: 32px 20px;
+  color: var(--muted);
+}
+
+.inspector-placeholder-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+.inspector-placeholder h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.inspector-placeholder p {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 240px;
+}
+
+/* ─── Compact Dropzone in Library ─── */
+.dropzone-compact {
+  margin: 6px 10px;
+  padding: 10px 8px;
+  border: 1.5px dashed var(--line);
+  border-radius: 8px;
+  text-align: center;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.dropzone-compact input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.drop-copy-compact {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+  pointer-events: none;
+}
+
+.dropzone-compact:hover, .dropzone-compact.is-dragging {
+  border-color: #4f46e5;
+  background: rgba(99, 102, 241, 0.05);
+}
+
+/* ─── Edge legend indicators ─── */
+.lg-sim { display: inline-block; width: 10px; height: 3px; background: var(--edge); border-radius: 1px; vertical-align: middle; margin-right: 4px; }
+.lg-cit { display: inline-block; width: 10px; height: 3px; background: var(--edge-citation); border-radius: 1px; vertical-align: middle; margin-right: 4px; }
+.lg-bib { display: inline-block; width: 10px; height: 3px; background: var(--edge-biblio); border-radius: 1px; vertical-align: middle; margin-right: 4px; }
+.lg-coc { display: inline-block; width: 10px; height: 3px; background: var(--edge-cocite); border-radius: 1px; vertical-align: middle; margin-right: 4px; }
+
+/* Keep every control reachable when the native window is resized. */
+.pulse-nav-rail { width: 128px; min-width: 128px; }
+.rail-brand { padding-left: 12px; padding-right: 8px; }
+.rail-item { padding-left: 10px; gap: 8px; }
+.pulse-col-library { width: 210px; }
+.pulse-col-inspector { width: 280px; padding: 12px; }
+.pulse-top-header { gap: 12px; padding: 0 10px; }
+.header-search-wrap { flex: 1; min-width: 150px; max-width: 520px; }
+.header-search-wrap input { width: 0; min-width: 0; }
+.header-right-tools { flex-shrink: 0; }
+.pulse-discovery-ribbon { height: auto; min-height: 72px; padding: 8px 10px; flex-wrap: wrap; overflow: visible; gap: 8px 12px; }
+.ribbon-group { flex-shrink: 0; }
+.ribbon-card { gap: 5px; padding: 5px 7px; }
+.ribbon-card-text { white-space: nowrap; }
+.ribbon-card-text small { font-size: 8px; }
+.pill-btn-sm { padding: 5px 7px; font-size: 10px; }
+.canvas-subbar { height: auto; min-height: 40px; flex-wrap: wrap; padding: 0 8px 6px; gap: 4px; }
+.mode-switch-tabs { flex-shrink: 0; }
+.subbar-tab { padding: 8px; font-size: 11px; }
+.canvas-subbar-tools { flex-wrap: wrap; gap: 5px; width: 100%; }
+.subbar-dropdown-label select { min-width: 72px; max-width: 110px; }
+.tool-icon-btn { flex-shrink: 0; padding: 0 7px; }
+.map-viewport { min-height: 240px; }
+.canvas-dock-modern { max-width: calc(100% - 16px); width: max-content; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.dock-threshold-control { font-size: 10px; }
+.dock-threshold-control input { width: 75px; }

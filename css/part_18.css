@@ -1,0 +1,83 @@
+.dock-divider { display: none; }
+.floating-overlay-card { position: fixed; top: 150px; max-height: calc(100vh - 170px); max-width: calc(100vw - 24px); }
+.recent-session-item { width: 100%; border: 0; background: transparent; text-align: left; }
+.rail-empty { color: #94a3b8; font-size: 10px; }
+.floating-cluster-legend:empty { display: none; }
+.metrics-quad-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.metric-quad-box { min-width: 0; }
+.inspector-title { overflow-wrap: anywhere; }
+@media (max-width: 1100px) {
+  .pulse-col-library { width: 180px; }
+  .pulse-col-inspector { width: 240px; }
+  .header-tool-btn { padding: 0 6px; }
+  .header-v-divider, .user-avatar { display: none; }
+}
+@media (max-width: 800px) {
+  .pulse-nav-rail { width: 64px; min-width: 64px; }
+  .rail-brand-text, .rail-item > span:not([data-feather]), .rail-recent { display: none; }
+  .rail-item { justify-content: center; }
+  .pulse-top-header { height: auto; min-height: 52px; flex-wrap: wrap; padding: 8px; }
+  .header-search-wrap { flex-basis: 100%; max-width: none; }
+  .pulse-workspace-cols { overflow: auto; flex-wrap: wrap; }
+  .pulse-col-library { width: 32%; min-height: 360px; }
+  .pulse-col-canvas { width: 68%; min-height: 500px; }
+  .pulse-col-inspector { width: 100%; max-height: 500px; }
+  .ribbon-v-divider { display: none; }
+  .ribbon-cards, .ribbon-pills { flex-wrap: wrap; }
+  .ribbon-group { max-width: 100%; }
+}
+
+/* Dedicated discovery, network, library and chronological workspaces. */
+.discovery-workspace { flex: 1; min-height: 0; overflow: auto; background: var(--bg); }
+.discovery-workspace .discovery-modal-card { width: 100%; max-height: none; min-height: 100%; border: 0; border-radius: 0; box-shadow: none; animation: none; overflow: visible; }
+.discovery-workspace .discovery-modal-header { padding: 24px 28px 16px; }
+.discovery-workspace .discovery-modal-header h2 { font-size: 26px; }
+.discovery-setup { margin: 0 28px 20px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+.discovery-seed-row { display: flex; align-items: flex-end; gap: 14px; }
+.discovery-seed-field { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 8px; }
+.discovery-seed-field > span { font-size: 12px; font-weight: 650; }
+.discovery-seed-field select { width: 100%; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.discovery-setup .pulse-discovery-ribbon { background: transparent; padding: 18px 0; border: 0; gap: 18px; }
+.discovery-setup .ribbon-group { gap: 7px; }
+.discovery-setup .ribbon-label { letter-spacing: 0; text-transform: none; font-size: 12px; }
+.discovery-setup .ribbon-card { min-height: 48px; padding: 8px 12px; }
+.discovery-setup .ribbon-card-text small { font-size: 10px; margin-top: 4px; }
+.discovery-setup .pill-btn-sm { padding: 9px 12px; font-size: 11px; }
+.discovery-run-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-top: 1px solid var(--line); padding-top: 16px; }
+.discovery-run-row p { margin: 0; font-size: 12px; color: var(--muted); max-width: 600px; line-height: 1.5; }
+.discovery-run-row .button { flex-shrink: 0; padding: 11px 18px; }
+.discovery-progress { font-size: 12px; color: var(--accent); margin-bottom: 0; }
+.discovery-workspace .discovery-modal-toolbar { padding: 16px 28px; }
+.discovery-workspace .discovery-paper-list { flex: 1; min-height: 180px; overflow: visible; padding: 12px 28px 24px; }
+.discovery-workspace .discovery-empty-state { padding: 38px 16px; }
+.discovery-workspace .discovery-modal-footer { position: sticky; bottom: 0; z-index: 5; background: var(--surface); padding: 16px 28px; }
+.pulse-col-library { display: none !important; }
+.pulse-workspace-cols { flex-wrap: nowrap; overflow: hidden; }
+.pulse-col-canvas { width: 100%; min-height: 0; }
+.pulse-col-inspector { position: absolute; top: 0; bottom: 0; right: 0; width: min(340px, 90%); max-height: 100%; box-shadow: var(--shadow-lg); z-index: 12; }
+[data-workspace="library"] .canvas-subbar, [data-workspace="timeline"] .canvas-subbar,
+[data-workspace="library"] .canvas-dock-modern, [data-workspace="timeline"] .canvas-dock-modern,
+[data-workspace="library"] #graphLegend, [data-workspace="timeline"] #graphLegend,
+[data-workspace="library"] #emptyState, [data-workspace="timeline"] #emptyState { display: none; }
+.timeline-view { position: absolute; inset: 0; overflow: auto; padding: 28px max(24px, 5vw) 60px; background: var(--surface); }
+.timeline-header h1 { margin: 8px 0; font-size: 28px; }
+.timeline-header p { font-size: 13px; color: var(--muted); }
+.timeline-track { max-width: 1120px; margin: 28px auto 0; }
+.timeline-year { color: var(--accent); font-size: 22px; margin: 30px 0 14px; }
+.timeline-paper { position: relative; display: grid; grid-template-columns: 115px minmax(0, 1fr) auto; gap: 24px; padding: 22px 20px; margin-left: 8px; border-left: 2px solid var(--line); border-bottom: 1px solid var(--line); align-items: start; }
+.timeline-paper::before { content: ''; position: absolute; left: -6px; top: 27px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.timeline-date { font-size: 12px; color: var(--muted); padding-top: 3px; }
+.timeline-paper-title { text-align: left; color: var(--ink); background: transparent; border: 0; font-size: 16px; font-weight: 650; line-height: 1.4; padding: 0; cursor: pointer; }
+.timeline-paper-title:hover { color: var(--accent); }
+.timeline-paper p { color: var(--muted); font-size: 12px; margin: 7px 0 0; line-height: 1.5; }
+.timeline-empty { padding: 40px; color: var(--muted); text-align: center; }
+.network-fullscreen .pulse-workspace-cols { position: fixed; inset: 0; z-index: 60; background: var(--surface); }
+.network-fullscreen .pulse-col-canvas { height: 100vh; }
+@media (max-width: 800px) {
+  .discovery-workspace .discovery-modal-header { padding: 18px 16px 12px; }
+  .discovery-setup { margin: 0 16px 12px; padding: 14px; }
+  .discovery-seed-row, .discovery-run-row { flex-direction: column; align-items: stretch; }
+  .discovery-workspace .discovery-modal-toolbar, .discovery-workspace .discovery-paper-list, .discovery-workspace .discovery-modal-footer { padding-left: 16px; padding-right: 16px; }
+  .timeline-paper { grid-template-columns: 80px minmax(0, 1fr); gap: 14px; padding: 18px 12px; }
+  .timeline-paper > .button { grid-column: 2; justify-self: start; }
+}
