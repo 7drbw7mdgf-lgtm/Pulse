@@ -1,0 +1,62 @@
+# Pulse
+
+Pulse replaces Iratxe with a local paper library, an interactive linkage map and literature discovery. This repair keeps the supplied Pulse v1 interface and its Iratxe-derived Python backend, with working controls and persistence.
+
+## Run from source
+
+Requires Python 3.9 or later. From this directory:
+
+```sh
+python3 pulse_backend.py
+```
+
+Open the localhost URL printed by the server. The server injects a per-session API token; opening `index.html` directly or using a generic static server does not provide the backend.
+
+Optional PDF extraction dependencies:
+
+```sh
+python3 -m pip install -r requirements.txt
+```
+
+Ollama and installed chat/embedding models are optional for local AI extraction and analysis. Configure the endpoint and models under Settings. Google Gemini is the supported cloud provider. Metadata and discovery require access to their upstream services; availability and rate limits can affect results.
+
+The macOS release carries forward the native Apple Silicon launcher, Ollama binary and PDF dependencies from the supplied Pulse v1 bundle. It is signed ad hoc and is not notarized. The original launcher source was not present in the supplied DMG; the included packaging script therefore takes that bundle as its template.
+
+## Repaired interactions
+
+- Add papers by title/text, DOI or PMID, with duplicate detection and visible lookup errors.
+- Import PDF, BibTeX, RIS, CSV, JSON and EndNote records; export the map and bibliography.
+- Select Network, Clusters, Radial or Bibliography. Library navigation opens the bibliography.
+- Filter papers by metadata, filter graph links by type, and synchronize labels with graph settings.
+- Expand/compress the graph, fit the view, inspect links, create map areas and edit paper tags.
+- Run Direct, 2-Hop, 3-Hop or bounded Iterative discovery. Iterative explores up to four hops and stops when its frontier is empty; expansion is limited to four papers per direction per hop.
+- Toggle discovery methods consistently across the ribbon and inspector. Disabled Concepts stays disabled in the backend.
+- Pin a discovery seed, review results and retain the resulting link evidence after reload.
+- Switch local/cloud settings, save the scanning option, test the connection and reset the library.
+- Reach toolbars and dialogs in resized windows. Recent papers and cluster labels reflect the actual library.
+
+Map similarity bars use local text-vector cosine similarity, verified citation/co-citation edges and keyword overlap. Unknown influential citation counts remain blank. These are map evidence measures, not provider-generated SPECTER2 scores or a clinical/scientific assessment.
+
+Settings and the library live under `~/Library/Application Support/pulse/`. On the first default launch, the backend can migrate the previous Iratxe directory. An explicit `PULSE_CONFIG_DIR` selects an isolated directory and disables automatic migration. No personal library, settings or API keys are included in the repository or release.
+
+## Tests
+
+```sh
+npm install
+npx playwright install chromium
+npm test
+```
+
+For an installed Chrome browser, use `PULSE_BROWSER_CHANNEL=chrome npm test`. The UI suite launches its own backend and temporary library. Python tests cover discovery depth, disabled branches, PMID parsing, storage and reset. Browser tests exercise controls, discovery result selection, import/export, settings, responsive layouts and reload persistence. Discovery responses in browser tests are deterministic fixtures; the PMID lookup was also checked against a live PubMed record.
+
+## macOS packaging
+
+```sh
+bash scripts/package-macos.sh "/Volumes/Pulse v1/Pulse.app" /tmp/pulse-release
+```
+
+This copies the supplied native template, replaces the app resources, updates the version and rebuilds its signature and DMG. Build output is ignored by Git.
+
+## Sources and provenance
+
+The app resources originate from the user-supplied `pulse-v1.dmg`; the backend was compared with the supplied Iratxe 3.2 bundle. External metadata/discovery uses Semantic Scholar, OpenAlex, Crossref and [NCBI PubMed E-utilities](https://www.ncbi.nlm.nih.gov/books/NBK25499/). API keys remain local. Bundled third-party binaries and their licence metadata remain in the native template/release; they are not part of the source checkout.

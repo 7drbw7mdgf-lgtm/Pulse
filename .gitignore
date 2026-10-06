@@ -1,0 +1,10 @@
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+settings.json
+library.json
+.env
+test-results/
+*.dmg
+*.app/
