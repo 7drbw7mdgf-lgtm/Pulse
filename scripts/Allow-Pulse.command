@@ -44,6 +44,9 @@ if [ -z "$app_path" ]; then
     app_path="$HOME/Applications/Pulse.app"
   fi
 fi
+while [ "$app_path" != '/' ] && [ "${app_path%/}" != "$app_path" ]; do
+  app_path=${app_path%/}
+done
 [ -d "$app_path" ] || fail 'Install Pulse.app in Applications first, or pass its path.'
 [ ! -L "$app_path" ] || fail 'Pass the installed app itself, not a symbolic link.'
 app_path=$(cd "$app_path" && /bin/pwd -P)
