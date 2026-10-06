@@ -6228,7 +6228,7 @@ const state = {
     function serializeMap() {
       return {
         format: 'pulse-map',
-        version: '1.2.0',
+        version: '1.2.1',
         generatedAt: new Date().toISOString(),
         threshold: state.threshold,
         mode: state.mode,
@@ -6543,7 +6543,7 @@ const state = {
         localStorage.removeItem('iratxe-autosave-library');
         localStorage.setItem('pulse-autosave-library', JSON.stringify({
           format: 'pulse-map',
-          version: '1.2.0',
+          version: '1.2.1',
           papers: [],
           areas: []
         }));
@@ -6560,7 +6560,7 @@ const state = {
             papers: [],
             areas: [],
             format: 'pulse-map',
-            version: '1.2.0',
+            version: '1.2.1',
             savedAt: new Date().toISOString()
           })
         });

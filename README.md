@@ -60,7 +60,9 @@ For an installed Chrome browser, use `PULSE_BROWSER_CHANNEL=chrome npm test`. Th
 bash scripts/package-macos.sh "/Volumes/Pulse v1/Pulse.app" /tmp/pulse-release
 ```
 
-This copies the supplied native template, replaces the app resources, updates the version and rebuilds its signature and DMG. Build output is ignored by Git.
+This copies the supplied native template, replaces the app resources, updates the version and rebuilds its signature and DMG. The disk image includes the macOS guide and app-specific quarantine helper. Build output is ignored by Git.
+
+Download the latest DMG from [GitHub Releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest). For first-launch approval of this ad hoc signed build, read [the macOS installation guide](docs/MACOS-INSTALL.md). The included [Allow-Pulse.command](scripts/Allow-Pulse.command) verifies Pulse 1.2.1 before offering to remove only its quarantine attribute; it does not notarize the app or disable system-wide security settings.
 
 ## Sources and provenance
 
