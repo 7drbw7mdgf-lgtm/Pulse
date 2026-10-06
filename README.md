@@ -1,6 +1,6 @@
 # Pulse
 
-Pulse replaces Iratxe with a local paper library, an interactive linkage map and literature discovery. The redesigned workspaces build on the supplied Pulse interface and its Iratxe-derived Python backend, with working controls and persistence.
+Pulse is a local paper library, an interactive linkage map and literature discovery. The redesigned workspaces build on the supplied Pulse interface and its Iratxe-derived Python backend, with working controls and persistence.
 
 [Pulse Lite](lite/) is available separately with a hard cap of 15 papers, its own storage, and a macOS installer under `lite/dist/`.
 
