@@ -1,47 +1,31 @@
-# Pulse Lite
+# Pulse Lite — explore a small reading list
 
-Pulse Lite 1.0.0 provides the Discover, Network, Library and Timeline workspaces with a **hard maximum of 15 papers in its library**. This is a paper-limited edition; it retains the native launcher, PDF dependencies and optional Ollama integration.
+Pulse Lite helps you find related research papers, see how they connect, and arrange them in publication order. It has the same Discover, Network, Timeline, and Library workspaces as Full, with a **hard cap of 15 saved papers**.
 
-## The 15-paper limit
+It is a useful starting point for trying Pulse or exploring a tightly focused topic.
 
-- Title/text, DOI and PMID additions all check available capacity, including after asynchronous lookups finish.
-- PDF and bibliographic imports add only the available slots. Bulk imports and discovery selections report skipped papers. Import duplicates merge without taking a new slot.
-- Discovery candidates can still be reviewed at capacity. Adding candidates, recommendations, seminal papers and citation trails respects the same shared cap.
-- Network, Library and Timeline show the same papers; the limit applies to the whole library, not to each view.
-- Remove a paper using its **Remove** button in Library to free a slot. Existing saved links are cleaned up with it.
-- The backend rejects a library save above 15 papers with HTTP 413, regardless of caller-supplied limit fields. Oversized saved files are rejected and preserved. Reset Lite in Settings to replace such a file intentionally.
-- JSON exports remain compatible with full Pulse. When importing a larger Pulse export, Lite keeps only the available slots and reports the remainder.
+**[Download Pulse Lite 1.0.0](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/lite-v1.0.0/Pulse-Lite-1.0.0.dmg)** · [Installation guide](docs/MACOS-INSTALL.md) · [Explore Full](../README.md)
 
-Lite uses `~/Library/Application Support/pulse-lite/` and independent browser-storage keys. It does not migrate the full Pulse or Iratxe library. Use `PULSE_LITE_CONFIG_DIR` to choose an isolated test directory; full Pulse's `PULSE_CONFIG_DIR` and `IRATXE_CONFIG_DIR` are ignored by Lite.
+## A simple way to begin
 
-## Install
+1. Add a paper by title, DOI, PubMed ID, or PDF.
+2. Use **Discover** to look for related work and select the papers you want to keep.
+3. Explore the connections in **Network**, follow the publication order in **Timeline**, or manage the list in **Library**.
 
-Download the [Pulse Lite release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/lite-v1.0.0), or the identical installer under [dist/](dist/). Verify `Pulse-Lite-1.0.0-SHA256SUMS.txt`, open the DMG and drag **Pulse Lite.app** into Applications. It has its own bundle identifier and can coexist with full Pulse.
+You can also import common bibliography formats and export your library or map.
 
-The Apple Silicon build is signed ad hoc and is not notarized. Read [MACOS-INSTALL.md](docs/MACOS-INSTALL.md) for first-launch approval. The DMG also contains [Allow-Pulse-Lite.command](scripts/Allow-Pulse-Lite.command), which verifies the Lite app before offering to remove only its quarantine attribute.
+## How the 15-paper limit works
 
-## Run from source
+The limit applies to the entire saved library, including imports, duplicates that create a new record, and papers added through discovery. Discover candidates remain available to review when the library is full. Bulk additions use the available slots and report skipped papers; matching duplicates merge without taking a new slot.
 
-```sh
-python3 pulse_backend.py
-```
+Remove a paper in **Library** to make room. Lite has separate storage from Full, so trying it does not change your Full library. Lite exports can be imported into Full when you want to continue with a larger collection.
 
-Requires Python 3.9 or later. Open the localhost URL printed by the backend, which injects its per-session API token. Optional PDF extraction packages are listed in `requirements.txt`; local AI features use Ollama and installed models. Metadata/discovery uses upstream services and can be affected by their rate limits.
+## Install and requirements
 
-## Tests
+The current installer is for **Apple Silicon Macs running macOS 11 or later**. The native launcher uses Python 3.9 or later at `/usr/bin/python3` for its local backend. Open the DMG and drag **Pulse Lite.app** into Applications.
 
-```sh
-npm ci
-npx playwright install chromium
-npm test
-```
+The build is ad hoc signed and not Apple-notarized. Follow the [first-launch guide](docs/MACOS-INSTALL.md) if macOS blocks it. The DMG includes the guide and the app-specific `Allow-Pulse-Lite.command` helper. The same download files are in [dist/](dist/).
 
-For installed Chrome, use `PULSE_BROWSER_CHANNEL=chrome npm test`. Tests use disposable Lite libraries. The suite covers workspace controls, backend storage limits, batch imports, duplicate merging, discovery, citation/recommendation insertion paths, concurrent lookups, reload/export, slot release and oversized-file preservation.
+Your library is saved locally. Metadata and discovery use online scholarly services; optional AI can use local Ollama models or the supported cloud provider. See [how Pulse works](../README.md#local-library-online-discovery) for details.
 
-## Build the macOS DMG
-
-```sh
-bash scripts/package-macos.sh "/Volumes/Pulse v1/Pulse.app" /tmp/pulse-lite-release
-```
-
-The supplied Pulse v1 native bundle is the template because its launcher source was not included in the original DMG. Packaging replaces the resources, sets the Lite bundle name and identifier, signs the bundle, includes the guide/helper and verifies the disk image. Third-party licence files remain in the native template. No personal libraries, settings or API keys are bundled.
+For source setup, exact limit behavior, storage, tests, and packaging, see the [Lite development notes](docs/DEVELOPMENT.md). For help or feedback, [open an issue](https://github.com/7drbw7mdgf-lgtm/Pulse/issues).

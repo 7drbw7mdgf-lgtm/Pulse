@@ -1,71 +1,66 @@
-# Pulse
+# Pulse — explore the connections between research papers
 
-Pulse is a local paper library, an interactive linkage map and literature discovery. The redesigned workspaces build on the supplied Pulse interface and its Iratxe-derived Python backend, with working controls and persistence.
+Pulse is a Mac app for finding related research papers, mapping how they connect, and seeing a topic develop over time. Start with a paper you know, build a reading list around it, and explore the same library as a network, a timeline, or a searchable bibliography.
 
-[Pulse Lite](lite/) is available separately with a hard cap of 15 papers, its own storage, and a macOS installer under `lite/dist/`.
+It is designed for researchers, students, and anyone getting to grips with a new field, planning a literature review, or following a citation trail.
 
-## Run from source
+**[Download Pulse Full](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.2.1/Pulse-1.2.1.dmg)** · **[Download Pulse Lite](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/lite-v1.0.0/Pulse-Lite-1.0.0.dmg)** · [Installation guide](docs/MACOS-INSTALL.md)
 
-Requires Python 3.9 or later. From this directory:
+![Pulse's Discover workspace: choose a starting paper, search methods, and exploration depth.](docs/images/discover.png)
 
-```sh
-python3 pulse_backend.py
-```
+*The actual Discover interface with an illustrative sample library. This screenshot is not a live search result.*
 
-Open the localhost URL printed by the server. The server injects a per-session API token; opening `index.html` directly or using a generic static server does not provide the backend.
+## What you can do with Pulse
 
-Optional PDF extraction dependencies:
+- **Find your next paper.** Start from a known paper and explore references, papers that cite it, shared citations, and related text or concepts. Review candidates and choose what to add.
+- **See the connections.** Explore an interactive network, inspect individual papers, switch layouts, or expand the map to fill the window.
+- **Follow a topic through time.** Timeline places your papers in publication order, making it easier to read from earlier work to newer developments.
+- **Bring your reading list with you.** Add papers by title, DOI, or PubMed ID. Import PDFs and common bibliography formats, including BibTeX, RIS, CSV, JSON, and EndNote records.
+- **Keep the work you have collected.** Search and filter your library, add tags, and export your map or bibliography.
 
-```sh
-python3 -m pip install -r requirements.txt
-```
+For example, you could start with a review article, look for the work it cites and the work that cites it, select a few promising papers, and then use Timeline to plan a reading order.
 
-Ollama and installed chat/embedding models are optional for local AI extraction and analysis. Configure the endpoint and models under Settings. Google Gemini is the supported cloud provider. Metadata and discovery require access to their upstream services; availability and rate limits can affect results.
+## One library, four ways to explore it
 
-The macOS release carries forward the native Apple Silicon launcher, Ollama binary and PDF dependencies from the supplied Pulse v1 bundle. It is signed ad hoc and is not notarized. The original launcher source was not present in the supplied DMG; the included packaging script therefore takes that bundle as its template.
+| Workspace | Use it when you want to… |
+| --- | --- |
+| **Discover** | Find related papers and decide which ones belong in your library. |
+| **Network** | Understand relationships and choose a paper to explore further. |
+| **Timeline** | Read the literature in chronological order. |
+| **Library** | Search, filter, and manage your bibliography. |
 
-## Workspaces and interactions
+Discover and Network work together. Select a paper on the map to start a discovery, review the candidates, and add your choices to the same network. You can also start a discovery from Timeline.
 
-- Add papers by title/text, DOI or PMID, with duplicate detection and visible lookup errors.
-- Import PDF, BibTeX, RIS, CSV, JSON and EndNote records; export the map and bibliography.
-- Discover fills the main panel with a starting-paper selector, methods, depth and an explicit search action. Select candidates before adding them.
-- Network uses the full canvas without a library sidebar. Full screen expands it across the window; Escape exits. Click a paper to inspect it and discover related work.
-- Timeline arranges the shared papers by publication date, oldest first, with year fallback and undated papers last. Its papers can start a new discovery.
-- Library opens the bibliography. Network supports Network, Clusters and Radial layouts. Collections navigation has been removed.
-- Filter papers by metadata, filter graph links by type, and synchronize labels with graph settings.
-- Expand/compress the graph, fit the view, inspect links and edit paper tags.
-- Run Direct, 2-Hop, 3-Hop or bounded Iterative discovery. Iterative explores up to four hops and stops when its frontier is empty; expansion is limited to four papers per direction per hop.
-- Toggle discovery methods consistently across the ribbon and inspector. Disabled Concepts stays disabled in the backend.
-- Pin a discovery seed, review results and retain the resulting link evidence after reload.
-- Switch local/cloud settings, save the scanning option, test the connection and reset the library.
-- Reach toolbars and dialogs in resized windows. Recent papers and cluster labels reflect the actual library.
+## Choose your edition
 
-Map similarity bars use local text-vector cosine similarity, verified citation/co-citation edges and keyword overlap. Unknown influential citation counts remain blank. These are map evidence measures, not provider-generated SPECTER2 scores or a clinical/scientific assessment.
+| | Pulse Full 1.2.1 | Pulse Lite 1.0.0 |
+| --- | --- | --- |
+| Discover, Network, Timeline, and Library | Included | Included |
+| Saved-paper limit | No built-in paper cap | **15 papers total** |
+| Best suited to | An expanding reading list or literature review | Trying the workflow or exploring a small topic |
+| Download | [Full DMG](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.2.1/Pulse-1.2.1.dmg) | [Lite DMG](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/lite-v1.0.0/Pulse-Lite-1.0.0.dmg) |
+| Help | [Full installation guide](docs/MACOS-INSTALL.md) | [Lite guide and details](lite/) |
 
-Settings and the library live under `~/Library/Application Support/pulse/`. On the first default launch, the backend can migrate the previous Iratxe directory. An explicit `PULSE_CONFIG_DIR` selects an isolated directory and disables automatic migration. No personal library, settings or API keys are included in the repository or release.
+Lite has its own saved library and can coexist with Full. Its 15-paper limit applies across every workspace; removing a paper in Library frees a slot. Lite exports can be opened in Full.
 
-Discover and Network share one paper library. Discover finds and reviews candidates; Network shows relationships and can start discovery from any selected paper. Adding candidates returns them to the same map, with the discovery evidence saved.
+## Get started
 
-## Tests
+1. Download the edition you want, open its DMG, and drag the app into **Applications**.
+2. Launch Pulse and add a starting paper by title, DOI, PubMed ID, or PDF.
+3. Open **Discover**, choose your starting paper and search methods, then click **Find related papers**. Select the candidates you want to keep and explore them in Network or Timeline.
 
-```sh
-npm install
-npx playwright install chromium
-npm test
-```
+**Current Mac requirements:** macOS 11 or later, an **Apple Silicon Mac**, and Python 3.9 or later available at `/usr/bin/python3` for the native launcher's local backend. The current DMG is not an Intel build.
 
-For an installed Chrome browser, use `PULSE_BROWSER_CHANNEL=chrome npm test`. The UI suite launches its own backend and temporary library. Python tests cover discovery depth, disabled branches, PMID parsing, storage and reset. Browser tests exercise workspace navigation, fullscreen, chronological ordering, discovery from map nodes and timeline papers, result selection, import/export, settings, responsive layouts and reload persistence. Discovery responses in browser tests are deterministic fixtures; the PMID lookup was also checked against a live PubMed record.
+These releases are ad hoc signed and are not Apple-notarized. If macOS blocks the first launch, follow the [installation guide](docs/MACOS-INSTALL.md). Each DMG includes a guide and an app-specific approval helper. On GitHub Releases, download the **DMG** to install the app.
 
-## macOS packaging
+## Local library, online discovery
 
-```sh
-bash scripts/package-macos.sh "/Volumes/Pulse v1/Pulse.app" /tmp/pulse-release
-```
+Your paper library and settings are saved on your Mac. Metadata lookup and discovery contact online scholarly services, including Semantic Scholar, OpenAlex, Crossref, and PubMed. Their coverage and rate limits can affect the results you receive.
 
-This copies the supplied native template, replaces the app resources, updates the version and rebuilds its signature and DMG. The disk image includes the macOS guide and app-specific quarantine helper. Build output is ignored by Git.
+AI features are optional. You can configure local models through Ollama or the supported Gemini cloud provider in Settings. Basic library management and map exploration do not require an AI model. Map connections combine citation evidence with text and keyword measures; paper details help you see what a connection represents.
 
-Download the latest DMG from [GitHub Releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest). For first-launch approval of this ad hoc signed build, read [the macOS installation guide](docs/MACOS-INSTALL.md). The included [Allow-Pulse.command](scripts/Allow-Pulse.command) verifies Pulse 1.2.1 before offering to remove only its quarantine attribute; it does not notarize the app or disable system-wide security settings.
+## Help and development
 
-## Sources and provenance
+Found a problem or have an idea? [Open an issue](https://github.com/7drbw7mdgf-lgtm/Pulse/issues) and describe what you were trying to do, your app version, and what happened.
 
-The app resources originate from the user-supplied `pulse-v1.dmg`; the backend was compared with the supplied Iratxe 3.2 bundle. External metadata/discovery uses Semantic Scholar, OpenAlex, Crossref and [NCBI PubMed E-utilities](https://www.ncbi.nlm.nih.gov/books/NBK25499/). API keys remain local. Bundled third-party binaries and their licence metadata remain in the native template/release; they are not part of the source checkout.
+For Python setup, storage locations, tests, packaging, and implementation provenance, see the [development notes](docs/DEVELOPMENT.md). [Pulse Lite](lite/) has its own limit and development documentation.
