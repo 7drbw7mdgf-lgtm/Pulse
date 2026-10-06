@@ -5,9 +5,11 @@ Refactored into pulse_core module hierarchy (all files <= 400 lines).
 Exports all legacy symbols for 100% backward compatibility.
 """
 import sys
-import urllib.request
 import pulse_core
-from pulse_core import *
+
+# Point sys.modules to pulse_core so patch.object(pulse_backend, ...)
+# and pulse_core internal references share identical module state
+sys.modules[__name__] = pulse_core
 
 if __name__ == "__main__":
     try:
@@ -15,7 +17,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         pulse_core.cleanup_resources()
         sys.exit(0)
-
-_save_library = pulse_core.storage._save_library
-_ollama_embedding = pulse_core.embeddings._ollama_embedding
-_gemini_embedding = pulse_core.embeddings._gemini_embedding

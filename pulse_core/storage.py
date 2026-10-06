@@ -1,5 +1,5 @@
+import pulse_core as _core
 __all__ = ["load_settings", "write_settings", "load_library", "save_library", "_save_library", "save_settings", "public_settings", "SAVE_REVISIONS"]
-import pulse_backend as _pb
 import json
 import os
 import shutil
@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from pulse_core.constants import (
     APP_VERSION,
+    
     
     
     DIMENSIONS_API_ROOT,
@@ -36,10 +37,10 @@ from pulse_performance import LIBRARY_WRITE_LOCK
 SAVE_REVISIONS = {}
 
 def load_settings():
-    if not _pb.CONFIG_PATH.exists():
+    if not _core.CONFIG_PATH.exists():
         return {}
     try:
-        raw = json.loads(_pb.CONFIG_PATH.read_text("utf-8"))
+        raw = json.loads(_core.CONFIG_PATH.read_text("utf-8"))
         for k in SENSITIVE_SETTING_KEYS:
             if k in raw and isinstance(raw[k], str) and raw[k].startswith("enc:v1:"):
                 raw[k] = decrypt_secret(raw[k])
@@ -48,24 +49,24 @@ def load_settings():
         return {}
 
 def write_settings(settings):
-    _pb.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    _core.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     to_save = dict(settings)
     for k in SENSITIVE_SETTING_KEYS:
         if k in to_save and isinstance(to_save[k], str) and to_save[k].strip() and not to_save[k].startswith("enc:v1:"):
             to_save[k] = encrypt_secret(to_save[k])
-    _pb.CONFIG_PATH.write_text(json.dumps(to_save, indent=2), "utf-8")
+    _core.CONFIG_PATH.write_text(json.dumps(to_save, indent=2), "utf-8")
     try:
-        _pb.CONFIG_PATH.chmod(0o600)
+        _core.CONFIG_PATH.chmod(0o600)
     except OSError:
         pass
     return settings
 
 def load_library():
-    backup_dir = _pb.CONFIG_DIR / "backups"
+    backup_dir = _core.CONFIG_DIR / "backups"
     backup_dir.mkdir(parents=True, exist_ok=True)
-    if _pb.LIBRARY_PATH.exists():
+    if _core.LIBRARY_PATH.exists():
         try:
-            raw = _pb.LIBRARY_PATH.read_text("utf-8").strip()
+            raw = _core.LIBRARY_PATH.read_text("utf-8").strip()
             if raw:
                 data = json.loads(raw)
                 if isinstance(data, dict) and "papers" in data:
@@ -97,7 +98,7 @@ def save_library(payload):
         ordered = isinstance(session, str) and 0 < len(session) <= 100 and isinstance(revision, int)
         if ordered and revision <= SAVE_REVISIONS.get(session, -1):
             return {"ok": True, "superseded": True}
-        result = _pb._save_library(payload)
+        result = _core._save_library(payload)
         if ordered:
             SAVE_REVISIONS[session] = revision
             if len(SAVE_REVISIONS) > 64:
@@ -109,8 +110,8 @@ def _save_library(payload):
         raise ClientError(400, "Library payload must be a JSON object.")
     if not isinstance(payload.get("papers"), list) or not all(isinstance(paper, dict) for paper in payload["papers"]):
         raise ClientError(400, "Library papers must be an array of paper objects.")
-    _pb.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    backup_dir = _pb.CONFIG_DIR / "backups"
+    _core.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    backup_dir = _core.CONFIG_DIR / "backups"
     backup_dir.mkdir(parents=True, exist_ok=True)
     data = dict(payload)
     data["format"] = data.get("format") or "pulse-map"
@@ -122,34 +123,34 @@ def _save_library(payload):
             for old in backup_dir.glob("library_*.json"):
                 try: old.unlink()
                 except OSError: pass
-    elif _pb.LIBRARY_PATH.exists() and _pb.LIBRARY_PATH.stat().st_size > 10:
+    elif _core.LIBRARY_PATH.exists() and _core.LIBRARY_PATH.stat().st_size > 10:
         try:
-            json.loads(_pb.LIBRARY_PATH.read_text("utf-8"))
+            json.loads(_core.LIBRARY_PATH.read_text("utf-8"))
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_file = backup_dir / f"library_{ts}.json"
-            shutil.copy2(_pb.LIBRARY_PATH, backup_file)
+            shutil.copy2(_core.LIBRARY_PATH, backup_file)
             all_b = sorted(backup_dir.glob("library_*.json"), key=os.path.getmtime)
             for old in all_b[:-10]:
                 try: old.unlink()
                 except OSError: pass
         except Exception:
             pass
-    temp_fd, temp_path = tempfile.mkstemp(dir=str(_pb.CONFIG_DIR), prefix=".lib_tmp_", suffix=".json")
+    temp_fd, temp_path = tempfile.mkstemp(dir=str(_core.CONFIG_DIR), prefix=".lib_tmp_", suffix=".json")
     try:
         with os.fdopen(temp_fd, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(temp_path, str(_pb.LIBRARY_PATH))
+        os.replace(temp_path, str(_core.LIBRARY_PATH))
         try:
-            _pb.LIBRARY_PATH.chmod(0o600)
+            _core.LIBRARY_PATH.chmod(0o600)
         except OSError:
             pass
     finally:
         if os.path.exists(temp_path):
             try: os.unlink(temp_path)
             except OSError: pass
-    return {"ok": True, "path": str(_pb.LIBRARY_PATH), "savedAt": data["savedAt"]}
+    return {"ok": True, "path": str(_core.LIBRARY_PATH), "savedAt": data["savedAt"]}
 
 def save_settings(payload):
     from pulse_core.ollama_mgr import normalize_gemma_model, normalize_ollama_endpoint
@@ -228,7 +229,7 @@ def public_settings(settings):
         "ollamaEmbeddingsEndpoint": resolve_ollama_embeddings_endpoint(settings),
         "embeddingModel": resolve_embedding_model(settings),
         "autoGemmaExtraction": settings.get("autoGemmaExtraction", LOCAL_BACKEND_DEFAULTS["autoGemmaExtraction"]),
-        "configPath": str(_pb.CONFIG_PATH),
+        "configPath": str(_core.CONFIG_PATH),
         "defaults": LOCAL_BACKEND_DEFAULTS,
         "workflow": {
             "pdfExtraction": caps["pdfExtraction"],

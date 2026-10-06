@@ -1,10 +1,10 @@
+import pulse_core as _core
 __all__ = ["hashed_embedding", "hybrid_semantic_embedding", "cosine", "gemini_embedding", "_gemini_embedding", "ollama_embedding", "_ollama_embedding"]
-import pulse_backend as _pb
 import hashlib
 import json
 import math
 import urllib.request
-from pulse_core.constants import ClientError
+from pulse_core.constants import  ClientError
 from pulse_core.config_resolvers import (
     resolve_embedding_model,
     resolve_gemini_api_key,
@@ -50,7 +50,7 @@ def cosine(left, right):
     return max(-1.0, min(1.0, dot / (norm_a * norm_b)))
 
 def gemini_embedding(settings, text):
-    return cached_embedding(_pb.CONFIG_DIR, ["cloud", settings.get("cloudProvider"), settings.get("apiKey"), "text-embedding-004"], text, lambda: _pb._gemini_embedding(settings, text))
+    return cached_embedding(_core.CONFIG_DIR, ["cloud", settings.get("cloudProvider"), settings.get("apiKey"), "text-embedding-004"], text, lambda: _core._gemini_embedding(settings, text))
 
 def _gemini_embedding(settings, text):
     api_key = resolve_gemini_api_key(settings)
@@ -75,7 +75,7 @@ def _gemini_embedding(settings, text):
         return None
 
 def ollama_embedding(settings, text):
-    return cached_embedding(_pb.CONFIG_DIR, ["local", resolve_ollama_embeddings_endpoint(settings), resolve_embedding_model(settings)], text, lambda: _pb._ollama_embedding(settings, text))
+    return cached_embedding(_core.CONFIG_DIR, ["local", resolve_ollama_embeddings_endpoint(settings), resolve_embedding_model(settings)], text, lambda: _core._ollama_embedding(settings, text))
 
 def _ollama_embedding(settings, text):
     model = resolve_embedding_model(settings)

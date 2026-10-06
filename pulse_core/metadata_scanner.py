@@ -1,4 +1,4 @@
-import pulse_backend as _pb
+import pulse_core as _core
 from pulse_core.metadata_utils import doi_title_match
 import re
 import urllib.error
@@ -32,7 +32,7 @@ def lookup_pmid_metadata(payload):
     query = urllib.parse.urlencode({"db": "pubmed", "id": pmid, "retmode": "xml", "tool": "Pulse"})
     request = urllib.request.Request("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?" + query, headers={"User-Agent": "Pulse/1.3"})
     try:
-        with _pb.urllib.request.urlopen(request, timeout=15) as response:
+        with _core.urllib.request.urlopen(request, timeout=15) as response:
             root = ET.fromstring(response.read(2_000_000))
     except (urllib.error.URLError, TimeoutError, ET.ParseError) as error:
         raise ClientError(502, f"PubMed lookup failed: {error}")

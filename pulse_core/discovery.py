@@ -1,4 +1,4 @@
-import pulse_backend as _pb
+import pulse_core as _core
 import re
 import urllib.parse
 from pulse_core.constants import ClientError
@@ -79,23 +79,23 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
     hop1_references = []
     hop1_citations = []
     for paper in seed_papers[:3]:
-        s2_id = _pb.s2_paper_id_for_paper(paper, api_key=api_key)
+        s2_id = _core.s2_paper_id_for_paper(paper, api_key=api_key)
         if s2_id:
             try:
-                refs = _pb.s2_fetch_references(s2_id, api_key=api_key, limit=limit)
+                refs = _core.s2_fetch_references(s2_id, api_key=api_key, limit=limit)
                 gathered.extend(refs)
                 hop1_references.extend(refs)
             except Exception:
                 pass
             try:
-                cites = _pb.s2_fetch_citations(s2_id, api_key=api_key, limit=limit)
+                cites = _core.s2_fetch_citations(s2_id, api_key=api_key, limit=limit)
                 gathered.extend(cites)
                 hop1_citations.extend(cites)
             except Exception:
                 pass
 
         if not gathered:
-            work = _pb.openalex_work_for_paper(paper)
+            work = _core.openalex_work_for_paper(paper)
             if work:
                 work_id = openalex_work_id(work.get("id"))
                 for ref_id, ref_work in parallel_lookup(fetch_openalex_work_by_id, (work.get("referenced_works") or [])[:limit]):
@@ -132,10 +132,10 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                     continue
                 seen.add(key)
                 try:
-                    parent_id = _pb.s2_paper_id_for_paper(parent, api_key=api_key)
+                    parent_id = _core.s2_paper_id_for_paper(parent, api_key=api_key)
                     if not parent_id:
                         continue
-                    fetcher = _pb.s2_fetch_references if direction == "backward" else _pb.s2_fetch_citations
+                    fetcher = _core.s2_fetch_references if direction == "backward" else _core.s2_fetch_citations
                     for item in fetcher(parent_id, api_key=api_key, limit=8):
                         item_key = s2_paper_identifier(item)
                         if item_key in seen:
@@ -155,7 +155,7 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
 def fetch_citation_network_branch(seed_papers, api_key=None, limit=30):
     gathered = []
     for paper in seed_papers[:3]:
-        work = _pb.openalex_work_for_paper(paper)
+        work = _core.openalex_work_for_paper(paper)
         if not work:
             continue
         work_id = openalex_work_id(work.get("id"))
@@ -212,7 +212,7 @@ def fetch_citation_network_branch(seed_papers, api_key=None, limit=30):
 def fetch_semantic_search_branch(seed_papers, api_key=None, exclude_papers=None, limit=30):
     positive_ids = []
     for p in seed_papers:
-        ident = _pb.s2_paper_id_for_paper(p, api_key=api_key)
+        ident = _core.s2_paper_id_for_paper(p, api_key=api_key)
         if ident:
             positive_ids.append(ident)
     if not positive_ids:
@@ -233,7 +233,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     seed_papers = payload.get("seedPapers") or payload.get("papers") or []
     if not seed_papers:
         raise ClientError(400, "Select at least one seed paper to run the literature discovery pipeline.")
-    settings = _pb.load_settings()
+    settings = _core.load_settings()
     api_key = resolve_semantic_scholar_api_key(settings)
     branches = payload.get("branches") or {}
     steer_keywords = steering_terms(payload.get("steerKeywords") or payload.get("keywords") or [])
@@ -242,13 +242,13 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     include_iterative = bool(payload.get("includeIterativeChase", True))
     tasks = {}
     if branches.get("citationGraph", True):
-        tasks["citationGraph"] = lambda: _pb.fetch_citation_graph_branch(seed_papers, api_key=api_key, include_iterative_chase=include_iterative, limit=limit, depth=payload.get("depth"))
+        tasks["citationGraph"] = lambda: _core.fetch_citation_graph_branch(seed_papers, api_key=api_key, include_iterative_chase=include_iterative, limit=limit, depth=payload.get("depth"))
     if branches.get("citationNetwork", True):
         tasks["citationNetwork"] = lambda: fetch_citation_network_branch(seed_papers, api_key=api_key, limit=limit)
     if branches.get("semanticSearch", True):
         tasks["semanticSearch"] = lambda: fetch_semantic_search_branch(seed_papers, api_key=api_key, limit=limit)
     if branches.get("lexicalSearch", branches.get("lexicalConceptual", True)):
-        tasks["lexicalConceptual"] = lambda: _pb.fetch_conceptual_search_branch(seed_papers, api_key=api_key, steer_keywords=steer_keywords, limit=limit)
+        tasks["lexicalConceptual"] = lambda: _core.fetch_conceptual_search_branch(seed_papers, api_key=api_key, steer_keywords=steer_keywords, limit=limit)
     options = {
         "steerKeywords": steer_keywords,
         "excludeKeywords": exclude_keywords,
@@ -286,7 +286,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
 
 def iterative_citation_chase(payload):
     seeds = payload.get("seedPapers") or []
-    return {"ok": True, "results": _pb.fetch_citation_graph_branch(seeds, depth="iterative")}
+    return {"ok": True, "results": _core.fetch_citation_graph_branch(seeds, depth="iterative")}
 
 
 def citation_network_triangulation(payload):
