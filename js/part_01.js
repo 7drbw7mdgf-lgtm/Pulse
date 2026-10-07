@@ -78,7 +78,8 @@ const state = {
 
     const launchParams = new URLSearchParams(window.location.search);
     const apiToken = launchParams.get('token') || launchParams.get('pulseToken') || launchParams.get('iratxeToken') || window.__PULSE_API_TOKEN__ || window.__IRATXE_API_TOKEN__ || '';
-    const apiBase = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
+    let apiBase = window.location.protocol === 'file:' || window.location.protocol === 'tauri:' || window.location.protocol === 'asset:' ? 'http://127.0.0.1:8000' : '';
+    if (window.__TAURI__ && window.__TAURI__.core) { window.__TAURI__.core.invoke('get_backend_port').then(port => { if (port) apiBase = 'http://127.0.0.1:' + port; }).catch(() => {}); }
 
     const stopwords = new Set(`
       a about above across after again against all almost alone along already also although always among an and another any
