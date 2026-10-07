@@ -311,11 +311,17 @@
     function renderTimeline() {
       const ordered = chronologicalPapers();
       let previousYear = null;
-      els.timelineView.innerHTML = `<header class="timeline-header"><span class="discovery-source-pill">Your research over time</span><h1>Timeline</h1><p>Oldest to newest · ${ordered.length} papers. Papers without a publication date appear at the end.</p></header><div class="timeline-track">${ordered.map(({paper, date}) => {
+      const count = ordered.length;
+      els.timelineView.innerHTML = `<header class="timeline-header"><span class="discovery-source-pill">Chronological Literature View</span><h1>Timeline</h1><p>Oldest to newest · ${count} papers across your research library.</p></header><div class="timeline-track">${ordered.map(({paper, date}) => {
         const year = date?.year || 'Undated';
-        const heading = year !== previousYear ? `<h2 class="timeline-year">${escapeHtml(year)}</h2>` : '';
+        const heading = year !== previousYear ? `<div class="timeline-year-heading"><h2 class="timeline-year">${escapeHtml(year)}</h2><span class="timeline-year-badge">${ordered.filter(o => (o.date?.year || 'Undated') === year).length} paper${ordered.filter(o => (o.date?.year || 'Undated') === year).length === 1 ? '' : 's'}</span></div>` : '';
         previousYear = year;
-        return `${heading}<article class="timeline-paper" data-timeline-id="${escapeHtml(paper.id)}"><span class="timeline-date">${escapeHtml(date?.label || 'Date unknown')}</span><div><button type="button" class="timeline-paper-title" data-timeline-inspect="${escapeHtml(paper.id)}">${escapeHtml(paper.title)}</button><p>${escapeHtml([paperAuthorSummary(paper), paper.journal].filter(Boolean).join(' · '))}</p>${paper.abstract ? `<p class="timeline-abstract">${escapeHtml(paper.abstract.slice(0, 180))}${paper.abstract.length > 180 ? '…' : ''}</p>` : ''}</div><button type="button" class="button secondary" data-timeline-discover="${escapeHtml(paper.id)}">Discover related</button></article>`;
+        const citations = Number(paper.citationCount ?? paper.citations ?? 0);
+        const citeHtml = citations > 0 ? `<span class="timeline-cite-pill">★ ${citations.toLocaleString()} cites</span>` : '';
+        const isSelected = state.selectedId === paper.id ? ' is-selected' : '';
+        const isSeminal = (citations > 100 || (paper.tags && paper.tags.includes('seminal')));
+        const seminalBadge = isSeminal ? '<span class="timeline-seminal-badge">Seminal</span>' : '';
+        return `${heading}<article class="timeline-paper${isSelected}" data-timeline-id="${escapeHtml(paper.id)}"><div class="timeline-date-wrap"><span class="timeline-date">${escapeHtml(date?.label || 'Date unknown')}</span>${citeHtml}</div><div class="timeline-content"><div class="timeline-title-row"><button type="button" class="timeline-paper-title" data-timeline-inspect="${escapeHtml(paper.id)}">${escapeHtml(paper.title)}</button>${seminalBadge}</div><p>${escapeHtml([paperAuthorSummary(paper), paper.journal].filter(Boolean).join(' · '))}</p>${paper.abstract ? `<p class="timeline-abstract">${escapeHtml(paper.abstract.slice(0, 240))}${paper.abstract.length > 240 ? '…' : ''}</p>` : ''}</div><div class="timeline-actions"><button type="button" class="button secondary xs" data-timeline-discover="${escapeHtml(paper.id)}">Discover related</button><button type="button" class="button xs" data-timeline-focus="${escapeHtml(paper.id)}">View in graph</button></div></article>`;
       }).join('') || '<div class="timeline-empty">Add papers to see how the literature develops over time.</div>'}</div>`;
       els.timelineView.querySelectorAll('[data-timeline-inspect]').forEach(button => button.addEventListener('click', () => {
         state.selectedId = button.dataset.timelineInspect;
@@ -325,6 +331,11 @@
       els.timelineView.querySelectorAll('[data-timeline-discover]').forEach(button => button.addEventListener('click', () => {
         setDiscoverySeed(button.dataset.timelineDiscover);
         setWorkspaceView('discover');
+      }));
+      els.timelineView.querySelectorAll('[data-timeline-focus]').forEach(button => button.addEventListener('click', () => {
+        state.selectedId = button.dataset.timelineFocus;
+        state.centerId = button.dataset.timelineFocus;
+        setWorkspaceView('network');
       }));
     }
 
