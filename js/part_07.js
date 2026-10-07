@@ -1,174 +1,3 @@
-    }
-
-    function joinWrappedDois(text) {
-      const always = text.replace(
-        new RegExp(`(${DOI_PREFIX}/(?:${DOI_CHARS}*[-/])?)[ \\t]*\\r?\\n[ \\t]*${DOI_NEW_ITEM_GUARD}(?=[A-Za-z0-9(])`, 'g'),
-        '$1'
-      );
-      return always.replace(
-        new RegExp(`(${DOI_PREFIX}/${DOI_CHARS}*[._])[ \\t]*\\r?\\n[ \\t]*(?!\\d{1,3}[.)][ \\t])${DOI_NEW_ITEM_GUARD}(?=[a-z0-9])`, 'g'),
-        '$1'
-      );
-    }
-
-    function balanceDoiBrackets(doi) {
-      let depth = 0;
-      let openAt = -1;
-      for (let index = 0; index < doi.length; index++) {
-        const char = doi[index];
-        if (char === '<') {
-          if (depth === 0) openAt = index;
-          depth++;
-        } else if (char === '>') {
-          if (depth === 0) return doi.slice(0, index);
-          depth--;
-        }
-      }
-      return depth ? doi.slice(0, openAt) : doi;
-    }
-
-    function cleanDoiCandidate(value) {
-      let clean = prepareDoiText(value).trim()
-        .replace(/^\s*(?:https?:\/\/)?(?:www\.|dx\.)?doi\.org\//i, '')
-        .replace(/^\s*doi\s*[:=]?\s*/i, '')
-        .replace(/\s+/g, '')
-        .replace(/^["'{}[\]]+|["'{}[\]]+$/g, '');
-      clean = clean.split(/<(?=[/!?A-Za-z])/)[0];
-      clean = clean.split(/\)?(?:Tj|TJ|ET|BT|Tf|Tm|Td|TD|Do)\b/)[0];
-      // PDF link annotations: "/URI (https://doi.org/10.x/y)/S/URI".
-      clean = clean.split(/\)\/(?:S|URI|Type|Subtype|Rect|Border|BS|A|F|H|C|D|Dest|Next|NM|M|P|StructParent)\b/)[0];
-      clean = clean.split(/(?:>>|<<|endobj|\bobj\b|\bstream\b)/i)[0];
-      clean = balanceDoiBrackets(clean).replace(DOI_GLUED_TAIL, '$1');
-      const count = (text, char) => text.split(char).length - 1;
-      for (let pass = 0; pass < 3; pass++) {
-        const before = clean;
-        clean = clean.replace(/[.,;:'"]+$/, '');
-        while (clean.endsWith(')') && count(clean, '(') < count(clean, ')')) {
-          clean = clean.slice(0, -1).replace(/[.,;:]+$/, '');
-        }
-        clean = clean.replace(DOI_URL_SUFFIX, '')
-          .replace(/^(10\.1101\/(?:\d{4}\.\d{2}\.\d{2}\.)?\d{6,})v\d+$/, '$1');
-        if (clean === before) break;
-      }
-      return clean;
-    }
-
-    function validDoiCandidate(doi) {
-      if (!doi || !/^10\.\d{4,9}(?:\.\d+)*\//i.test(doi)) return false;
-      if (DOI_NON_PAPER_PREFIXES.some(prefix => doi.toLowerCase().startsWith(prefix))) return false;
-      const suffix = doi.split('/').slice(1).join('/');
-      if (suffix.length < 2 || doi.length > 200) return false;
-      if (/[^\x20-\x7E]/.test(doi) || /[\\{}[\]|^`\s]/.test(doi)) return false;
-      if (balanceDoiBrackets(doi) !== doi) return false;
-      if (/^10\.\d+\/(?:obj|stream|length|filter|type|height|width|xobject|smask|bitspercomponent)\b/i.test(doi)) return false;
-      if (/(?:\/Length|\/Filter|\/FlateDecode|\/Type|\/XObject|\/Width|\/Height|>>|<<|stream)/i.test(doi)) return false;
-      return true;
-    }
-
-    // Every cleaned DOI as { doi, position, text, sourceIndex } in document order.
-    function doiMatches(...values) {
-      const found = [];
-      const seen = new Set();
-      for (const value of values) {
-        const prepared = prepareDoiText(value);
-        const joined = joinWrappedDois(prepared);
-        const texts = joined === prepared ? [joined] : [joined, prepared];
-        texts.forEach((text, sourceIndex) => {
-          const pattern = new RegExp(`(^|[^0-9.])(${DOI_PREFIX}/${DOI_CHARS}+)`, 'g');
-          for (const match of text.matchAll(pattern)) {
-            const doi = cleanDoiCandidate(match[2]);
-            const key = doi.toLowerCase();
-            if (seen.has(key) || !validDoiCandidate(doi)) continue;
-            if (sourceIndex && found.some(other => other.doi.toLowerCase().startsWith(key))) continue;
-            seen.add(key);
-            found.push({ doi, position: match.index + match[1].length, text, sourceIndex });
-          }
-        });
-      }
-      return found;
-    }
-
-    function normalizeDoi(value) {
-      return doiMatches(value)[0]?.doi || '';
-    }
-
-    function sameDoi(left, right) {
-      const a = normalizeDoi(left);
-      return Boolean(a) && a.toLowerCase() === normalizeDoi(right).toLowerCase();
-    }
-
-    function findDoiCandidates(...values) {
-      return doiMatches(...values).map(item => item.doi);
-    }
-
-    function findBestDoi(...values) {
-      const refsByText = new Map();
-      const ranked = doiMatches(...values).map(item => {
-        if (!refsByText.has(item.text)) refsByText.set(item.text, [...item.text.matchAll(DOI_REFERENCES)].map(match => match.index));
-        const refs = refsByText.get(item.text);
-        let score = 0;
-        if (DOI_MARKER.test(item.text.slice(Math.max(0, item.position - 40), item.position))) score += 4;
-        if (refs.length && item.position > refs[refs.length - 1]) score -= 5;
-        if (item.position < 4000) score += 1;
-        if (item.sourceIndex) score -= 1;
-        return { ...item, score };
-      });
-      ranked.sort((a, b) => (b.score - a.score) || (a.sourceIndex - b.sourceIndex) || (a.position - b.position));
-      return ranked[0]?.doi || '';
-    }
-
-    function controlFindDoi(raw, cleanedText, buffer) {
-      const candidates = [raw, cleanedText];
-      if (buffer) {
-        const bytes = new Uint8Array(buffer);
-        const ascii = [];
-        let current = '';
-        for (const byte of bytes.subarray(0, Math.min(bytes.length, 8000000))) {
-          if (byte >= 32 && byte <= 126) {
-            current += String.fromCharCode(byte);
-          } else if (current.length) {
-            if (current.length >= 8) ascii.push(current);
-            current = '';
-          }
-        }
-        if (current.length >= 8) ascii.push(current);
-        candidates.push(ascii.join('\n\n'));
-      }
-      return findBestDoi(...candidates);
-    }
-
-    function extractMetadata(raw, cleanedText) {
-      const date = extractDate(raw, cleanedText);
-      return {
-        authors: extractAuthors(raw, cleanedText),
-        date,
-        year: (date.match(/\b(19|20)\d{2}\b/) || [''])[0],
-        journal: extractJournal(raw, cleanedText),
-        doi: extractDoi(raw, cleanedText)
-      };
-    }
-
-    function extractAbstract(raw, cleanedText) {
-      if (looksBinary(cleanedText)) return '';
-      const labelled = firstMatch(raw, [
-        /abstract\s*=\s*[{"]([\s\S]{80,5000}?)[}"],?\s*(?:\n\s*\w+\s*=|$)/i,
-        /^\s*(?:AB|N2)\s*-\s*([\s\S]{80,5000}?)(?=\n\s*(?:[A-Z][A-Z0-9]\s*-|ER\s*-)|$)/im,
-        /\babstract\b\s*[:.\-]?\s*([\s\S]{80,5000}?)(?=\n\s*(?:keywords?|key words|index terms|introduction|background|1\.?\s+introduction|i\.?\s+introduction|references)\b|$)/i,
-        /^\s*summary\s*[:.\-]?\s*([\s\S]{80,3500}?)(?=\n\s*(?:keywords?|introduction|references)\b|$)/im
-      ]);
-      if (labelled) {
-        const clean = cleanAbstract(labelled);
-        return looksBinary(clean) ? '' : clean;
-      }
-
-      const paragraphs = cleanedText
-        .split(/\n\s*\n|(?<=\.)\s{3,}/)
-        .map(cleanAbstract)
-        .filter(paragraph => paragraph.length > 120 && paragraph.length < 2200)
-        .filter(paragraph => !/^(references|bibliography|acknowledg(e)?ments)\b/i.test(paragraph));
-      const abstract = paragraphs.find(paragraph => abstractishScore(paragraph) >= 2) || paragraphs[0] || '';
-      return looksBinary(abstract) ? '' : abstract;
-    }
 
     function extractPaperKeywords(raw, cleanedText) {
       const labelled = firstMatch(raw, [
@@ -239,24 +68,17 @@
     function addParsedPapers(papers) {
       let added = 0;
       let merged = 0;
-      const idMap = new Map();
       for (const paper of papers) {
         const key = paperIdentityKey(paper);
         const existing = key ? state.papers.find(item => paperIdentityKey(item) === key) : null;
         if (existing) {
-          idMap.set(paper.id, existing.id);
           mergePaperIntoExisting(existing, paper);
           merged += 1;
         } else {
-          idMap.set(paper.id, paper.id);
           state.papers.push(paper);
           added += 1;
         }
       }
-      (state.pendingImportLinks || []).forEach(link => state.explicitLinks.push({
-        ...link, source: idMap.get(link.source) || link.source, target: idMap.get(link.target) || link.target
-      }));
-      state.pendingImportLinks = [];
       return { added, merged };
     }
 
@@ -348,3 +170,182 @@
     }
 
     async function readFile(file) {
+      const buffer = await file.arrayBuffer();
+      const scanned = await scanFileMetadata(file, buffer);
+      const text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+      const browserTextIsUnsafe = isPdfOrBinary(file, text);
+      const backendText = scanned?.text && !looksBinary(scanned.text) ? scanned.text : '';
+      const safeRaw = backendText || (browserTextIsUnsafe ? '' : text);
+      const usableText = backendText ? extractCitationText(backendText) : (browserTextIsUnsafe ? '' : extractCitationText(text));
+      const abstract = usableText ? extractAbstract(safeRaw, usableText) : '';
+      const paperKeywords = usableText ? extractPaperKeywords(safeRaw, usableText) : [];
+      const metadata = usableText ? extractMetadata(safeRaw, usableText) : { authors: [], date: '', year: '', journal: '', doi: '' };
+      const foundDoi = controlFindDoi(text, usableText, buffer);
+      const doiCandidates = uniqueDoiCandidates([
+        scanned?.doi,
+        metadata.doi,
+        foundDoi,
+        ...(scanned?.candidates || [])
+      ]);
+      if (scanned?.doi) metadata.doi = scanned.doi;
+      else if (foundDoi) metadata.doi = foundDoi;
+      const paper = {
+        id: uid(),
+        name: file.name,
+        title: usableText ? extractTitle(safeRaw, usableText, file.name) : normalizeTitle(file.name, ''),
+        abstract,
+        paperKeywords,
+        ...metadata,
+        text: usableText.slice(0, 120000),
+        size: file.size,
+        x: 0,
+        y: 0
+      };
+      if (scanned?.metadata && Object.keys(scanned.metadata).length) {
+        mergeDoiMetadata(paper, scanned.metadata);
+        paper.metadataSource = `${scanned.source || 'DOI'} via Python scan`;
+      }
+      const backendHandledGemma = Object.prototype.hasOwnProperty.call(scanned || {}, 'gemmaProcessed');
+      const gemmaResult = backendHandledGemma
+        ? (scanned.gemma || null)
+        : await extractWithGemmaLayer(paper, { usableText, doiCandidates });
+      const gemmaCandidates = uniqueDoiCandidates([gemmaResult?.doi, ...(gemmaResult?.candidates || [])]);
+      await fillMetadataFromDoiLoop(paper, doiCandidates);
+      await fillMetadataFromDoiLoop(paper, gemmaCandidates);
+      if (!metadataLooksFilled(paper) && scanned?.error) {
+        paper.metadataNote = `Python DOI scan unavailable: ${scanned.error}`;
+      } else if (backendText) {
+        paper.metadataNote = `Text extracted locally with ${scanned.extractionSource || 'the backend workflow'}; local chat terms feed discovery.`;
+      } else if (browserTextIsUnsafe) {
+        paper.metadataNote = 'PDF text looked binary and no local PDF extractor was available. Add PyMuPDF or pdfplumber for full-text extraction.';
+      }
+      return paper;
+    }
+
+    async function readImportFile(file) {
+      const lowerName = (file.name || '').toLowerCase();
+      if (lowerName.endsWith('.pdf')) return [await readFile(file)];
+      const text = await file.text();
+      if (lowerName.endsWith('.json')) {
+        const imported = parsePulseJson(text);
+        if (imported) return imported;
+      }
+      if (lowerName.endsWith('.xml') || /<\?xml|<xml|<record[\s>]|<records[\s>]/i.test(text.slice(0, 2000))) {
+        const papers = parseEndnoteXml(text, file.name);
+        if (papers.length) return papers;
+      }
+      if (lowerName.endsWith('.bib') || /@\w+\s*{/.test(text)) {
+        const papers = parseBibtexRecords(text, file.name);
+        if (papers.length) return papers;
+      }
+      if (lowerName.endsWith('.ris') || lowerName.endsWith('.enw') || /^\s*TY\s*-/im.test(text)) {
+        const papers = parseRisRecords(text, file.name);
+        if (papers.length) return papers;
+      }
+      if (lowerName.endsWith('.csv')) {
+        const papers = parseCsvRecords(text, file.name);
+        if (papers.length) return papers;
+      }
+      return [await readFile(file)];
+    }
+
+    function parsePulseJson(text) {
+      try {
+        const data = JSON.parse(text);
+        const papers = Array.isArray(data.papers) ? data.papers : (Array.isArray(data) ? data : []);
+        if (!papers.length) return null;
+        if (typeof data.threshold === 'number') {
+          state.threshold = Math.min(0.75, Math.max(0.01, data.threshold));
+          els.threshold.value = Math.round(state.threshold * 100);
+        }
+        if (data.view && typeof data.view.x === 'number' && typeof data.view.y === 'number') {
+          state.view.x = data.view.x;
+          state.view.y = data.view.y;
+        }
+        if (Array.isArray(data.areas)) {
+          state.areas = data.areas.map((area, index) => ({
+            id: area.id || uid(),
+            name: cleanField(area.name || `Area ${index + 1}`),
+            color: area.color || palette[index % palette.length],
+            x: Number(area.x || 80 + index * 28),
+            y: Number(area.y || 80 + index * 22),
+            width: Number(area.width || 260),
+            height: Number(area.height || 170)
+          }));
+        }
+        return papers.map(paper => normalizeImportedPaper({
+          ...paper,
+          paperKeywords: paper.paperKeywords || paper.keywords || [],
+          text: paper.text || paper.fullText || paper.abstract || ''
+        }, 'Imported JSON map'));
+      } catch {
+        return null;
+      }
+    }
+    const parseIratxeJson = parsePulseJson;
+
+    function parseEndnoteXml(text, name) {
+      const doc = new DOMParser().parseFromString(text, 'application/xml');
+      if (doc.querySelector('parsererror')) return [];
+      return [...doc.querySelectorAll('record')].map((record, index) => {
+        const authors = [...record.querySelectorAll('contributors authors author, authors author, author')]
+          .map(node => cleanField(node.textContent))
+          .filter(Boolean);
+        const keywords = [...record.querySelectorAll('keywords keyword, keyword')]
+          .map(node => cleanField(node.textContent))
+          .filter(Boolean);
+        const year = textFrom(record, 'dates year, year');
+        return normalizeImportedPaper({
+          name: `${name} record ${index + 1}`,
+          title: textFrom(record, 'titles title, title') || `Untitled EndNote record ${index + 1}`,
+          authors,
+          date: textFrom(record, 'dates date, pub-dates date, date') || year,
+          year,
+          journal: textFrom(record, 'periodical full-title, periodical abbrev-1, secondary-title, journal'),
+          doi: normalizeDoi(textFrom(record, 'electronic-resource-num, doi')),
+          abstract: textFrom(record, 'abstract, notes style'),
+          paperKeywords: keywords,
+          text: cleanField(record.textContent)
+        }, 'EndNote XML');
+      }).filter(paper => paper.title && !/^Untitled EndNote record/i.test(paper.title) || paper.doi);
+    }
+
+    function textFrom(root, selectors) {
+      for (const selector of selectors.split(',')) {
+        const node = root.querySelector(selector.trim());
+        if (node?.textContent) return cleanField(node.textContent);
+      }
+      return '';
+    }
+
+    function parseBibtexRecords(text, name) {
+      const records = text.split(/(?=@\w+\s*{)/g).filter(record => /^@\w+\s*{/.test(record.trim()));
+      return records.map((record, index) => {
+        const metadata = extractMetadata(record, extractCitationText(record));
+        const abstract = extractAbstract(record, extractCitationText(record));
+        return normalizeImportedPaper({
+          name: `${name} record ${index + 1}`,
+          title: extractTitle(record, extractCitationText(record), `${name} record ${index + 1}`),
+          abstract,
+          paperKeywords: extractPaperKeywords(record, record),
+          ...metadata,
+          text: extractCitationText(record)
+        }, 'BibTeX');
+      });
+    }
+
+    function parseRisRecords(text, name) {
+      const records = text.split(/(?=^\s*TY\s*-)/gim).filter(record => /^\s*TY\s*-/im.test(record));
+      return records.map((record, index) => {
+        const cleaned = extractCitationText(record);
+        const metadata = extractMetadata(record, cleaned);
+        return normalizeImportedPaper({
+          name: `${name} record ${index + 1}`,
+          title: extractTitle(record, cleaned, `${name} record ${index + 1}`),
+          abstract: extractAbstract(record, cleaned),
+          paperKeywords: extractPaperKeywords(record, cleaned),
+          ...metadata,
+          text: cleaned
+        }, 'RIS/EndNote');
+      });
+    }

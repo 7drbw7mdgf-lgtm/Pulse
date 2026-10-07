@@ -1,173 +1,3 @@
-    }
-
-    function hexColor(value, fallback = '#0d837b') {
-      const text = String(value || '').trim();
-      return /^#[0-9a-f]{6}$/i.test(text) ? text : fallback;
-    }
-
-    function findAreaByName(name) {
-      const key = String(name || '').trim().toLowerCase();
-      return state.areas.find(area => area.name.toLowerCase() === key);
-    }
-
-    function createNamedArea(action = {}) {
-      const index = state.areas.length;
-      const area = {
-        id: uid(),
-        name: cleanField(action.name || `Area ${index + 1}`),
-        color: hexColor(action.color, palette[index % palette.length]),
-        x: Math.max(40, Math.min(1600, Number(action.x || state.view.x + 110 + index * 34))),
-        y: Math.max(40, Math.min(1400, Number(action.y || state.view.y + 110 + index * 28))),
-        width: Math.max(120, Math.min(520, Number(action.width || 260))),
-        height: Math.max(90, Math.min(380, Number(action.height || 170)))
-      };
-      state.areas.push(area);
-      state.selectedAreaId = area.id;
-      return area;
-    }
-
-    function applyChatActions(actions = []) {
-      const applied = [];
-      const safeActions = Array.isArray(actions) ? actions.slice(0, 16) : [];
-      for (const action of safeActions) {
-        if (!action || typeof action !== 'object') continue;
-        const type = String(action.type || '').trim();
-        if (type === 'set_threshold') {
-          const value = Math.max(0.01, Math.min(0.75, Number(action.value)));
-          if (Number.isFinite(value)) {
-            state.threshold = value;
-            els.threshold.value = Math.round(value * 100);
-            applied.push(`set threshold to ${Math.round(value * 100)}%`);
-          }
-        } else if (type === 'set_mode') {
-          if (setMapMode(String(action.mode || ''))) applied.push(`switched to ${state.mode} mode`);
-        } else if (type === 'set_graph_style') {
-          const updates = {};
-          if (Number.isFinite(Number(action.nodeSize))) updates.nodeSize = Math.max(14, Math.min(42, Number(action.nodeSize)));
-          if (Number.isFinite(Number(action.edgeScale))) updates.edgeScale = Math.max(0.25, Math.min(1.8, Number(action.edgeScale)));
-          if (Number.isFinite(Number(action.spacing))) updates.spacing = Math.max(0.7, Math.min(1.65, Number(action.spacing)));
-          if (['short', 'full', 'keywords', 'none'].includes(action.labelMode)) updates.labelMode = action.labelMode;
-          if (typeof action.showGrid === 'boolean') updates.showGrid = action.showGrid;
-          if (typeof action.showAreas === 'boolean') updates.showAreas = action.showAreas;
-          if (Object.keys(updates).length) {
-            state.graphStyle = { ...state.graphStyle, ...updates };
-            syncGraphControls();
-            applied.push('updated graph style');
-          }
-        } else if (type === 'center_paper') {
-          const paper = state.papers.find(item => item.id === action.paperId);
-          if (paper) {
-            state.centerId = paper.id;
-            applied.push(`centered ${compactTitle(paper.title)}`);
-          }
-        } else if (type === 'color_paper') {
-          const paper = state.papers.find(item => item.id === action.paperId);
-          if (paper) {
-            paper.color = hexColor(action.color, paper.color || '#0d837b');
-            applied.push(`colored ${compactTitle(paper.title)}`);
-          }
-        } else if (type === 'create_area') {
-          const area = createNamedArea(action);
-          applied.push(`created area ${area.name}`);
-        } else if (type === 'rename_area') {
-          const area = findAreaByName(action.from);
-          const nextName = cleanField(action.to || '');
-          if (area && nextName) {
-            area.name = nextName;
-            applied.push(`renamed area to ${area.name}`);
-          }
-        } else if (type === 'assign_area') {
-          const paper = state.papers.find(item => item.id === action.paperId);
-          if (paper) {
-            let area = findAreaByName(action.areaName);
-            if (!area) area = createNamedArea({ name: action.areaName || 'Chat area', color: action.color });
-            paper.areaId = area.id;
-            if (action.color) paper.color = hexColor(action.color, paper.color || area.color);
-            applied.push(`assigned ${compactTitle(paper.title)} to ${area.name}`);
-          }
-        } else if (type === 'open_panel') {
-          const panel = String(action.panel || '');
-          if (panel === 'graph') setGraphPanelOpen(true);
-          if (panel === 'areas') setAreaPanelOpen(true);
-          if (panel === 'links') setLinkagePanelOpen(true);
-          if (panel === 'settings') setSettingsOpen(true);
-          if (['graph', 'areas', 'links', 'settings'].includes(panel)) applied.push(`opened ${panel} panel`);
-        }
-      }
-      if (applied.length) {
-        render();
-        scheduleAutosave();
-        showToast(`Chat applied ${applied.length} graph change${applied.length === 1 ? '' : 's'}.`);
-      }
-      return applied;
-    }
-
-    function normalizeTitle(name, text) {
-      const cleanName = name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
-      const lines = text.split(/\n+/).map(line => line.trim()).filter(Boolean);
-      const titleLine = lines.find(line => line.length > 18 && line.length < 160 && !/[{}@]/.test(line));
-      return titleLine || cleanName || 'Untitled paper';
-    }
-
-    function extractTitle(raw, cleanedText, fileName) {
-      const title = fieldMatch(raw, ['title', 'TI', 'T1'], 1200)
-        || fieldMatch(cleanedText, ['title'], 400);
-      if (title) return cleanField(title).replace(/\.$/, '');
-      return normalizeTitle(fileName, cleanedText);
-    }
-
-    function firstMatch(text, patterns) {
-      for (const pattern of patterns) {
-        const match = text.match(pattern);
-        if (match?.[1]) return match[1].trim();
-      }
-      return '';
-    }
-
-    function cleanField(value) {
-      return stripMarkup(value || '')
-        .replace(/\r/g, '\n')
-        .replace(/-\n(?=[a-z])/g, '')
-        .replace(/\n(?=[a-z])/g, ' ')
-        .replace(/\s+/g, ' ')
-        .replace(/^[{["']+|[}\]"']+$/g, '')
-        .trim();
-    }
-
-    function stripMarkup(value) {
-      const text = String(value || '');
-      const abstractMatch = text.match(/<jats:sec[^>]*>\s*<jats:title>\s*Abstract\s*<\/jats:title>([\s\S]*?)(?=<jats:sec[^>]*>\s*<jats:title>\s*(?:Key points?|Keywords?)\s*<\/jats:title>|<\/jats:sec>\s*$)/i);
-      const scoped = abstractMatch ? abstractMatch[1] : text;
-      const withoutKeyPoints = scoped.replace(/<jats:sec[^>]*>\s*<jats:title>\s*(?:Key points?|Keywords?)\s*<\/jats:title>[\s\S]*?<\/jats:sec>/gi, ' ');
-      const textarea = document.createElement('textarea');
-      textarea.innerHTML = withoutKeyPoints
-        .replace(/<\/?(?:jats:)?title[^>]*>/gi, ' ')
-        .replace(/<[^>]+>/g, ' ');
-      return textarea.value.replace(/\u00a0/g, ' ').replace(/\s+([,.;:])/g, '$1');
-    }
-
-    function splitKeywords(value) {
-      return cleanField(value)
-        .replace(/\bkeywords?\b\s*[:.\-]*/i, '')
-        .split(/\s*(?:;|,|\||\n|•|·)\s*/)
-        .map(item => item.trim())
-        .filter(item => item.length > 1 && item.length < 80 && !/^(keywords?|index terms?)$/i.test(item))
-        .slice(0, 24);
-    }
-
-    function cleanAuthorName(str) {
-      if (!str) return '';
-      let s = String(str)
-        .replace(/\s*\([^)]*\)/g, '')
-        .replace(/\s*\[[^\]]*\]/g, '')
-        .trim();
-      s = s.replace(/^[\s\d*†‡§#.,;:"'([\]{}<>/\\-]+/, '').trim();
-      s = s.replace(/[\s*†‡§#,:;"'([\]{}<>/\\-]+$/, '').trim();
-      if (/[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]{2,}\.$/.test(s)) {
-        s = s.slice(0, -1).trim();
-      }
-      return s;
-    }
 
     function extractLastName(raw) {
       const cleaned = cleanAuthorName(raw);
@@ -348,3 +178,174 @@
         return lead + (/10\.\d{4}/.test(joined) ? joined : run);
       });
       return text.replace(new RegExp(`(${DOI_PREFIX})[ \\t]*/[ \\t]*`, 'g'), '$1/');
+    }
+
+    function joinWrappedDois(text) {
+      const always = text.replace(
+        new RegExp(`(${DOI_PREFIX}/(?:${DOI_CHARS}*[-/])?)[ \\t]*\\r?\\n[ \\t]*${DOI_NEW_ITEM_GUARD}(?=[A-Za-z0-9(])`, 'g'),
+        '$1'
+      );
+      return always.replace(
+        new RegExp(`(${DOI_PREFIX}/${DOI_CHARS}*[._])[ \\t]*\\r?\\n[ \\t]*(?!\\d{1,3}[.)][ \\t])${DOI_NEW_ITEM_GUARD}(?=[a-z0-9])`, 'g'),
+        '$1'
+      );
+    }
+
+    function balanceDoiBrackets(doi) {
+      let depth = 0;
+      let openAt = -1;
+      for (let index = 0; index < doi.length; index++) {
+        const char = doi[index];
+        if (char === '<') {
+          if (depth === 0) openAt = index;
+          depth++;
+        } else if (char === '>') {
+          if (depth === 0) return doi.slice(0, index);
+          depth--;
+        }
+      }
+      return depth ? doi.slice(0, openAt) : doi;
+    }
+
+    function cleanDoiCandidate(value) {
+      let clean = prepareDoiText(value).trim()
+        .replace(/^\s*(?:https?:\/\/)?(?:www\.|dx\.)?doi\.org\//i, '')
+        .replace(/^\s*doi\s*[:=]?\s*/i, '')
+        .replace(/\s+/g, '')
+        .replace(/^["'{}[\]]+|["'{}[\]]+$/g, '');
+      clean = clean.split(/<(?=[/!?A-Za-z])/)[0];
+      clean = clean.split(/\)?(?:Tj|TJ|ET|BT|Tf|Tm|Td|TD|Do)\b/)[0];
+      // PDF link annotations: "/URI (https://doi.org/10.x/y)/S/URI".
+      clean = clean.split(/\)\/(?:S|URI|Type|Subtype|Rect|Border|BS|A|F|H|C|D|Dest|Next|NM|M|P|StructParent)\b/)[0];
+      clean = clean.split(/(?:>>|<<|endobj|\bobj\b|\bstream\b)/i)[0];
+      clean = balanceDoiBrackets(clean).replace(DOI_GLUED_TAIL, '$1');
+      const count = (text, char) => text.split(char).length - 1;
+      for (let pass = 0; pass < 3; pass++) {
+        const before = clean;
+        clean = clean.replace(/[.,;:'"]+$/, '');
+        while (clean.endsWith(')') && count(clean, '(') < count(clean, ')')) {
+          clean = clean.slice(0, -1).replace(/[.,;:]+$/, '');
+        }
+        clean = clean.replace(DOI_URL_SUFFIX, '')
+          .replace(/^(10\.1101\/(?:\d{4}\.\d{2}\.\d{2}\.)?\d{6,})v\d+$/, '$1');
+        if (clean === before) break;
+      }
+      return clean;
+    }
+
+    function validDoiCandidate(doi) {
+      if (!doi || !/^10\.\d{4,9}(?:\.\d+)*\//i.test(doi)) return false;
+      if (DOI_NON_PAPER_PREFIXES.some(prefix => doi.toLowerCase().startsWith(prefix))) return false;
+      const suffix = doi.split('/').slice(1).join('/');
+      if (suffix.length < 2 || doi.length > 200) return false;
+      if (/[^\x20-\x7E]/.test(doi) || /[\\{}[\]|^`\s]/.test(doi)) return false;
+      if (balanceDoiBrackets(doi) !== doi) return false;
+      if (/^10\.\d+\/(?:obj|stream|length|filter|type|height|width|xobject|smask|bitspercomponent)\b/i.test(doi)) return false;
+      if (/(?:\/Length|\/Filter|\/FlateDecode|\/Type|\/XObject|\/Width|\/Height|>>|<<|stream)/i.test(doi)) return false;
+      return true;
+    }
+
+    // Every cleaned DOI as { doi, position, text, sourceIndex } in document order.
+    function doiMatches(...values) {
+      const found = [];
+      const seen = new Set();
+      for (const value of values) {
+        const prepared = prepareDoiText(value);
+        const joined = joinWrappedDois(prepared);
+        const texts = joined === prepared ? [joined] : [joined, prepared];
+        texts.forEach((text, sourceIndex) => {
+          const pattern = new RegExp(`(^|[^0-9.])(${DOI_PREFIX}/${DOI_CHARS}+)`, 'g');
+          for (const match of text.matchAll(pattern)) {
+            const doi = cleanDoiCandidate(match[2]);
+            const key = doi.toLowerCase();
+            if (seen.has(key) || !validDoiCandidate(doi)) continue;
+            if (sourceIndex && found.some(other => other.doi.toLowerCase().startsWith(key))) continue;
+            seen.add(key);
+            found.push({ doi, position: match.index + match[1].length, text, sourceIndex });
+          }
+        });
+      }
+      return found;
+    }
+
+    function normalizeDoi(value) {
+      return doiMatches(value)[0]?.doi || '';
+    }
+
+    function sameDoi(left, right) {
+      const a = normalizeDoi(left);
+      return Boolean(a) && a.toLowerCase() === normalizeDoi(right).toLowerCase();
+    }
+
+    function findDoiCandidates(...values) {
+      return doiMatches(...values).map(item => item.doi);
+    }
+
+    function findBestDoi(...values) {
+      const refsByText = new Map();
+      const ranked = doiMatches(...values).map(item => {
+        if (!refsByText.has(item.text)) refsByText.set(item.text, [...item.text.matchAll(DOI_REFERENCES)].map(match => match.index));
+        const refs = refsByText.get(item.text);
+        let score = 0;
+        if (DOI_MARKER.test(item.text.slice(Math.max(0, item.position - 40), item.position))) score += 4;
+        if (refs.length && item.position > refs[refs.length - 1]) score -= 5;
+        if (item.position < 4000) score += 1;
+        if (item.sourceIndex) score -= 1;
+        return { ...item, score };
+      });
+      ranked.sort((a, b) => (b.score - a.score) || (a.sourceIndex - b.sourceIndex) || (a.position - b.position));
+      return ranked[0]?.doi || '';
+    }
+
+    function controlFindDoi(raw, cleanedText, buffer) {
+      const candidates = [raw, cleanedText];
+      if (buffer) {
+        const bytes = new Uint8Array(buffer);
+        const ascii = [];
+        let current = '';
+        for (const byte of bytes.subarray(0, Math.min(bytes.length, 8000000))) {
+          if (byte >= 32 && byte <= 126) {
+            current += String.fromCharCode(byte);
+          } else if (current.length) {
+            if (current.length >= 8) ascii.push(current);
+            current = '';
+          }
+        }
+        if (current.length >= 8) ascii.push(current);
+        candidates.push(ascii.join('\n\n'));
+      }
+      return findBestDoi(...candidates);
+    }
+
+    function extractMetadata(raw, cleanedText) {
+      const date = extractDate(raw, cleanedText);
+      return {
+        authors: extractAuthors(raw, cleanedText),
+        date,
+        year: (date.match(/\b(19|20)\d{2}\b/) || [''])[0],
+        journal: extractJournal(raw, cleanedText),
+        doi: extractDoi(raw, cleanedText)
+      };
+    }
+
+    function extractAbstract(raw, cleanedText) {
+      if (looksBinary(cleanedText)) return '';
+      const labelled = firstMatch(raw, [
+        /abstract\s*=\s*[{"]([\s\S]{80,5000}?)[}"],?\s*(?:\n\s*\w+\s*=|$)/i,
+        /^\s*(?:AB|N2)\s*-\s*([\s\S]{80,5000}?)(?=\n\s*(?:[A-Z][A-Z0-9]\s*-|ER\s*-)|$)/im,
+        /\babstract\b\s*[:.\-]?\s*([\s\S]{80,5000}?)(?=\n\s*(?:keywords?|key words|index terms|introduction|background|1\.?\s+introduction|i\.?\s+introduction|references)\b|$)/i,
+        /^\s*summary\s*[:.\-]?\s*([\s\S]{80,3500}?)(?=\n\s*(?:keywords?|introduction|references)\b|$)/im
+      ]);
+      if (labelled) {
+        const clean = cleanAbstract(labelled);
+        return looksBinary(clean) ? '' : clean;
+      }
+
+      const paragraphs = cleanedText
+        .split(/\n\s*\n|(?<=\.)\s{3,}/)
+        .map(cleanAbstract)
+        .filter(paragraph => paragraph.length > 120 && paragraph.length < 2200)
+        .filter(paragraph => !/^(references|bibliography|acknowledg(e)?ments)\b/i.test(paragraph));
+      const abstract = paragraphs.find(paragraph => abstractishScore(paragraph) >= 2) || paragraphs[0] || '';
+      return looksBinary(abstract) ? '' : abstract;
+    }

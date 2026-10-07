@@ -1,3 +1,162 @@
+.tag-action-menu-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tag-action-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.tag-action-item:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.tag-action-item.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.tag-action-item .action-icon {
+  font-size: 12px;
+  width: 15px;
+  text-align: center;
+}
+.tag-action-item .action-label {
+  flex: 1;
+}
+
+/* ─── Actions Mini Grid in Details ─────────────────────────────────── */
+
+.actions-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  margin-bottom: 8px;
+}
+.actions-mini-grid .button {
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Streamlined Steering Workspace in Details ─────────────────────── */
+
+.recommend-steer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  margin-top: 6px;
+  animation: card-in 0.18s ease;
+}
+.steer-compact-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.steer-compact-head h3 {
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--ink);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.steer-chips-unified {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-height: 20px;
+  align-items: center;
+}
+.subtle-empty {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-style: italic;
+  padding: 2px 0;
+}
+.steer-mini-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 550;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  transition: all 0.12s;
+}
+.steer-mini-chip button.chip-label {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.steer-mini-chip button.chip-label:hover {
+  text-decoration: underline;
+}
+.steer-mini-chip .chip-remove-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+.steer-mini-chip .chip-remove-btn:hover {
+  color: var(--danger);
+}
+
+.steer-mini-chip.chip-steer {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.steer-mini-chip.chip-graph {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+.steer-mini-chip.chip-exclude {
+  border-color: var(--danger-soft);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.steer-input-compact-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.steer-input-compact-bar input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: var(--r-sm);
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--ink);
@@ -123,178 +282,3 @@
   user-select: none;
   z-index: 30;
 }
-
-.rail-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 16px 14px;
-}
-
-.rail-logo {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
-}
-
-.rail-brand-text {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-}
-
-.rail-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #f8fafc;
-  letter-spacing: -0.3px;
-}
-
-.rail-version {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: #818cf8;
-  background: rgba(99, 102, 241, 0.18);
-  padding: 1px 5px;
-  border-radius: 4px;
-}
-
-.rail-menu {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 8px 10px;
-}
-
-.rail-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #94a3b8;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: left;
-  width: 100%;
-}
-
-.rail-item svg, .rail-item .feather-icon {
-  width: 16px;
-  height: 16px;
-  color: inherit;
-}
-
-.rail-item:hover {
-  color: #f8fafc;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.rail-item.active {
-  background: #4f46e5;
-  color: #ffffff;
-  font-weight: 600;
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
-}
-
-.rail-badge {
-  margin-left: auto;
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #cbd5e1;
-}
-
-.rail-item.active .rail-badge {
-  background: rgba(255, 255, 255, 0.25);
-  color: #ffffff;
-}
-
-.rail-recent {
-  margin-top: auto;
-  padding: 14px 12px 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.rail-section-title {
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: #64748b;
-  margin-bottom: 8px;
-  padding-left: 4px;
-}
-
-.rail-recent-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.recent-session-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 6px 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.recent-session-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.session-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  border: 1.5px solid #6366f1;
-  margin-top: 5px;
-  flex-shrink: 0;
-}
-
-.session-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.session-name {
-  font-size: 11.5px;
-  color: #cbd5e1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.session-time {
-  font-size: 10px;
-  color: #64748b;
-}
-
-/* ─── 2. Main Viewport & Header Bar ─── */
-.pulse-main-viewport {
-  flex: 1;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--bg);
-  min-width: 0;
-}
-
-.pulse-top-header {
-  height: 52px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  align-items: center;

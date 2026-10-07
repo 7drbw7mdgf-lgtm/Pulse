@@ -11,6 +11,7 @@ import sys
 import os
 import json
 import zlib
+import tempfile
 import urllib.request
 import urllib.parse
 from pathlib import Path
@@ -18,14 +19,15 @@ from pathlib import Path
 # Add repo root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+os.environ.setdefault('PULSE_CONFIG_DIR', tempfile.mkdtemp(prefix='pulse-security-test-'))
 import pulse_backend
 
 def test_version():
-    print("[*] Testing version bump to 1.3.0...")
-    assert pulse_backend.APP_VERSION == "1.3.0", f"Expected 1.3.0, got {pulse_backend.APP_VERSION}"
-    package_json = json.loads(Path("package.json").read_text("utf-8"))
-    assert package_json.get("version") == "1.3.0", f"package.json version is {package_json.get('version')}"
-    print("    [+] Version 1.3.0 verified.")
+    print("[*] Testing version bump to 1.3.1...")
+    assert pulse_backend.APP_VERSION == "1.3.1", f"Expected 1.3.1, got {pulse_backend.APP_VERSION}"
+    package_json = json.loads((Path(__file__).resolve().parent / "package.json").read_text("utf-8"))
+    assert package_json.get("version") == "1.3.1", f"package.json version is {package_json.get('version')}"
+    print("    [+] Version 1.3.1 verified.")
 
 def test_credential_encryption():
     print("[*] Testing credential encryption at rest...")
@@ -89,12 +91,13 @@ def test_pdf_decompression_bomb_protection():
 def test_http_server_security():
     print("[*] Testing HTTP server security & session protections...")
     import threading
-    from http.server import ThreadingHTTPServer
+    from pulse.http import PulseServer
     
     # Reset bootstrap state
-    pulse_backend.BOOTSTRAP_CONSUMED = False
-    test_port = 8993
-    server = ThreadingHTTPServer(("127.0.0.1", test_port), pulse_backend.PulseHandler)
+    pulse_backend.APP_CONTEXT.bootstrap_consumed = False
+    test_port = 0
+    server = PulseServer(("127.0.0.1", test_port), pulse_backend.APP_CONTEXT)
+    test_port = server.server_address[1]
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
     

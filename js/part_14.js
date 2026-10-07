@@ -1,59 +1,3 @@
-      });
-    }
-
-    function sharedKeywords(source, target) {
-      if (!source || !target) return [];
-      const left = new Set(mergedKeywords(source).map(term => term.toLowerCase()));
-      return mergedKeywords(target).filter(term => left.has(term.toLowerCase()));
-    }
-
-    function linkTypeName(link) {
-      const labels = {
-        citation: 'Direct citation',
-        bibliographic: 'Bibliographic coupling',
-        cocitation: 'Co-citation',
-        mixed: 'Mixed literature link',
-        similarity: 'Text similarity'
-      };
-      return labels[link?.type || 'similarity'] || 'Link';
-    }
-
-    function linkLabel(link) {
-      const score = `${Math.round((link.score || 0) * 100)}%`;
-      return `${linkTypeName(link)} (${score}). ${link.evidence || 'Related through title, abstract, keywords, or metadata.'}`;
-    }
-
-    function paperMatchScore(paper) {
-      const strongest = state.links
-        .filter(link => link.source === paper.id || link.target === paper.id)
-        .reduce((best, link) => Math.max(best, Number(link.score || 0)), 0);
-      return Math.max(0, Math.min(99, Math.round(strongest * 100)));
-    }
-
-    function paperStudyType(paper) {
-      const text = `${paper.title || ''} ${paper.abstract || ''} ${(paper.paperKeywords || []).join(' ')}`.toLowerCase();
-      if (/\breview|systematic review|meta-analysis\b/.test(text)) return 'Review';
-      if (/\btrial|randomi[sz]ed|cohort|case-control|participant|patients?\b/.test(text)) return 'Clinical study';
-      if (/\bexperiment|assay|culture|sequenc|rna-seq|transcriptomic|proteomic|genomic\b/.test(text)) return 'Experimental study';
-      if (/\bmodel|algorithm|embedding|transformer|network|machine learning\b/.test(text)) return 'Computational study';
-      return 'Research article';
-    }
-
-    function paperDomainLabel(paper) {
-      const keywords = mergedKeywords(paper).join(' ').toLowerCase();
-      const title = `${paper.title || ''} ${paper.journal || ''}`.toLowerCase();
-      if (/\btranscript|rna|gene expression|sequenc|genomic\b/.test(`${keywords} ${title}`)) return 'Transcriptomics';
-      if (/\bmicrobi|bacteria|campylobacter|biofilm|infection|immune\b/.test(`${keywords} ${title}`)) return 'Microbiology';
-      if (/\bmachine learning|embedding|graph|network|transformer|retrieval\b/.test(`${keywords} ${title}`)) return 'AI literature discovery';
-      if (/\bclinical|patient|therapy|therapeutic|disease\b/.test(`${keywords} ${title}`)) return 'Clinical biology';
-      return 'Literature mapping';
-    }
-
-    function paperAuthorSummary(paper) {
-      const authors = paperAuthors(paper);
-      if (!authors.length) return 'Unknown authors';
-      return authors.slice(0, 3).join(', ') + (authors.length > 3 ? ` +${authors.length - 3}` : '');
-    }
 
     function renderPapers() {
       const areaOptions = paper => [
@@ -164,7 +108,7 @@
           ${paperOrganizeMarkup(paper)}
         </article>
       `;
-      const hasFilter = Boolean(state.librarySearch || (state.filterTags && state.filterTags.length > 0));
+      const hasFilter = Boolean(state.filterTags && state.filterTags.length > 0);
       const displayPapers = state.papers.filter(paperMatchesFilters);
 
       if (els.paperCount) {
@@ -300,51 +244,3 @@
       render();
       showToast(`Focused on ${compactTitle(source.title)} ↔ ${compactTitle(target.title)}.`);
     }
-
-    function renderLinkageDetails() {
-      const link = state.links.find(item => linkId(item) === state.selectedLinkId);
-      if (!link) {
-        state.selectedLinkId = null;
-        els.details.hidden = true;
-        return;
-      }
-      const source = state.papers.find(item => item.id === link.source);
-      const target = state.papers.find(item => item.id === link.target);
-      if (!source || !target) {
-        state.selectedLinkId = null;
-        els.details.hidden = true;
-        return;
-      }
-
-      const scorePct = Math.round(link.score * 100);
-      const sharedKws = sharedKeywords(source, target);
-      const sourceOrgs = (source.organisms || []).map(o => o.trim());
-      const targetOrgs = (target.organisms || []).map(o => o.trim());
-      const sharedOrgs = dedupeList(sourceOrgs.filter(so => targetOrgs.some(to => to.toLowerCase() === so.toLowerCase())));
-
-      const sourceTechs = (source.techniques || []).map(t => t.trim());
-      const targetTechs = (target.techniques || []).map(t => t.trim());
-      const sharedTechs = dedupeList(sourceTechs.filter(st => targetTechs.some(tt => tt.toLowerCase() === st.toLowerCase())));
-
-      const sourceAlex = normalizeOpenAlexId(source.openAlexId || source.openAlexUrl || '');
-      const targetAlex = normalizeOpenAlexId(target.openAlexId || target.openAlexUrl || '');
-      const sourceCitesTarget = targetAlex && (source.referenceIds || []).some(id => normalizeOpenAlexId(id) === targetAlex);
-      const targetCitesSource = sourceAlex && (target.referenceIds || []).some(id => normalizeOpenAlexId(id) === sourceAlex);
-      const sharedRefs = intersectIds(source.referenceIds, target.referenceIds);
-      const sharedCiters = intersectIds(source.citedByIds, target.citedByIds);
-
-      const citationFacts = [];
-      if (sourceCitesTarget) {
-        citationFacts.push(`<strong>${escapeHtml(compactTitle(source.title))}</strong> directly cites <strong>${escapeHtml(compactTitle(target.title))}</strong>.`);
-      }
-      if (targetCitesSource) {
-        citationFacts.push(`<strong>${escapeHtml(compactTitle(target.title))}</strong> directly cites <strong>${escapeHtml(compactTitle(source.title))}</strong>.`);
-      }
-      if (sharedRefs.length > 0) {
-        citationFacts.push(`Share <strong>${sharedRefs.length}</strong> common referenced paper${sharedRefs.length === 1 ? '' : 's'} in their bibliographies.`);
-      }
-      if (sharedCiters.length > 0) {
-        citationFacts.push(`Co-cited together by <strong>${sharedCiters.length}</strong> external literature paper${sharedCiters.length === 1 ? '' : 's'}.`);
-      }
-      if (!citationFacts.length) {
-        citationFacts.push('Connected through semantic embedding and full-text keyword proximity in the literature map.');

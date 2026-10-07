@@ -1,3 +1,9 @@
+.ai-close:hover { background: var(--surface-3); color: var(--ink); }
+
+/* ─── Header ───────────────────────────────────────────────────────── */
+
+.app-header {
+  position: relative;
   z-index: 30;
   flex: none;
   display: grid;
@@ -277,24 +283,3 @@ main { position: relative; min-width: 0; min-height: 0; display: flex; }
   gap: 8px;
   padding: 2px 14px 18px;
 }
-
-/* ─── Paper cards ──────────────────────────────────────────────────── */
-
-.paper-card {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 12px 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.paper-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-md); }
-.paper-card.is-selected { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
-
-/* Compact Paper Card in Sidebar */
-.paper-card.is-compact {
-  padding: 8px 10px 6px;

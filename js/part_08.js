@@ -1,183 +1,3 @@
-      const buffer = await file.arrayBuffer();
-      const scanned = await scanFileMetadata(file, buffer);
-      const text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
-      const browserTextIsUnsafe = isPdfOrBinary(file, text);
-      const backendText = scanned?.text && !looksBinary(scanned.text) ? scanned.text : '';
-      const safeRaw = backendText || (browserTextIsUnsafe ? '' : text);
-      const usableText = backendText ? extractCitationText(backendText) : (browserTextIsUnsafe ? '' : extractCitationText(text));
-      const abstract = usableText ? extractAbstract(safeRaw, usableText) : '';
-      const paperKeywords = usableText ? extractPaperKeywords(safeRaw, usableText) : [];
-      const metadata = usableText ? extractMetadata(safeRaw, usableText) : { authors: [], date: '', year: '', journal: '', doi: '' };
-      const foundDoi = controlFindDoi(text, usableText, buffer);
-      const doiCandidates = uniqueDoiCandidates([
-        scanned?.doi,
-        metadata.doi,
-        foundDoi,
-        ...(scanned?.candidates || [])
-      ]);
-      if (scanned?.doi) metadata.doi = scanned.doi;
-      else if (foundDoi) metadata.doi = foundDoi;
-      const paper = {
-        id: uid(),
-        name: file.name,
-        title: usableText ? extractTitle(safeRaw, usableText, file.name) : normalizeTitle(file.name, ''),
-        abstract,
-        paperKeywords,
-        ...metadata,
-        text: usableText.slice(0, 120000),
-        size: file.size,
-        x: 0,
-        y: 0
-      };
-      if (scanned?.metadata && Object.keys(scanned.metadata).length) {
-        mergeDoiMetadata(paper, scanned.metadata);
-        paper.metadataSource = `${scanned.source || 'DOI'} via Python scan`;
-      }
-      const backendHandledGemma = Object.prototype.hasOwnProperty.call(scanned || {}, 'gemmaProcessed');
-      const gemmaResult = backendHandledGemma
-        ? (scanned.gemma || null)
-        : await extractWithGemmaLayer(paper, { usableText, doiCandidates });
-      const gemmaCandidates = uniqueDoiCandidates([gemmaResult?.doi, ...(gemmaResult?.candidates || [])]);
-      await fillMetadataFromDoiLoop(paper, doiCandidates);
-      await fillMetadataFromDoiLoop(paper, gemmaCandidates);
-      if (!metadataLooksFilled(paper) && scanned?.error) {
-        paper.metadataNote = `Python DOI scan unavailable: ${scanned.error}`;
-      } else if (backendText) {
-        paper.metadataNote = `Text extracted locally with ${scanned.extractionSource || 'the backend workflow'}; local chat terms feed discovery.`;
-      } else if (browserTextIsUnsafe) {
-        paper.metadataNote = 'PDF text looked binary and no local PDF extractor was available. Add PyMuPDF or pdfplumber for full-text extraction.';
-      }
-      return paper;
-    }
-
-    async function readImportFile(file) {
-      const lowerName = (file.name || '').toLowerCase();
-      if (lowerName.endsWith('.pdf')) return [await readFile(file)];
-      const text = await file.text();
-      if (lowerName.endsWith('.json')) {
-        const imported = parsePulseJson(text);
-        if (imported) return imported;
-      }
-      if (lowerName.endsWith('.xml') || /<\?xml|<xml|<record[\s>]|<records[\s>]/i.test(text.slice(0, 2000))) {
-        const papers = parseEndnoteXml(text, file.name);
-        if (papers.length) return papers;
-      }
-      if (lowerName.endsWith('.bib') || /@\w+\s*{/.test(text)) {
-        const papers = parseBibtexRecords(text, file.name);
-        if (papers.length) return papers;
-      }
-      if (lowerName.endsWith('.ris') || lowerName.endsWith('.enw') || /^\s*TY\s*-/im.test(text)) {
-        const papers = parseRisRecords(text, file.name);
-        if (papers.length) return papers;
-      }
-      if (lowerName.endsWith('.csv')) {
-        const papers = parseCsvRecords(text, file.name);
-        if (papers.length) return papers;
-      }
-      return [await readFile(file)];
-    }
-
-    function parsePulseJson(text) {
-      try {
-        const data = JSON.parse(text);
-        const papers = Array.isArray(data.papers) ? data.papers : (Array.isArray(data) ? data : []);
-        if (!papers.length) return null;
-        state.pendingImportLinks = [...(state.pendingImportLinks || []), ...(data.explicitLinks || data.links || [])];
-        if (typeof data.threshold === 'number') {
-          state.threshold = Math.min(0.75, Math.max(0.01, data.threshold));
-          els.threshold.value = Math.round(state.threshold * 100);
-        }
-        if (data.view && typeof data.view.x === 'number' && typeof data.view.y === 'number') {
-          state.view.x = data.view.x;
-          state.view.y = data.view.y;
-        }
-        if (Array.isArray(data.areas)) {
-          state.areas = data.areas.map((area, index) => ({
-            id: area.id || uid(),
-            name: cleanField(area.name || `Area ${index + 1}`),
-            color: area.color || palette[index % palette.length],
-            x: Number(area.x || 80 + index * 28),
-            y: Number(area.y || 80 + index * 22),
-            width: Number(area.width || 260),
-            height: Number(area.height || 170)
-          }));
-        }
-        return papers.map(paper => normalizeImportedPaper({
-          ...paper,
-          paperKeywords: paper.paperKeywords || paper.keywords || [],
-          text: paper.text || paper.fullText || paper.abstract || ''
-        }, 'Imported JSON map'));
-      } catch {
-        return null;
-      }
-    }
-    const parseIratxeJson = parsePulseJson;
-
-    function parseEndnoteXml(text, name) {
-      const doc = new DOMParser().parseFromString(text, 'application/xml');
-      if (doc.querySelector('parsererror')) return [];
-      return [...doc.querySelectorAll('record')].map((record, index) => {
-        const authors = [...record.querySelectorAll('contributors authors author, authors author, author')]
-          .map(node => cleanField(node.textContent))
-          .filter(Boolean);
-        const keywords = [...record.querySelectorAll('keywords keyword, keyword')]
-          .map(node => cleanField(node.textContent))
-          .filter(Boolean);
-        const year = textFrom(record, 'dates year, year');
-        return normalizeImportedPaper({
-          name: `${name} record ${index + 1}`,
-          title: textFrom(record, 'titles title, title') || `Untitled EndNote record ${index + 1}`,
-          authors,
-          date: textFrom(record, 'dates date, pub-dates date, date') || year,
-          year,
-          journal: textFrom(record, 'periodical full-title, periodical abbrev-1, secondary-title, journal'),
-          doi: normalizeDoi(textFrom(record, 'electronic-resource-num, doi')),
-          abstract: textFrom(record, 'abstract, notes style'),
-          paperKeywords: keywords,
-          text: cleanField(record.textContent)
-        }, 'EndNote XML');
-      }).filter(paper => paper.title && !/^Untitled EndNote record/i.test(paper.title) || paper.doi);
-    }
-
-    function textFrom(root, selectors) {
-      for (const selector of selectors.split(',')) {
-        const node = root.querySelector(selector.trim());
-        if (node?.textContent) return cleanField(node.textContent);
-      }
-      return '';
-    }
-
-    function parseBibtexRecords(text, name) {
-      const records = text.split(/(?=@\w+\s*{)/g).filter(record => /^@\w+\s*{/.test(record.trim()));
-      return records.map((record, index) => {
-        const metadata = extractMetadata(record, extractCitationText(record));
-        const abstract = extractAbstract(record, extractCitationText(record));
-        return normalizeImportedPaper({
-          name: `${name} record ${index + 1}`,
-          title: extractTitle(record, extractCitationText(record), `${name} record ${index + 1}`),
-          abstract,
-          paperKeywords: extractPaperKeywords(record, record),
-          ...metadata,
-          text: extractCitationText(record)
-        }, 'BibTeX');
-      });
-    }
-
-    function parseRisRecords(text, name) {
-      const records = text.split(/(?=^\s*TY\s*-)/gim).filter(record => /^\s*TY\s*-/im.test(record));
-      return records.map((record, index) => {
-        const cleaned = extractCitationText(record);
-        const metadata = extractMetadata(record, cleaned);
-        return normalizeImportedPaper({
-          name: `${name} record ${index + 1}`,
-          title: extractTitle(record, cleaned, `${name} record ${index + 1}`),
-          abstract: extractAbstract(record, cleaned),
-          paperKeywords: extractPaperKeywords(record, cleaned),
-          ...metadata,
-          text: cleaned
-        }, 'RIS/EndNote');
-      });
-    }
 
     function parseCsvRecords(text, name) {
       const rows = parseCsv(text);
@@ -237,6 +57,7 @@
     function normalizeImportedPaper(paper, source) {
       return {
         id: paper.id || uid(),
+        selected: paper.selected !== false,
         name: paper.name || source,
         title: cleanField(paper.title || paper.name || 'Untitled paper'),
         authors: paperAuthors(paper),
@@ -348,3 +169,204 @@
 
     function mergeDoiMetadata(paper, metadata) {
       if (metadata.title) paper.title = metadata.title;
+      if ((metadata.authors || []).length) paper.authors = paperAuthors(metadata);
+      if (metadata.date) paper.date = metadata.date;
+      if (metadata.year) paper.year = metadata.year;
+      if (metadata.journal) paper.journal = metadata.journal;
+      if (metadata.doi) paper.doi = metadata.doi;
+      for (const key of ['pmid','s2PaperId','url','openAccessPdf','influentialCitationCount']) { if (metadata[key] !== undefined) paper[key] = metadata[key]; }
+      if (metadata.abstract && (!paper.abstract || paper.abstract.length < 120 || looksBinary(paper.abstract))) paper.abstract = metadata.abstract;
+      if ((metadata.paperKeywords || []).length) {
+        paper.paperKeywords = [...new Set([...(metadata.paperKeywords || []), ...(paper.paperKeywords || [])])].slice(0, 24);
+      }
+      if ((metadata.gemmaKeywords || []).length) {
+        paper.gemmaKeywords = [...new Set([...(metadata.gemmaKeywords || []), ...(paper.gemmaKeywords || [])])].slice(0, 24);
+      }
+      if ((metadata.keyFindings || []).length) paper.keyFindings = metadata.keyFindings.slice(0, 5);
+      if ((metadata.organisms || []).length) paper.organisms = dedupeList([...(paper.organisms || []), ...metadata.organisms]).slice(0, 16);
+      if ((metadata.techniques || []).length) paper.techniques = dedupeList([...(paper.techniques || []), ...metadata.techniques]).slice(0, 16);
+      if ((metadata.discoveryTerms || []).length) paper.discoveryTerms = dedupeList([...(paper.discoveryTerms || []), ...metadata.discoveryTerms]).slice(0, 24);
+      if (metadata.openAlexId || metadata.openAlexUrl) paper.openAlexId = normalizeOpenAlexId(metadata.openAlexId || metadata.openAlexUrl);
+      if (metadata.openAlexUrl) paper.openAlexUrl = metadata.openAlexUrl;
+      if ((metadata.referenceIds || []).length) {
+        paper.referenceIds = dedupeList([...(paper.referenceIds || []), ...metadata.referenceIds].map(normalizeOpenAlexId).filter(Boolean)).slice(0, 160);
+      }
+      if ((metadata.citedByIds || []).length) {
+        paper.citedByIds = dedupeList([...(paper.citedByIds || []), ...metadata.citedByIds].map(normalizeOpenAlexId).filter(Boolean)).slice(0, 160);
+      }
+      if (metadata.citedByCount) paper.citedByCount = Number(metadata.citedByCount || 0);
+    }
+
+    function tokenize(text) {
+      const tokens = (text || '')
+        .toLowerCase()
+        .replace(/https?:\/\/\S+/g, ' ')
+        .replace(/[^\w\s-]/g, ' ')
+        .split(/\s+/)
+        .map(token => token.replace(/^-+|-+$/g, ''))
+        .filter(token => token.length > 2 && token.length < 32 && !stopwords.has(token) && !/^\d+$/.test(token));
+
+      const grams = [];
+      for (let index = 0; index < tokens.length - 1; index += 1) {
+        if (!stopwords.has(tokens[index]) && !stopwords.has(tokens[index + 1])) {
+          grams.push(`${tokens[index]} ${tokens[index + 1]}`);
+        }
+      }
+
+      return tokens.concat(grams.filter(gram => gram.length < 42));
+    }
+
+    let relatednessKey = '';
+    let relatednessRevision = 0;
+    const paperAnalysisKeys = new WeakMap();
+    function analysisKey() {
+      const records = state.papers.map(paper => {
+        const values = [paper.id,paper.title,(paper.authors||[]).join('|'),paper.year,paper.journal,paper.abstract,(paper.paperKeywords||[]).join('|'),paper.text,paper.doi,paper.openAlexId,JSON.stringify(paper.referenceIds||[]),JSON.stringify(paper.citedByIds||[])];
+        const cached = paperAnalysisKeys.get(paper);
+        if (cached && cached.values.every((value,index)=>value===values[index])) return cached.key;
+        const key = JSON.stringify(values);paperAnalysisKeys.set(paper,{values,key});return key;
+      });
+      return JSON.stringify([records,state.threshold,state.graphSteerKeywords,state.explicitLinks]);
+    }
+    function calculateRelatedness() {
+      const key = analysisKey();
+      if (key === relatednessKey) return;
+      relatednessRevision += 1;
+      const graphSteerTerms = dedupeList(state.graphSteerKeywords.flatMap(term => tokenize(term))).slice(0, 24);
+      const docs = state.papers.map(paper => ({
+        id: paper.id,
+        tokens: tokenize(`${paper.title} ${(paper.authors || []).join(' ')} ${paper.year || ''} ${paper.journal || ''} ${paper.abstract || ''} ${(paper.paperKeywords || []).join(' ')} ${paper.text}`)
+      }));
+      const docFreq = new Map();
+      docs.forEach(doc => new Set(doc.tokens).forEach(term => docFreq.set(term, (docFreq.get(term) || 0) + 1)));
+
+      state.vectors.clear();
+      state.keywords.clear();
+      const documentCount = Math.max(docs.length, 1);
+
+      docs.forEach(doc => {
+        const counts = new Map();
+        doc.tokens.forEach(term => counts.set(term, (counts.get(term) || 0) + 1));
+        graphSteerTerms.forEach(term => {
+          if (counts.has(term)) counts.set(term, counts.get(term) + 6);
+        });
+        const vector = new Map();
+        let norm = 0;
+        counts.forEach((count, term) => {
+          const tf = 1 + Math.log(count);
+          const idf = Math.log((1 + documentCount) / (1 + (docFreq.get(term) || 0))) + 1;
+          const weight = tf * idf;
+          vector.set(term, weight);
+          norm += weight * weight;
+        });
+
+        const normalized = new Map();
+        const divisor = Math.sqrt(norm) || 1;
+        vector.forEach((weight, term) => normalized.set(term, weight / divisor));
+        state.vectors.set(doc.id, normalized);
+        state.keywords.set(doc.id, [...vector.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([term]) => term));
+      });
+
+      state.links = [];
+      for (let i = 0; i < state.papers.length; i += 1) {
+        for (let j = i + 1; j < state.papers.length; j += 1) {
+          const source = state.papers[i].id;
+          const target = state.papers[j].id;
+          const score = cosine(state.vectors.get(source), state.vectors.get(target));
+          if (score >= state.threshold) state.links.push({ source, target, score, type: 'similarity' });
+        }
+      }
+      addCitationTopologyEdges();
+
+      state.clusters = findClusters();
+      relatednessKey = analysisKey();
+    }
+
+    function addCitationTopologyEdges() {
+      const byOpenAlex = new Map(state.papers.map(paper => [normalizeOpenAlexId(paper.openAlexId || paper.openAlexUrl || ''), paper]).filter(([id]) => id));
+      const byPair = new Map(state.links.map(link => [pairKey(link.source, link.target), link]));
+      const upsert = (source, target, type, score, evidence = '') => {
+        if (!source || !target || source === target) return;
+        const key = pairKey(source, target);
+        const existing = byPair.get(key);
+        const rank = { similarity: 0, cocitation: 1, bibliographic: 2, citation: 3, mixed: 4 };
+        if (existing) {
+          existing.score = Math.max(existing.score || 0, score);
+          existing.evidence = dedupeList([existing.evidence, evidence].filter(Boolean)).join(' | ');
+          if (existing.type !== type) existing.type = rank[type] > rank[existing.type] ? type : (rank[type] === rank[existing.type] ? existing.type : 'mixed');
+          return;
+        }
+        const link = { source, target, score, type, evidence };
+        state.links.push(link);
+        byPair.set(key, link);
+      };
+
+      state.papers.forEach(paper => {
+        const references = new Set((paper.referenceIds || []).map(normalizeOpenAlexId).filter(Boolean));
+        references.forEach(referenceId => {
+          const cited = byOpenAlex.get(referenceId);
+          if (cited) upsert(paper.id, cited.id, 'citation', 0.98, `${compactTitle(paper.title)} cites ${compactTitle(cited.title)}`);
+        });
+      });
+
+      for (let i = 0; i < state.papers.length; i += 1) {
+        for (let j = i + 1; j < state.papers.length; j += 1) {
+          const left = state.papers[i];
+          const right = state.papers[j];
+          const sharedRefs = intersectIds(left.referenceIds, right.referenceIds);
+          if (sharedRefs.length) {
+            upsert(left.id, right.id, 'bibliographic', Math.min(0.9, 0.42 + sharedRefs.length * 0.08), `${sharedRefs.length} shared reference${sharedRefs.length === 1 ? '' : 's'}`);
+          }
+          const sharedCiters = intersectIds(left.citedByIds, right.citedByIds);
+          if (sharedCiters.length) {
+            upsert(left.id, right.id, 'cocitation', Math.min(0.88, 0.38 + sharedCiters.length * 0.08), `${sharedCiters.length} shared citing paper${sharedCiters.length === 1 ? '' : 's'}`);
+          }
+        }
+      }
+    }
+
+    function pairKey(source, target) {
+      return [source, target].sort().join('__');
+    }
+
+    function intersectIds(left = [], right = []) {
+      const rightSet = new Set((right || []).map(normalizeOpenAlexId).filter(Boolean));
+      return dedupeList((left || []).map(normalizeOpenAlexId).filter(id => id && rightSet.has(id)));
+    }
+
+    function cosine(a, b) {
+      if (!a || !b) return 0;
+      let score = 0;
+      const [small, large] = a.size < b.size ? [a, b] : [b, a];
+      small.forEach((weight, term) => { score += weight * (large.get(term) || 0); });
+      return score;
+    }
+
+    function findClusters() {
+      const adjacency = new Map(state.papers.map(paper => [paper.id, new Set()]));
+      state.links.forEach(link => {
+        adjacency.get(link.source)?.add(link.target);
+        adjacency.get(link.target)?.add(link.source);
+      });
+
+      const clusters = [];
+      const seen = new Set();
+      state.papers.forEach(paper => {
+        if (seen.has(paper.id)) return;
+        const stack = [paper.id];
+        const group = [];
+        seen.add(paper.id);
+        while (stack.length) {
+          const id = stack.pop();
+          group.push(id);
+          adjacency.get(id)?.forEach(next => {
+            if (!seen.has(next)) {
+              seen.add(next);
+              stack.push(next);
+            }
+          });
+        }
+        clusters.push(group);
+      });
+      return clusters;
+    }

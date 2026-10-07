@@ -1,23 +1,23 @@
-# Install Pulse 1.3.0 on macOS without notarization
+# Install Pulse 1.3.1 on macOS without notarization
 
-Pulse 1.3.0 is an Apple Silicon macOS app. Its signature is **ad hoc** and it has **not been notarized by Apple**. macOS may block a downloaded copy on first launch. The procedures below let you approve this specific app locally; they do not give it an Apple notarization ticket or bypass Apple's notary service limits.
+Pulse 1.3.1 is an Apple Silicon macOS app. Its signature is **ad hoc** and it has **not been notarized by Apple**. macOS may block a downloaded copy on first launch. The procedures below let you approve this specific app locally; they do not give it an Apple notarization ticket or bypass Apple's notary service limits.
 
-Download the DMG, checksum file and helper only from the [official Pulse 1.3.0 release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.3.0). Trust the publisher before approving the app. A checksum confirms that your download matches the release file; an ad hoc signature checks bundle integrity, not developer identity or malware safety.
+Download the DMG, checksum file and helper only from the [official Pulse 1.3.1 release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.3.1). Trust the publisher before approving the app. A checksum confirms that your download matches the release file; an ad hoc signature checks bundle integrity, not developer identity or malware safety.
 
 ## 1. Verify the download and install
 
-Download `Pulse-1.3.0.dmg` and `Pulse-1.3.0-SHA256SUMS.txt` into the same folder. In Terminal:
+Download `Pulse-Tauri-1.3.1.dmg` and `Pulse-Tauri-1.3.1-SHA256SUMS.txt` into the same folder. In Terminal:
 
 ```sh
 cd ~/Downloads
-shasum -a 256 -c Pulse-1.3.0-SHA256SUMS.txt
+shasum -a 256 -c Pulse-Tauri-1.3.1-SHA256SUMS.txt
 ```
 
-Continue only if it prints `Pulse-1.3.0.dmg: OK`. If verification fails, discard the download and download it again from the release page.
+Continue only if it prints `Pulse-Tauri-1.3.1.dmg: OK`. If verification fails, discard the download and download it again from the release page.
 
-Open the DMG and drag `Pulse.app` into **Applications**. Replace the previous Pulse app if prompted, after quitting it. Your paper library remains in `~/Library/Application Support/pulse/`. Do not run Pulse directly from the mounted DMG.
+Open the DMG and drag `Pulse.app` into **Applications**. Replace the previous Pulse app if prompted, after quitting it. The update uses the same paper library as 1.2, stored in `~/Library/Application Support/pulse/`. Do not run Pulse directly from the mounted DMG.
 
-The disk image also contains `Allow-Pulse.command` and this guide. The helper does not install the app; copy the app first.
+The disk image also contains `Allow-Pulse-Tauri.command` and this guide. The helper does not install the app; copy the app first.
 
 ## 2. Approve the app in macOS settings
 
@@ -31,14 +31,14 @@ Apple documents this procedure in [Safely open apps on your Mac](https://support
 
 ## 3. Use the app-specific helper if needed
 
-If you trust the downloaded Pulse build and want to remove its quarantine flag, use `Allow-Pulse.command` from this release. Review the script first. You can double-click it in the mounted DMG to run it in Terminal, or run it from your Downloads folder:
+If you trust the downloaded Pulse build and want to remove its quarantine flag, use `Allow-Pulse-Tauri.command` from this release. Review the script first. You can double-click it in the mounted DMG to run it in Terminal, or run it from your Downloads folder:
 
 ```sh
 # Read-only verification; no changes.
-bash ~/Downloads/Allow-Pulse.command --check "/Applications/Pulse.app"
+bash ~/Downloads/Allow-Pulse-Tauri.command --check "/Applications/Pulse.app"
 
 # Verify again, then ask for your explicit approval before changing the app.
-bash ~/Downloads/Allow-Pulse.command "/Applications/Pulse.app"
+bash ~/Downloads/Allow-Pulse-Tauri.command "/Applications/Pulse.app"
 ```
 
 Type `yes` at the helper's prompt. Then open Pulse in Finder. If Terminal cannot run a downloaded `.command` file by double-clicking, use the explicit `bash` command above.
@@ -46,10 +46,10 @@ Type `yes` at the helper's prompt. Then open Pulse in Finder. If Terminal cannot
 For a copy installed in your personal Applications folder:
 
 ```sh
-bash ~/Downloads/Allow-Pulse.command "$HOME/Applications/Pulse.app"
+bash ~/Downloads/Allow-Pulse-Tauri.command "$HOME/Applications/Pulse.app"
 ```
 
-The helper checks that the target is a `Pulse.app` bundle with identifier `local.pulse.paper-linkage`, version `1.3.0` and a valid deep code signature. It refuses other apps, other versions, symlink targets and execution as root. It uses this command only on the verified app:
+The helper checks that the target is a `Pulse.app` bundle with identifier `com.pulse.desktop`, version `1.3.1` and a valid deep code signature. It refuses other apps, other versions, symlink targets and execution as root. It uses this command only on the verified app:
 
 ```sh
 /usr/bin/xattr -drs com.apple.quarantine "/Applications/Pulse.app"

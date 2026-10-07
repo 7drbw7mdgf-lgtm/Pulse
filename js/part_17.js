@@ -1,3 +1,178 @@
+
+    function closePaperPopup() {
+      state.selectedId = null;
+      state.selectedLinkId = null;
+      els.details.hidden = true;
+      renderSelection();
+    }
+
+    function renderMiniSteerChip(term, group, prefix = '') {
+      return `
+        <span class="steer-mini-chip chip-${group}">
+          <button class="chip-label" type="button" data-action="tag-action-menu" data-term="${escapeHtml(term)}" title="Click for tag options">
+            ${escapeHtml(prefix + term)}
+          </button>
+          <button class="chip-remove-btn" type="button" data-action="remove-steer-chip" data-chip-group="${group}" data-chip-value="${escapeHtml(term)}" aria-label="Remove ${escapeHtml(prefix + term)}">×</button>
+        </span>
+      `;
+    }
+
+    function renderSteerChips(values, group, prefix = '') {
+      return values.map(term => renderMiniSteerChip(term, group, prefix)).join('');
+    }
+
+    function bindRecommendationSteerInputs() {
+      const bindings = [
+        { selector: '#recommendAuthorInput', kind: 'list', group: 'authors', limit: 10, assign: value => { state.recommendationAuthors = parseSteerList(value, 10); } },
+        { selector: '#recommendJournalInput', kind: 'list', group: 'journals', limit: 10, assign: value => { state.recommendationJournals = parseSteerList(value, 10); } },
+        { selector: '#recommendRecencyTilt', assign: value => { state.recommendationRecencyTilt = Number(value) || 0; } },
+        { selector: '#recommendImpactTilt', assign: value => { state.recommendationImpactTilt = Number(value) || 0; } }
+      ];
+      bindings.forEach(binding => {
+        const input = els.details.querySelector(binding.selector);
+        input?.addEventListener('input', event => binding.assign(event.target.value));
+        if (binding.kind === 'list') {
+          input?.addEventListener('keydown', event => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            commitSteerInput(input, binding.group, binding.limit);
+            showToast('Keyword added.');
+            if (binding.group === 'graph') render();
+            else renderDetails();
+          });
+        }
+        input?.addEventListener('change', event => {
+          binding.assign(event.target.value);
+          if (binding.kind === 'list') event.target.value = steerValuesForGroup(binding.group).join('; ');
+          showToast('Recommendation steering updated.');
+          if (binding.selector === '#graphSteerInput') {
+            render();
+          } else {
+            renderDetails();
+          }
+        });
+      });
+    }
+
+    function commitSteerInput(input, group, limit) {
+      const values = parseSteerList(input.value, limit);
+      setSteerValuesForGroup(group, values);
+      input.value = values.join('; ');
+    }
+
+    function bindSteerChipButtons() {
+      els.details.querySelectorAll('[data-action="remove-steer-chip"]').forEach(button => {
+        button.addEventListener('click', () => {
+          removeSteerChip(button.dataset.chipGroup, button.dataset.chipValue);
+        });
+      });
+    }
+
+    function steerValuesForGroup(group) {
+      if (group === 'steer') return state.recommendationSteerKeywords;
+      if (group === 'exclude') return state.recommendationExcludeKeywords;
+      if (group === 'authors') return state.recommendationAuthors;
+      if (group === 'journals') return state.recommendationJournals;
+      if (group === 'graph') return state.graphSteerKeywords;
+      return [];
+    }
+
+    function setSteerValuesForGroup(group, values) {
+      if (group === 'steer') state.recommendationSteerKeywords = values;
+      if (group === 'exclude') state.recommendationExcludeKeywords = values;
+      if (group === 'authors') state.recommendationAuthors = values;
+      if (group === 'journals') state.recommendationJournals = values;
+      if (group === 'graph') state.graphSteerKeywords = values;
+    }
+
+    function removeSteerChip(group, value) {
+      const normalized = String(value || '').toLowerCase();
+      setSteerValuesForGroup(group, steerValuesForGroup(group).filter(term => term.toLowerCase() !== normalized));
+      showToast('Keyword removed.');
+      if (group === 'graph') render();
+      else renderDetails();
+    }
+
+    function renderRecommendationMarkup(recommendations, loading) {
+      if (loading) {
+        const steerBits = [
+          state.recommendationSteerKeywords.length ? `toward ${state.recommendationSteerKeywords.join(', ')}` : '',
+          state.recommendationExcludeKeywords.length ? `away from ${state.recommendationExcludeKeywords.join(', ')}` : '',
+          state.recommendationAuthors.length ? `authors ${state.recommendationAuthors.join(', ')}` : '',
+          state.recommendationJournals.length ? `venues ${state.recommendationJournals.join(', ')}` : ''
+        ].filter(Boolean).join('; ');
+        const steer = steerBits ? ` steered ${steerBits}` : '';
+        return `<div class="settings-status">Searching Semantic Scholar (S2AG), OpenAlex, and Crossref${escapeHtml(steer)} for literature...</div>`;
+      }
+      if (!recommendations.length) {
+        return '<div class="settings-status">No literature suggestions yet. Select a paper and click ⚡ Run Pipeline or Find related papers.</div>';
+      }
+      return recommendations.map((item, index) => {
+        const href = safeHref(item.doi ? `https://doi.org/${item.doi}` : (item.url || (item.s2PaperId ? `https://www.semanticscholar.org/paper/${item.s2PaperId}` : '') || item.openAlexId || '#'));
+        const authorList = paperAuthors(item);
+        const authors = authorList.length ? (authorList.slice(0, 3).join(', ') + (authorList.length > 3 ? ' et al.' : '')) : '';
+        const meta = [item.source || '', authors, item.year || item.date, item.journal, item.doi ? `DOI ${item.doi}` : '', item.citedByCount ? `${item.citedByCount} citations` : '', item.influentialCitationCount ? `⭐ ${item.influentialCitationCount} influential` : '']
+          .filter(Boolean)
+          .join(' | ');
+
+        const badges = (item.discoveryBadges || []).map(b => {
+          let cls = 'badge-general';
+          if (b.includes('SPECTER2')) cls = 'badge-specter';
+          else if (b.includes('Co-citation')) cls = 'badge-cocitation';
+          else if (b.includes('Bib Coupling')) cls = 'badge-bibcoupling';
+          else if (b.includes('2-Hop')) cls = 'badge-chase';
+          else if (b.includes('Influential')) cls = 'badge-influential';
+          else if (b.includes('Backward') || b.includes('Forward')) cls = 'badge-citation';
+          else cls = 'badge-concept';
+          return `<span class="discovery-badge ${cls}">${escapeHtml(b)}</span>`;
+        }).join('');
+
+        const scorePill = item.score !== undefined ? `
+          <span class="discovery-score-pill" title="Relevance: ${item.scoreBreakdown?.relevance || 0} | Proximity: ${item.scoreBreakdown?.citationProximity || 0} | Semantic: ${item.scoreBreakdown?.semanticSimilarity || 0} | Convergence Bonus: +${item.scoreBreakdown?.convergenceBonus || 0}">
+            Score ${Math.round(item.score)}
+          </span>
+        ` : '';
+
+        return `<article class="recommendation-item">
+          <div class="recommendation-title-row">
+            <a class="recommendation-title" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(item.title || 'Untitled recommendation')}</a>
+            ${scorePill}
+          </div>
+          <div class="recommendation-meta">${escapeHtml(meta || item.source || 'Recommended paper')}</div>
+          ${badges ? `<div class="recommendation-badges-row">${badges}</div>` : ''}
+          <div class="recommendation-reason">${escapeHtml(item.reason || 'Recommended from selected-paper title, abstract, and citation topology.')}</div>
+          ${item.title === 'Recommendation search failed' || item.title === 'Discovery search failed' ? '' : `
+            <div class="recommend-feedback">
+              <button class="button xs" data-action="recommend-more-like" data-rec-index="${index}" type="button">More like this</button>
+              <button class="button xs" data-action="recommend-less-like" data-rec-index="${index}" type="button">Less like this</button>
+            </div>
+            <button class="button small" data-action="add-recommendation" data-rec-index="${index}" type="button">Add to map</button>
+          `}
+        </article>`;
+      }).join('');
+    }
+
+    function renderSeminalMarkup() {
+      if (!state.seminalSuggestions.length) return '';
+      return state.seminalSuggestions.map((item, index) => {
+        const href = safeHref(item.doi ? `https://doi.org/${item.doi}` : (item.url || item.openAlexId || '#'));
+        const authorList = paperAuthors(item);
+        const authors = authorList.length ? (authorList.slice(0, 3).join(', ') + (authorList.length > 3 ? ' et al.' : '')) : '';
+        const meta = [authors, item.year || item.date, item.journal, item.doi ? `DOI ${item.doi}` : '', item.citedByLoadedCount ? `${item.citedByLoadedCount} map citations` : ''].filter(Boolean).join(' | ');
+        return `<article class="recommendation-item">
+          <a class="recommendation-title" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(item.title || 'Untitled foundational paper')}</a>
+          <div class="recommendation-meta">${escapeHtml(meta || 'Missing foundational paper')}</div>
+          <div class="recommendation-reason">${escapeHtml(item.reason || 'Frequently referenced by papers already on this map.')}</div>
+          <button class="button" data-action="add-seminal" data-seminal-index="${index}" type="button">Add seminal paper</button>
+        </article>`;
+      }).join('');
+    }
+
+    function recommendationAlreadyOnMap(item) {
+      const doi = normalizeDoi(item?.doi || '');
+      const titleKey = cleanField(item?.title || '').toLowerCase();
+      return state.papers.some(paper =>
+        (doi && sameDoi(paper.doi || '', doi))
         || (titleKey && cleanField(paper.title || '').toLowerCase() === titleKey)
       );
     }
@@ -27,7 +202,7 @@
           const isCoCite = item.subType === 'Co-citation' || (item.discoveryBadges || []).some(b => b.includes('Co-citation'));
           const isSpecter = item.subType === 'SPECTER2' || (item.discoveryBadges || []).some(b => b.includes('SPECTER2'));
           const ltype = isBib ? 'bibliographic' : (isCoCite ? 'cocitation' : (isSpecter ? 'similarity' : 'mixed'));
-          state.explicitLinks.push({
+          state.links.push({
             source: seed.id,
             target: paper.id,
             score: item.score ? Math.min(0.95, item.score / 100) : 0.82,
@@ -75,9 +250,6 @@
         title: paper.title || '',
         doi: paper.doi || '',
         s2PaperId: paper.s2PaperId || '',
-        pmid: paper.pmid || '',
-        abstract: paper.abstract || '',
-        authors: paper.authors || [],
         openAlexId: paper.openAlexId || '',
         openAlexUrl: paper.openAlexUrl || '',
         techniques: paper.techniques || [],
@@ -129,13 +301,11 @@
     }
 
     async function findMissingSeminal() {
-      if (state.citationLoading || state.discoveryLoading || !state.papers.length) return;
-      state.discoveryError = '';
       if (!state.papers.some(paper => (paper.referenceIds || []).length)) {
         await mapCitationTopology();
       }
       state.citationLoading = true;
-      render();
+      renderDetails();
       try {
         const response = await fetch(backendUrl('/api/citations/seminal'), {
           method: 'POST',
@@ -145,13 +315,8 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Could not find missing seminal papers.');
         state.seminalSuggestions = data.recommendations || [];
-        openDiscoveryModal(state.seminalSuggestions, selectedPapersForRecommendation()[0] || state.papers[0]);
         showToast(state.seminalSuggestions.length ? `Found ${state.seminalSuggestions.length} missing foundational paper${state.seminalSuggestions.length === 1 ? '' : 's'}.` : 'No common missing reference found yet.');
       } catch (error) {
-        state.discoveryError = error.message;
-        state.discoveryHasRun = true;
-        state.discoveryResults = [];
-        setWorkspaceView('discover');
         showToast(error.message);
       } finally {
         state.citationLoading = false;
@@ -184,167 +349,3 @@
         render();
       }
     }
-
-    function addCitationPapersToMap(seed, items, direction) {
-      const fresh = (items || []).filter(item => item.title && !recommendationAlreadyOnMap(item));
-      fresh.forEach((item, index) => {
-        const paper = paperFromRecommendation(item);
-        const orbitIndex = Math.floor(index / 8);
-        const posInOrbit = index % 8;
-        const radius = (direction === 'backward' ? 210 : 270) + orbitIndex * 110;
-        const angle = (-Math.PI / 2) + posInOrbit * ((Math.PI * 2) / Math.min(8, Math.max(fresh.length - orbitIndex * 8, 1)));
-        paper.x = (seed?.x || 0) + Math.cos(angle) * radius;
-        paper.y = (seed?.y || 0) + Math.sin(angle) * radius;
-        paper.areaId = seed?.areaId || '';
-        if (direction === 'backward') {
-          seed.referenceIds = dedupeList([...(seed.referenceIds || []), paper.openAlexId].filter(Boolean));
-        } else if (direction === 'forward') {
-          paper.referenceIds = dedupeList([...(paper.referenceIds || []), seed.openAlexId].filter(Boolean));
-          seed.citedByIds = dedupeList([...(seed.citedByIds || []), paper.openAlexId].filter(Boolean));
-        } else if (direction === 'network') {
-          state.explicitLinks.push({
-            source: seed.id,
-            target: paper.id,
-            score: 0.88,
-            type: item.subType === 'Bibliographic coupling' ? 'bibliographic' : 'cocitation',
-            evidence: item.reason || 'Citation network triangulation'
-          });
-        } else if (direction === 'chase') {
-          state.explicitLinks.push({
-            source: seed.id,
-            target: paper.id,
-            score: 0.82,
-            type: 'citation',
-            evidence: item.reason || 'Iterative 2-hop citation chase'
-          });
-        }
-        state.papers.push(paper);
-      });
-      if (fresh.length) {
-        state.centerId = seed.id;
-        state.selectedId = seed.id;
-      }
-      return fresh.length;
-    }
-
-    async function chase2HopSelectedPaper() {
-      const seed = state.papers.find(item => item.id === state.selectedId);
-      if (!seed) {
-        showToast('Select a paper first.');
-        return;
-      }
-      state.citationLoading = true;
-      renderDetails();
-      try {
-        const response = await fetch(backendUrl('/api/citations/chase'), {
-          method: 'POST',
-          headers: apiHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ paper: citationPaperPayload(seed), limit: 25 })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Could not run 2-hop chase.');
-        const added = addCitationPapersToMap(seed, data.recommendations || [], 'chase');
-        showToast(`2-Hop chase found ${(data.recommendations || []).length} papers and added ${added}.`);
-      } catch (error) {
-        showToast(error.message);
-      } finally {
-        state.citationLoading = false;
-        render();
-      }
-    }
-
-    async function triangulateNetworkSelectedPaper() {
-      const seed = state.papers.find(item => item.id === state.selectedId);
-      if (!seed) {
-        showToast('Select a paper first.');
-        return;
-      }
-      state.citationLoading = true;
-      renderDetails();
-      try {
-        const response = await fetch(backendUrl('/api/citations/network'), {
-          method: 'POST',
-          headers: apiHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ paper: citationPaperPayload(seed), limit: 25 })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Could not triangulate citation network.');
-        const added = addCitationPapersToMap(seed, data.recommendations || [], 'network');
-        showToast(`Citation network triangulation found ${(data.recommendations || []).length} papers and added ${added}.`);
-      } catch (error) {
-        showToast(error.message);
-      } finally {
-        state.citationLoading = false;
-        render();
-      }
-    }
-
-    let discoveryGeneration = 0, discoveryController = null;
-    function discoveryPause(signal) {
-      return new Promise((resolve,reject)=>{
-        if(signal.aborted){reject(new DOMException('Cancelled','AbortError'));return;}
-        const abort=()=>{clearTimeout(timer);reject(new DOMException('Cancelled','AbortError'));};
-        const timer=setTimeout(()=>{signal.removeEventListener('abort',abort);resolve();},500);
-        signal.addEventListener('abort',abort,{once:true});
-      });
-    }
-    function applyDiscoveryProgress(data) {
-      state.discoveryResults=data.recommendations||[];
-      state.discoveryWarnings=Object.entries(data.errors||{}).map(([name,message])=>`${name}: ${message}`);
-      const completed=data.completed||0,total=data.total||0;
-      state.discoveryStatus=data.status==='complete' ? `Search complete · ${state.discoveryResults.length} candidates.` : `${completed} of ${total} discovery methods finished · ${state.discoveryResults.length} candidates so far.`;
-      renderDiscoveryWorkspace();
-    }
-    function cancelDiscovery() {
-      ++discoveryGeneration;discoveryController?.abort();
-      if(state.discoveryJob)fetch(backendUrl('/api/discovery/cancel'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({id:state.discoveryJob})}).catch(()=>{});
-      state.discoveryLoading=false;state.discoveryJob=null;state.recommendationLoadingKey=null;
-      state.discoveryHasRun=true;state.discoveryStatus='Search cancelled. Completed candidates are available to review.';
-      renderDiscoveryWorkspace();
-    }
-    els.discoveryCancelButton.addEventListener('click',cancelDiscovery);
-
-    async function runDiscoveryPipeline() {
-      if (state.discoveryLoading) return;
-      if (!Object.values(state.discoveryBranches).some(Boolean)) {
-        showToast('Enable at least one discovery method.');
-        return;
-      }
-      if (state.workspaceView === 'discover') setDiscoverySeed(els.discoverySeedSelect.value);
-      else if (state.workspaceView === 'network' && state.selectedId && !state.selectedLinkId) setDiscoverySeed(state.selectedId);
-      const seeds = selectedPapersForRecommendation();
-      if (!seeds.length) {
-        showToast('Select a paper first to run literature discovery.');
-        return;
-      }
-      const key = recommendationKey(seeds);
-      const generation=++discoveryGeneration;
-      discoveryController = new AbortController();
-      state.discoveryJob = null;state.discoveryStatus='Starting search…';state.discoveryWarnings=[];
-      state.discoveryLoading = true;
-      state.discoveryError = '';
-      state.discoveryResults = [];
-      state.discoverySelectedKeys = new Set();
-      setWorkspaceView('discover');
-      state.recommendationLoadingKey = key;
-      renderDetails();
-      try {
-        const response = await fetch(backendUrl('/api/discovery/start'), {
-          method: 'POST',
-          headers: apiHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({
-            seedPapers: seeds.map(citationPaperPayload),
-            branches: state.discoveryBranches,
-            steerKeywords: state.recommendationSteerKeywords,
-            excludeKeywords: state.recommendationExcludeKeywords,
-            recencyTilt: state.recommendationRecencyTilt,
-            impactTilt: state.recommendationImpactTilt,
-            iterativeChase: state.explorationDepth !== '1',
-            depth: state.explorationDepth,
-            limit: 50
-          })
-        });
-        let data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Discovery pipeline failed.');
-        if(generation!==discoveryGeneration) {
-          if(data.id)fetch(backendUrl('/api/discovery/cancel'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({id:data.id})}).catch(()=>{});

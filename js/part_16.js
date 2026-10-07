@@ -1,3 +1,223 @@
+
+    function renderDetails() {
+      if (state.selectedLinkId) {
+        renderLinkageDetails();
+        return;
+      }
+
+      let paper = state.papers.find(item => item.id === state.selectedId);
+      if (!paper && state.papers.length > 0) {
+        paper = state.papers[0];
+        state.selectedId = paper.id;
+      }
+      if (!paper) {
+        els.details.hidden = false;
+        els.details.innerHTML = `
+          <div class="inspector-placeholder">
+            <div class="inspector-placeholder-icon">📄</div>
+            <h3>Paper Inspector</h3>
+            <p>Select any paper from the library or click a node on the map to inspect relevance scores, citation metrics, and foundational evidence.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const related = state.links
+        .filter(link => link.source === paper.id || link.target === paper.id)
+        .map(link => ({
+          score: link.score,
+          type: link.type,
+          paper: state.papers.find(item => item.id === (link.source === paper.id ? link.target : link.source))
+        }))
+        .filter(item => item.paper)
+        .sort((a, b) => b.score - a.score);
+      const recommendationSeeds = selectedPapersForRecommendation();
+      const recKey = recommendationKey(recommendationSeeds);
+      const recommendations = state.recommendations.get(recKey) || [];
+      const isLoadingRecommendations = state.recommendationLoadingKey === recKey;
+      const steerText = state.recommendationSteerKeywords.join('; ');
+      const excludeText = state.recommendationExcludeKeywords.join('; ');
+      const authorText = state.recommendationAuthors.join('; ');
+      const journalText = state.recommendationJournals.join('; ');
+      const graphText = state.graphSteerKeywords.join('; ');
+      const activeSteerChips = [
+        ...state.recommendationSteerKeywords.map(t => renderMiniSteerChip(t, 'steer', '🎯 ')),
+        ...state.graphSteerKeywords.map(t => renderMiniSteerChip(t, 'graph', '🌐 ')),
+        ...state.recommendationExcludeKeywords.map(t => renderMiniSteerChip(t, 'exclude', '⛔ ')),
+      ].join('');
+
+      const rawAbstract = (paper.abstract || paper.text || '').trim();
+      const isAbstractLong = rawAbstract.length > 300;
+      const displayAbstract = (isAbstractLong && !state.detailsAbstractExpanded)
+        ? rawAbstract.slice(0, 297) + '...'
+        : rawAbstract;
+
+      // 1. Relevance scores
+      const strongestLink = related[0]?.score || 0;
+      const semScore = Math.round(Math.max(0, ...related.map(r => cosine(state.vectors.get(paper.id), state.vectors.get(r.paper.id)))) * 100);
+      const citScore = Math.round(Math.max(0, ...related.filter(r => r.type === 'citation').map(r => r.score)) * 100);
+      const cocScore = Math.round(Math.max(0, ...related.filter(r => r.type === 'cocitation').map(r => r.score)) * 100);
+      const concepts = new Set(mergedKeywords(paper).map(term => term.toLowerCase()));
+      const conScore = Math.round(Math.max(0, ...related.map(r => {
+        const other = new Set(mergedKeywords(r.paper).map(term => term.toLowerCase()));
+        const common = [...concepts].filter(term => other.has(term)).length;
+        return common / Math.max(1, new Set([...concepts, ...other]).size);
+      })) * 100);
+
+      // 2. Metrics (4-box row)
+      const metricCitations = paper.citedByCount ? String(paper.citedByCount) : '—';
+      const metricReferences = paper.referenceIds?.length ? String(paper.referenceIds.length) : (paper.references?.length ? String(paper.references.length) : '—');
+      const metricInfluential = Number.isFinite(paper.influentialCitationCount) ? String(paper.influentialCitationCount) : '—';
+      const yearNum = parseInt(paper.year || (String(paper.date || '').match(/\b(19|20)\d{2}\b/) || [''])[0]);
+      const yearsActive = yearNum ? Math.max(1, new Date().getFullYear() - yearNum) : 1;
+      const metricVelocity = (paper.citedByCount && yearNum) ? (paper.citedByCount / yearsActive).toFixed(1) : '—';
+
+      // 3. Key concepts
+      const topConcepts = mergedKeywords(paper).slice(0, 8);
+
+      // 4. Why this paper evidence
+      const whyList = [];
+      if (related.length) {
+        whyList.push({ icon: '🔗', text: `Strong linkage with <strong>${escapeHtml(compactTitle(related[0].paper.title))}</strong> (${Math.round(related[0].score * 100)}% match)` });
+      }
+      if (paper.citedByCount && paper.citedByCount > 50) {
+        whyList.push({ icon: '⭐', text: `Cornerstone publication with <strong>${paper.citedByCount}</strong> verified citations` });
+
+      }
+      if (topConcepts.length) {
+        whyList.push({ icon: '🎯', text: `Shares key concepts: <em>${escapeHtml(topConcepts.slice(0, 3).join(', '))}</em>` });
+      }
+
+      els.details.hidden = false;
+      els.details.innerHTML = `
+        <div class="inspector-card-header">
+          <div class="inspector-title-area">
+            <h2 class="inspector-title">${escapeHtml(paper.title || 'Untitled paper')}</h2>
+            <div class="inspector-authors-line">
+              <span>${escapeHtml(paperAuthors(paper).slice(0, 3).join(', '))}${paperAuthors(paper).length > 3 ? ' et al.' : ''}</span>
+              <span>· ${escapeHtml(paper.year || 'No year')}</span>
+              ${paper.journal ? `<span class="inspector-journal">· ${escapeHtml(paper.journal)}</span>` : ''}
+            </div>
+          </div>
+          <button class="ai-close details-close-btn" data-action="close-details" type="button" title="Close inspector" aria-label="Close inspector">×</button>
+        </div>
+
+        <div class="inspector-quick-actions">
+          ${paper.doi ? `
+            <a class="inspector-btn primary" href="https://doi.org/${escapeHtml(paper.doi)}" target="_blank" rel="noreferrer">
+              <span>Open paper</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"></path></svg>
+            </a>
+          ` : `
+            <a class="inspector-btn primary" href="https://scholar.google.com/scholar?q=${encodeURIComponent(paper.title)}" target="_blank" rel="noreferrer">
+              <span>Find paper</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"></path></svg>
+            </a>
+          `}
+          <button class="inspector-btn secondary" type="button" data-action="toggle-paper-seed">
+            <span>${state.discoverySeed?.id === paper.id ? 'Core seed ⭐' : 'In library'}</span>
+          </button>
+        </div>
+
+        <div class="inspector-section">
+          <div class="inspector-section-title">Relevance to your search</div>
+          <div class="relevance-bars-list">
+            <div class="relevance-bar-row">
+              <span class="relevance-bar-label">Semantic similarity</span>
+              <div class="relevance-track"><div class="relevance-fill fill-sem" style="width:${semScore}%"></div></div>
+              <span class="relevance-score">${semScore}%</span>
+            </div>
+            <div class="relevance-bar-row">
+              <span class="relevance-bar-label">Citation proximity</span>
+              <div class="relevance-track"><div class="relevance-fill fill-cit" style="width:${citScore}%"></div></div>
+              <span class="relevance-score">${citScore}%</span>
+            </div>
+            <div class="relevance-bar-row">
+              <span class="relevance-bar-label">Co-citation strength</span>
+              <div class="relevance-track"><div class="relevance-fill fill-coc" style="width:${cocScore}%"></div></div>
+              <span class="relevance-score">${cocScore}%</span>
+            </div>
+            <div class="relevance-bar-row">
+              <span class="relevance-bar-label">Concept overlap</span>
+              <div class="relevance-track"><div class="relevance-fill fill-con" style="width:${conScore}%"></div></div>
+              <span class="relevance-score">${conScore}%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="inspector-section">
+          <div class="inspector-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Key concepts</span>
+            <button class="button small secondary tag-edit-chip" data-action="open-paper-keywords" data-paper="${paper.id}" type="button">Manage tags</button>
+          </div>
+          <div class="concept-chips-wrap">
+            ${topConcepts.map((term, i) => `
+              <button class="concept-chip" data-action="tag-action-menu" data-term="${escapeHtml(term)}" type="button" title="Click for tag options">
+                <span style="opacity:0.6; margin-right:3px;">#${i + 1}</span>
+                ${escapeHtml(term)}
+              </button>
+            `).join('')}
+            ${!topConcepts.length ? '<span class="subtle" style="font-size:11px;">No concept tags extracted yet.</span>' : ''}
+          </div>
+        </div>
+
+        <div class="inspector-section">
+          <div class="inspector-section-title">Citation metrics</div>
+          <div class="metrics-quad-grid">
+            <div class="metric-quad-box">
+              <div class="metric-quad-label">Citations</div>
+              <div class="metric-quad-val">${escapeHtml(metricCitations)}</div>
+            </div>
+            <div class="metric-quad-box">
+              <div class="metric-quad-label">References</div>
+              <div class="metric-quad-val">${escapeHtml(metricReferences)}</div>
+            </div>
+            <div class="metric-quad-box">
+              <div class="metric-quad-label">Influential</div>
+              <div class="metric-quad-val">${escapeHtml(metricInfluential)}</div>
+            </div>
+            <div class="metric-quad-box">
+              <div class="metric-quad-label">Rate / yr</div>
+              <div class="metric-quad-val">${escapeHtml(metricVelocity)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="inspector-section">
+          <div class="inspector-section-title">Why this paper?</div>
+          <div class="why-paper-list">
+            ${whyList.map(item => `
+              <div class="why-paper-item">
+                <span class="why-paper-icon">${item.icon}</span>
+                <span>${item.text}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        ${rawAbstract ? `
+          <div class="inspector-section">
+            <div class="inspector-section-title">Abstract</div>
+            <p class="details-abstract-text" style="font-size:11px; line-height:1.45; color:var(--ink-2);">${escapeHtml(displayAbstract)}</p>
+            ${isAbstractLong ? `<button class="details-abstract-toggle" data-action="toggle-abstract" type="button" style="margin-top:4px;">${state.detailsAbstractExpanded ? 'Show less' : 'Read full text'}</button>` : ''}
+          </div>
+        ` : ''}
+
+        <div class="inspector-section">
+          <div class="inspector-section-title">Connected in workspace (${related.length})</div>
+          <div class="related-list">
+            ${related.length ? related.map(item => `
+              <div class="related-item clickable-linkage" data-action="view-related-link" data-link="${linkId({ source: paper.id, target: item.paper.id })}" role="button" tabindex="0" title="Click to view linkage">
+                <div class="score">${Math.round(item.score * 100)}%</div>
+                <div class="related-title">${escapeHtml(item.paper.title)}</div>
+              </div>
+            `).join('') : '<p class="subtle" style="font-size:11px;">No links above threshold.</p>'}
+          </div>
+        </div>
+
+        <div class="discovery-hub" style="margin-top:12px;">
+          <div class="discovery-hub-head">
+            <div>
               <span class="discovery-hub-tag">S2AG Exploration</span>
               <h3>Literature Discovery</h3>
             </div>
@@ -70,18 +290,15 @@
         renderDetails();
       });
       els.details.querySelector('[data-action="toggle-paper-seed"]')?.addEventListener('click', () => {
-        state.pinnedSeedId = state.pinnedSeedId === paper.id ? null : paper.id;
+        state.discoverySeed = (state.discoverySeed?.id === paper.id) ? null : paper;
         renderDetails();
-        scheduleAutosave();
-        showToast(state.pinnedSeedId ? `Set "${compactTitle(paper.title)}" as discovery seed` : 'Cleared discovery seed');
+        showToast(state.discoverySeed ? `Set "${compactTitle(paper.title)}" as discovery seed` : 'Cleared discovery seed');
       });
       els.details.querySelector('[data-action="add-as-new-seed"]')?.addEventListener('click', () => {
-        state.pinnedSeedId = paper.id;
         state.discoverySeed = paper;
         runDiscoveryPipeline();
       });
       els.details.querySelector('[data-action="find-similar-work"]')?.addEventListener('click', () => {
-        state.pinnedSeedId = paper.id;
         state.discoverySeed = paper;
         recommendSelectedPapers();
       });
@@ -100,7 +317,7 @@
           const branch = btn.dataset.branch;
           if (branch && state.discoveryBranches[branch] !== undefined) {
             state.discoveryBranches[branch] = !state.discoveryBranches[branch];
-            render();
+            renderDetails();
           }
         });
       });
@@ -172,179 +389,3 @@
         button.addEventListener('click', () => steerFromRecommendation(Number(button.dataset.recIndex), 'less'));
       });
     }
-
-    function closePaperPopup() {
-      state.inspectorOpen = false;
-      state.selectedId = null;
-      state.selectedLinkId = null;
-      els.details.hidden = true;
-      renderSelection();
-    }
-
-    function renderMiniSteerChip(term, group, prefix = '') {
-      return `
-        <span class="steer-mini-chip chip-${group}">
-          <button class="chip-label" type="button" data-action="tag-action-menu" data-term="${escapeHtml(term)}" title="Click for tag options">
-            ${escapeHtml(prefix + term)}
-          </button>
-          <button class="chip-remove-btn" type="button" data-action="remove-steer-chip" data-chip-group="${group}" data-chip-value="${escapeHtml(term)}" aria-label="Remove ${escapeHtml(prefix + term)}">×</button>
-        </span>
-      `;
-    }
-
-    function renderSteerChips(values, group, prefix = '') {
-      return values.map(term => renderMiniSteerChip(term, group, prefix)).join('');
-    }
-
-    function bindRecommendationSteerInputs() {
-      const bindings = [
-        { selector: '#recommendAuthorInput', kind: 'list', group: 'authors', limit: 10, assign: value => { state.recommendationAuthors = parseSteerList(value, 10); } },
-        { selector: '#recommendJournalInput', kind: 'list', group: 'journals', limit: 10, assign: value => { state.recommendationJournals = parseSteerList(value, 10); } },
-        { selector: '#recommendRecencyTilt', assign: value => { state.recommendationRecencyTilt = Number(value) || 0; } },
-        { selector: '#recommendImpactTilt', assign: value => { state.recommendationImpactTilt = Number(value) || 0; } }
-      ];
-      bindings.forEach(binding => {
-        const input = els.details.querySelector(binding.selector);
-        input?.addEventListener('input', event => binding.assign(event.target.value));
-        if (binding.kind === 'list') {
-          input?.addEventListener('keydown', event => {
-            if (event.key !== 'Enter') return;
-            event.preventDefault();
-            commitSteerInput(input, binding.group, binding.limit);
-            showToast('Keyword added.');
-            if (binding.group === 'graph') render();
-            else renderDetails();
-          });
-        }
-        input?.addEventListener('change', event => {
-          binding.assign(event.target.value);
-          if (binding.kind === 'list') event.target.value = steerValuesForGroup(binding.group).join('; ');
-          showToast('Recommendation steering updated.');
-          if (binding.selector === '#graphSteerInput') {
-            render();
-          } else {
-            renderDetails();
-          }
-        });
-      });
-    }
-
-    function commitSteerInput(input, group, limit) {
-      const values = parseSteerList(input.value, limit);
-      setSteerValuesForGroup(group, values);
-      input.value = values.join('; ');
-    }
-
-    function bindSteerChipButtons() {
-      els.details.querySelectorAll('[data-action="remove-steer-chip"]').forEach(button => {
-        button.addEventListener('click', () => {
-          removeSteerChip(button.dataset.chipGroup, button.dataset.chipValue);
-        });
-      });
-    }
-
-    function steerValuesForGroup(group) {
-      if (group === 'steer') return state.recommendationSteerKeywords;
-      if (group === 'exclude') return state.recommendationExcludeKeywords;
-      if (group === 'authors') return state.recommendationAuthors;
-      if (group === 'journals') return state.recommendationJournals;
-      if (group === 'graph') return state.graphSteerKeywords;
-      return [];
-    }
-
-    function setSteerValuesForGroup(group, values) {
-      if (group === 'steer') state.recommendationSteerKeywords = values;
-      if (group === 'exclude') state.recommendationExcludeKeywords = values;
-      if (group === 'authors') state.recommendationAuthors = values;
-      if (group === 'journals') state.recommendationJournals = values;
-      if (group === 'graph') state.graphSteerKeywords = values;
-    }
-
-    function removeSteerChip(group, value) {
-      const normalized = String(value || '').toLowerCase();
-      setSteerValuesForGroup(group, steerValuesForGroup(group).filter(term => term.toLowerCase() !== normalized));
-      showToast('Keyword removed.');
-      if (group === 'graph') render();
-      else renderDetails();
-    }
-
-    function renderRecommendationMarkup(recommendations, loading) {
-      if (loading) {
-        const steerBits = [
-          state.recommendationSteerKeywords.length ? `toward ${state.recommendationSteerKeywords.join(', ')}` : '',
-          state.recommendationExcludeKeywords.length ? `away from ${state.recommendationExcludeKeywords.join(', ')}` : '',
-          state.recommendationAuthors.length ? `authors ${state.recommendationAuthors.join(', ')}` : '',
-          state.recommendationJournals.length ? `venues ${state.recommendationJournals.join(', ')}` : ''
-        ].filter(Boolean).join('; ');
-        const steer = steerBits ? ` steered ${steerBits}` : '';
-        return `<div class="settings-status">Searching Semantic Scholar (S2AG), OpenAlex, and Crossref${escapeHtml(steer)} for literature...</div>`;
-      }
-      if (!recommendations.length) {
-        return '<div class="settings-status">No literature suggestions yet. Select a paper and click ⚡ Run Pipeline or Find related papers.</div>';
-      }
-      return recommendations.map((item, index) => {
-        const href = item.doi ? `https://doi.org/${item.doi}` : (item.url || (item.s2PaperId ? `https://www.semanticscholar.org/paper/${item.s2PaperId}` : '') || item.openAlexId || '#');
-        const authorList = paperAuthors(item);
-        const authors = authorList.length ? (authorList.slice(0, 3).join(', ') + (authorList.length > 3 ? ' et al.' : '')) : '';
-        const meta = [item.source || '', authors, item.year || item.date, item.journal, item.doi ? `DOI ${item.doi}` : '', item.citedByCount ? `${item.citedByCount} citations` : '', item.influentialCitationCount ? `⭐ ${item.influentialCitationCount} influential` : '']
-          .filter(Boolean)
-          .join(' | ');
-
-        const badges = (item.discoveryBadges || []).map(b => {
-          let cls = 'badge-general';
-          if (b.includes('SPECTER2')) cls = 'badge-specter';
-          else if (b.includes('Co-citation')) cls = 'badge-cocitation';
-          else if (b.includes('Bib Coupling')) cls = 'badge-bibcoupling';
-          else if (b.includes('2-Hop')) cls = 'badge-chase';
-          else if (b.includes('Influential')) cls = 'badge-influential';
-          else if (b.includes('Backward') || b.includes('Forward')) cls = 'badge-citation';
-          else cls = 'badge-concept';
-          return `<span class="discovery-badge ${cls}">${escapeHtml(b)}</span>`;
-        }).join('');
-
-        const scorePill = item.score !== undefined ? `
-          <span class="discovery-score-pill" title="Relevance: ${item.scoreBreakdown?.relevance || 0} | Proximity: ${item.scoreBreakdown?.citationProximity || 0} | Semantic: ${item.scoreBreakdown?.semanticSimilarity || 0} | Convergence Bonus: +${item.scoreBreakdown?.convergenceBonus || 0}">
-            Score ${Math.round(item.score)}
-          </span>
-        ` : '';
-
-        return `<article class="recommendation-item">
-          <div class="recommendation-title-row">
-            <a class="recommendation-title" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(item.title || 'Untitled recommendation')}</a>
-            ${scorePill}
-          </div>
-          <div class="recommendation-meta">${escapeHtml(meta || item.source || 'Recommended paper')}</div>
-          ${badges ? `<div class="recommendation-badges-row">${badges}</div>` : ''}
-          <div class="recommendation-reason">${escapeHtml(item.reason || 'Recommended from selected-paper title, abstract, and citation topology.')}</div>
-          ${item.title === 'Recommendation search failed' || item.title === 'Discovery search failed' ? '' : `
-            <div class="recommend-feedback">
-              <button class="button xs" data-action="recommend-more-like" data-rec-index="${index}" type="button">More like this</button>
-              <button class="button xs" data-action="recommend-less-like" data-rec-index="${index}" type="button">Less like this</button>
-            </div>
-            <button class="button small" data-action="add-recommendation" data-rec-index="${index}" type="button">Add to map</button>
-          `}
-        </article>`;
-      }).join('');
-    }
-
-    function renderSeminalMarkup() {
-      if (!state.seminalSuggestions.length) return '';
-      return state.seminalSuggestions.map((item, index) => {
-        const href = item.doi ? `https://doi.org/${item.doi}` : (item.url || item.openAlexId || '#');
-        const authorList = paperAuthors(item);
-        const authors = authorList.length ? (authorList.slice(0, 3).join(', ') + (authorList.length > 3 ? ' et al.' : '')) : '';
-        const meta = [authors, item.year || item.date, item.journal, item.doi ? `DOI ${item.doi}` : '', item.citedByLoadedCount ? `${item.citedByLoadedCount} map citations` : ''].filter(Boolean).join(' | ');
-        return `<article class="recommendation-item">
-          <a class="recommendation-title" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(item.title || 'Untitled foundational paper')}</a>
-          <div class="recommendation-meta">${escapeHtml(meta || 'Missing foundational paper')}</div>
-          <div class="recommendation-reason">${escapeHtml(item.reason || 'Frequently referenced by papers already on this map.')}</div>
-          <button class="button" data-action="add-seminal" data-seminal-index="${index}" type="button">Add seminal paper</button>
-        </article>`;
-      }).join('');
-    }
-
-    function recommendationAlreadyOnMap(item) {
-      const doi = normalizeDoi(item?.doi || '');
-      const titleKey = cleanField(item?.title || '').toLowerCase();
-      return state.papers.some(paper =>
-        (doi && sameDoi(paper.doi || '', doi))

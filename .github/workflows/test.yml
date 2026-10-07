@@ -16,3 +16,4 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm test
+      - run: python3 test_v1_3_security.py

@@ -1,164 +1,3 @@
-      `;
-      bindTableFilters();
-      bindTableHeaders();
-      if (focusColumn) {
-        const input = els.tableView.querySelector(`[data-table-filter="${focusColumn}"]`);
-        if (input) {
-          input.focus();
-          const end = input.value.length;
-          input.setSelectionRange?.(end, end);
-        }
-      }
-      els.tableView.querySelectorAll('[data-table-paper]').forEach(row => {
-        row.addEventListener('click', () => {
-          state.selectedId = row.dataset.tablePaper;
-          state.inspectorOpen = true;
-          renderDetails();
-          showToast('Selected paper from Bibliography.');
-        });
-      });
-      els.tableView.querySelectorAll('[data-action="table-edit-tags"]').forEach(btn => {
-        btn.addEventListener('click', event => {
-          event.stopPropagation();
-          openKeywordModal(btn.dataset.paper);
-        });
-      });
-    }
-
-    function tableColumnDefinitions() {
-      const isCompact = state.paperView === 'compact';
-      return [
-        {
-          key: 'paper',
-          label: 'Paper',
-          text: paper => `${paper.title || ''} ${paper.doi || ''} ${paper.name || ''}`,
-          sort: paper => paper.title || '',
-          cell: paper => {
-            const title = escapeHtml(paper.title || 'Untitled paper');
-            const meta = escapeHtml(paper.doi ? `DOI ${paper.doi}` : (paper.name || ''));
-            const abstractSnippet = (!isCompact && paper.abstract)
-              ? `<div class="table-abstract-snippet" title="${escapeHtml(paper.abstract)}">${escapeHtml(paper.abstract.length > 220 ? paper.abstract.slice(0, 217) + '...' : paper.abstract)}</div>`
-              : '';
-            return `<div class="table-paper-cell">
-              <div class="table-paper-title">${title}</div>
-              ${meta ? `<div class="metadata-line">${meta}</div>` : ''}
-              ${abstractSnippet}
-            </div>`;
-          }
-        },
-        {
-          key: 'authors',
-          label: 'Authors',
-          text: paper => paperAuthors(paper).join(' '),
-          sort: paper => paperAuthors(paper).join(' '),
-          cell: paper => {
-            const list = paperAuthors(paper);
-            if (!list.length) return '<span class="subtle">Unknown</span>';
-            if (isCompact) {
-              return escapeHtml(list.slice(0, 3).join('; ') + (list.length > 3 ? ` (+${list.length - 3})` : ''));
-            }
-            return `<div class="table-authors-expanded">${escapeHtml(list.join('; '))}</div>`;
-          }
-        },
-        {
-          key: 'year',
-          label: 'Year',
-          text: paper => `${paper.year || ''} ${paper.date || ''}`,
-          sort: paper => paper.year || paper.date || '',
-          cell: paper => escapeHtml(paper.year || paper.date || '')
-        },
-        {
-          key: 'venue',
-          label: 'Venue',
-          text: paper => paper.journal || '',
-          sort: paper => paper.journal || '',
-          cell: paper => escapeHtml(paper.journal || '')
-        },
-        {
-          key: 'keywords',
-          label: 'Keywords',
-          text: paper => mergedKeywords(paper).join(' '),
-          sort: paper => mergedKeywords(paper).join(' '),
-          cell: paper => {
-            const terms = mergedKeywords(paper);
-            const count = isCompact ? 4 : terms.length;
-            const chips = terms.slice(0, count).map((term, i) => `<span class="term"><span class="term-rank">#${i + 1}</span>${escapeHtml(term)}</span>`).join('');
-            const extra = isCompact && terms.length > count ? `<span class="table-extra-chips subtle">+${terms.length - count}</span>` : '';
-            return `<div class="table-keywords-cell">${chips}${extra}<button class="compact-chip tag-edit-chip" type="button" data-action="table-edit-tags" data-paper="${paper.id}" title="Manage &amp; reorder keyword tags">🏷️</button></div>`;
-          }
-        },
-        {
-          key: 'findings',
-          label: 'Key findings',
-          text: paper => keyFindings(paper).join(' '),
-          sort: paper => keyFindings(paper).join(' '),
-          cell: paper => {
-            const findings = keyFindings(paper);
-            if (!findings.length) return '<span class="subtle">No clear finding extracted yet.</span>';
-            if (isCompact) {
-              const top = findings.slice(0, 2);
-              return `<div class="table-findings-compact">${top.map(item => `<div>${escapeHtml(item)}</div>`).join('')}${findings.length > 2 ? `<div class="subtle" style="font-size:10px;">+${findings.length - 2} more</div>` : ''}</div>`;
-            }
-            return `<div class="table-findings-expanded">${findings.map(item => `<div class="finding-bullet">• ${escapeHtml(item)}</div>`).join('')}</div>`;
-          }
-        },
-        {
-          key: 'links',
-          label: 'Links',
-          text: paper => String(tableLinkCount(paper)),
-          sort: paper => tableLinkCount(paper),
-          cell: paper => {
-            const count = tableLinkCount(paper);
-            return `<span class="table-link-badge ${count ? 'has-links' : 'no-links'}">${count} link${count === 1 ? '' : 's'}</span>`;
-          }
-        }
-      ];
-    }
-
-    function activeTableColumns() {
-      const definitions = tableColumnDefinitions();
-      const byKey = new Map(definitions.map(column => [column.key, column]));
-      const ordered = state.tableColumns.map(key => byKey.get(key)).filter(Boolean);
-      definitions.forEach(column => {
-        if (!ordered.some(item => item.key === column.key)) ordered.push(column);
-      });
-      return ordered;
-    }
-
-    function tableLinkCount(paper) {
-      return paperLinks(paper.id).length;
-    }
-
-    function filteredTablePapers() {
-      const columns = tableColumnDefinitions();
-      const filters = Object.entries(state.tableFilters || {})
-        .map(([key, value]) => [key, String(value || '').trim().toLowerCase()])
-        .filter(([, value]) => value);
-      const filtered = state.papers.filter(paper => {
-        if (!paperMatchesFilters(paper)) return false;
-        return filters.every(([key, value]) => {
-          const column = columns.find(item => item.key === key);
-          return column ? String(column.text(paper) || '').toLowerCase().includes(value) : true;
-        });
-      });
-      const sortColumn = columns.find(column => column.key === state.tableSort.key) || columns[0];
-      return filtered.sort((a, b) => {
-        const left = sortColumn.sort(a);
-        const right = sortColumn.sort(b);
-        const direction = state.tableSort.direction === 'desc' ? -1 : 1;
-        if (typeof left === 'number' || typeof right === 'number') return ((Number(left) || 0) - (Number(right) || 0)) * direction;
-        return String(left || '').localeCompare(String(right || ''), undefined, { numeric: true, sensitivity: 'base' }) * direction;
-      });
-    }
-
-    function bindTableFilters() {
-      els.tableView.querySelectorAll('[data-table-filter]').forEach(input => {
-        input?.addEventListener('input', event => {
-          state.tableFilters[event.target.dataset.tableFilter] = event.target.value;
-          renderTableView(event.target.dataset.tableFilter);
-        });
-      });
-    }
 
     function bindTableHeaders() {
       els.tableView.querySelectorAll('[data-action="sort-table"]').forEach(button => {
@@ -244,7 +83,7 @@
     }
 
     function selectedLinkEndpoints() {
-      const link = linksById.get(state.selectedLinkId);
+      const link = state.links.find(item => linkId(item) === state.selectedLinkId);
       return new Set(link ? [link.source, link.target] : []);
     }
 
@@ -322,6 +161,7 @@
     }
 
     function syncGraphControls() {
+      if (els.showLabelsToggle) els.showLabelsToggle.checked = state.graphStyle.labelMode !== 'none';
       const style = state.graphStyle;
       els.nodeSizeInput.value = Math.round(style.nodeSize || 22);
       els.nodeSizeValue.textContent = Math.round(style.nodeSize || 22);
@@ -348,3 +188,111 @@
         labelMode: 'short',
         showGrid: true,
         showAreas: true
+      };
+      syncGraphControls();
+      render();
+      showToast('Graph style reset.');
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function safeHref(url) {
+      if (!url) return '';
+      const s = String(url).trim();
+      return /^(?:https?:\/\/|\/|#|mailto:)/i.test(s) ? s : '';
+    }
+
+    function bindNodeEvents() {
+      els.map.querySelectorAll('.node').forEach(node => {
+        const id = node.dataset.id;
+
+        node.addEventListener('dblclick', event => {
+          event.stopPropagation();
+          centerGraphOnPaper(id, true);
+        });
+
+        node.addEventListener('pointerdown', event => {
+          if (event.button !== 0) return;
+          event.stopPropagation();
+          const paper = state.papers.find(item => item.id === id);
+          if (!paper) return;
+          node.parentNode.appendChild(node);
+          node.classList.add('is-dragging');
+          const point = svgPoint(event);
+          state.drag = {
+            id,
+            offsetX: point.x - paper.x,
+            offsetY: point.y - paper.y,
+            startX: point.x,
+            startY: point.y,
+            moved: false
+          };
+          node.setPointerCapture(event.pointerId);
+          els.map.classList.add('is-panning');
+          state.selectedId = id;
+          state.selectedLinkId = null;
+          renderDetails();
+          renderSelection();
+        });
+
+        node.addEventListener('pointermove', event => {
+          if (!state.drag || state.drag.id !== id) return;
+          const paper = state.papers.find(item => item.id === state.drag.id);
+          if (!paper) return;
+          const point = svgPoint(event);
+          if (!state.drag.moved && Math.hypot(point.x - state.drag.startX, point.y - state.drag.startY) > 4) {
+            state.drag.moved = true;
+          }
+          if (state.drag.moved) {
+            paper.x = point.x - state.drag.offsetX;
+            paper.y = point.y - state.drag.offsetY;
+            node.setAttribute('transform', `translate(${paper.x.toFixed(1)},${paper.y.toFixed(1)})`);
+            renderEdgesOnly();
+          }
+        });
+
+        node.addEventListener('pointerup', () => {
+          if (state.drag && state.drag.id === id) {
+            const paper = state.papers.find(item => item.id === state.drag.id);
+            const wasDragged = state.drag.moved;
+            state.drag = null;
+            node.classList.remove('is-dragging');
+            els.map.classList.remove('is-panning');
+
+            if (wasDragged) {
+              const area = paper ? areaForPoint(paper.x, paper.y) : null;
+              if (paper) {
+                paper.areaId = area?.id || paper.areaId || '';
+                paper.pinnedPosition = true;
+              }
+              if (area) showToast(`Placed "${compactTitle(paper.title)}" in ${area.name}.`);
+              render();
+            } else {
+              // Rapid tap / click double-click detection
+              const now = Date.now();
+              if (lastNodeClickTime && (now - lastNodeClickTime < 380) && lastNodeClickId === id) {
+                lastNodeClickTime = 0;
+                lastNodeClickId = null;
+                centerGraphOnPaper(id, true);
+              } else {
+                lastNodeClickTime = now;
+                lastNodeClickId = id;
+              }
+            }
+          }
+        });
+
+        node.addEventListener('pointercancel', () => {
+          state.drag = null;
+          node.classList.remove('is-dragging');
+          els.map.classList.remove('is-panning');
+        });
+      });
+    }

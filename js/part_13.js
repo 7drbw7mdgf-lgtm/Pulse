@@ -1,114 +1,3 @@
-        // Interpolate camera view
-        state.view.x = startViewX + (targetViewX - startViewX) * ease;
-        state.view.y = startViewY + (targetViewY - startViewY) * ease;
-        els.map.setAttribute('viewBox', `${state.view.x.toFixed(1)} ${state.view.y.toFixed(1)} ${state.view.width} ${state.view.height}`);
-
-        // Interpolate paper positions
-        state.papers.forEach(p => {
-          const start = startPositions.get(p.id);
-          const target = targetPositions.get(p.id);
-          if (start && target) {
-            p.x = start.x + (target.x - start.x) * ease;
-            p.y = start.y + (target.y - start.y) * ease;
-          }
-        });
-
-        // Update DOM node translations
-        els.map.querySelectorAll('.node').forEach(nodeEl => {
-          const p = state.papers.find(item => item.id === nodeEl.dataset.id);
-          if (p) {
-            nodeEl.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
-          }
-        });
-
-        // Update SVG edge line endpoints
-        renderEdgesOnly();
-
-        if (progress < 1) {
-          recenterAnimId = requestAnimationFrame(animateBounce);
-        } else {
-          recenterAnimId = null;
-          isRecenteringAnimation = false;
-          // Finalize at exact target positions
-          state.view.x = targetViewX;
-          state.view.y = targetViewY;
-          els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
-          state.papers.forEach(p => {
-            const target = targetPositions.get(p.id);
-            if (target) {
-              p.x = target.x;
-              p.y = target.y;
-            }
-          });
-          els.map.querySelectorAll('.node').forEach(nodeEl => {
-            const p = state.papers.find(item => item.id === nodeEl.dataset.id);
-            if (p) {
-              nodeEl.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
-            }
-          });
-          renderEdgesOnly();
-          renderSelection();
-          renderDetails();
-        }
-      }
-
-      recenterAnimId = requestAnimationFrame(animateBounce);
-      showToast(`Centered graph on "${compactTitle(paper.title)}".`);
-    }
-
-    function clearCenteredPaper() {
-      if (!state.centerId) return;
-      state.centerId = null;
-      render();
-      showToast('Centered graph cleared.');
-    }
-
-    function bindEdgeEvents() {
-      els.map.querySelectorAll('.edge, .edge-hit').forEach(edge => {
-        edge.addEventListener('click', event => {
-          event.stopPropagation();
-          selectLinkage(edge.dataset.link);
-        });
-        edge.addEventListener('mouseenter', () => {
-          const id = edge.dataset.link;
-          const vEdge = els.map.querySelector(`.edge[data-link="${id}"]`);
-          if (vEdge) vEdge.classList.add('is-hovered');
-        });
-        edge.addEventListener('mouseleave', () => {
-          const id = edge.dataset.link;
-          const vEdge = els.map.querySelector(`.edge[data-link="${id}"]`);
-          if (vEdge) vEdge.classList.remove('is-hovered');
-        });
-      });
-    }
-
-    function selectLinkage(id) {
-      state.inspectorOpen = true;
-      state.selectedLinkId = id;
-      state.selectedId = null;
-      render();
-      if (els.details) {
-        els.details.hidden = false;
-        els.details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    }
-
-    function clearLinkageSelection() {
-      state.selectedLinkId = null;
-      render();
-    }
-
-    function selectedPapersForRecommendation() {
-      const selectedLink = state.links.find(item => linkId(item) === state.selectedLinkId);
-      if (selectedLink) {
-        return [selectedLink.source, selectedLink.target]
-          .map(id => state.papers.find(paper => paper.id === id))
-          .filter(Boolean);
-      }
-      const selected = state.papers.find(item => item.id === state.selectedId);
-      const pinned = state.papers.find(item => item.id === state.pinnedSeedId);
-      return pinned ? [pinned] : (selected ? [selected] : []);
-    }
 
     function recommendationKey(papers) {
       const steering = [
@@ -163,8 +52,8 @@
 
     function renderEdgesOnly() {
       els.map.querySelectorAll('.edge, .edge-hit').forEach(edge => {
-        const source = papersById.get(edge.dataset.source);
-        const target = papersById.get(edge.dataset.target);
+        const source = state.papers.find(paper => paper.id === edge.dataset.source);
+        const target = state.papers.find(paper => paper.id === edge.dataset.target);
         if (source && target) {
           edge.setAttribute('x1', source.x);
           edge.setAttribute('y1', source.y);
@@ -175,22 +64,7 @@
     }
 
     function renderSelection() {
-      if(paintedSelectedLinkId!==state.selectedLinkId) {
-        for(const id of new Set([paintedSelectedLinkId,state.selectedLinkId].filter(Boolean))) {
-          const link=linksById.get(id);if(!link)continue;
-          const selected=id===state.selectedLinkId;
-          const width=(.55+link.score*3.15)*(state.graphStyle.edgeScale||.65);
-          for(const edge of edgeElementsById.get(id)||[]) {
-            edge.classList.toggle('is-selected',selected);
-            edge.setAttribute('stroke-width',(selected?width+2.4:width).toFixed(2));
-            edge.setAttribute('opacity',selected?'1':Math.min(.72,.18+link.score*.48).toFixed(2));
-          }
-        }
-        paintedSelectedLinkId=state.selectedLinkId;
-      }
-      const linked=selectedLinkEndpoints();
       els.map.querySelectorAll('.node').forEach(node => {
-        node.classList.toggle('is-linked',linked.has(node.dataset.id));
         node.classList.toggle('is-selected', node.dataset.id === state.selectedId);
         node.classList.toggle('is-centered', node.dataset.id === state.centerId);
       });
@@ -249,14 +123,14 @@
 
     function renderLinkages() {
       if (!els.linkageList) return;
-      const sorted = [...state.links].sort((a, b) => b.score - a.score).slice(0,2500);
+      const sorted = [...state.links].sort((a, b) => b.score - a.score);
       els.linkageSummary.textContent = sorted.length
         ? `${sorted.length} link${sorted.length === 1 ? '' : 's'} at ${Math.round(state.threshold * 100)}% threshold.`
         : (state.papers.length < 2 ? 'Add at least two papers to create links.' : 'No links above the current threshold.');
 
       els.linkageList.innerHTML = sorted.length ? sorted.map(link => {
-        const source = papersById.get(link.source);
-        const target = papersById.get(link.target);
+        const source = state.papers.find(paper => paper.id === link.source);
+        const target = state.papers.find(paper => paper.id === link.target);
         const id = linkId(link);
         const selected = state.selectedLinkId === id ? ' is-selected' : '';
         const sharedTerms = sharedKeywords(source, target).slice(0, 5);
@@ -348,3 +222,59 @@
       });
       els.areaList.querySelectorAll('[data-action="remove-area"]').forEach(button => {
         button.addEventListener('click', event => removeArea(event.target.closest('[data-area]').dataset.area));
+      });
+    }
+
+    function sharedKeywords(source, target) {
+      if (!source || !target) return [];
+      const left = new Set(mergedKeywords(source).map(term => term.toLowerCase()));
+      return mergedKeywords(target).filter(term => left.has(term.toLowerCase()));
+    }
+
+    function linkTypeName(link) {
+      const labels = {
+        citation: 'Direct citation',
+        bibliographic: 'Bibliographic coupling',
+        cocitation: 'Co-citation',
+        mixed: 'Mixed literature link',
+        similarity: 'Text similarity'
+      };
+      return labels[link?.type || 'similarity'] || 'Link';
+    }
+
+    function linkLabel(link) {
+      const score = `${Math.round((link.score || 0) * 100)}%`;
+      return `${linkTypeName(link)} (${score}). ${link.evidence || 'Related through title, abstract, keywords, or metadata.'}`;
+    }
+
+    function paperMatchScore(paper) {
+      const strongest = state.links
+        .filter(link => link.source === paper.id || link.target === paper.id)
+        .reduce((best, link) => Math.max(best, Number(link.score || 0)), 0);
+      return Math.max(0, Math.min(99, Math.round(strongest * 100)));
+    }
+
+    function paperStudyType(paper) {
+      const text = `${paper.title || ''} ${paper.abstract || ''} ${(paper.paperKeywords || []).join(' ')}`.toLowerCase();
+      if (/\breview|systematic review|meta-analysis\b/.test(text)) return 'Review';
+      if (/\btrial|randomi[sz]ed|cohort|case-control|participant|patients?\b/.test(text)) return 'Clinical study';
+      if (/\bexperiment|assay|culture|sequenc|rna-seq|transcriptomic|proteomic|genomic\b/.test(text)) return 'Experimental study';
+      if (/\bmodel|algorithm|embedding|transformer|network|machine learning\b/.test(text)) return 'Computational study';
+      return 'Research article';
+    }
+
+    function paperDomainLabel(paper) {
+      const keywords = mergedKeywords(paper).join(' ').toLowerCase();
+      const title = `${paper.title || ''} ${paper.journal || ''}`.toLowerCase();
+      if (/\btranscript|rna|gene expression|sequenc|genomic\b/.test(`${keywords} ${title}`)) return 'Transcriptomics';
+      if (/\bmicrobi|bacteria|campylobacter|biofilm|infection|immune\b/.test(`${keywords} ${title}`)) return 'Microbiology';
+      if (/\bmachine learning|embedding|graph|network|transformer|retrieval\b/.test(`${keywords} ${title}`)) return 'AI literature discovery';
+      if (/\bclinical|patient|therapy|therapeutic|disease\b/.test(`${keywords} ${title}`)) return 'Clinical biology';
+      return 'Literature mapping';
+    }
+
+    function paperAuthorSummary(paper) {
+      const authors = paperAuthors(paper);
+      if (!authors.length) return 'Unknown authors';
+      return authors.slice(0, 3).join(', ') + (authors.length > 3 ? ` +${authors.length - 3}` : '');
+    }

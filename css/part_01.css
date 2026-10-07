@@ -292,9 +292,3 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.12); }
   font-size: 16px;
   line-height: 1;
 }
-.ai-close:hover { background: var(--surface-3); color: var(--ink); }
-
-/* ─── Header ───────────────────────────────────────────────────────── */
-
-.app-header {
-  position: relative;

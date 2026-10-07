@@ -1,81 +1,75 @@
-# Pulse: setup and development
+# Pulse development
 
-Technical setup, implementation details, validation and build provenance for contributors. For downloads and the basic workflow, see the [main README](../README.md).
+Pulse 1.3.1 uses the supplied 1.2 workspace as its interaction reference and the 1.3 Tauri shell as its desktop target. Collections becomes Timeline. The library, inspector, discovery ribbon, graph layouts, tags, areas, analyst and bibliography remain available in the shared workspace.
 
 ## Run from source
 
-Requires Python 3.9 or later. Run these commands from the Pulse source folder containing `pulse_backend.py`:
+Requires Python 3.9 or later:
 
 ```sh
 python3 pulse_backend.py
 ```
 
-Open the localhost URL printed by the server. The server injects a per-session API token; opening `index.html` directly or using a generic static server does not provide the backend.
+Open the printed localhost URL. The backend supplies a per-session token; opening HTML directly does not start the services. `PULSE_CONFIG_DIR` selects an isolated library directory. Otherwise, data remains under `~/Library/Application Support/pulse/`, with first-launch migration from the old Iratxe directory when appropriate.
 
-Optional PDF extraction dependencies:
+Optional PDF dependencies are listed in `requirements.txt`. Local AI requires Ollama and installed chat/embedding models. Gemini is the supported cloud service. Basic library management and graph exploration work without AI. Metadata and discovery contact scholarly services and depend on their coverage and rate limits.
 
-```sh
-python3 -m pip install -r requirements.txt
-```
+## Backend structure
 
-Ollama and installed chat/embedding models are optional for local AI extraction and analysis. Configure the endpoint and models under Settings. Google Gemini is the supported cloud provider. Metadata and discovery require access to their upstream services; availability and rate limits can affect results.
+`pulse_backend.py` is a compatibility entry point. The `pulse` package has twelve functional modules:
 
-The macOS release carries forward the native Apple Silicon launcher, Ollama binary and PDF dependencies from the supplied Pulse v1 bundle. It is signed ad hoc and is not notarized. The original launcher source was not present in the supplied DMG; the included packaging script therefore takes that bundle as its template.
+| Module | Responsibility |
+| --- | --- |
+| `context.py` | Per-instance configuration, state, locks and context scopes |
+| `types.py` | Paper, metadata, library and response TypedDicts |
+| `storage.py` | Settings, credential persistence and ordered atomic library saves |
+| `metadata.py` | Record normalization, DOI/text helpers and bounded PDF extraction |
+| `providers.py` | Scholarly transport and metadata lookups |
+| `ranking.py` | Existing pure recommendation ranking |
+| `discovery.py` | Citation traversal, branch orchestration and job services |
+| `uploads.py` | File parsing and metadata enrichment |
+| `ai.py` | AI configuration, embeddings, extraction and analysis |
+| `performance.py` | Request/vector caches, concurrency and discovery job management |
+| `http.py` | HTTP authentication, input validation and route dispatch |
+| `runtime.py` | Startup, readiness handshake, Ollama lifecycle and shutdown |
 
-## Workspaces and interactions
+HTTP requests bind their server's `AppContext`; workers receive captured scopes using `contextual()`. Runtime imports do not start threads or register signal handlers. Expected transport, parsing and filesystem errors use specific catches and logging. Unexpected failures propagate to logged HTTP or job boundaries. Tokens in request query strings are excluded from request logs; known credential query parameters are redacted from formatted exceptions.
 
-- Add papers by title/text, DOI or PMID, with duplicate detection and visible lookup errors.
-- Import PDF, BibTeX, RIS, CSV, JSON and EndNote records; export the map and bibliography.
-- Discover fills the main panel with a starting-paper selector, methods, depth and an explicit search action. Select candidates before adding them.
-- Network uses the full canvas without a library sidebar. Full screen expands it across the window; Escape exits. Click a paper to inspect it and discover related work.
-- Timeline arranges the shared papers by publication date, oldest first, with year fallback and undated papers last. Its papers can start a new discovery.
-- Library opens the bibliography. Network supports Network, Clusters and Radial layouts. Collections navigation has been removed.
-- Filter papers by metadata, filter graph links by type, and synchronize labels with graph settings.
-- Expand/compress the graph, fit the view, inspect links and edit paper tags.
-- Run Direct, 2-Hop, 3-Hop or bounded Iterative discovery. Iterative explores up to four hops and stops when its frontier is empty; expansion is limited to four papers per direction per hop.
-- Toggle discovery methods consistently across the ribbon and inspector. Disabled Concepts stays disabled in the backend.
-- Pin a discovery seed, review results and retain the resulting link evidence after reload.
-- Switch local/cloud settings, save the scanning option, test the connection and reset the library.
-- Reach toolbars and dialogs in resized windows. Recent papers and cluster labels reflect the actual library.
+Discovery traversal and ranking were retained during extraction. Four synthetic golden fixtures recorded from the original ranking implementation compare complete output records, including ordering, evidence and scores. The old `pulse_core` implementation was replaced to avoid keeping competing service implementations.
 
-Map similarity bars use local text-vector cosine similarity, verified citation/co-citation edges and keyword overlap. Unknown influential citation counts remain blank. These are map evidence measures, not provider-generated SPECTER2 scores or a clinical/scientific assessment.
+The frontend retains the reference's numbered JS/CSS parts, loaded in order, with `js/timeline.js` and `css/timeline.css` providing the new view. Paper selection reuses analysis and settled layout. Inspector scores derive from actual text vectors and citation evidence; unknown influential-citation counts are left blank. Recent-paper shortcuts and cluster labels use the loaded library.
 
-Settings and the library live under `~/Library/Application Support/pulse/`. On the first default launch, the backend can migrate the previous Iratxe directory. An explicit `PULSE_CONFIG_DIR` selects an isolated directory and disables automatic migration. No personal library, settings or API keys are included in the repository or release.
-
-Discover and Network share one paper library. Discover finds and reviews candidates; Network shows relationships and can start discovery from any selected paper. Adding candidates returns them to the same map, with the discovery evidence saved.
-
-## Tests
+## Validation
 
 ```sh
-npm install
+npm ci
 npx playwright install chromium
 npm test
+python3 test_v1_3_security.py
 ```
 
-For an installed Chrome browser, use `PULSE_BROWSER_CHANNEL=chrome npm test`. The UI suite launches its own backend and temporary library. Python tests cover discovery depth, disabled branches, PMID parsing, storage and reset. Browser tests exercise workspace navigation, fullscreen, chronological ordering, discovery from map nodes and timeline papers, result selection, import/export, settings, responsive layouts and reload persistence. Discovery responses in browser tests are deterministic fixtures; the PMID lookup was also checked against a live PubMed record.
+For installed Chrome, use `PULSE_BROWSER_CHANNEL=chrome npm test`. All checks use disposable data. The suite covers context isolation, captured workers, original ranking fixtures, discovery depth, branch failures/cancellation, metadata parsing, caches, ordered saves/reset, invalid requests, navigation, Timeline sorting, settings, PubMed addition/deduplication, paper visibility, reset, imports, exports and reload persistence. Security checks cover sessions, encrypted credentials, header-based Gemini keys and PDF decompression caps. Discovery browser responses are fixtures; they do not verify every live provider or configured AI model.
 
-## macOS packaging
+## Build the Mac app
 
-The native launcher invokes `/usr/bin/python3`; it does not bundle a Python interpreter. A working Python 3.9+ interpreter at that path is a requirement for the supplied macOS launcher. The source backend can instead be started with an available compatible Python executable.
+Requires macOS, Xcode command-line tools, Rust and Node.js. The build stages canonical source into ignored `desktop/frontend` and `desktop/src-tauri/resources/backend` directories. No user settings or libraries are packaged.
 
 ```sh
-bash scripts/package-macos.sh "/Volumes/Pulse v1/Pulse.app" /tmp/pulse-release
+bash scripts/package-desktop.sh /tmp/pulse-release "/Volumes/Pulse-v1.2/Pulse.app/Contents/Resources"
 ```
 
-This copies the supplied native template, replaces the app resources, updates the version and rebuilds its signature and DMG. The disk image includes the macOS guide and app-specific quarantine helper. Build output is ignored by Git.
+The optional second argument carries forward the supplied bundle's Ollama binary, PDF dependencies and their license metadata. Without it, those integrations require separate local installation. The release bundles dependencies, but not a Python interpreter. The launcher searches Homebrew Python, `/usr/local/bin/python3`, then system Python.
 
-Download the latest DMG from [GitHub Releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest). For first-launch approval of this ad hoc signed build, read [the macOS installation guide](MACOS-INSTALL.md). The included [Allow-Pulse.command](../scripts/Allow-Pulse.command) verifies Pulse 1.3.0 before offering to remove only its quarantine attribute; it does not notarize the app or disable system-wide security settings.
+The Tauri shell waits for a private readiness file containing the actual backend port and token, then opens the served UI. External paper URLs go to the default browser. Exports download through the native webview into Downloads. Backend logs are in `~/Library/Caches/com.pulse.desktop/backend.log`.
 
-## Sources and provenance
+To check a built bundle in the native webview:
 
-The app resources originate from the user-supplied `pulse-v1.dmg`; the backend was compared with the supplied Iratxe 3.2 bundle. External metadata/discovery uses Semantic Scholar, OpenAlex, Crossref and [NCBI PubMed E-utilities](https://www.ncbi.nlm.nih.gov/books/NBK25499/). API keys remain local. Bundled third-party binaries and their licence metadata remain in the native template/release; they are not part of the source checkout.
+```sh
+python3 tests/native_mac.py desktop/src-tauri/target/release/bundle/macos/Pulse.app
+```
 
-## Performance and reliability
+This modifies only a disposable bundle copy, then checks startup, Network, Timeline, settings, JSON import and actual JSON/CSV downloads using temporary library/export directories. The packaged app has no test injection. Packaging verifies its deep signature, DMG and SHA-256 checksum. Current releases are Apple Silicon, ad hoc signed, and not Apple-notarized; see the [installation guide](MACOS-INSTALL.md).
 
-The shared graph engine caches text analysis and citation evidence. Libraries above 100 papers use a background worker for analysis and force layout; selection changes preserve SVG elements and settled positions. Dense networks draw up to 2,500 of the strongest visible links while retaining all calculated relationships for counts, inspector metrics and JSON export.
+## Provenance
 
-Discovery runs at most three methods concurrently, with at most two JSON requests per provider. The interface polls progress, shows partial candidates and supports cancellation. Cancellation stops further requests and discards late results; an already running HTTP request can take until its timeout to finish. Successful JSON responses have a bounded, ten-minute memory cache. Model vectors are reused in a bounded SQLite cache keyed by text, provider, endpoint and model, without storing the original document text.
-
-Library writes are serialised, coalesced and protected against stale revisions, including unload beacons. Autosaves omit derived links and clusters, which are rebuilt from papers and explicit evidence on load. JSON exports retain calculated links. Save failures distinguish a successful browser fallback from a complete persistence failure.
-
-The test suite includes worker responsiveness, stale results, cancellation, partial discovery, model-cache invalidation, save ordering and fallback failures.
+The UI and bundled dependencies originate from the user-supplied Pulse 1.2 app; the Tauri project originates from the supplied 1.3 build. The discovery algorithms derive from the existing Pulse/Iratxe implementation. Metadata services include Semantic Scholar, OpenAlex, Crossref and PubMed. API credentials stay in local settings. External requests and optional cloud AI send the information needed for their requested operation.

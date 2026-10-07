@@ -8,3 +8,8 @@ library.json
 test-results/
 *.dmg
 *.app/
+
+desktop/frontend/
+desktop/src-tauri/resources/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/

@@ -1,0 +1,593 @@
+[
+  {
+    "seed": [
+      {
+        "id": "seed",
+        "title": "Graph retrieval methods",
+        "doi": "10.1234/seed",
+        "authors": [
+          "Ada Researcher"
+        ],
+        "year": "2020",
+        "abstract": "Graph models for document retrieval",
+        "paperKeywords": [
+          "graph",
+          "retrieval"
+        ]
+      }
+    ],
+    "candidates": {
+      "citationGraph": [
+        {
+          "title": "Graph foundations",
+          "doi": "10.1234/a",
+          "authors": [
+            "Ada Researcher"
+          ],
+          "year": "2018",
+          "citedByCount": 200,
+          "abstract": "Graph retrieval reference",
+          "source": "S2",
+          "branch": "citationGraph",
+          "subType": "Backward"
+        },
+        {
+          "title": "Graph models revisited",
+          "doi": "10.1234/b",
+          "year": "2024",
+          "citedByCount": 20,
+          "abstract": "Graph document retrieval",
+          "source": "OpenAlex",
+          "branch": "citationGraph"
+        }
+      ],
+      "semanticSearch": [
+        {
+          "title": "Graph foundations",
+          "doi": "10.1234/a",
+          "authors": [
+            "Ada Researcher"
+          ],
+          "year": "2018",
+          "citedByCount": 200,
+          "abstract": "Graph retrieval reference",
+          "source": "S2",
+          "branch": "semanticSearch"
+        },
+        {
+          "title": "Unrelated chemistry",
+          "doi": "10.1234/c",
+          "year": "2023",
+          "citedByCount": 3,
+          "abstract": "Catalyst chemistry",
+          "source": "S2",
+          "branch": "semanticSearch"
+        }
+      ]
+    },
+    "options": {
+      "limit": 50
+    },
+    "expected": [
+      {
+        "title": "Graph foundations",
+        "doi": "10.1234/a",
+        "authors": [
+          "Ada Researcher"
+        ],
+        "year": "2018",
+        "citedByCount": 200,
+        "abstract": "Graph retrieval reference",
+        "source": "S2",
+        "branch": "citationGraph",
+        "subType": "Backward",
+        "branchHits": {
+          "citationGraph": true,
+          "semanticSearch": true
+        },
+        "sourceList": [
+          "S2"
+        ],
+        "discoveryBadges": [
+          "Backward Ref"
+        ],
+        "score": 143.0,
+        "scoreBreakdown": {
+          "relevance": 10,
+          "citationProximity": 40,
+          "semanticSimilarity": 42,
+          "recency": 0.0,
+          "novelty": 16.0,
+          "convergenceBonus": 35,
+          "totalScore": 143.0
+        },
+        "reason": "Surfaced via foundational bibliography reference."
+      },
+      {
+        "title": "Graph models revisited",
+        "doi": "10.1234/b",
+        "year": "2024",
+        "citedByCount": 20,
+        "abstract": "Graph document retrieval",
+        "source": "OpenAlex",
+        "branch": "citationGraph",
+        "branchHits": {
+          "citationGraph": true
+        },
+        "sourceList": [
+          "OpenAlex"
+        ],
+        "discoveryBadges": [],
+        "score": 63.6,
+        "scoreBreakdown": {
+          "relevance": 10,
+          "citationProximity": 40,
+          "semanticSimilarity": 0,
+          "recency": 12.0,
+          "novelty": 1.6,
+          "convergenceBonus": 0,
+          "totalScore": 63.6
+        }
+      },
+      {
+        "title": "Unrelated chemistry",
+        "doi": "10.1234/c",
+        "year": "2023",
+        "citedByCount": 3,
+        "abstract": "Catalyst chemistry",
+        "source": "S2",
+        "branch": "semanticSearch",
+        "branchHits": {
+          "semanticSearch": true
+        },
+        "sourceList": [
+          "S2"
+        ],
+        "discoveryBadges": [],
+        "score": 52.2,
+        "scoreBreakdown": {
+          "relevance": 0,
+          "citationProximity": 0,
+          "semanticSimilarity": 42,
+          "recency": 10.0,
+          "novelty": 0.2,
+          "convergenceBonus": 0,
+          "totalScore": 52.2
+        }
+      }
+    ]
+  },
+  {
+    "seed": [
+      {
+        "id": "seed",
+        "title": "Graph retrieval methods",
+        "doi": "10.1234/seed",
+        "authors": [
+          "Ada Researcher"
+        ],
+        "year": "2020",
+        "abstract": "Graph models for document retrieval",
+        "paperKeywords": [
+          "graph",
+          "retrieval"
+        ]
+      }
+    ],
+    "candidates": {
+      "citationGraph": [
+        {
+          "title": "Graph foundations",
+          "doi": "10.1234/a",
+          "authors": [
+            "Ada Researcher"
+          ],
+          "year": "2018",
+          "citedByCount": 200,
+          "abstract": "Graph retrieval reference",
+          "source": "S2",
+          "branch": "citationGraph",
+          "subType": "Backward"
+        },
+        {
+          "title": "Graph models revisited",
+          "doi": "10.1234/b",
+          "year": "2024",
+          "citedByCount": 20,
+          "abstract": "Graph document retrieval",
+          "source": "OpenAlex",
+          "branch": "citationGraph"
+        }
+      ],
+      "semanticSearch": [
+        {
+          "title": "Graph foundations",
+          "doi": "10.1234/a",
+          "authors": [
+            "Ada Researcher"
+          ],
+          "year": "2018",
+          "citedByCount": 200,
+          "abstract": "Graph retrieval reference",
+          "source": "S2",
+          "branch": "semanticSearch"
+        },
+        {
+          "title": "Unrelated chemistry",
+          "doi": "10.1234/c",
+          "year": "2023",
+          "citedByCount": 3,
+          "abstract": "Catalyst chemistry",
+          "source": "S2",
+          "branch": "semanticSearch"
+        }
+      ]
+    },
+    "options": {
+      "limit": 1,
+      "recencyTilt": 2
+    },
+    "expected": [
+      {
+        "title": "Graph foundations",
+        "doi": "10.1234/a",
+        "authors": [
+          "Ada Researcher"
+        ],
+        "year": "2018",
+        "citedByCount": 200,
+        "abstract": "Graph retrieval reference",
+        "source": "S2",
+        "branch": "citationGraph",
+        "subType": "Backward",
+        "branchHits": {
+          "citationGraph": true,
+          "semanticSearch": true
+        },
+        "sourceList": [
+          "S2"
+        ],
+        "discoveryBadges": [
+          "Backward Ref"
+        ],
+        "score": 143.0,
+        "scoreBreakdown": {
+          "relevance": 10,
+          "citationProximity": 40,
+          "semanticSimilarity": 42,
+          "recency": 0.0,
+          "novelty": 16.0,
+          "convergenceBonus": 35,
+          "totalScore": 143.0
+        },
+        "reason": "Surfaced via foundational bibliography reference."
+      }
+    ]
+  },
+  {
+    "seed": [
+      {
+        "id": "seed",
+        "title": "Graph retrieval methods",
+        "doi": "10.1234/seed",
+        "authors": [
+          "Ada Researcher"
+        ],
+        "year": "2020",
+        "abstract": "Graph models for document retrieval",
+        "paperKeywords": [
+          "graph",
+          "retrieval"
+        ]
+      }
+    ],
+    "candidates": {
+      "citationGraph": [
+        {
+          "title": "Graph foundations",
+          "doi": "10.1234/a",
+          "authors": [
+            "Ada Researcher"
+          ],
+          "year": "2018",
+          "citedByCount": 200,
+          "abstract": "Graph retrieval reference",
+          "source": "S2",
+          "branch": "citationGraph",
+          "subType": "Backward"
+        },
+        {
+          "title": "Graph models revisited",
+          "doi": "10.1234/b",
+          "year": "2024",
+          "citedByCount": 20,
+          "abstract": "Graph document retrieval",
+          "source": "OpenAlex",
+          "branch": "citationGraph"
+        }
+      ],
+      "semanticSearch": [
+        {
+          "title": "Graph foundations",
+          "doi": "10.1234/a",
+          "authors": [
+            "Ada Researcher"
+          ],
+          "year": "2018",
+          "citedByCount": 200,
+          "abstract": "Graph retrieval reference",
+          "source": "S2",
+          "branch": "semanticSearch"
+        },
+        {
+          "title": "Unrelated chemistry",
+          "doi": "10.1234/c",
+          "year": "2023",
+          "citedByCount": 3,
+          "abstract": "Catalyst chemistry",
+          "source": "S2",
+          "branch": "semanticSearch"
+        }
+      ]
+    },
+    "options": {
+      "limit": 50,
+      "excludeDois": [
+        "10.1234/a"
+      ]
+    },
+    "expected": [
+      {
+        "title": "Graph foundations",
+        "doi": "10.1234/a",
+        "authors": [
+          "Ada Researcher"
+        ],
+        "year": "2018",
+        "citedByCount": 200,
+        "abstract": "Graph retrieval reference",
+        "source": "S2",
+        "branch": "citationGraph",
+        "subType": "Backward",
+        "branchHits": {
+          "citationGraph": true,
+          "semanticSearch": true
+        },
+        "sourceList": [
+          "S2"
+        ],
+        "discoveryBadges": [
+          "Backward Ref"
+        ],
+        "score": 143.0,
+        "scoreBreakdown": {
+          "relevance": 10,
+          "citationProximity": 40,
+          "semanticSimilarity": 42,
+          "recency": 0.0,
+          "novelty": 16.0,
+          "convergenceBonus": 35,
+          "totalScore": 143.0
+        },
+        "reason": "Surfaced via foundational bibliography reference."
+      },
+      {
+        "title": "Graph models revisited",
+        "doi": "10.1234/b",
+        "year": "2024",
+        "citedByCount": 20,
+        "abstract": "Graph document retrieval",
+        "source": "OpenAlex",
+        "branch": "citationGraph",
+        "branchHits": {
+          "citationGraph": true
+        },
+        "sourceList": [
+          "OpenAlex"
+        ],
+        "discoveryBadges": [],
+        "score": 63.6,
+        "scoreBreakdown": {
+          "relevance": 10,
+          "citationProximity": 40,
+          "semanticSimilarity": 0,
+          "recency": 12.0,
+          "novelty": 1.6,
+          "convergenceBonus": 0,
+          "totalScore": 63.6
+        }
+      },
+      {
+        "title": "Unrelated chemistry",
+        "doi": "10.1234/c",
+        "year": "2023",
+        "citedByCount": 3,
+        "abstract": "Catalyst chemistry",
+        "source": "S2",
+        "branch": "semanticSearch",
+        "branchHits": {
+          "semanticSearch": true
+        },
+        "sourceList": [
+          "S2"
+        ],
+        "discoveryBadges": [],
+        "score": 52.2,
+        "scoreBreakdown": {
+          "relevance": 0,
+          "citationProximity": 0,
+          "semanticSimilarity": 42,
+          "recency": 10.0,
+          "novelty": 0.2,
+          "convergenceBonus": 0,
+          "totalScore": 52.2
+        }
+      }
+    ]
+  },
+  {
+    "seed": [
+      {
+        "id": "seed",
+        "title": "Graph retrieval methods",
+        "doi": "10.1234/seed",
+        "authors": [
+          "Ada Researcher"
+        ],
+        "year": "2020",
+        "abstract": "Graph models for document retrieval",
+        "paperKeywords": [
+          "graph",
+          "retrieval"
+        ]
+      }
+    ],
+    "candidates": {
+      "citationGraph": [
+        {
+          "title": "Graph foundations",
+          "doi": "10.1234/a",
+          "authors": [
+            "Ada Researcher"
+          ],
+          "year": "2018",
+          "citedByCount": 200,
+          "abstract": "Graph retrieval reference",
+          "source": "S2",
+          "branch": "citationGraph",
+          "subType": "Backward"
+        },
+        {
+          "title": "Graph models revisited",
+          "doi": "10.1234/b",
+          "year": "2024",
+          "citedByCount": 20,
+          "abstract": "Graph document retrieval",
+          "source": "OpenAlex",
+          "branch": "citationGraph"
+        }
+      ],
+      "semanticSearch": [
+        {
+          "title": "Graph foundations",
+          "doi": "10.1234/a",
+          "authors": [
+            "Ada Researcher"
+          ],
+          "year": "2018",
+          "citedByCount": 200,
+          "abstract": "Graph retrieval reference",
+          "source": "S2",
+          "branch": "semanticSearch"
+        },
+        {
+          "title": "Unrelated chemistry",
+          "doi": "10.1234/c",
+          "year": "2023",
+          "citedByCount": 3,
+          "abstract": "Catalyst chemistry",
+          "source": "S2",
+          "branch": "semanticSearch"
+        }
+      ]
+    },
+    "options": {
+      "limit": 50,
+      "steerKeywords": [
+        "retrieval"
+      ],
+      "excludeKeywords": [
+        "chemistry"
+      ],
+      "impactTilt": 2
+    },
+    "expected": [
+      {
+        "title": "Graph foundations",
+        "doi": "10.1234/a",
+        "authors": [
+          "Ada Researcher"
+        ],
+        "year": "2018",
+        "citedByCount": 200,
+        "abstract": "Graph retrieval reference",
+        "source": "S2",
+        "branch": "citationGraph",
+        "subType": "Backward",
+        "branchHits": {
+          "citationGraph": true,
+          "semanticSearch": true
+        },
+        "sourceList": [
+          "S2"
+        ],
+        "discoveryBadges": [
+          "Backward Ref"
+        ],
+        "score": 173.0,
+        "scoreBreakdown": {
+          "relevance": 24,
+          "citationProximity": 40,
+          "semanticSimilarity": 42,
+          "recency": 0.0,
+          "novelty": 32.0,
+          "convergenceBonus": 35,
+          "totalScore": 173.0
+        },
+        "reason": "Surfaced via foundational bibliography reference."
+      },
+      {
+        "title": "Graph models revisited",
+        "doi": "10.1234/b",
+        "year": "2024",
+        "citedByCount": 20,
+        "abstract": "Graph document retrieval",
+        "source": "OpenAlex",
+        "branch": "citationGraph",
+        "branchHits": {
+          "citationGraph": true
+        },
+        "sourceList": [
+          "OpenAlex"
+        ],
+        "discoveryBadges": [],
+        "score": 79.2,
+        "scoreBreakdown": {
+          "relevance": 24,
+          "citationProximity": 40,
+          "semanticSimilarity": 0,
+          "recency": 12.0,
+          "novelty": 3.2,
+          "convergenceBonus": 0,
+          "totalScore": 79.2
+        }
+      },
+      {
+        "title": "Unrelated chemistry",
+        "doi": "10.1234/c",
+        "year": "2023",
+        "citedByCount": 3,
+        "abstract": "Catalyst chemistry",
+        "source": "S2",
+        "branch": "semanticSearch",
+        "branchHits": {
+          "semanticSearch": true
+        },
+        "sourceList": [
+          "S2"
+        ],
+        "discoveryBadges": [],
+        "score": 52.5,
+        "scoreBreakdown": {
+          "relevance": 0,
+          "citationProximity": 0,
+          "semanticSimilarity": 42,
+          "recency": 10.0,
+          "novelty": 0.5,
+          "convergenceBonus": 0,
+          "totalScore": 52.5
+        }
+      }
+    ]
+  }
+]

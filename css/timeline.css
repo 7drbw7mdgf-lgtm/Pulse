@@ -1,0 +1,22 @@
+.timeline-view {position:absolute;inset:0;overflow:auto;padding:24px;background:var(--panel,#f8fafc);z-index:3;}
+.timeline-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;}
+.timeline-heading h2 {margin:0 0 6px;font-size:22px;}
+.timeline-heading p,.timeline-paper p {margin:0;color:var(--muted,#667085);font-size:12px;line-height:1.6;}
+.timeline-heading label {font-size:12px;display:flex;align-items:center;gap:8px;}
+.timeline-heading select {border:1px solid var(--line,#ddd);border-radius:8px;padding:8px;background:var(--card,#fff);color:inherit;}
+.timeline-year {font-size:15px;margin:22px 0 10px;color:var(--accent,#6452ee);}
+.timeline-paper {border:1px solid var(--line,#e2e8f0);border-left:3px solid var(--accent,#6452ee);border-radius:10px;padding:16px;margin:10px 0;background:var(--card,#fff);}
+.timeline-paper.is-selected {box-shadow:0 0 0 2px #7968ee55;}
+.timeline-title {display:block;text-align:left;border:0;background:none;color:inherit;font-size:14px;font-weight:650;cursor:pointer;padding:0;margin-bottom:8px;line-height:1.45;}
+.timeline-paper-footer {display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;font-size:12px;color:var(--muted,#667085);}
+.timeline-empty {padding:48px 12px;text-align:center;color:var(--muted,#667085);}
+html[data-theme="dark"] .timeline-view {background:#171e2b;}
+html[data-theme="dark"] .timeline-paper,html[data-theme="dark"] .timeline-heading select {background:#202a3a;border-color:#354155;}
+
+.is-timeline #graphLegend,.is-timeline .canvas-dock-modern,.is-timeline #emptyState,.is-timeline .canvas-subbar-tools {display:none!important;}
+.canvas-subbar {height:auto;min-height:42px;flex-wrap:wrap;gap:4px;padding-top:4px;padding-bottom:4px;}
+.canvas-subbar-tools {flex-wrap:wrap;justify-content:flex-end;}
+.subbar-dropdown-label {flex-shrink:0;}
+.subbar-dropdown-label select {min-width:75px;}
+.recent-session-item {width:100%;border:0;background:transparent;text-align:left;color:inherit;cursor:pointer;}
+.rail-empty {font-size:11px;color:#a1abc0;}

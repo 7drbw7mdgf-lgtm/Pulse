@@ -1,157 +1,3 @@
-        if (typeof p.x === 'number' && typeof p.y === 'number') {
-          sumX += p.x;
-          sumY += p.y;
-          count++;
-        }
-      });
-      const cx = count ? sumX / count : (state.view.width / 2);
-      const cy = count ? sumY / count : (state.view.height / 2);
-
-      const startPositions = state.papers.map(p => ({ id: p.id, x: p.x, y: p.y }));
-      const startAreas = state.areas.map(a => ({ id: a.id, x: a.x, y: a.y, width: a.width, height: a.height }));
-      const startTime = performance.now();
-      const duration = 280;
-
-      state.graphStyle.spacing = targetSpacing;
-      if (els.spacingInput) {
-        els.spacingInput.value = Math.round(targetSpacing * 100);
-      }
-      if (els.spacingValue) {
-        els.spacingValue.textContent = `${Math.round(targetSpacing * 100)}%`;
-      }
-
-      function step(now) {
-        const elapsed = now - startTime;
-        const progress = Math.min(1, elapsed / duration);
-        const ease = 1 - Math.pow(1 - progress, 3);
-        const currentFactor = 1 + (factor - 1) * ease;
-
-        state.papers.forEach(p => {
-          const orig = startPositions.find(sp => sp.id === p.id);
-          if (orig && typeof orig.x === 'number') {
-            p.x = cx + (orig.x - cx) * currentFactor;
-            p.y = cy + (orig.y - cy) * currentFactor;
-          }
-        });
-
-        state.areas.forEach(a => {
-          const orig = startAreas.find(sa => sa.id === a.id);
-          if (orig) {
-            a.x = cx + (orig.x - cx) * currentFactor;
-            a.y = cy + (orig.y - cy) * currentFactor;
-            a.width = orig.width * Math.sqrt(currentFactor);
-            a.height = orig.height * Math.sqrt(currentFactor);
-          }
-        });
-
-        render();
-
-        if (progress < 1) {
-          requestAnimationFrame(step);
-        } else {
-          showToast(`Map blown up (${Math.round(targetSpacing * 100)}% spacing)`);
-        }
-      }
-      requestAnimationFrame(step);
-    }
-
-    function compressMap(factor = 0.75) {
-      if (!state.papers.length) return;
-      const currentSpacing = state.graphStyle.spacing || 1;
-      const targetSpacing = Math.max(0.35, Number((currentSpacing * factor).toFixed(2)));
-      if (Math.abs(targetSpacing - currentSpacing) < 0.01) {
-        showToast('Minimum map spacing reached');
-        return;
-      }
-
-      let sumX = 0, sumY = 0, count = 0;
-      state.papers.forEach(p => {
-        if (typeof p.x === 'number' && typeof p.y === 'number') {
-          sumX += p.x;
-          sumY += p.y;
-          count++;
-        }
-      });
-      const cx = count ? sumX / count : (state.view.width / 2);
-      const cy = count ? sumY / count : (state.view.height / 2);
-
-      const startPositions = state.papers.map(p => ({ id: p.id, x: p.x, y: p.y }));
-      const startTime = performance.now();
-      const duration = 240;
-
-      state.graphStyle.spacing = targetSpacing;
-      if (els.spacingInput) {
-        els.spacingInput.value = Math.round(targetSpacing * 100);
-      }
-      if (els.spacingValue) {
-        els.spacingValue.textContent = `${Math.round(targetSpacing * 100)}%`;
-      }
-
-      function step(now) {
-        const elapsed = now - startTime;
-        const progress = Math.min(1, elapsed / duration);
-        const ease = 1 - Math.pow(1 - progress, 3);
-        const currentFactor = 1 + (factor - 1) * ease;
-
-        state.papers.forEach(p => {
-          const orig = startPositions.find(sp => sp.id === p.id);
-          if (orig && typeof orig.x === 'number') {
-            p.x = cx + (orig.x - cx) * currentFactor;
-            p.y = cy + (orig.y - cy) * currentFactor;
-          }
-        });
-
-        render();
-
-        if (progress < 1) {
-          requestAnimationFrame(step);
-        } else {
-          showToast(`Map condensed (${Math.round(targetSpacing * 100)}% spacing)`);
-        }
-      }
-      requestAnimationFrame(step);
-    }
-
-    function areaForPoint(x, y) {
-      return [...state.areas].reverse().find(area => pointInArea(x, y, area));
-    }
-
-    function pointInArea(x, y, area) {
-      return x >= area.x && x <= area.x + area.width && y >= area.y && y <= area.y + area.height;
-    }
-
-    function resizeArea(area, field, value) {
-      const next = Number(value);
-      if (!Number.isFinite(next)) return;
-      area[field] = Math.max(field === 'width' ? 160 : 110, Math.min(1200, next));
-      applyAreaContainment();
-    }
-
-    function setAreaSize(area, width, height) {
-      area.width = Math.max(160, Math.min(1200, width));
-      area.height = Math.max(110, Math.min(1200, height));
-      applyAreaContainment();
-    }
-
-    function createArea() {
-      const index = state.areas.length;
-      const width = Math.max(230, state.view.width * 0.28);
-      const height = Math.max(150, state.view.height * 0.24);
-      const area = {
-        id: uid(),
-        name: `Area ${index + 1}`,
-        color: palette[index % palette.length],
-        x: state.view.x + 92 + index * 34,
-        y: state.view.y + 96 + index * 28,
-        width,
-        height
-      };
-      state.areas.push(area);
-      state.selectedAreaId = area.id;
-      setAreaPanelOpen(true);
-      render();
-      showToast(`Created ${area.name}.`);
-    }
 
     function removeArea(id) {
       const area = state.areas.find(item => item.id === id);
@@ -173,27 +19,30 @@
 
     function render() {
       calculateRelatedness();
-      syncWorkspaceControls();
       if (state.selectedLinkId && !state.links.some(link => linkId(link) === state.selectedLinkId)) {
         state.selectedLinkId = null;
       }
+      const isTimelineMode = state.mode === 'timeline';
       const isTableMode = state.mode === 'table';
-      const isTimelineMode = state.workspaceView === 'timeline';
+      document.querySelector('.pulse-col-canvas')?.classList.toggle('is-timeline',isTimelineMode);
+      document.querySelectorAll('.subbar-tab').forEach(tab=>tab.classList.toggle('is-active',tab.dataset.mode===state.mode));
+      const activeRail=isTimelineMode?'timeline':state.mode==='clusters'?'trends':'network';
+      document.querySelectorAll('.rail-item').forEach(item=>item.classList.toggle('active',item.dataset.rail===activeRail));
       els.timelineView.hidden = !isTimelineMode;
-      if (isTimelineMode) renderTimeline();
+      if (isTimelineMode) renderTimelineView();
       els.map.hidden = isTableMode || isTimelineMode;
       els.map.style.display = isTableMode || isTimelineMode ? 'none' : '';
       els.tableView.hidden = !isTableMode;
       const titleHeading = (els.canvasTitle || document.querySelector('.canvas-title'))?.querySelector('h1');
       if (titleHeading) {
-        titleHeading.textContent = isTableMode ? 'Bibliography' : (state.mode === 'radial' ? 'Radial hierarchy' : (state.mode === 'clusters' ? 'Topic clusters' : 'Relatedness graph'));
+        titleHeading.textContent = isTimelineMode ? 'Timeline' : isTableMode ? 'Biolography' : (state.mode === 'radial' ? 'Radial hierarchy' : (state.mode === 'clusters' ? 'Topic clusters' : 'Relatedness graph'));
       }
       if (isTableMode) {
         renderTableView();
       }
-      if (state.workspaceView !== 'network') {
-        renderTagFilterBar(); if(state.workspaceView==='library')renderTableView();
-        renderPapers();renderDetails();updateMetrics();scheduleAutosave();return;
+      if (isTimelineMode) {
+        renderTagFilterBar();renderPapers();renderDetails();renderLinkages();renderAreasPanel();updateMetrics();scheduleAutosave();
+        return;
       }
       const rect = els.map.getBoundingClientRect();
       const width = Math.max(rect.width, 640);
@@ -202,16 +51,9 @@
       updateViewSize(width, height);
       els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
       els.map.classList.toggle('no-grid', !state.graphStyle.showGrid);
-      if (state.workspaceView === 'network') {
-        layout(width, safeHeight);
-        applyAreaContainment();
-      }
+      layout(width, safeHeight);
+      applyAreaContainment();
 
-      const paintKey=JSON.stringify([graphRevision,state.linkTypeFilter,state.librarySearch,state.filterTags,state.filterMode,state.graphStyle,state.areas,bouncingNodeId,state.papers.map(p=>[p.id,p.title,p.authors,p.year,p.journal,p.x,p.y,p.color,p.areaId,p.gemmaKeywords])]);
-      if(paintKey===graphMarkupKey) {
-        renderDetails();renderSelection();syncWorkspaceControls();updateMetrics();scheduleAutosave();return;
-      }
-      graphMarkupKey=paintKey;graphStats.paints++;
       const clusterByPaper = new Map();
       state.clusters.forEach((cluster, index) => cluster.forEach(id => clusterByPaper.set(id, index)));
 
@@ -224,12 +66,12 @@
         </g>`;
       }).join('') : '';
 
-      const hasFilter = Boolean(state.librarySearch || (state.filterTags && state.filterTags.length > 0));
-      const availableLinks = visibleLinks();
-      const sortedLinks = availableLinks.length > 2500 ? availableLinks.slice().sort((a,b)=>b.score-a.score).slice(0,2500).sort((a,b)=>a.score-b.score) : availableLinks.sort((a,b)=>a.score-b.score);
+      const hasFilter = Boolean(state.filterTags && state.filterTags.length > 0);
+      const visibleIds = new Set(state.papers.filter(paper=>paper.selected !== false).map(paper=>paper.id));
+      const sortedLinks = state.links.filter(link => visibleIds.has(link.source) && visibleIds.has(link.target)).filter(link => state.linkTypeFilter==='all' || link.type===state.linkTypeFilter || (link.type==='mixed' && (link.types||[]).includes(state.linkTypeFilter))).sort((a, b) => a.score - b.score);
       const linkMarkup = sortedLinks.map(link => {
-        const source = papersById.get(link.source);
-        const target = papersById.get(link.target);
+        const source = state.papers.find(paper => paper.id === link.source);
+        const target = state.papers.find(paper => paper.id === link.target);
         const sourceMatches = !hasFilter || (source && paperMatchesFilters(source));
         const targetMatches = !hasFilter || (target && paperMatchesFilters(target));
         const filterDimmed = hasFilter && (!sourceMatches || !targetMatches) ? ' is-filter-dimmed' : '';
@@ -242,7 +84,7 @@
           <line class="edge-hit" data-link="${id}" data-source="${link.source}" data-target="${link.target}" x1="${source.x}" y1="${source.y}" x2="${target.x}" y2="${target.y}" stroke-width="20" stroke="transparent" stroke-linecap="round"><title>${escapeHtml(label)}</title></line>`;
       }).join('');
 
-      const nodeMarkup = state.papers.map((paper, idx) => {
+      const nodeMarkup = state.papers.filter(paper=>paper.selected !== false).map((paper, idx) => {
         const color = paperColor(paper, clusterByPaper);
         const radius = state.graphStyle.nodeSize || 22;
         const linked = selectedLinkEndpoints().has(paper.id) ? ' is-linked' : '';
@@ -255,8 +97,8 @@
         let labelPos = 'bottom';
         let neighborBelow = false;
         let neighborAbove = false;
-        for (let j = 0; state.papers.length <= 100 && j < state.papers.length; j++) {
-          if (j === idx) continue;
+        for (let j = 0; j < state.papers.length; j++) {
+          if (state.papers[j] === paper) continue;
           const other = state.papers[j];
           const dist = Math.hypot(paper.x - other.x, paper.y - other.y);
           if (dist < radius * 2.6 + 36) {
@@ -300,16 +142,15 @@
       }).join('');
 
       els.map.innerHTML = `<g>${areaMarkup}</g><g>${linkMarkup}</g><g>${nodeMarkup}</g>`;
-      paintedSelectedLinkId=state.selectedLinkId;edgeElementsById=new Map();
-      els.map.querySelectorAll('.edge').forEach(edge=>{const id=edge.dataset.link;if(!edgeElementsById.has(id))edgeElementsById.set(id,[]);edgeElementsById.get(id).push(edge);});
       bindAreaEvents();
       bindEdgeEvents();
       bindNodeEvents();
       renderTagFilterBar();
+      renderTableView();
       renderPapers();
       renderDetails();
-      if(!els.linkagePanel.hidden)renderLinkages();
-      if(!els.areaPanel.hidden)renderAreasPanel();
+      renderLinkages();
+      renderAreasPanel();
       updateMetrics();
       scheduleAutosave();
     }
@@ -317,14 +158,14 @@
     function renderTableView(focusColumn = '') {
       if (!els.tableView) return;
       if (!state.papers.length) {
-        els.tableView.innerHTML = '<div class="table-empty">Drop papers to build an extracted Bibliography table.</div>';
+        els.tableView.innerHTML = '<div class="table-empty">Drop papers to build an extracted Biolography table.</div>';
         return;
       }
       const rows = filteredTablePapers();
       const columns = activeTableColumns();
       const isCompact = state.paperView === 'compact';
       els.tableView.innerHTML = `
-        <table class="findings-table${isCompact ? ' is-compact' : ''}" aria-label="Extracted Bibliography findings">
+        <table class="findings-table${isCompact ? ' is-compact' : ''}" aria-label="Extracted Biolography findings">
           <thead>
             <tr>
               ${columns.map(column => `
@@ -347,4 +188,164 @@
             }).join('')}
           </tbody>
         </table>
-        ${rows.length ? '' : '<div class="table-empty">No papers match those Bibliography filters.</div>'}
+        ${rows.length ? '' : '<div class="table-empty">No papers match those Biolography filters.</div>'}
+      `;
+      bindTableFilters();
+      bindTableHeaders();
+      if (focusColumn) {
+        const input = els.tableView.querySelector(`[data-table-filter="${focusColumn}"]`);
+        if (input) {
+          input.focus();
+          const end = input.value.length;
+          input.setSelectionRange?.(end, end);
+        }
+      }
+      els.tableView.querySelectorAll('[data-table-paper]').forEach(row => {
+        row.addEventListener('click', () => {
+          state.selectedId = row.dataset.tablePaper;
+          renderDetails();
+          showToast('Selected paper from Biolography.');
+        });
+      });
+      els.tableView.querySelectorAll('[data-action="table-edit-tags"]').forEach(btn => {
+        btn.addEventListener('click', event => {
+          event.stopPropagation();
+          openKeywordModal(btn.dataset.paper);
+        });
+      });
+    }
+
+    function tableColumnDefinitions() {
+      const isCompact = state.paperView === 'compact';
+      return [
+        {
+          key: 'paper',
+          label: 'Paper',
+          text: paper => `${paper.title || ''} ${paper.doi || ''} ${paper.name || ''}`,
+          sort: paper => paper.title || '',
+          cell: paper => {
+            const title = escapeHtml(paper.title || 'Untitled paper');
+            const meta = escapeHtml(paper.doi ? `DOI ${paper.doi}` : (paper.name || ''));
+            const abstractSnippet = (!isCompact && paper.abstract)
+              ? `<div class="table-abstract-snippet" title="${escapeHtml(paper.abstract)}">${escapeHtml(paper.abstract.length > 220 ? paper.abstract.slice(0, 217) + '...' : paper.abstract)}</div>`
+              : '';
+            return `<div class="table-paper-cell">
+              <div class="table-paper-title">${title}</div>
+              ${meta ? `<div class="metadata-line">${meta}</div>` : ''}
+              ${abstractSnippet}
+            </div>`;
+          }
+        },
+        {
+          key: 'authors',
+          label: 'Authors',
+          text: paper => paperAuthors(paper).join(' '),
+          sort: paper => paperAuthors(paper).join(' '),
+          cell: paper => {
+            const list = paperAuthors(paper);
+            if (!list.length) return '<span class="subtle">Unknown</span>';
+            if (isCompact) {
+              return escapeHtml(list.slice(0, 3).join('; ') + (list.length > 3 ? ` (+${list.length - 3})` : ''));
+            }
+            return `<div class="table-authors-expanded">${escapeHtml(list.join('; '))}</div>`;
+          }
+        },
+        {
+          key: 'year',
+          label: 'Year',
+          text: paper => `${paper.year || ''} ${paper.date || ''}`,
+          sort: paper => paper.year || paper.date || '',
+          cell: paper => escapeHtml(paper.year || paper.date || '')
+        },
+        {
+          key: 'venue',
+          label: 'Venue',
+          text: paper => paper.journal || '',
+          sort: paper => paper.journal || '',
+          cell: paper => escapeHtml(paper.journal || '')
+        },
+        {
+          key: 'keywords',
+          label: 'Keywords',
+          text: paper => mergedKeywords(paper).join(' '),
+          sort: paper => mergedKeywords(paper).join(' '),
+          cell: paper => {
+            const terms = mergedKeywords(paper);
+            const count = isCompact ? 4 : terms.length;
+            const chips = terms.slice(0, count).map((term, i) => `<span class="term"><span class="term-rank">#${i + 1}</span>${escapeHtml(term)}</span>`).join('');
+            const extra = isCompact && terms.length > count ? `<span class="table-extra-chips subtle">+${terms.length - count}</span>` : '';
+            return `<div class="table-keywords-cell">${chips}${extra}<button class="compact-chip tag-edit-chip" type="button" data-action="table-edit-tags" data-paper="${paper.id}" title="Manage &amp; reorder keyword tags">🏷️</button></div>`;
+          }
+        },
+        {
+          key: 'findings',
+          label: 'Key findings',
+          text: paper => keyFindings(paper).join(' '),
+          sort: paper => keyFindings(paper).join(' '),
+          cell: paper => {
+            const findings = keyFindings(paper);
+            if (!findings.length) return '<span class="subtle">No clear finding extracted yet.</span>';
+            if (isCompact) {
+              const top = findings.slice(0, 2);
+              return `<div class="table-findings-compact">${top.map(item => `<div>${escapeHtml(item)}</div>`).join('')}${findings.length > 2 ? `<div class="subtle" style="font-size:10px;">+${findings.length - 2} more</div>` : ''}</div>`;
+            }
+            return `<div class="table-findings-expanded">${findings.map(item => `<div class="finding-bullet">• ${escapeHtml(item)}</div>`).join('')}</div>`;
+          }
+        },
+        {
+          key: 'links',
+          label: 'Links',
+          text: paper => String(tableLinkCount(paper)),
+          sort: paper => tableLinkCount(paper),
+          cell: paper => {
+            const count = tableLinkCount(paper);
+            return `<span class="table-link-badge ${count ? 'has-links' : 'no-links'}">${count} link${count === 1 ? '' : 's'}</span>`;
+          }
+        }
+      ];
+    }
+
+    function activeTableColumns() {
+      const definitions = tableColumnDefinitions();
+      const byKey = new Map(definitions.map(column => [column.key, column]));
+      const ordered = state.tableColumns.map(key => byKey.get(key)).filter(Boolean);
+      definitions.forEach(column => {
+        if (!ordered.some(item => item.key === column.key)) ordered.push(column);
+      });
+      return ordered;
+    }
+
+    function tableLinkCount(paper) {
+      return state.links.filter(link => link.source === paper.id || link.target === paper.id).length;
+    }
+
+    function filteredTablePapers() {
+      const columns = tableColumnDefinitions();
+      const filters = Object.entries(state.tableFilters || {})
+        .map(([key, value]) => [key, String(value || '').trim().toLowerCase()])
+        .filter(([, value]) => value);
+      const filtered = state.papers.filter(paper => {
+        if (!paperMatchesFilters(paper)) return false;
+        return filters.every(([key, value]) => {
+          const column = columns.find(item => item.key === key);
+          return column ? String(column.text(paper) || '').toLowerCase().includes(value) : true;
+        });
+      });
+      const sortColumn = columns.find(column => column.key === state.tableSort.key) || columns[0];
+      return filtered.sort((a, b) => {
+        const left = sortColumn.sort(a);
+        const right = sortColumn.sort(b);
+        const direction = state.tableSort.direction === 'desc' ? -1 : 1;
+        if (typeof left === 'number' || typeof right === 'number') return ((Number(left) || 0) - (Number(right) || 0)) * direction;
+        return String(left || '').localeCompare(String(right || ''), undefined, { numeric: true, sensitivity: 'base' }) * direction;
+      });
+    }
+
+    function bindTableFilters() {
+      els.tableView.querySelectorAll('[data-table-filter]').forEach(input => {
+        input?.addEventListener('input', event => {
+          state.tableFilters[event.target.dataset.tableFilter] = event.target.value;
+          renderTableView(event.target.dataset.tableFilter);
+        });
+      });
+    }

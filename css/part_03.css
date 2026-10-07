@@ -1,3 +1,24 @@
+
+/* ─── Paper cards ──────────────────────────────────────────────────── */
+
+.paper-card {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 12px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.paper-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-md); }
+.paper-card.is-selected { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* Compact Paper Card in Sidebar */
+.paper-card.is-compact {
+  padding: 8px 10px 6px;
   gap: 4px;
 }
 .paper-card.is-compact .paper-card-top {
@@ -269,32 +290,3 @@
   -webkit-user-select: none;
   user-select: none;
 }
-.node:hover .node-label, .node.is-selected .node-label, .node.is-centered .node-label { font-weight: 700; }
-
-/* Empty state */
-.empty-state {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  pointer-events: none;
-}
-.empty-card { max-width: 380px; text-align: center; }
-.empty-glyph svg { width: 120px; height: 80px; margin-bottom: 14px; }
-.empty-glyph line { stroke: var(--line-strong); stroke-width: 1.5; stroke-dasharray: 4 4; }
-.empty-glyph circle { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.5; }
-.empty-glyph circle:nth-of-type(2) { fill: var(--accent-soft); stroke: var(--accent-line); }
-.empty-card h2 { font-family: var(--font-serif); font-size: 21px; margin-bottom: 8px; }
-.empty-card p { color: var(--ink-2); font-size: 13px; line-height: 1.55; }
-.empty-card .empty-hint { margin-top: 10px; color: var(--muted); font-size: 12px; }
-
-/* Floating canvas chrome */
-.canvas-head {
-  position: absolute;
-  z-index: 5;
-  top: 14px;
-  left: 16px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;

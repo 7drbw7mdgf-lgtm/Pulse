@@ -1,3 +1,82 @@
+.pipeline-step::before {
+  content: counter(step);
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  color: var(--accent);
+  font: 600 12px var(--font-mono);
+}
+.pipeline-step strong { font-size: 12.5px; font-weight: 600; }
+.pipeline-step span { color: var(--muted); font-size: 11.5px; line-height: 1.4; }
+
+/* ─── Toast ────────────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: 84px;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition: opacity 0.2s, transform 0.2s var(--ease);
+}
+.toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+
+/* ─── Narrow windows ───────────────────────────────────────────────── */
+
+@media (max-width: 1180px) {
+  .hbtn-label { display: none; }
+  .hbtn { width: 30px; padding: 0; justify-content: center; }
+  .segmented button { min-width: 0; }
+  .canvas-head { max-width: calc(100% - 380px); }
+}
+
+@media (max-width: 900px) {
+  :root { --sidebar-w: 290px; }
+  .app-header { grid-template-columns: auto 1fr auto; }
+  .save-state-pill, .brand-version { display: none; }
+  .threshold-control label { display: none; }
+  .metrics .metric:last-child { display: none; }
+  .canvas-title p { display: none; }
+  .settings-shell { grid-template-columns: 1fr; }
+  .settings-nav { flex-direction: row; border-right: 0; border-bottom: 1px solid var(--line); }
+  .provider-summary, .pipeline-list, .settings-choice-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ─── Literature Discovery Modal ─────────────────────────────────────── */
+
+.discovery-modal-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.discovery-modal-card {
+  display: flex;
+  flex-direction: column;
+  width: min(880px, 94vw);
+  max-height: min(86vh, 860px);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: card-in 0.22s var(--ease);
+}
+
 .discovery-modal-header {
   display: flex;
   align-items: flex-start;
@@ -199,102 +278,4 @@
   display: flex;
   gap: 4px;
   align-items: center;
-}
-
-.discovery-keyword-chips-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-top: 5px;
-  border-top: 1px dashed var(--line);
-  overflow-x: auto;
-}
-
-.discovery-keyword-chips-list {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 4px;
-}
-
-.discovery-filter-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  color: var(--ink-2);
-  font-size: 10px;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.12s;
-}
-
-.discovery-filter-chip:hover,
-.discovery-filter-chip.is-active {
-  background: var(--accent-soft);
-  border-color: var(--accent-line);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.discovery-status-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 7px 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-  font-size: 11.5px;
-}
-
-.discovery-count-text {
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.discovery-selected-pill {
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
-  font-size: 11px;
-}
-
-.discovery-paper-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 14px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.discovery-paper-item {
-  display: flex;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  transition: all 0.14s ease;
-  cursor: pointer;
-  user-select: none;
-}
-
-.discovery-paper-item:hover {
-  border-color: var(--line-strong);
-  box-shadow: var(--shadow-sm);
-}
-
-.discovery-paper-item.is-selected {
-  border-color: var(--accent-line);
-  background: var(--surface-2);
-}
-
-:root[data-theme="dark"] .discovery-paper-item.is-selected {
-  background: rgba(141, 155, 255, 0.05);
 }

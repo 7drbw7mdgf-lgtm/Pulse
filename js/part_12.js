@@ -1,105 +1,3 @@
-      };
-      syncGraphControls();
-      render();
-      showToast('Graph style reset.');
-    }
-
-    function escapeHtml(value) {
-      return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
-    function bindNodeEvents() {
-      els.map.querySelectorAll('.node').forEach(node => {
-        const id = node.dataset.id;
-
-        node.addEventListener('dblclick', event => {
-          event.stopPropagation();
-          centerGraphOnPaper(id, true);
-        });
-
-        node.addEventListener('pointerdown', event => {
-          if (event.button !== 0) return;
-          event.stopPropagation();
-          const paper = papersById.get(id);
-          if (!paper) return;
-          node.parentNode.appendChild(node);
-          node.classList.add('is-dragging');
-          const point = svgPoint(event);
-          state.drag = {
-            id,
-            offsetX: point.x - paper.x,
-            offsetY: point.y - paper.y,
-            startX: point.x,
-            startY: point.y,
-            moved: false
-          };
-          node.setPointerCapture(event.pointerId);
-          els.map.classList.add('is-panning');
-          state.selectedId = id;
-          state.selectedLinkId = null;
-          state.inspectorOpen = true;
-          renderDetails();
-          renderSelection();scheduleAutosave();
-        });
-
-        node.addEventListener('pointermove', event => {
-          if (!state.drag || state.drag.id !== id) return;
-          const paper = state.papers.find(item => item.id === state.drag.id);
-          if (!paper) return;
-          const point = svgPoint(event);
-          if (!state.drag.moved && Math.hypot(point.x - state.drag.startX, point.y - state.drag.startY) > 4) {
-            state.drag.moved = true;
-          }
-          if (state.drag.moved) {
-            paper.x = point.x - state.drag.offsetX;
-            paper.y = point.y - state.drag.offsetY;
-            node.setAttribute('transform', `translate(${paper.x.toFixed(1)},${paper.y.toFixed(1)})`);
-            renderEdgesOnly();
-          }
-        });
-
-        node.addEventListener('pointerup', () => {
-          if (state.drag && state.drag.id === id) {
-            const paper = state.papers.find(item => item.id === state.drag.id);
-            const wasDragged = state.drag.moved;
-            state.drag = null;
-            node.classList.remove('is-dragging');
-            els.map.classList.remove('is-panning');
-
-            if (wasDragged) {
-              const area = paper ? areaForPoint(paper.x, paper.y) : null;
-              if (paper) {
-                paper.areaId = area?.id || paper.areaId || '';
-                paper.pinnedPosition = true;
-              }
-              if (area) showToast(`Placed "${compactTitle(paper.title)}" in ${area.name}.`);
-              render();
-            } else {
-              // Rapid tap / click double-click detection
-              const now = Date.now();
-              if (lastNodeClickTime && (now - lastNodeClickTime < 380) && lastNodeClickId === id) {
-                lastNodeClickTime = 0;
-                lastNodeClickId = null;
-                centerGraphOnPaper(id, true);
-              } else {
-                lastNodeClickTime = now;
-                lastNodeClickId = id;
-              }
-            }
-          }
-        });
-
-        node.addEventListener('pointercancel', () => {
-          state.drag = null;
-          node.classList.remove('is-dragging');
-          els.map.classList.remove('is-panning');
-        });
-      });
-    }
 
     function bindAreaEvents() {
       els.map.querySelectorAll('.area-region').forEach(region => {
@@ -243,7 +141,7 @@
         }
         if (!state.panDrag || state.panDrag.pointerId !== event.pointerId) return;
         state.panDrag = null;
-        els.map.classList.remove('is-panning');scheduleAutosave();
+        els.map.classList.remove('is-panning');
       };
       els.map.addEventListener('pointerup', endPan);
       els.map.addEventListener('pointercancel', endPan);
@@ -261,11 +159,11 @@
       state.view.height = nextHeight;
       state.view.x = anchorX - ratioX * state.view.width;
       state.view.y = anchorY - ratioY * state.view.height;
-      els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);scheduleAutosave();
+      els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
     }
 
     function centerGraphOnPaper(id, withBounce = true) {
-      const paper = papersById.get(id);
+      const paper = state.papers.find(item => item.id === id);
       if (!paper) return;
 
       if (recenterAnimId) {
@@ -277,7 +175,6 @@
         bounceAnimationTimer = null;
       }
 
-      layoutKey=''; // Discard a layout result that started before this centering action.
       state.centerId = id;
       state.selectedId = id;
 
@@ -348,3 +245,112 @@
         const progress = Math.min(1, elapsed / duration);
         const ease = progress >= 1 ? 1 : easeOutBack(progress);
 
+        // Interpolate camera view
+        state.view.x = startViewX + (targetViewX - startViewX) * ease;
+        state.view.y = startViewY + (targetViewY - startViewY) * ease;
+        els.map.setAttribute('viewBox', `${state.view.x.toFixed(1)} ${state.view.y.toFixed(1)} ${state.view.width} ${state.view.height}`);
+
+        // Interpolate paper positions
+        state.papers.forEach(p => {
+          const start = startPositions.get(p.id);
+          const target = targetPositions.get(p.id);
+          if (start && target) {
+            p.x = start.x + (target.x - start.x) * ease;
+            p.y = start.y + (target.y - start.y) * ease;
+          }
+        });
+
+        // Update DOM node translations
+        els.map.querySelectorAll('.node').forEach(nodeEl => {
+          const p = state.papers.find(item => item.id === nodeEl.dataset.id);
+          if (p) {
+            nodeEl.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
+          }
+        });
+
+        // Update SVG edge line endpoints
+        renderEdgesOnly();
+
+        if (progress < 1) {
+          recenterAnimId = requestAnimationFrame(animateBounce);
+        } else {
+          recenterAnimId = null;
+          isRecenteringAnimation = false;
+          // Finalize at exact target positions
+          state.view.x = targetViewX;
+          state.view.y = targetViewY;
+          els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
+          state.papers.forEach(p => {
+            const target = targetPositions.get(p.id);
+            if (target) {
+              p.x = target.x;
+              p.y = target.y;
+            }
+          });
+          els.map.querySelectorAll('.node').forEach(nodeEl => {
+            const p = state.papers.find(item => item.id === nodeEl.dataset.id);
+            if (p) {
+              nodeEl.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
+            }
+          });
+          renderEdgesOnly();
+          renderSelection();
+          renderDetails();
+        }
+      }
+
+      recenterAnimId = requestAnimationFrame(animateBounce);
+      showToast(`Centered graph on "${compactTitle(paper.title)}".`);
+    }
+
+    function clearCenteredPaper() {
+      if (!state.centerId) return;
+      state.centerId = null;
+      render();
+      showToast('Centered graph cleared.');
+    }
+
+    function bindEdgeEvents() {
+      els.map.querySelectorAll('.edge, .edge-hit').forEach(edge => {
+        edge.addEventListener('click', event => {
+          event.stopPropagation();
+          selectLinkage(edge.dataset.link);
+        });
+        edge.addEventListener('mouseenter', () => {
+          const id = edge.dataset.link;
+          const vEdge = els.map.querySelector(`.edge[data-link="${id}"]`);
+          if (vEdge) vEdge.classList.add('is-hovered');
+        });
+        edge.addEventListener('mouseleave', () => {
+          const id = edge.dataset.link;
+          const vEdge = els.map.querySelector(`.edge[data-link="${id}"]`);
+          if (vEdge) vEdge.classList.remove('is-hovered');
+        });
+      });
+    }
+
+    function selectLinkage(id) {
+      state.selectedLinkId = id;
+      state.selectedId = null;
+      render();
+      if (els.details) {
+        els.details.hidden = false;
+        els.details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    function clearLinkageSelection() {
+      state.selectedLinkId = null;
+      render();
+    }
+
+    function selectedPapersForRecommendation() {
+      const selectedLink = state.links.find(item => linkId(item) === state.selectedLinkId);
+      if (selectedLink) {
+        return [selectedLink.source, selectedLink.target]
+          .map(id => state.papers.find(paper => paper.id === id))
+          .filter(Boolean);
+      }
+      const selected = state.papers.find(item => item.id === state.selectedId);
+      return selected ? [selected] : [];
+    }

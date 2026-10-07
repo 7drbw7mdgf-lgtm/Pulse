@@ -3,17 +3,6 @@ const state = {
       vectors: new Map(),
       keywords: new Map(),
       links: [],
-      explicitLinks: [],
-      linkTypeFilter: 'all',
-      librarySearch: '',
-      explorationDepth: '2',
-      workspaceView: 'discover',
-      inspectorOpen: false,
-      discoveryHasRun: false,
-      discoveryError: '',
-      discoveryJob: null,
-      discoveryStatus: '',
-      discoveryWarnings: [],
       clusters: [],
       selectedId: null,
       selectedLinkId: null,
@@ -44,7 +33,6 @@ const state = {
       discoveryLoading: false,
       discoveryResults: [],
       discoverySeed: null,
-      pinnedSeedId: null,
       discoveryFilterText: '',
       discoveryFilterAuthor: '',
       discoveryFilterYear: 'all',
@@ -56,6 +44,7 @@ const state = {
       filterTags: [],
       filterMode: 'all',
       mode: 'network',
+      explorationDepth: '2',
       paperView: 'compact',
       threshold: 0.05,
       graphStyle: {
@@ -78,8 +67,7 @@ const state = {
 
     const launchParams = new URLSearchParams(window.location.search);
     const apiToken = launchParams.get('token') || launchParams.get('pulseToken') || launchParams.get('iratxeToken') || window.__PULSE_API_TOKEN__ || window.__IRATXE_API_TOKEN__ || '';
-    let apiBase = window.location.protocol === 'file:' || window.location.protocol === 'tauri:' || window.location.protocol === 'asset:' ? 'http://127.0.0.1:8000' : '';
-    if (window.__TAURI__ && window.__TAURI__.core) { window.__TAURI__.core.invoke('get_backend_port').then(port => { if (port) apiBase = 'http://127.0.0.1:' + port; }).catch(() => {}); }
+    const apiBase = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
 
     const stopwords = new Set(`
       a about above across after again against all almost alone along already also although always among an and another any
@@ -104,13 +92,9 @@ const state = {
       paperViewToggle: document.getElementById('paperViewToggle'),
       map: document.getElementById('map'),
       tableView: document.getElementById('tableView'),
+      timelineView: document.getElementById('timelineView'),
       emptyState: document.getElementById('emptyState'),
       details: document.getElementById('details'),
-      timelineView: document.getElementById('timelineView'),
-      discoveryRunButton: document.getElementById('discoveryRunButton'),
-      discoverySeedSelect: document.getElementById('discoverySeedSelect'),
-      discoveryProgress: document.getElementById('discoveryProgress'),
-      discoveryCancelButton: document.getElementById('discoveryCancelButton'),
       quickSearchInput: document.getElementById('quickSearchInput'),
       quickAddBtn: document.getElementById('quickAddBtn'),
       railLibraryBadge: document.getElementById('railLibraryBadge'),
@@ -349,3 +333,22 @@ const state = {
     }
 
     function setGraphPanelOpen(open) {
+      els.graphPanel.hidden = !open;
+      els.graphButton.setAttribute('aria-expanded', String(open));
+      if (open) syncGraphControls();
+    }
+
+    function setSettingsOpen(open) {
+      els.settingsPanel.hidden = !open;
+      els.settingsButton.setAttribute('aria-expanded', String(open));
+      if (open) loadBackendSettings();
+    }
+
+    function discoveryPaperKey(item) {
+      if (!item) return '';
+      const doi = (item.doi || '').trim().toLowerCase();
+      if (doi) return `doi:${doi}`;
+      if (item.s2PaperId) return `s2:${item.s2PaperId}`;
+      if (item.openAlexId) return `oa:${item.openAlexId}`;
+      return `t:${cleanField(item.title || '').toLowerCase()}`;
+    }

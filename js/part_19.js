@@ -1,18 +1,117 @@
+
+    function loadSample() {
+      state.papers = [
+        {
+          id: uid(),
+          title: 'Transformer Attention for Scientific Document Retrieval',
+          authors: ['A. Chen', 'M. Patel'],
+          date: '2024',
+          year: '2024',
+          journal: 'Journal of Scientific Information Retrieval',
+          doi: '10.1234/jsir.2024.001',
+          abstract: 'This paper evaluates transformer attention representations for scientific document retrieval and citation recommendation across arXiv abstracts, focusing on dense embeddings and semantic search.',
+          paperKeywords: ['transformers', 'scientific retrieval', 'citation recommendation', 'semantic search'],
+          color: '#176c72',
+          text: 'We evaluate transformer attention representations for scientific paper retrieval, citation recommendation, semantic search, dense embeddings, and document ranking across arXiv abstracts.'
+        },
+        {
+          id: uid(),
+          title: 'Graph Neural Networks for Citation Link Prediction',
+          authors: ['L. Garcia', 'S. Okafor'],
+          date: '2023',
+          year: '2023',
+          journal: 'Proceedings of Scholarly Graph Mining',
+          doi: '10.1234/sgm.2023.014',
+          abstract: 'This paper models citation networks with graph neural networks for link prediction, community detection, and scholarly recommendation using message passing over paper nodes.',
+          paperKeywords: ['graph neural networks', 'citation networks', 'link prediction', 'community detection'],
+          color: '#c7552c',
+          text: 'This paper models citation networks with graph neural networks, message passing, node embeddings, link prediction, scholarly recommendation, and community detection.'
+        },
+        {
+          id: uid(),
+          title: 'Contrastive Learning of Biomedical Abstract Embeddings',
+          authors: ['R. Singh', 'E. Novak'],
+          date: '2025',
+          year: '2025',
+          journal: 'Biomedical NLP Review',
+          doi: '10.1234/bnlp.2025.027',
+          abstract: 'Biomedical abstracts are encoded with contrastive learning and domain-specific language models to improve literature discovery, retrieval, clustering, and semantic relatedness.',
+          paperKeywords: ['biomedical abstracts', 'contrastive learning', 'embeddings', 'literature discovery'],
+          color: '#6f5bc4',
+          text: 'Biomedical abstracts are encoded with contrastive learning and domain-specific language models to improve literature discovery, retrieval, clustering, and semantic relatedness.'
+        },
+        {
+          id: uid(),
+          title: 'Energy-Efficient Scheduling in Edge Computing Systems',
+          authors: ['T. Williams', 'N. Ibrahim'],
+          date: '2022',
+          year: '2022',
+          journal: 'Edge Systems Letters',
+          doi: '10.1234/esl.2022.009',
+          abstract: 'This study examines energy-aware task allocation for edge computing systems under latency constraints, mobile workloads, resource management, and distributed optimization.',
+          paperKeywords: ['edge computing', 'energy-aware scheduling', 'latency', 'distributed optimization'],
+          color: '#2478b7',
+          text: 'We study edge computing schedulers, energy-aware task allocation, latency constraints, mobile workloads, resource management, and distributed optimization.'
+        },
+        {
+          id: uid(),
+          title: 'Survey of Semantic Scholar Recommendation Methods',
+          authors: ['H. Brown', 'Y. Sato'],
+          date: '2024',
+          year: '2024',
+          journal: 'ACM Computing Surveys',
+          doi: '10.1234/csur.2024.042',
+          abstract: 'This survey compares paper recommendation methods that combine citation graphs, co-citation features, content similarity, bibliographic coupling, transformer embeddings, and hybrid ranking.',
+          paperKeywords: ['paper recommendation', 'citation graphs', 'content similarity', 'hybrid ranking'],
+          color: '#0d7f55',
+          text: 'A survey of paper recommendation methods including citation graphs, co-citation features, content similarity, bibliographic coupling, transformer embeddings, and hybrid ranking.'
+        }
+      ];
+      state.selectedId = state.papers[0].id;
+      render();
+      showToast('Loaded sample papers.');
+    }
+
+    function serializeMap() {
+      return {
+        format: 'pulse-map',
+        version: '1.0',
+        generatedAt: new Date().toISOString(),
+        threshold: state.threshold,
+        mode: state.mode,
+        paperView: state.paperView,
+        filterTags: state.filterTags || [],
+        filterMode: state.filterMode || 'all',
+        recommendationSteerKeywords: state.recommendationSteerKeywords,
+        recommendationExcludeKeywords: state.recommendationExcludeKeywords,
+        recommendationAuthors: state.recommendationAuthors,
+        recommendationJournals: state.recommendationJournals,
+        graphSteerKeywords: state.graphSteerKeywords,
+        recommendationRecencyTilt: state.recommendationRecencyTilt,
+        recommendationImpactTilt: state.recommendationImpactTilt,
+        graphStyle: { ...state.graphStyle },
+        view: { ...state.view },
+        areas: state.areas.map(area => ({ ...area })),
+        papers: state.papers.map(paper => ({
+          id: paper.id,
+          selected: paper.selected !== false,
+          title: paper.title,
+          name: paper.name,
           authors: paper.authors || [],
           date: paper.date || '',
           year: paper.year || '',
           journal: paper.journal || '',
           doi: paper.doi || '',
+          pmid: paper.pmid || '',
           s2PaperId: paper.s2PaperId || '',
           url: paper.url || '',
           openAccessPdf: paper.openAccessPdf || '',
-          pmid: paper.pmid || '',
+          influentialCitationCount: paper.influentialCitationCount,
           openAlexId: paper.openAlexId || '',
           openAlexUrl: paper.openAlexUrl || '',
           referenceIds: paper.referenceIds || [],
           citedByIds: paper.citedByIds || [],
           citedByCount: paper.citedByCount || 0,
-          influentialCitationCount: paper.influentialCitationCount,
           abstract: paper.abstract || '',
           paperKeywords: paper.paperKeywords || [],
           gemmaKeywords: paper.gemmaKeywords || [],
@@ -30,8 +129,8 @@
           metadataSource: paper.metadataSource || '',
           metadataNote: paper.metadataNote || ''
         })),
-        links: includeDerived ? state.links.map(link => ({ ...link, score: Number(link.score.toFixed(4)) })) : [],
-        clusters: includeDerived ? state.clusters : []
+        links: state.links.map(link => ({ ...link, score: Number(link.score.toFixed(4)) })),
+        clusters: state.clusters
       };
     }
 
@@ -42,8 +141,10 @@
       const anchor = document.createElement('a');
       anchor.href = url;
       anchor.download = 'paper-linkage-map.json';
+      document.body.appendChild(anchor);
       anchor.click();
-      URL.revokeObjectURL(url);
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     function listText(value) {
@@ -55,13 +156,7 @@
       if (!data.papers.length && !(Array.isArray(data.areas) && data.areas.length) && !data.reset && source !== 'Autosaved library') return false;
       state.threshold = Math.min(0.75, Math.max(0.01, Number(data.threshold || 0.05)));
       els.threshold.value = Math.round(state.threshold * 100);
-      state.mode = ['network', 'clusters', 'radial', 'table', 'timeline'].includes(data.mode) ? data.mode : 'network';
-      state.workspaceView = ['discover', 'network', 'library', 'timeline'].includes(data.workspaceView) ? data.workspaceView : state.mode === 'table' ? 'library' : state.mode === 'timeline' ? 'timeline' : 'discover';
-      state.linkTypeFilter = ['all', 'similarity', 'citation', 'bibliographic', 'cocitation'].includes(data.linkTypeFilter) ? data.linkTypeFilter : 'all';
-      if (data.discoveryBranches) state.discoveryBranches = { ...state.discoveryBranches, ...data.discoveryBranches };
-      state.explorationDepth = ['1', '2', '3', 'iterative'].includes(String(data.explorationDepth)) ? String(data.explorationDepth) : '2';
-      state.pinnedSeedId = data.pinnedSeedId || null;
-      state.explicitLinks = (data.explicitLinks || data.links || []).filter(link => link.source && link.target && Number.isFinite(Number(link.score))).map(link => ({ ...link, score: Number(link.score) }));
+      state.mode = data.mode || 'network';
       state.paperView = data.paperView || state.paperView || 'compact';
       state.filterTags = Array.isArray(data.filterTags) ? data.filterTags : [];
       state.filterMode = data.filterMode || 'all';
@@ -77,7 +172,7 @@
           ...state.graphStyle,
           nodeSize: Math.max(14, Math.min(42, Number(data.graphStyle.nodeSize || state.graphStyle.nodeSize))),
           edgeScale: Math.max(0.25, Math.min(1.8, Number(data.graphStyle.edgeScale || state.graphStyle.edgeScale))),
-          spacing: Math.max(0.35, Math.min(4, Number(data.graphStyle.spacing || state.graphStyle.spacing))),
+          spacing: Math.max(0.7, Math.min(1.65, Number(data.graphStyle.spacing || state.graphStyle.spacing))),
           labelMode: ['short', 'full', 'keywords', 'none'].includes(data.graphStyle.labelMode) ? data.graphStyle.labelMode : state.graphStyle.labelMode,
           showGrid: data.graphStyle.showGrid !== false,
           showAreas: data.graphStyle.showAreas !== false
@@ -174,7 +269,7 @@
     const saveSession=window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
     let saveRevision=0, saveLoop=null, pendingSave=null, lastRemoteSave='', saveStatusTimer=null;
     function libraryPayload() {
-      const payload={...serializeMap({includeDerived:false}),paperView:state.paperView,centerId:state.centerId,selectedId:state.selectedId,selectedAreaId:state.selectedAreaId};
+      const payload={...serializeMap(),paperView:state.paperView,centerId:state.centerId,selectedId:state.selectedId,selectedAreaId:state.selectedAreaId};
       delete payload.generatedAt;
       return payload;
     }
@@ -189,14 +284,15 @@
           const item=pendingSave;pendingSave=null;
           const body=JSON.stringify({...item.payload,_saveSession:saveSession,_saveRevision:item.revision});
           let localSaved=false;
-          try{localStorage.setItem('pulse-autosave-library',body);localSaved=true;}catch(_){}
+          try{localStorage.setItem('pulse-autosave-library',body);localSaved=true;}catch(error){console.warn('Local save unavailable:',error.name);}
           clearTimeout(saveStatusTimer);updateSaveStatePill('Saving…');
           try {
             const response=await fetch(backendUrl('/api/library'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body});
             if(!response.ok)throw new Error('Library save failed');
             lastRemoteSave=item.signature;updateSaveStatePill('Saved');
             saveStatusTimer=setTimeout(()=>updateSaveStatePill('Ready'),1800);
-          } catch(_) {
+          } catch(error) {
+            console.warn('Backend save unavailable:',error.name);
             updateSaveStatePill(localSaved?'Saved locally · backend unavailable':'Save failed · export a backup');
             if(!localSaved)showToast('Your changes could not be saved. Export a backup before closing Pulse.');
           }
@@ -210,8 +306,8 @@
       const payload={...libraryPayload(),_saveSession:saveSession,_saveRevision:++saveRevision};
       pendingSave=null; // A queued older snapshot must not follow the final unload snapshot.
       const body=JSON.stringify(payload);
-      try{localStorage.setItem('pulse-autosave-library',body);}catch(_){}
-      try{navigator.sendBeacon?.(backendNavigationUrl('/api/library'),new Blob([body],{type:'application/json'}));}catch(_){}
+      try{localStorage.setItem('pulse-autosave-library',body);}catch(error){console.warn('Local save unavailable:',error.name);}
+      try{navigator.sendBeacon?.(backendNavigationUrl('/api/library'),new Blob([body],{type:'application/json'}));}catch(error){console.warn('Final save unavailable:',error.name);}
     }
 
     async function promptClearLibrary() {
@@ -227,124 +323,3 @@
       await clearAppToDefault(true);
       showToast('Workspace reset to empty default.');
     }
-
-    async function clearAppToDefault(skipConfirm = false) {
-      if (!skipConfirm) {
-        const confirmed = window.confirm(
-          'Are you sure you want to clear the app to default?\n\nThis will remove all loaded papers, bibliography entries, tags, and graph linkages.'
-        );
-        if (!confirmed) return;
-      }
-
-      if(state.discoveryLoading)cancelDiscovery();
-      state.discoveryStatus='';state.discoveryWarnings=[];
-      pendingSave=null;lastRemoteSave='';
-      // 1. Immediately cancel any scheduled autosave
-      clearTimeout(state.autosaveTimer);
-      state.autosaveTimer = null;
-
-      // 2. Clear all in-memory workspace data
-      state.papers = [];
-      state.links = [];
-      state.explicitLinks = [];
-      state.librarySearch = '';
-      if (els.tagFilterSearchInput) els.tagFilterSearchInput.value = '';
-      state.clusters = [];
-      state.areas = [];
-      state.selectedId = null;
-      state.centerId = null;
-      state.selectedAreaId = null;
-      state.selectedLinkId = null;
-      state.filterTags = [];
-      state.filterMode = 'all';
-      state.tableFilters = {};
-      state.recommendations = new Map();
-      state.seminalSuggestions = [];
-      state.recommendationLoadingKey = null;
-      state.citationLoading = false;
-      state.discoveryLoading = false;
-      state.discoveryResults = [];
-      state.discoveryHasRun = false;
-      state.discoveryError = '';
-      state.workspaceView = 'discover';
-      state.mode = 'network';
-      state.inspectorOpen = false;
-      state.discoverySeed = null;
-      state.pinnedSeedId = null;
-      state.discoverySelectedKeys = new Set();
-      state.recommendationSteerKeywords = [];
-      state.librarySearch = '';
-      state.recommendationExcludeKeywords = [];
-      state.recommendationAuthors = [];
-      state.recommendationJournals = [];
-      state.graphSteerKeywords = [];
-
-      // 3. Reset browser local storage
-      let resetLocalSaved=false,resetRemoteSaved=false;
-      try {
-        localStorage.removeItem('pulse-autosave-library');
-        localStorage.removeItem('iratxe-autosave-library');
-        localStorage.setItem('pulse-autosave-library', JSON.stringify({
-          format: 'pulse-map',
-          version: '1.3.0',
-          papers: [],
-          areas: []
-        }));
-        resetLocalSaved=true;
-      } catch (e) {}
-
-      // 4. Reset backend storage & remove old snapshots
-      updateSaveStatePill('Resetting...');
-      try {
-        const resetResponse=await fetch(backendUrl('/api/library'), {
-          method: 'POST',
-          headers: apiHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({
-            reset: true,
-            _saveSession:saveSession,
-            _saveRevision:++saveRevision,
-            papers: [],
-            areas: [],
-            format: 'pulse-map',
-            version: '1.3.0',
-            savedAt: new Date().toISOString()
-          })
-        });
-        if(!resetResponse.ok)throw new Error('Reset could not be saved');
-        resetRemoteSaved=true;
-      } catch (e) {
-        console.error('Failed to notify backend of library reset:', e);
-      }
-      updateSaveStatePill(resetRemoteSaved?'Ready':resetLocalSaved?'Reset saved locally · backend unavailable':'Reset could not be saved');
-
-      // 5. Hide all popups & inspector panels
-      if (els.settingsPanel) els.settingsPanel.hidden = true;
-      if (els.keywordModal) els.keywordModal.hidden = true;
-      if (els.tagActionMenu) els.tagActionMenu.hidden = true;
-      if (els.tagFilterDropdown) els.tagFilterDropdown.hidden = true;
-      if (els.details) els.details.hidden = true;
-
-      // 6. Rerender all views to clean state
-      render();
-      renderPapers();
-      renderDetails();
-      renderAreasPanel();
-      renderLinkages();
-      if (state.mode === 'table') {
-        renderTableView();
-      }
-      updateMetrics();
-      showToast('Workspace reset to empty default.');
-    }
-
-    async function addPaperFromInput(input) {
-      const trimmed = (input || '').trim();
-      if (!trimmed) return;
-      const duplicate = state.papers.find(paper => paperIdentityKey(paper) === paperIdentityKey({ title: trimmed, doi: normalizeDoi(trimmed) }));
-      if (duplicate) {
-        state.selectedId = duplicate.id;
-        render();
-        showToast('That paper is already in your library.');
-        return;
-      }
-      const doi = normalizeDoi(trimmed);

@@ -1,3 +1,178 @@
+
+.rail-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 14px;
+}
+
+.rail-logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
+}
+
+.rail-brand-text {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.rail-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.3px;
+}
+
+.rail-version {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.18);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.rail-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.rail-item svg, .rail-item .feather-icon {
+  width: 16px;
+  height: 16px;
+  color: inherit;
+}
+
+.rail-item:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rail-item.active {
+  background: #4f46e5;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+}
+
+.rail-badge {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+
+.rail-item.active .rail-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.rail-recent {
+  margin-top: auto;
+  padding: 14px 12px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.rail-section-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #64748b;
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+
+.rail-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-session-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.recent-session-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.session-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.5px solid #6366f1;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.session-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.session-name {
+  font-size: 11.5px;
+  color: #cbd5e1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-time {
+  font-size: 10px;
+  color: #64748b;
+}
+
+/* ─── 2. Main Viewport & Header Bar ─── */
+.pulse-main-viewport {
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+  min-width: 0;
+}
+
+.pulse-top-header {
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   padding: 0 16px;
   flex-shrink: 0;
@@ -108,193 +283,3 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
-
-.header-v-divider {
-  width: 1px;
-  height: 18px;
-  background: var(--line);
-  margin: 0 2px;
-}
-
-.user-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #e0e7ff;
-  color: #4338ca;
-  font-size: 12px;
-  font-weight: 700;
-  display: grid;
-  place-items: center;
-  user-select: none;
-}
-
-/* ─── 3. Discovery Methods Ribbon ─── */
-.pulse-discovery-ribbon {
-  height: 60px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 16px;
-  flex-shrink: 0;
-  overflow-x: auto;
-  z-index: 10;
-}
-
-.ribbon-group {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.ribbon-label {
-  font-size: 9.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--muted);
-}
-
-.ribbon-cards {
-  display: flex;
-  gap: 5px;
-}
-
-.ribbon-card {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 9px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface-2);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: left;
-}
-
-.ribbon-card:hover {
-  border-color: var(--line-strong);
-  background: var(--surface-3);
-}
-
-.ribbon-card.active {
-  border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.08);
-  box-shadow: 0 0 0 1px #6366f1;
-}
-
-.ribbon-card-icon {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.icon-cit { background: #3b82f6; }
-.icon-net { background: #8b5cf6; }
-.icon-sem { background: #10b981; }
-.icon-con { background: #f59e0b; }
-
-.ribbon-card-text strong {
-  display: block;
-  font-size: 11px;
-  color: var(--ink);
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.ribbon-card-text small {
-  display: block;
-  font-size: 9.5px;
-  color: var(--muted);
-  line-height: 1.2;
-}
-
-.ribbon-v-divider {
-  width: 1px;
-  height: 36px;
-  background: var(--line);
-  flex-shrink: 0;
-}
-
-.ribbon-pills {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.pill-btn-sm {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 9px;
-  border-radius: 9999px;
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  font-size: 11px;
-  font-weight: 550;
-  color: var(--ink-2);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.pill-btn-sm svg, .pill-btn-sm .feather-icon {
-  width: 11px;
-  height: 11px;
-}
-
-.pill-btn-sm:hover {
-  background: var(--surface-3);
-  color: var(--ink);
-}
-
-.pill-btn-sm.active {
-  background: #4f46e5;
-  color: #ffffff;
-  border-color: #4f46e5;
-  font-weight: 600;
-}
-
-.pill-btn-sm small {
-  color: inherit;
-  opacity: 0.75;
-  font-size: 9.5px;
-}
-
-/* ─── 4. Three-Column Workspace Layout ─── */
-.pulse-workspace-cols {
-  --bottom-dock-space: 84px;
-  flex: 1;
-  display: flex;
-  min-height: 0;
-  overflow: hidden;
-  position: relative;
-}
-
-/* ─── Column 1: Library List ─── */
-.pulse-col-library {
-  width: 270px;
-  background: var(--surface);
-  border-right: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  overflow: hidden;
-  z-index: 5;
-}
-
-.col-library-header {
-  padding: 10px 12px 6px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.col-header-left {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;

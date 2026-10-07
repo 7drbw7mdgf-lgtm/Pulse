@@ -1,4 +1,5 @@
-// Pulse Modular Application Script (v1.3.0)
+// Pulse Literature Mapping App - Modular Script Loader
+// Loads all modular JS parts in strict execution order
 (function() {
   const parts = [
     "js/part_01.js",
@@ -22,6 +23,7 @@
     "js/part_19.js",
     "js/part_20.js",
     "js/part_21.js",
+    "js/timeline.js"
   ];
   for (const part of parts) {
     const s = document.createElement("script");

@@ -1,16 +1,122 @@
+
+    async function clearAppToDefault(skipConfirm = false) {
+      if (!skipConfirm) {
+        const confirmed = window.confirm(
+          'Are you sure you want to clear the app to default?\n\nThis will remove all loaded papers, bibliography entries, tags, and graph linkages.'
+        );
+        if (!confirmed) return;
+      }
+
+      // 1. Immediately cancel any scheduled autosave
+      clearTimeout(state.autosaveTimer);
+      state.autosaveTimer = null;
+      pendingSave = null;
+      const resetRevision = ++saveRevision;
+
+      // 2. Clear all in-memory workspace data
+      state.papers = [];
+      state.links = [];
+      state.clusters = [];
+      state.areas = [];
+      state.selectedId = null;
+      state.centerId = null;
+      state.selectedAreaId = null;
+      state.selectedLinkId = null;
+      state.filterTags = [];
+      state.filterMode = 'all';
+      state.tableFilters = {};
+      state.recommendations = new Map();
+      state.seminalSuggestions = [];
+      state.recommendationLoadingKey = null;
+      state.citationLoading = false;
+      state.discoveryLoading = false;
+      state.discoveryResults = [];
+      state.discoverySeed = null;
+      state.discoverySelectedKeys = new Set();
+      state.recommendationSteerKeywords = [];
+      state.recommendationExcludeKeywords = [];
+      state.recommendationAuthors = [];
+      state.recommendationJournals = [];
+      state.graphSteerKeywords = [];
+
+      let localReset = false;
+      let backendReset = false;
+      // 3. Reset browser local storage
+      try {
+        localStorage.removeItem('pulse-autosave-library');
+        localStorage.removeItem('iratxe-autosave-library');
+        localStorage.setItem('pulse-autosave-library', JSON.stringify({
+          format: 'pulse-map',
+          version: '1.0',
+          papers: [],
+          areas: []
+        }));
+        localReset = true;
+      } catch (error) { console.warn('Local reset unavailable:', error.name); }
+
+      // 4. Reset backend storage & remove old snapshots
+      updateSaveStatePill('Resetting...');
+      try {
+        const response = await fetch(backendUrl('/api/library'), {
+          method: 'POST',
+          headers: apiHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            reset: true,
+            _saveSession: saveSession,
+            _saveRevision: resetRevision,
+            papers: [],
+            areas: [],
+            format: 'pulse-map',
+            version: '1.0',
+            savedAt: new Date().toISOString()
+          })
+        });
+        if (!response.ok) throw new Error('Library reset failed');
+        lastRemoteSave = '';
+        backendReset = true;
+      } catch (e) {
+        updateSaveStatePill('Reset saved locally · backend unavailable');
+        console.error('Failed to notify backend of library reset:', e);
+      }
+      updateSaveStatePill(backendReset ? 'Ready' : localReset ? 'Reset saved locally · backend unavailable' : 'Reset not saved');
+
+      // 5. Hide all popups & inspector panels
+      if (els.settingsPanel) els.settingsPanel.hidden = true;
+      if (els.keywordModal) els.keywordModal.hidden = true;
+      if (els.tagActionMenu) els.tagActionMenu.hidden = true;
+      if (els.tagFilterDropdown) els.tagFilterDropdown.hidden = true;
+      if (els.details) els.details.hidden = true;
+
+      // 6. Rerender all views to clean state
+      render();
+      renderPapers();
+      renderDetails();
+      renderAreasPanel();
+      renderLinkages();
+      if (state.mode === 'table') {
+        renderTableView();
+      }
+      updateMetrics();
+      showToast(backendReset ? 'Workspace reset to empty default.' : localReset ? 'Workspace cleared locally. Backend reset failed; retry before closing.' : 'Reset could not be saved. Retry before closing.');
+    }
+
+    async function addPaperFromInput(input) {
+      const trimmed = (input || '').trim();
+      if (!trimmed) return;
+      const doi = normalizeDoi(trimmed);
+      const existing = state.papers.find(paper => doi ? sameDoi(paper.doi,doi) : cleanField(paper.title).toLowerCase() === trimmed.toLowerCase());
+      if (existing) {state.selectedId=existing.id;render();showToast('This paper is already in your library.');return;}
       const pmid = trimmed.match(/^(?:PMID\s*:\s*)?(\d{1,10})$/i) || trimmed.match(/^https?:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/(\d+)/i);
       if (pmid) {
-        const response = await fetch(backendUrl('/api/metadata/pmid'), {
-          method: 'POST', headers: apiHeaders({'Content-Type':'application/json'}),
-          body: JSON.stringify({pmid:pmid[1]})
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'PMID lookup failed');
-        const paper = normalizeImportedPaper(data.metadata, 'PubMed');
-        addParsedPapers([paper]);
-        state.selectedId = state.papers.find(item => item.pmid === paper.pmid)?.id || paper.id;
-        render();
-        showToast(`Added: ${compactTitle(paper.title)}`);
+        const duplicate=state.papers.find(paper=>String(paper.pmid || '')===pmid[1]);
+        if (duplicate) {state.selectedId=duplicate.id;render();showToast('This paper is already in your library.');return;}
+        try {
+          const response=await fetch(backendUrl('/api/metadata/pmid'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({pmid:pmid[1]})});
+          const result=await response.json();
+          if (!response.ok) throw new Error(result.error || 'PubMed lookup failed');
+          const paper=normalizeImportedPaper(result.metadata,'PubMed');
+          addParsedPapers([paper]);state.selectedId=state.papers.find(item=>item.pmid===paper.pmid)?.id || paper.id;render();showToast(`Added: ${compactTitle(paper.title)}`);
+        } catch(error) {console.warn('PubMed lookup failed:',error.name);showToast(error.message);}
         return;
       }
       if (doi) {
@@ -100,8 +206,10 @@
       const anchor = document.createElement('a');
       anchor.href = url;
       anchor.download = 'pulse-summary-table.csv';
+      document.body.appendChild(anchor);
       anchor.click();
-      URL.revokeObjectURL(url);
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     function setSettingsTab(tab) {
@@ -113,10 +221,7 @@
       });
     }
 
-    els.fileInput.addEventListener('change', event => {
-      handleFiles(event.target.files);
-      event.target.value = '';
-    });
+    els.fileInput.addEventListener('change', event => handleFiles(event.target.files));
 
     ['dragenter', 'dragover'].forEach(type => {
       els.dropzone.addEventListener(type, event => {
@@ -143,7 +248,6 @@
       button.addEventListener('click', () => {
         document.querySelectorAll('[data-mode]').forEach(item => item.classList.toggle('is-active', item === button));
         state.mode = button.dataset.mode;
-        state.workspaceView = 'network';
         state.centerId = null;
         render();
         showToast(`Map mode: ${button.textContent.trim()}.`);
@@ -270,81 +374,6 @@
       if (els.tagFilterDropdown) els.tagFilterDropdown.hidden = !els.tagFilterDropdown.hidden;
     });
     els.tagFilterSearchInput?.addEventListener('input', () => {
-      state.librarySearch = els.tagFilterSearchInput.value;
-      render();
+      if (els.tagFilterDropdown) els.tagFilterDropdown.hidden = false;
+      renderLibraryTagCloud();
     });
-    els.tagFilterSearchInput?.addEventListener('keydown', event => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        render();
-      }
-    });
-    els.closeTagActionMenuButton?.addEventListener('click', closeTagActionMenu);
-    els.tagActionMenu?.querySelectorAll('[data-action]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const action = btn.dataset.action;
-        if (action === 'toggle-filter') {
-          toggleFilterTag(currentTagActionTerm);
-          closeTagActionMenu();
-        } else if (action === 'toggle-steer') {
-          toggleRecommendationSteer(currentTagActionTerm);
-          closeTagActionMenu();
-        } else if (action === 'toggle-graph-steer') {
-          toggleGraphSteer(currentTagActionTerm);
-          closeTagActionMenu();
-        } else if (action === 'toggle-exclude') {
-          toggleExcludeSteer(currentTagActionTerm);
-          closeTagActionMenu();
-        }
-      });
-    });
-    document.addEventListener('click', event => {
-      if (els.tagActionMenu && !els.tagActionMenu.hidden) {
-        if (!els.tagActionMenu.contains(event.target) && !event.target.closest('[data-action="paper-keyword"], [data-action="tag-action-menu"]')) {
-          closeTagActionMenu();
-        }
-      }
-    });
-    window.addEventListener('keydown', event => {
-      if (event.key === 'Escape') {
-        if (els.tagActionMenu && !els.tagActionMenu.hidden) {
-          closeTagActionMenu();
-
-        } else if (!els.keywordModal?.hidden) {
-          closeKeywordModal();
-        } else if (!els.settingsPanel?.hidden) {
-          setSettingsOpen(false);
-        } else if (state.selectedLinkId) {
-          clearLinkageSelection();
-        }
-      }
-    });
-    els.ollamaModelSelect?.addEventListener('change', event => {
-      if (event.target.value && els.gemmaModelInput) els.gemmaModelInput.value = event.target.value;
-    });
-    els.aiProviderInput?.addEventListener('change', () => {
-      syncProviderControls();
-    });
-    document.querySelectorAll('[data-settings-tab]').forEach(button => {
-      button.addEventListener('click', () => setSettingsTab(button.dataset.settingsTab));
-    });
-    els.saveSettingsButton?.addEventListener('click', () => saveBackendSettings());
-    document.querySelectorAll('[data-save-settings]').forEach(button => {
-      button.addEventListener('click', () => saveBackendSettings());
-    });
-    els.clearDimensionsKeyButton?.addEventListener('click', () => saveBackendSettings({ clearDimensionsApiKey: true }));
-    els.clearSemanticScholarKeyButton?.addEventListener('click', () => saveBackendSettings({ clearSemanticScholarApiKey: true }));
-    els.clearButton?.addEventListener('click', promptClearLibrary);
-    els.sidebarClearButton?.addEventListener('click', promptClearLibrary);
-    els.clearAppToDefaultButton?.addEventListener('click', () => clearAppToDefault(false));
-    els.clearAppToDefaultQuickButton?.addEventListener('click', () => clearAppToDefault(false));
-    els.testBackendButton?.addEventListener('click', testBackend);
-    els.aiButton?.addEventListener('click', () => setAiPanelOpen(els.aiPanel?.hidden));
-    els.aiCloseButton?.addEventListener('click', () => setAiPanelOpen(false));
-    els.aiAnalyzeButton?.addEventListener('click', analyzeWithGemma);
-    window.addEventListener('resize', () => render());
-    window.addEventListener('beforeunload', saveLibrarySync);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') saveLibrarySync();
-    });
-    replaceFeatherIcons();

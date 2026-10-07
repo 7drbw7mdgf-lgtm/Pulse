@@ -1,9 +1,3 @@
-            }
-            renderDiscoveryModal();
-          });
-        });
-      }
-    }
 
     function addSelectedDiscoveredToMap() {
       if (!state.discoveryResults?.length) return;
@@ -34,7 +28,7 @@
           const isCoCite = item.subType === 'Co-citation' || (item.discoveryBadges || []).some(b => b.includes('Co-citation'));
           const isSpecter = item.subType === 'SPECTER2' || (item.discoveryBadges || []).some(b => b.includes('SPECTER2'));
           const ltype = isBib ? 'bibliographic' : (isCoCite ? 'cocitation' : (isSpecter ? 'similarity' : 'mixed'));
-          state.explicitLinks.push({
+          state.links.push({
             source: seed.id,
             target: paper.id,
             score: item.score ? Math.min(0.95, Math.max(0.4, item.score / 100)) : 0.82,
@@ -71,7 +65,7 @@
         addedCount++;
       });
 
-      setWorkspaceView('library');
+      closeDiscoveryModal();
       render();
       if (addedCount > 0) {
         showToast(`Added ${addedCount} discovered paper${addedCount === 1 ? '' : 's'} to library.`);
@@ -281,8 +275,6 @@
     }
 
     function paperMatchesFilters(paper) {
-      const query = state.librarySearch.trim().toLowerCase();
-      if (query && !`${paper.title} ${(paper.authors || []).join(' ')} ${paper.doi || ''} ${paper.abstract || ''} ${mergedKeywords(paper).join(' ')}`.toLowerCase().includes(query)) return false;
       if (!state.filterTags || !state.filterTags.length) return true;
       const paperTags = mergedKeywords(paper).map(k => k.toLowerCase().trim());
       if (state.filterMode === 'any') {
@@ -348,3 +340,14 @@
               ${escapeHtml(tag)}
               <button type="button" data-action="remove-canvas-filter-tag" data-tag="${escapeHtml(tag)}" aria-label="Remove filter ${escapeHtml(tag)}">×</button>
             </span>
+          `).join('');
+
+          els.canvasFilterTags.querySelectorAll('[data-action="remove-canvas-filter-tag"]').forEach(btn => {
+            btn.addEventListener('click', e => {
+              e.stopPropagation();
+              removeFilterTag(btn.dataset.tag);
+            });
+          });
+        }
+      }
+    }

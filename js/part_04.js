@@ -1,14 +1,3 @@
-          `).join('');
-
-          els.canvasFilterTags.querySelectorAll('[data-action="remove-canvas-filter-tag"]').forEach(btn => {
-            btn.addEventListener('click', e => {
-              e.stopPropagation();
-              removeFilterTag(btn.dataset.tag);
-            });
-          });
-        }
-      }
-    }
 
     function renderLibraryTagCloud() {
       if (!els.libraryTagCloud) return;
@@ -76,7 +65,6 @@
 
     function clearFilterTags() {
       state.filterTags = [];
-      state.librarySearch = '';
       if (els.tagFilterSearchInput) els.tagFilterSearchInput.value = '';
       showToast('Cleared all tag filters.');
       renderTagFilterBar();
@@ -215,147 +203,148 @@
       return headers;
     }
 
-    function syncProviderControls() {
-      const local = els.aiProviderInput.value === 'local';
-      document.getElementById('cloudProviderGroup').hidden = local;
-      document.getElementById('cloudSettingsStep').hidden = local;
-      document.getElementById('localOllamaSettingsStep').hidden = !local;
-      els.cloudProviderInput.disabled = local;
-      els.ollamaChatEndpointInput.disabled = !local;
-      els.ollamaModelSelect.disabled = !local;
-      els.embeddingModelInput.disabled = !local;
-      els.testBackendButton.disabled = false;
+    function renderBackendStatus(settings, message) {
+      const url = apiBase || window.location.origin;
+      els.backendUrlInput.value = url;
+      els.backendStatus.classList.remove('is-ready', 'is-error');
+      if (!settings) {
+        els.backendStatus.classList.add('is-error');
+        els.backendStatus.textContent = message || 'The app backend is offline. Reopen Pulse and try the connection check again.';
+        if (els.backendDiagnostics) els.backendDiagnostics.textContent = `${els.backendStatus.textContent}\nBackend URL: ${url}`;
+        return;
+      }
+
+      const defaults = settings.defaults || {};
+      els.aiProviderInput.value = settings.aiProvider || defaults.aiProvider || 'local';
+      els.cloudProviderInput.value = settings.cloudProvider || defaults.cloudProvider || 'not-configured';
+      els.ollamaChatEndpointInput.value = settings.ollamaChatEndpoint || defaults.ollamaChatEndpoint || 'http://127.0.0.1:11434/api/chat';
+      els.gemmaModelInput.value = settings.gemmaModel || defaults.chatModel || 'gemma3:4b';
+      els.embeddingModelInput.value = settings.embeddingModel || defaults.embeddingModel || 'nomic-embed-text';
+      if (els.autoGemmaExtractionInput) els.autoGemmaExtractionInput.checked = settings.autoGemmaExtraction !== false;
+      const isLocalProvider = els.aiProviderInput.value === 'local';
+      els.cloudProviderInput.disabled = isLocalProvider;
+      els.ollamaChatEndpointInput.disabled = !isLocalProvider;
+      els.ollamaModelSelect.disabled = !isLocalProvider;
+      els.embeddingModelInput.disabled = !isLocalProvider;
+      els.testBackendButton.disabled = !isLocalProvider;
+      const providers = settings.providers || {};
+      const gemma = providers.gemma || {};
+      const embeddings = providers.embeddings || {};
+      const vectorDb = providers.vectorDb || {};
+      const dimensions = providers.dimensions || {};
+      const semanticScholar = providers.semanticScholar || {};
+      const ollama = providers.ollama || {};
+      const bundled = ollama.bundled || {};
+      const bundledBoot = bundled.boot || {};
+      populateOllamaModels(ollama.models || [], settings.gemmaModel || defaults.chatModel || 'gemma3:4b');
+      const gemmaStatus = ollama.online
+        ? (gemma.configured ? `Ready (${gemma.model || settings.gemmaModel})` : 'Model missing')
+        : 'Ollama offline';
+      const embeddingStatus = ollama.online
+        ? (embeddings.available ? embeddings.active : 'Embedding missing')
+        : 'Ollama offline';
+      const vectorStatus = vectorDb.available ? vectorDb.active : 'sklearn cosine fallback';
+      const dimensionsStatus = dimensions.configured ? `Configured (${dimensions.preview})` : 'Optional';
+      const s2Status = semanticScholar.configured ? `Configured (${semanticScholar.preview})` : 'Active (Free S2AG public graph)';
+      if (els.gemmaStatus) els.gemmaStatus.textContent = gemmaStatus;
+      if (els.embeddingStatus) els.embeddingStatus.textContent = embeddingStatus;
+      if (els.vectorStatus) els.vectorStatus.textContent = vectorStatus;
+      if (els.dimensionsStatus) els.dimensionsStatus.textContent = dimensionsStatus;
+      const runtimeWarning = settings.runtimeWarning || (!settings.localInferenceEnabled ? 'Local AI runtime not detected. Start Ollama or choose a cloud provider.' : '');
+      const warnings = [...new Set([runtimeWarning, ollama.error, gemma.warning, embeddings.warning].filter(Boolean))];
+      const localDisabled = (settings.aiProvider || 'local') === 'local' && !settings.localInferenceEnabled;
+      state.localInferenceEnabled = !localDisabled;
+      els.aiAnalyzeButton.disabled = localDisabled;
+      els.aiAnalyzeButton.dataset.localInferenceEnabled = String(!localDisabled);
+      if (ollama.online && gemma.configured) {
+        els.backendStatus.classList.add('is-ready');
+        els.backendStatus.textContent = `Local AI is ready. Imported PDFs will be scanned with ${gemma.model || settings.gemmaModel}.`;
+      } else if (ollama.online) {
+        els.backendStatus.classList.add('is-error');
+        els.backendStatus.textContent = gemma.warning || `The selected chat model is not installed. Run: ollama pull ${settings.gemmaModel || 'gemma3:4b'}`;
+      } else {
+        els.backendStatus.classList.add('is-error');
+        els.backendStatus.textContent = runtimeWarning || 'Local AI runtime not detected. Start Ollama or choose a cloud provider.';
+      }
+      const diagnostics = [
+        `Backend: online`,
+        `AI provider: ${(settings.aiProvider || 'local') === 'cloud' ? 'Cloud provider' : 'Local (Ollama)'}`,
+        `Ollama chat endpoint: ${settings.ollamaChatEndpoint || 'http://127.0.0.1:11434/api/chat'}`,
+        `Ollama tags endpoint: ${settings.ollamaTagsEndpoint || 'http://127.0.0.1:11434/api/tags'}`,
+        `Ollama embeddings endpoint: ${settings.ollamaEmbeddingsEndpoint || 'http://127.0.0.1:11434/api/embeddings'}`,
+        `Bundled Ollama: ${bundled.available ? (bundled.processRunning ? 'running from app bundle' : 'available') : 'not bundled'}`,
+        `Bundled runtime status: ${bundledBoot.reason || 'unknown'}`,
+        `Ollama model storage: ${bundled.modelsDir || '~/Library/Application Support/pulse/models'}`,
+        `PDF extraction: ${settings.workflow?.pdfExtraction || 'byte scan fallback'}`,
+        `Section detection: ${settings.workflow?.sectionDetection || 'heading heuristics'}`,
+        `Metadata extraction: local parser + local chat model`,
+        `Chunking: paragraphs`,
+        `Embedding model: ${embeddingStatus}`,
+        `Vector database: ${vectorStatus}`,
+        `Chat model: ${gemmaStatus}`,
+        `Fallback embeddings: ${embeddings.fallback || 'hashed-local-fallback'} only if Ollama embeddings fail`,
+        `Semantic Scholar (S2AG): ${s2Status}`,
+        `Dimensions recommender: ${dimensionsStatus}`,
+        `Literature Discovery: S2AG (SPECTER2) + OpenAlex + Crossref${dimensions.configured ? ' + Dimensions' : ''}`,
+        warnings.length ? `Warnings:\n${warnings.map(item => `- ${item}`).join('\n')}` : '',
+        `Config: ${settings.configPath || 'local backend'}`
+      ].filter(Boolean).join('\n');
+      if (els.backendDiagnostics) els.backendDiagnostics.textContent = diagnostics;
     }
 
-    function visibleLinks() {
-      return state.links.filter(link => state.linkTypeFilter === 'all' || link.type === state.linkTypeFilter);
-    }
-
-    function setWorkspaceView(view) {
-      els.app.classList.remove('network-fullscreen');
-      const fullButton = document.getElementById('networkFullscreenButton');
-      fullButton.textContent = 'Full screen';
-      fullButton.setAttribute('aria-pressed', 'false');
-      state.workspaceView = view;
-      state.inspectorOpen = false;
-      if (view === 'timeline') state.mode = 'timeline';
-      else if (view === 'library') state.mode = 'table';
-      else if (view === 'network' && !['network', 'clusters', 'radial'].includes(state.mode)) state.mode = 'network';
-      render();
-    }
-
-    function toggleNetworkFullscreen(force) {
-      const full = typeof force === 'boolean' ? force : !els.app.classList.contains('network-fullscreen');
-      els.app.classList.toggle('network-fullscreen', full);
-      const button = document.getElementById('networkFullscreenButton');
-      button.textContent = full ? 'Exit full screen' : 'Full screen';
-      button.setAttribute('aria-pressed', String(full));
-      render();
-    }
-
-    function setDiscoverySeed(id) {
-      if(state.discoveryLoading && state.pinnedSeedId!==id)cancelDiscovery();
-      state.selectedId = id;
-      state.pinnedSeedId = id;
-      state.selectedLinkId = null;
-      if (state.discoverySeed?.id !== id) {
-        state.discoveryStatus='';state.discoveryWarnings=[];
-        state.discoveryResults = [];
-        state.discoverySelectedKeys = new Set();
-        state.discoveryHasRun = false;
-        state.discoveryError = '';
+    function populateOllamaModels(models, selectedModel) {
+      const uniqueModels = [...new Set((models || []).filter(Boolean))];
+      els.ollamaModelSelect.innerHTML = uniqueModels.length
+        ? uniqueModels.map(model => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join('')
+        : '<option value="">Test Connection to load installed models</option>';
+      if (uniqueModels.includes(selectedModel)) {
+        els.ollamaModelSelect.value = selectedModel;
+      } else if (uniqueModels.length) {
+        els.ollamaModelSelect.insertAdjacentHTML('afterbegin', `<option value="${escapeHtml(selectedModel)}">Selected: ${escapeHtml(selectedModel)} (not installed)</option>`);
+        els.ollamaModelSelect.value = selectedModel;
       }
     }
 
-    function renderDiscoveryWorkspace() {
-      const seedId = state.pinnedSeedId || state.selectedId || state.papers[0]?.id || '';
-      const seed = state.papers.find(paper => paper.id === seedId) || state.papers[0];
-      els.discoverySeedSelect.innerHTML = state.papers.length ? state.papers.map(paper => `<option value="${escapeHtml(paper.id)}">${escapeHtml(paper.title)}${paper.year ? ` (${escapeHtml(paper.year)})` : ''}</option>`).join('') : '<option value="">Add a paper above to begin</option>';
-      els.discoverySeedSelect.value = seed?.id || '';
-      const busy = state.discoveryLoading || state.citationLoading;
-      els.discoverySeedSelect.disabled = !state.papers.length || busy;
-      els.discoveryRunButton.disabled = !seed || busy || !Object.values(state.discoveryBranches).some(Boolean);
-      els.discoveryRunButton.textContent = busy ? 'Finding papers…' : 'Find related papers';
-      els.discoveryCancelButton.hidden = !state.discoveryLoading;
-      els.discoveryProgress.hidden = !busy && !state.discoveryStatus && !state.discoveryWarnings.length;
-      els.discoveryProgress.textContent = state.discoveryStatus || (busy ? `Searching from “${seed?.title || 'your paper'}”. Results will appear below.` : '');
-      if(state.discoveryWarnings.length)els.discoveryProgress.textContent += ` ${state.discoveryWarnings.join(' ')}`;
-      const hasResults = state.discoveryResults.length > 0;
-      els.discoveryModal.querySelector('.discovery-modal-toolbar').hidden = !hasResults;
-      els.discoveryModal.querySelector('.discovery-status-bar').hidden = !hasResults;
-      els.discoveryModal.querySelector('.discovery-modal-footer').hidden = !hasResults;
-      document.querySelectorAll('[data-depth], [data-method], [data-special]').forEach(button => button.disabled = busy || (!seed && Boolean(button.dataset.special)));
-      renderDiscoveryModal();
+
+    function initFrankTheme() {
+      const saved = localStorage.getItem('pulse-theme') || localStorage.getItem('iratxe-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      applyFrankTheme(saved);
+      els.themeLight?.addEventListener('click', () => applyFrankTheme('light'));
+      els.themeDark?.addEventListener('click', () => applyFrankTheme('dark'));
     }
 
-    function publicationDate(paper) {
-      const raw = String(paper.date || '').trim();
-      const iso = raw.match(/^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/);
-      if (iso && Number(iso[1]) >= 1000) {
-        return {time: Date.UTC(Number(iso[1]), Number(iso[2] || 1) - 1, Number(iso[3] || 1)), year: iso[1], label: raw};
+    function applyFrankTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('pulse-theme', theme);
+      els.themeLight?.classList.toggle('active', theme === 'light');
+      els.themeDark?.classList.toggle('active', theme === 'dark');
+    }
+
+    function updateSaveStatePill(status) {
+      if (!els.saveStatePill) return;
+      els.saveStatePill.textContent = status;
+      els.saveStatePill.className = 'save-state-pill ' + status.toLowerCase().replace(/[^a-z]/g, '');
+    }
+
+    async function loadBackendSettings() {
+      try {
+        const response = await fetch(backendUrl('/api/settings'), { headers: apiHeaders() });
+        const settings = await response.json();
+        if (!response.ok) throw new Error(settings.error || 'Could not read backend settings.');
+        if (settings.hasApiKey && els.geminiKeyInput) {
+          els.geminiKeyInput.placeholder = settings.apiKeyPreview ? ('Configured (' + settings.apiKeyPreview + ')') : 'Configured';
+        }
+        if (settings.cloudModel && els.cloudModelInput) {
+          els.cloudModelInput.value = settings.cloudModel;
+        }
+        if (settings.aiProvider && els.aiProviderInput) {
+          els.aiProviderInput.value = settings.aiProvider;
+        }
+        if (settings.cloudProvider && els.cloudProviderInput) {
+          els.cloudProviderInput.value = settings.cloudProvider;
+        }
+        renderBackendStatus(settings);
+      } catch (error) {
+        renderBackendStatus(null, `${error.message}\n\nBackend URL: ${apiBase || window.location.origin}`);
       }
-      const parsed = raw ? Date.parse(raw) : NaN;
-      if (Number.isFinite(parsed)) return {time: parsed, year: String(new Date(parsed).getUTCFullYear()), label: raw};
-      const year = String(paper.year || '').match(/\b([12]\d{3})\b/)?.[1];
-      return year ? {time: Date.UTC(Number(year), 0, 1), year, label: year} : null;
     }
-
-    function chronologicalPapers() {
-      return state.papers.map(paper => ({paper, date: publicationDate(paper)})).sort((left, right) => {
-        if (!left.date && right.date) return 1;
-        if (left.date && !right.date) return -1;
-        return (left.date?.time || 0) - (right.date?.time || 0) || left.paper.title.localeCompare(right.paper.title);
-      });
-    }
-
-    function renderTimeline() {
-      const ordered = chronologicalPapers();
-      let previousYear = null;
-      const count = ordered.length;
-      els.timelineView.innerHTML = `<header class="timeline-header"><span class="discovery-source-pill">Chronological Literature View</span><h1>Timeline</h1><p>Oldest to newest · ${count} papers across your research library.</p></header><div class="timeline-track">${ordered.map(({paper, date}) => {
-        const year = date?.year || 'Undated';
-        const heading = year !== previousYear ? `<div class="timeline-year-heading"><h2 class="timeline-year">${escapeHtml(year)}</h2><span class="timeline-year-badge">${ordered.filter(o => (o.date?.year || 'Undated') === year).length} paper${ordered.filter(o => (o.date?.year || 'Undated') === year).length === 1 ? '' : 's'}</span></div>` : '';
-        previousYear = year;
-        const citations = Number(paper.citationCount ?? paper.citations ?? 0);
-        const citeHtml = citations > 0 ? `<span class="timeline-cite-pill">★ ${citations.toLocaleString()} cites</span>` : '';
-        const isSelected = state.selectedId === paper.id ? ' is-selected' : '';
-        const isSeminal = (citations > 100 || (paper.tags && paper.tags.includes('seminal')));
-        const seminalBadge = isSeminal ? '<span class="timeline-seminal-badge">Seminal</span>' : '';
-        return `${heading}<article class="timeline-paper${isSelected}" data-timeline-id="${escapeHtml(paper.id)}"><div class="timeline-date-wrap"><span class="timeline-date">${escapeHtml(date?.label || 'Date unknown')}</span>${citeHtml}</div><div class="timeline-content"><div class="timeline-title-row"><button type="button" class="timeline-paper-title" data-timeline-inspect="${escapeHtml(paper.id)}">${escapeHtml(paper.title)}</button>${seminalBadge}</div><p>${escapeHtml([paperAuthorSummary(paper), paper.journal].filter(Boolean).join(' · '))}</p>${paper.abstract ? `<p class="timeline-abstract">${escapeHtml(paper.abstract.slice(0, 240))}${paper.abstract.length > 240 ? '…' : ''}</p>` : ''}</div><div class="timeline-actions"><button type="button" class="button secondary xs" data-timeline-discover="${escapeHtml(paper.id)}">Discover related</button><button type="button" class="button xs" data-timeline-focus="${escapeHtml(paper.id)}">View in graph</button></div></article>`;
-      }).join('') || '<div class="timeline-empty">Add papers to see how the literature develops over time.</div>'}</div>`;
-      els.timelineView.querySelectorAll('[data-timeline-inspect]').forEach(button => button.addEventListener('click', () => {
-        state.selectedId = button.dataset.timelineInspect;
-        state.inspectorOpen = true;
-        renderDetails();
-      }));
-      els.timelineView.querySelectorAll('[data-timeline-discover]').forEach(button => button.addEventListener('click', () => {
-        setDiscoverySeed(button.dataset.timelineDiscover);
-        setWorkspaceView('discover');
-      }));
-      els.timelineView.querySelectorAll('[data-timeline-focus]').forEach(button => button.addEventListener('click', () => {
-        state.selectedId = button.dataset.timelineFocus;
-        state.centerId = button.dataset.timelineFocus;
-        setWorkspaceView('network');
-      }));
-    }
-
-    function syncWorkspaceControls() {
-      els.app.dataset.workspace = state.workspaceView;
-      els.discoveryModal.hidden = state.workspaceView !== 'discover';
-      document.querySelector('.pulse-workspace-cols').hidden = state.workspaceView === 'discover';
-      document.querySelectorAll('[data-rail]').forEach(button => {
-        const active = button.dataset.rail === state.workspaceView;
-        button.classList.toggle('active', active);
-        if (active) button.setAttribute('aria-current', 'page');
-        else button.removeAttribute('aria-current');
-      });
-      document.querySelectorAll('[data-mode]').forEach(button => {
-        const active = button.dataset.mode === state.mode;
-        button.classList.toggle('is-active', active);
-        button.setAttribute('aria-selected', String(active));
-      });
-      els.canvasLayoutSelect.value = state.mode;
-      els.canvasLinksSelect.value = state.linkTypeFilter;
-      els.labelModeInput.value = state.graphStyle.labelMode;
-      els.showLabelsToggle.checked = state.graphStyle.labelMode !== 'none';
-      const branches = {citations:'citationGraph',network:'citationNetwork',semantic:'semanticSearch',concepts:'lexicalSearch'};

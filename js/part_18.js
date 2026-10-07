@@ -1,32 +1,139 @@
-          return;
+
+    function addCitationPapersToMap(seed, items, direction) {
+      const fresh = (items || []).filter(item => item.title && !recommendationAlreadyOnMap(item));
+      fresh.forEach((item, index) => {
+        const paper = paperFromRecommendation(item);
+        const orbitIndex = Math.floor(index / 8);
+        const posInOrbit = index % 8;
+        const radius = (direction === 'backward' ? 210 : 270) + orbitIndex * 110;
+        const angle = (-Math.PI / 2) + posInOrbit * ((Math.PI * 2) / Math.min(8, Math.max(fresh.length - orbitIndex * 8, 1)));
+        paper.x = (seed?.x || 0) + Math.cos(angle) * radius;
+        paper.y = (seed?.y || 0) + Math.sin(angle) * radius;
+        paper.areaId = seed?.areaId || '';
+        if (direction === 'backward') {
+          seed.referenceIds = dedupeList([...(seed.referenceIds || []), paper.openAlexId].filter(Boolean));
+        } else if (direction === 'forward') {
+          paper.referenceIds = dedupeList([...(paper.referenceIds || []), seed.openAlexId].filter(Boolean));
+          seed.citedByIds = dedupeList([...(seed.citedByIds || []), paper.openAlexId].filter(Boolean));
+        } else if (direction === 'network') {
+          state.links.push({
+            source: seed.id,
+            target: paper.id,
+            score: 0.88,
+            type: item.subType === 'Bibliographic coupling' ? 'bibliographic' : 'cocitation',
+            evidence: item.reason || 'Citation network triangulation'
+          });
+        } else if (direction === 'chase') {
+          state.links.push({
+            source: seed.id,
+            target: paper.id,
+            score: 0.82,
+            type: 'citation',
+            evidence: item.reason || 'Iterative 2-hop citation chase'
+          });
         }
-        state.discoveryJob=data.id;
-        while(data.status==='running') {
-          applyDiscoveryProgress(data);
-          await discoveryPause(discoveryController.signal);
-          const poll=await fetch(backendUrl('/api/discovery/jobs/'+data.id),{headers:apiHeaders(),signal:discoveryController.signal});
-          data=await poll.json();
-          if(!poll.ok)throw new Error(data.error || 'Could not read discovery progress.');
-          if(generation!==discoveryGeneration)return;
-        }
-        if(data.status==='failed')throw new Error(data.error || 'Discovery search failed.');
-        if(data.status==='cancelled'){state.discoveryStatus='Search cancelled. Completed candidates are available to review.';return;}
-        applyDiscoveryProgress(data);
+        state.papers.push(paper);
+      });
+      if (fresh.length) {
+        state.centerId = seed.id;
+        state.selectedId = seed.id;
+      }
+      return fresh.length;
+    }
+
+    async function chase2HopSelectedPaper() {
+      const seed = state.papers.find(item => item.id === state.selectedId);
+      if (!seed) {
+        showToast('Select a paper first.');
+        return;
+      }
+      state.citationLoading = true;
+      renderDetails();
+      try {
+        const response = await fetch(backendUrl('/api/citations/chase'), {
+          method: 'POST',
+          headers: apiHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ paper: citationPaperPayload(seed), limit: 25 })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not run 2-hop chase.');
+        const added = addCitationPapersToMap(seed, data.recommendations || [], 'chase');
+        showToast(`2-Hop chase found ${(data.recommendations || []).length} papers and added ${added}.`);
+      } catch (error) {
+        showToast(error.message);
+      } finally {
+        state.citationLoading = false;
+        render();
+      }
+    }
+
+    async function triangulateNetworkSelectedPaper() {
+      const seed = state.papers.find(item => item.id === state.selectedId);
+      if (!seed) {
+        showToast('Select a paper first.');
+        return;
+      }
+      state.citationLoading = true;
+      renderDetails();
+      try {
+        const response = await fetch(backendUrl('/api/citations/network'), {
+          method: 'POST',
+          headers: apiHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ paper: citationPaperPayload(seed), limit: 25 })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not triangulate citation network.');
+        const added = addCitationPapersToMap(seed, data.recommendations || [], 'network');
+        showToast(`Citation network triangulation found ${(data.recommendations || []).length} papers and added ${added}.`);
+      } catch (error) {
+        showToast(error.message);
+      } finally {
+        state.citationLoading = false;
+        render();
+      }
+    }
+
+    async function runDiscoveryPipeline() {
+      const seeds = selectedPapersForRecommendation();
+      if (!seeds.length) {
+        showToast('Select a paper first to run literature discovery.');
+        return;
+      }
+      const key = recommendationKey(seeds);
+      state.discoveryLoading = true;
+      state.recommendationLoadingKey = key;
+      renderDetails();
+      try {
+        const response = await fetch(backendUrl('/api/discovery/pipeline'), {
+          method: 'POST',
+          headers: apiHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            seedPapers: seeds.map(citationPaperPayload),
+            branches: state.discoveryBranches,
+            depth: state.explorationDepth,
+            steerKeywords: state.recommendationSteerKeywords,
+            excludeKeywords: state.recommendationExcludeKeywords,
+            recencyTilt: state.recommendationRecencyTilt,
+            impactTilt: state.recommendationImpactTilt,
+            iterativeChase: true,
+            limit: 50
+          })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Discovery pipeline failed.');
         const recs = data.recommendations || [];
         state.recommendations.set(key, recs);
         state.discoveryResults = recs;
         state.discoverySeed = seeds[0];
         openDiscoveryModal(recs, seeds[0]);
-        showToast(`Literature discovery surfaced ${recs.length} papers. Review and choose papers to add in Discover.`);
+        showToast(`Literature discovery surfaced ${recs.length} papers. Review and choose papers to add in the popup.`);
       } catch (error) {
-        if(generation!==discoveryGeneration || error.name==='AbortError')return;
-        state.discoveryStatus='Search could not finish.';
-        state.discoveryError = error.message;
-        state.discoveryHasRun = true;
         showToast(error.message);
         state.recommendations.set(key, [{ title: 'Discovery search failed', reason: error.message }]);
       } finally {
-        if(generation===discoveryGeneration){state.discoveryLoading=false;state.discoveryJob=null;state.recommendationLoadingKey=null;render();}
+        state.discoveryLoading = false;
+        state.recommendationLoadingKey = null;
+        render();
       }
     }
 
@@ -63,7 +170,7 @@
         const isCoCite = item.subType === 'Co-citation' || (item.discoveryBadges || []).some(b => b.includes('Co-citation'));
         const isSpecter = item.subType === 'SPECTER2' || (item.discoveryBadges || []).some(b => b.includes('SPECTER2'));
         const ltype = isBib ? 'bibliographic' : (isCoCite ? 'cocitation' : (isSpecter ? 'similarity' : 'mixed'));
-        state.explicitLinks.push({
+        state.links.push({
           source: seed.id,
           target: paper.id,
           score: item.score ? Math.min(0.95, item.score / 100) : 0.82,
@@ -177,11 +284,21 @@
     }
 
     function updateMetrics() {
-      if (els.railLibraryBadge) els.railLibraryBadge.textContent = state.papers.length;
+      if (els.graphLegend) {
+        els.graphLegend.innerHTML = state.clusters.map((cluster, index) => {
+          const paper = state.papers.find(item => item.id === cluster[0]);
+          const label = mergedKeywords(paper || {}).slice(0, 1)[0] || `Cluster ${index + 1}`;
+          return `<div class="legend-row"><span class="legend-dot" style="background:${palette[index % palette.length]}"></span><span class="legend-label">${escapeHtml(label)} (${cluster.length})</span></div>`;
+        }).join('');
+      }
+      if (els.railRecentList) {
+        els.railRecentList.innerHTML = state.papers.slice(-4).reverse().map(paper => `<button type="button" class="recent-session-item" data-session-query="${escapeHtml(paper.doi || paper.pmid || paper.title)}"><span class="session-dot"></span><span class="session-info"><strong class="session-name">${escapeHtml(compactTitle(paper.title))}</strong><small class="session-time">${escapeHtml(paper.year || 'In library')}</small></span></button>`).join('') || '<p class="rail-empty">Recent papers will appear here.</p>';
+      }
+
       els.emptyState.style.display = state.papers.length ? 'none' : 'grid';
-      els.paperCount.textContent = state.librarySearch || state.filterTags.length ? `${state.papers.filter(paperMatchesFilters).length} of ${state.papers.length}` : `${state.papers.length} loaded`;
+      els.paperCount.textContent = `${state.papers.length} loaded`;
       els.metricPapers.textContent = state.papers.length;
-      els.metricLinks.textContent = visibleLinks().length;
+      els.metricLinks.textContent = state.links.length;
       els.metricClusters.textContent = state.papers.length ? state.clusters.length : 0;
       if (els.storagePaperCount) {
         els.storagePaperCount.textContent = state.papers.length;
@@ -234,117 +351,7 @@
         render();
         const mergedText = result.merged ? `, merged ${result.merged} duplicate${result.merged === 1 ? '' : 's'}` : '';
         showToast(`Added ${result.added} paper${result.added === 1 ? '' : 's'}${mergedText} to the map.`);
-      } catch (error) {
-        showToast(`Import failed: ${error.message}`);
       } finally {
         window.setTimeout(() => setLoadProgress(0, 0), 700);
       }
-      if(state.workspaceView==='network') {
-        if(activeAnalysis || activeLayout)els.statusText.textContent='Updating network in the background… You can keep using Pulse.';
-        else if(visibleLinks().length>2500)els.statusText.textContent += ' Network shows the 2,500 strongest visible links; all evidence remains available in the library and export.';
-      }
     }
-
-    function loadSample() {
-      state.papers = [
-        {
-          id: uid(),
-          title: 'Transformer Attention for Scientific Document Retrieval',
-          authors: ['A. Chen', 'M. Patel'],
-          date: '2024',
-          year: '2024',
-          journal: 'Journal of Scientific Information Retrieval',
-          doi: '10.1234/jsir.2024.001',
-          abstract: 'This paper evaluates transformer attention representations for scientific document retrieval and citation recommendation across arXiv abstracts, focusing on dense embeddings and semantic search.',
-          paperKeywords: ['transformers', 'scientific retrieval', 'citation recommendation', 'semantic search'],
-          color: '#176c72',
-          text: 'We evaluate transformer attention representations for scientific paper retrieval, citation recommendation, semantic search, dense embeddings, and document ranking across arXiv abstracts.'
-        },
-        {
-          id: uid(),
-          title: 'Graph Neural Networks for Citation Link Prediction',
-          authors: ['L. Garcia', 'S. Okafor'],
-          date: '2023',
-          year: '2023',
-          journal: 'Proceedings of Scholarly Graph Mining',
-          doi: '10.1234/sgm.2023.014',
-          abstract: 'This paper models citation networks with graph neural networks for link prediction, community detection, and scholarly recommendation using message passing over paper nodes.',
-          paperKeywords: ['graph neural networks', 'citation networks', 'link prediction', 'community detection'],
-          color: '#c7552c',
-          text: 'This paper models citation networks with graph neural networks, message passing, node embeddings, link prediction, scholarly recommendation, and community detection.'
-        },
-        {
-          id: uid(),
-          title: 'Contrastive Learning of Biomedical Abstract Embeddings',
-          authors: ['R. Singh', 'E. Novak'],
-          date: '2025',
-          year: '2025',
-          journal: 'Biomedical NLP Review',
-          doi: '10.1234/bnlp.2025.027',
-          abstract: 'Biomedical abstracts are encoded with contrastive learning and domain-specific language models to improve literature discovery, retrieval, clustering, and semantic relatedness.',
-          paperKeywords: ['biomedical abstracts', 'contrastive learning', 'embeddings', 'literature discovery'],
-          color: '#6f5bc4',
-          text: 'Biomedical abstracts are encoded with contrastive learning and domain-specific language models to improve literature discovery, retrieval, clustering, and semantic relatedness.'
-        },
-        {
-          id: uid(),
-          title: 'Energy-Efficient Scheduling in Edge Computing Systems',
-          authors: ['T. Williams', 'N. Ibrahim'],
-          date: '2022',
-          year: '2022',
-          journal: 'Edge Systems Letters',
-          doi: '10.1234/esl.2022.009',
-          abstract: 'This study examines energy-aware task allocation for edge computing systems under latency constraints, mobile workloads, resource management, and distributed optimization.',
-          paperKeywords: ['edge computing', 'energy-aware scheduling', 'latency', 'distributed optimization'],
-          color: '#2478b7',
-          text: 'We study edge computing schedulers, energy-aware task allocation, latency constraints, mobile workloads, resource management, and distributed optimization.'
-        },
-        {
-          id: uid(),
-          title: 'Survey of Semantic Scholar Recommendation Methods',
-          authors: ['H. Brown', 'Y. Sato'],
-          date: '2024',
-          year: '2024',
-          journal: 'ACM Computing Surveys',
-          doi: '10.1234/csur.2024.042',
-          abstract: 'This survey compares paper recommendation methods that combine citation graphs, co-citation features, content similarity, bibliographic coupling, transformer embeddings, and hybrid ranking.',
-          paperKeywords: ['paper recommendation', 'citation graphs', 'content similarity', 'hybrid ranking'],
-          color: '#0d7f55',
-          text: 'A survey of paper recommendation methods including citation graphs, co-citation features, content similarity, bibliographic coupling, transformer embeddings, and hybrid ranking.'
-        }
-      ];
-      state.selectedId = state.papers[0].id;
-      render();
-      showToast('Loaded sample papers.');
-    }
-
-    function serializeMap({includeDerived = true} = {}) {
-      return {
-        format: 'pulse-map',
-        version: '1.3.0',
-        generatedAt: new Date().toISOString(),
-        threshold: state.threshold,
-        mode: state.mode,
-        workspaceView: state.workspaceView,
-        linkTypeFilter: state.linkTypeFilter,
-        discoveryBranches: { ...state.discoveryBranches },
-        explorationDepth: state.explorationDepth,
-        pinnedSeedId: state.pinnedSeedId,
-        explicitLinks: state.explicitLinks.map(link => ({ ...link })),
-        paperView: state.paperView,
-        filterTags: state.filterTags || [],
-        filterMode: state.filterMode || 'all',
-        recommendationSteerKeywords: state.recommendationSteerKeywords,
-        recommendationExcludeKeywords: state.recommendationExcludeKeywords,
-        recommendationAuthors: state.recommendationAuthors,
-        recommendationJournals: state.recommendationJournals,
-        graphSteerKeywords: state.graphSteerKeywords,
-        recommendationRecencyTilt: state.recommendationRecencyTilt,
-        recommendationImpactTilt: state.recommendationImpactTilt,
-        graphStyle: { ...state.graphStyle },
-        view: { ...state.view },
-        areas: state.areas.map(area => ({ ...area })),
-        papers: state.papers.map(paper => ({
-          id: paper.id,
-          title: paper.title,
-          name: paper.name,

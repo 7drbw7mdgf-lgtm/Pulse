@@ -1,22 +1,3 @@
-      els.graphPanel.hidden = !open;
-      els.graphButton.setAttribute('aria-expanded', String(open));
-      if (open) syncGraphControls();
-    }
-
-    function setSettingsOpen(open) {
-      els.settingsPanel.hidden = !open;
-      els.settingsButton.setAttribute('aria-expanded', String(open));
-      if (open) loadBackendSettings();
-    }
-
-    function discoveryPaperKey(item) {
-      if (!item) return '';
-      const doi = (item.doi || '').trim().toLowerCase();
-      if (doi) return `doi:${doi}`;
-      if (item.s2PaperId) return `s2:${item.s2PaperId}`;
-      if (item.openAlexId) return `oa:${item.openAlexId}`;
-      return `t:${cleanField(item.title || '').toLowerCase()}`;
-    }
 
     function openDiscoveryModal(results, seedPaper) {
       state.discoveryResults = results || [];
@@ -29,8 +10,11 @@
       state.discoveryQuickTag = '';
       state.discoveryExpandedAbstracts = new Set();
 
-      state.discoverySelectedKeys = new Set();
-      state.discoveryHasRun = true;
+      state.discoverySelectedKeys = new Set(
+        (results || [])
+          .filter(item => !recommendationAlreadyOnMap(item))
+          .map(item => discoveryPaperKey(item))
+      );
 
       if (els.discoveryFilterText) els.discoveryFilterText.value = '';
       if (els.discoveryClearTextBtn) els.discoveryClearTextBtn.hidden = true;
@@ -38,13 +22,13 @@
       if (els.discoveryFilterYear) els.discoveryFilterYear.value = 'all';
       if (els.discoverySortBy) els.discoverySortBy.value = 'score';
 
-      setWorkspaceView('discover');
+      if (els.discoveryModal) els.discoveryModal.hidden = false;
       renderDiscoveryModal();
       if (els.discoveryFilterText) els.discoveryFilterText.focus();
     }
 
     function closeDiscoveryModal() {
-      setWorkspaceView('network');
+      if (els.discoveryModal) els.discoveryModal.hidden = true;
     }
 
     function getFilteredDiscoveryPapers() {
@@ -148,8 +132,8 @@
       const filtered = getFilteredDiscoveryPapers();
 
       if (els.discoveryModalSubtitle) {
-        const seedTitle = state.discoverySeed?.title || '';
-        els.discoveryModalSubtitle.textContent = totalItems.length ? `${totalItems.length} candidates found from “${seedTitle}”. Review them before adding them to your map.` : 'Start with a paper, choose your search methods, then review related work.';
+        const seedTitle = state.discoverySeed?.title || 'Selected seed paper';
+        els.discoveryModalSubtitle.textContent = `${totalItems.length} papers discovered via S2AG for "${seedTitle.slice(0, 60)}${seedTitle.length > 60 ? '...' : ''}" across all 5 branches.`;
       }
 
       const countSpecter = totalItems.filter(item => item.branch === 'semanticSearch' || item.branchHits?.semanticSearch || (item.discoveryBadges || []).some(b => b.includes('SPECTER2'))).length;
@@ -201,21 +185,19 @@
         els.discoverySelectedCount.textContent = `${selectedCount} selected`;
       }
       if (els.discoveryAddSelectedMapBtn) {
-        els.discoveryAddSelectedMapBtn.textContent = `Add selected & open network (${selectedCount})`;
-        els.discoveryAddSelectedMapBtn.disabled = selectedCount === 0 || state.discoveryLoading;
+        els.discoveryAddSelectedMapBtn.textContent = `⭐ Add Selected to Map (${selectedCount})`;
       }
       if (els.discoveryAddSelectedLibraryBtn) {
         els.discoveryAddSelectedLibraryBtn.textContent = `+ Add to Library (${selectedCount})`;
-        els.discoveryAddSelectedLibraryBtn.disabled = selectedCount === 0 || state.discoveryLoading;
       }
 
       if (!els.discoveryPaperList) return;
       if (!filtered.length) {
         els.discoveryPaperList.innerHTML = `
           <div class="discovery-empty-state">
-            <span class="discovery-empty-icon">${state.discoveryLoading ? '◌' : '↗'}</span>
-            <div class="discovery-empty-text">${state.discoveryLoading ? 'Finding related work…' : totalItems.length ? 'No papers match these filters' : state.discoveryError ? 'This search could not finish' : state.discoveryHasRun ? 'No related papers found' : 'One paper is enough to begin'}</div>
-            <div class="discovery-empty-subtext">${escapeHtml(state.discoveryError || (totalItems.length ? 'Clear a filter to see more results.' : state.discoveryHasRun ? 'Try another starting paper or enable another search method.' : 'Add a title, DOI, PMID or PDF above. Choose your starting paper, then find related work.'))}</div>
+            <span class="discovery-empty-icon">🔎</span>
+            <div class="discovery-empty-text">No papers match your filter criteria</div>
+            <div class="discovery-empty-subtext">Try clearing the search query, adjusting the year or branch filter.</div>
           </div>
         `;
         return;
@@ -258,7 +240,7 @@
         ` : '';
 
         const abstractText = item.abstract || item.reason || '';
-        const href = item.url || (item.doi ? `https://doi.org/${item.doi}` : '');
+        const href = safeHref(item.url || (item.doi ? `https://doi.org/${item.doi}` : ''));
 
         return `
           <article class="discovery-paper-item ${isSelected ? 'is-selected' : ''}" data-paper-key="${escapeHtml(key)}">
@@ -348,3 +330,9 @@
               state.discoveryQuickTag = '';
             } else {
               state.discoveryQuickTag = tag;
+            }
+            renderDiscoveryModal();
+          });
+        });
+      }
+    }

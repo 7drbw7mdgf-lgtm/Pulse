@@ -1,172 +1,3 @@
-      document.querySelectorAll('[data-method]').forEach(button => {
-        const active = Boolean(state.discoveryBranches[branches[button.dataset.method]]);
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', String(active));
-      });
-      document.querySelectorAll('[data-depth]').forEach(button => {
-        const active = button.dataset.depth === state.explorationDepth;
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', String(active));
-      });
-      if (els.graphLegend) {
-        els.graphLegend.innerHTML = state.clusters.map((cluster, index) => {
-          const paper = state.papers.find(item => item.id === cluster[0]);
-          const label = mergedKeywords(paper || {}).slice(0, 1)[0] || `Cluster ${index + 1}`;
-          return `<div class="legend-row"><span class="legend-dot" style="background:${palette[index % palette.length]}"></span><span class="legend-label">${escapeHtml(label)} (${cluster.length})</span></div>`;
-        }).join('');
-      }
-      if (els.railRecentList) {
-        els.railRecentList.innerHTML = state.papers.slice(-4).reverse().map(paper => `<button type="button" class="recent-session-item" data-session-query="${escapeHtml(paper.doi || paper.pmid || paper.title)}"><span class="session-dot"></span><span class="session-info"><strong class="session-name">${escapeHtml(compactTitle(paper.title))}</strong><small class="session-time">${escapeHtml(paper.year || 'In library')}</small></span></button>`).join('') || '<p class="rail-empty">Recent papers will appear here.</p>';
-      }
-      if(state.workspaceView==='discover')renderDiscoveryWorkspace();
-    }
-
-    function renderBackendStatus(settings, message) {
-      const url = apiBase || window.location.origin;
-      els.backendUrlInput.value = url;
-      els.backendStatus.classList.remove('is-ready', 'is-error');
-      if (!settings) {
-        els.backendStatus.classList.add('is-error');
-        els.backendStatus.textContent = message || 'The app backend is offline. Reopen Pulse and try the connection check again.';
-        if (els.backendDiagnostics) els.backendDiagnostics.textContent = `${els.backendStatus.textContent}\nBackend URL: ${url}`;
-        return;
-      }
-
-      const defaults = settings.defaults || {};
-      els.aiProviderInput.value = settings.aiProvider || defaults.aiProvider || 'local';
-      els.cloudProviderInput.value = 'gemini';
-      els.ollamaChatEndpointInput.value = settings.ollamaChatEndpoint || defaults.ollamaChatEndpoint || 'http://127.0.0.1:11434/api/chat';
-      els.gemmaModelInput.value = settings.gemmaModel || defaults.chatModel || 'gemma3:4b';
-      els.embeddingModelInput.value = settings.embeddingModel || defaults.embeddingModel || 'nomic-embed-text';
-      if (els.autoGemmaExtractionInput) els.autoGemmaExtractionInput.checked = settings.autoGemmaExtraction !== false;
-      const isLocalProvider = els.aiProviderInput.value === 'local';
-      els.cloudProviderInput.disabled = isLocalProvider;
-      els.ollamaChatEndpointInput.disabled = !isLocalProvider;
-      els.ollamaModelSelect.disabled = !isLocalProvider;
-      els.embeddingModelInput.disabled = !isLocalProvider;
-      els.testBackendButton.disabled = false;
-      syncProviderControls();
-      const providers = settings.providers || {};
-      const gemma = providers.gemma || {};
-      const embeddings = providers.embeddings || {};
-      const vectorDb = providers.vectorDb || {};
-      const dimensions = providers.dimensions || {};
-      const semanticScholar = providers.semanticScholar || {};
-      const ollama = providers.ollama || {};
-      const bundled = ollama.bundled || {};
-      const bundledBoot = bundled.boot || {};
-      populateOllamaModels(ollama.models || [], settings.gemmaModel || defaults.chatModel || 'gemma3:4b');
-      const gemmaStatus = ollama.online
-        ? (gemma.configured ? `Ready (${gemma.model || settings.gemmaModel})` : 'Model missing')
-        : 'Ollama offline';
-      const embeddingStatus = ollama.online
-        ? (embeddings.available ? embeddings.active : 'Embedding missing')
-        : 'Ollama offline';
-      const vectorStatus = vectorDb.available ? vectorDb.active : 'sklearn cosine fallback';
-      const dimensionsStatus = dimensions.configured ? `Configured (${dimensions.preview})` : 'Optional';
-      const s2Status = semanticScholar.configured ? `Configured (${semanticScholar.preview})` : 'Active (Free S2AG public graph)';
-      if (els.gemmaStatus) els.gemmaStatus.textContent = gemmaStatus;
-      if (els.embeddingStatus) els.embeddingStatus.textContent = embeddingStatus;
-      if (els.vectorStatus) els.vectorStatus.textContent = vectorStatus;
-      if (els.dimensionsStatus) els.dimensionsStatus.textContent = dimensionsStatus;
-      const runtimeWarning = settings.runtimeWarning || (!settings.localInferenceEnabled ? 'Local AI runtime not detected. Start Ollama or choose a cloud provider.' : '');
-      const warnings = [...new Set([runtimeWarning, ollama.error, gemma.warning, embeddings.warning].filter(Boolean))];
-      const localDisabled = (settings.aiProvider || 'local') === 'local' && !settings.localInferenceEnabled;
-      state.localInferenceEnabled = !localDisabled;
-      els.aiAnalyzeButton.disabled = localDisabled;
-      els.aiAnalyzeButton.dataset.localInferenceEnabled = String(!localDisabled);
-      if (ollama.online && gemma.configured) {
-        els.backendStatus.classList.add('is-ready');
-        els.backendStatus.textContent = `Local AI is ready. Imported PDFs will be scanned with ${gemma.model || settings.gemmaModel}.`;
-      } else if (ollama.online) {
-        els.backendStatus.classList.add('is-error');
-        els.backendStatus.textContent = gemma.warning || `The selected chat model is not installed. Run: ollama pull ${settings.gemmaModel || 'gemma3:4b'}`;
-      } else {
-        els.backendStatus.classList.add('is-error');
-        els.backendStatus.textContent = runtimeWarning || 'Local AI runtime not detected. Start Ollama or choose a cloud provider.';
-      }
-      const diagnostics = [
-        `Backend: online`,
-        `AI provider: ${(settings.aiProvider || 'local') === 'cloud' ? 'Cloud provider' : 'Local (Ollama)'}`,
-        `Ollama chat endpoint: ${settings.ollamaChatEndpoint || 'http://127.0.0.1:11434/api/chat'}`,
-        `Ollama tags endpoint: ${settings.ollamaTagsEndpoint || 'http://127.0.0.1:11434/api/tags'}`,
-        `Ollama embeddings endpoint: ${settings.ollamaEmbeddingsEndpoint || 'http://127.0.0.1:11434/api/embeddings'}`,
-        `Bundled Ollama: ${bundled.available ? (bundled.processRunning ? 'running from app bundle' : 'available') : 'not bundled'}`,
-        `Bundled runtime status: ${bundledBoot.reason || 'unknown'}`,
-        `Ollama model storage: ${bundled.modelsDir || '~/Library/Application Support/pulse/models'}`,
-        `PDF extraction: ${settings.workflow?.pdfExtraction || 'byte scan fallback'}`,
-        `Section detection: ${settings.workflow?.sectionDetection || 'heading heuristics'}`,
-        `Metadata extraction: local parser + local chat model`,
-        `Chunking: paragraphs`,
-        `Embedding model: ${embeddingStatus}`,
-        `Vector database: ${vectorStatus}`,
-        `Chat model: ${gemmaStatus}`,
-        `Fallback embeddings: ${embeddings.fallback || 'hashed-local-fallback'} only if Ollama embeddings fail`,
-        `Semantic Scholar (S2AG): ${s2Status}`,
-        `Dimensions recommender: ${dimensionsStatus}`,
-        `Literature Discovery: S2AG (SPECTER2) + OpenAlex + Crossref${dimensions.configured ? ' + Dimensions' : ''}`,
-        warnings.length ? `Warnings:\n${warnings.map(item => `- ${item}`).join('\n')}` : '',
-        `Config: ${settings.configPath || 'local backend'}`
-      ].filter(Boolean).join('\n');
-      if (els.backendDiagnostics) els.backendDiagnostics.textContent = diagnostics;
-    }
-
-    function populateOllamaModels(models, selectedModel) {
-      const uniqueModels = [...new Set((models || []).filter(Boolean))];
-      els.ollamaModelSelect.innerHTML = uniqueModels.length
-        ? uniqueModels.map(model => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join('')
-        : '<option value="">Test Connection to load installed models</option>';
-      if (uniqueModels.includes(selectedModel)) {
-        els.ollamaModelSelect.value = selectedModel;
-      } else if (uniqueModels.length) {
-        els.ollamaModelSelect.insertAdjacentHTML('afterbegin', `<option value="${escapeHtml(selectedModel)}">Selected: ${escapeHtml(selectedModel)} (not installed)</option>`);
-        els.ollamaModelSelect.value = selectedModel;
-      }
-    }
-
-
-    function initFrankTheme() {
-      const saved = localStorage.getItem('pulse-theme') || localStorage.getItem('iratxe-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-      applyFrankTheme(saved);
-      els.themeLight?.addEventListener('click', () => applyFrankTheme('light'));
-      els.themeDark?.addEventListener('click', () => applyFrankTheme('dark'));
-    }
-
-    function applyFrankTheme(theme) {
-      document.documentElement.setAttribute('data-theme', theme);
-      localStorage.setItem('pulse-theme', theme);
-      els.themeLight?.classList.toggle('active', theme === 'light');
-      els.themeDark?.classList.toggle('active', theme === 'dark');
-    }
-
-    function updateSaveStatePill(status) {
-      if (!els.saveStatePill) return;
-      els.saveStatePill.textContent = status;
-      els.saveStatePill.className = 'save-state-pill ' + status.toLowerCase().replace(/[^a-z]/g, '');
-    }
-
-    async function loadBackendSettings() {
-      try {
-        const response = await fetch(backendUrl('/api/settings'), { headers: apiHeaders() });
-        const settings = await response.json();
-        if (!response.ok) throw new Error(settings.error || 'Could not read backend settings.');
-        if (settings.hasApiKey && els.geminiKeyInput) {
-          els.geminiKeyInput.placeholder = settings.apiKeyPreview ? ('Configured (' + settings.apiKeyPreview + ')') : 'Configured';
-        }
-        if (settings.cloudModel && els.cloudModelInput) {
-          els.cloudModelInput.value = settings.cloudModel;
-        }
-        if (settings.aiProvider && els.aiProviderInput) {
-          els.aiProviderInput.value = settings.aiProvider;
-        }
-        if (settings.cloudProvider && els.cloudProviderInput) {
-          els.cloudProviderInput.value = settings.cloudProvider;
-        }
-        renderBackendStatus(settings);
-      } catch (error) {
-        renderBackendStatus(null, `${error.message}\n\nBackend URL: ${apiBase || window.location.origin}`);
-      }
-    }
 
     async function saveBackendSettings(options = {}) {
       const clearDimensionsApiKey = Boolean(options.clearDimensionsApiKey);
@@ -222,10 +53,10 @@
           body: JSON.stringify({})
         });
         const result = await response.json();
-        if (!response.ok || result.ok === false) throw new Error(result.error || result.message || 'Connection test failed.');
+        if (!response.ok) throw new Error(result.error || 'Ollama test failed.');
         populateOllamaModels(result.models || [], result.model);
         await loadBackendSettings();
-        showToast(result.message || 'Connection detected.');
+        showToast('Ollama connection detected.');
       } catch (error) {
         const model = els.gemmaModelInput.value.trim() || 'gemma3:4b';
         const embedModel = els.embeddingModelInput.value.trim() || 'nomic-embed-text';
@@ -233,7 +64,7 @@
         els.backendStatus.textContent = error.message;
         if (els.backendDiagnostics) els.backendDiagnostics.textContent = `${error.message}\n\nIf Ollama is offline, run: ollama serve\nIf the chat model is missing, run: ollama pull ${model}\nIf the embedding model is missing, run: ollama pull ${embedModel}`;
       } finally {
-        els.testBackendButton.disabled = false;
+        els.testBackendButton.disabled = els.aiProviderInput.value !== 'local';
       }
     }
 
@@ -257,14 +88,13 @@
           referenceIds: paper.referenceIds || [],
           citedByIds: paper.citedByIds || [],
           citedByCount: paper.citedByCount || 0,
-          influentialCitationCount: paper.influentialCitationCount,
           abstract: paper.abstract || '',
           text: paper.text.slice(0, 12000),
           keywords: mergedKeywords(paper),
         })),
-        links: state.links.slice().sort((a,b)=>b.score-a.score).slice(0,2500).map(link => {
-          const source = papersById.get(link.source);
-          const target = papersById.get(link.target);
+        links: state.links.map(link => {
+          const source = state.papers.find(paper => paper.id === link.source);
+          const target = state.papers.find(paper => paper.id === link.target);
           return {
             source: source?.title || link.source,
             target: target?.title || link.target,
@@ -342,9 +172,178 @@
     }
 
     function setMapMode(mode) {
-      if (!['network', 'clusters', 'radial', 'table', 'timeline'].includes(mode)) return false;
-      state.workspaceView = mode === 'table' ? 'library' : mode === 'timeline' ? 'timeline' : 'network';
+      if (!['network', 'clusters', 'radial', 'table'].includes(mode)) return false;
       state.mode = mode;
       state.centerId = null;
       document.querySelectorAll('[data-mode]').forEach(item => item.classList.toggle('is-active', item.dataset.mode === mode));
       return true;
+    }
+
+    function hexColor(value, fallback = '#0d837b') {
+      const text = String(value || '').trim();
+      return /^#[0-9a-f]{6}$/i.test(text) ? text : fallback;
+    }
+
+    function findAreaByName(name) {
+      const key = String(name || '').trim().toLowerCase();
+      return state.areas.find(area => area.name.toLowerCase() === key);
+    }
+
+    function createNamedArea(action = {}) {
+      const index = state.areas.length;
+      const area = {
+        id: uid(),
+        name: cleanField(action.name || `Area ${index + 1}`),
+        color: hexColor(action.color, palette[index % palette.length]),
+        x: Math.max(40, Math.min(1600, Number(action.x || state.view.x + 110 + index * 34))),
+        y: Math.max(40, Math.min(1400, Number(action.y || state.view.y + 110 + index * 28))),
+        width: Math.max(120, Math.min(520, Number(action.width || 260))),
+        height: Math.max(90, Math.min(380, Number(action.height || 170)))
+      };
+      state.areas.push(area);
+      state.selectedAreaId = area.id;
+      return area;
+    }
+
+    function applyChatActions(actions = []) {
+      const applied = [];
+      const safeActions = Array.isArray(actions) ? actions.slice(0, 16) : [];
+      for (const action of safeActions) {
+        if (!action || typeof action !== 'object') continue;
+        const type = String(action.type || '').trim();
+        if (type === 'set_threshold') {
+          const value = Math.max(0.01, Math.min(0.75, Number(action.value)));
+          if (Number.isFinite(value)) {
+            state.threshold = value;
+            els.threshold.value = Math.round(value * 100);
+            applied.push(`set threshold to ${Math.round(value * 100)}%`);
+          }
+        } else if (type === 'set_mode') {
+          if (setMapMode(String(action.mode || ''))) applied.push(`switched to ${state.mode} mode`);
+        } else if (type === 'set_graph_style') {
+          const updates = {};
+          if (Number.isFinite(Number(action.nodeSize))) updates.nodeSize = Math.max(14, Math.min(42, Number(action.nodeSize)));
+          if (Number.isFinite(Number(action.edgeScale))) updates.edgeScale = Math.max(0.25, Math.min(1.8, Number(action.edgeScale)));
+          if (Number.isFinite(Number(action.spacing))) updates.spacing = Math.max(0.7, Math.min(1.65, Number(action.spacing)));
+          if (['short', 'full', 'keywords', 'none'].includes(action.labelMode)) updates.labelMode = action.labelMode;
+          if (typeof action.showGrid === 'boolean') updates.showGrid = action.showGrid;
+          if (typeof action.showAreas === 'boolean') updates.showAreas = action.showAreas;
+          if (Object.keys(updates).length) {
+            state.graphStyle = { ...state.graphStyle, ...updates };
+            syncGraphControls();
+            applied.push('updated graph style');
+          }
+        } else if (type === 'center_paper') {
+          const paper = state.papers.find(item => item.id === action.paperId);
+          if (paper) {
+            state.centerId = paper.id;
+            applied.push(`centered ${compactTitle(paper.title)}`);
+          }
+        } else if (type === 'color_paper') {
+          const paper = state.papers.find(item => item.id === action.paperId);
+          if (paper) {
+            paper.color = hexColor(action.color, paper.color || '#0d837b');
+            applied.push(`colored ${compactTitle(paper.title)}`);
+          }
+        } else if (type === 'create_area') {
+          const area = createNamedArea(action);
+          applied.push(`created area ${area.name}`);
+        } else if (type === 'rename_area') {
+          const area = findAreaByName(action.from);
+          const nextName = cleanField(action.to || '');
+          if (area && nextName) {
+            area.name = nextName;
+            applied.push(`renamed area to ${area.name}`);
+          }
+        } else if (type === 'assign_area') {
+          const paper = state.papers.find(item => item.id === action.paperId);
+          if (paper) {
+            let area = findAreaByName(action.areaName);
+            if (!area) area = createNamedArea({ name: action.areaName || 'Chat area', color: action.color });
+            paper.areaId = area.id;
+            if (action.color) paper.color = hexColor(action.color, paper.color || area.color);
+            applied.push(`assigned ${compactTitle(paper.title)} to ${area.name}`);
+          }
+        } else if (type === 'open_panel') {
+          const panel = String(action.panel || '');
+          if (panel === 'graph') setGraphPanelOpen(true);
+          if (panel === 'areas') setAreaPanelOpen(true);
+          if (panel === 'links') setLinkagePanelOpen(true);
+          if (panel === 'settings') setSettingsOpen(true);
+          if (['graph', 'areas', 'links', 'settings'].includes(panel)) applied.push(`opened ${panel} panel`);
+        }
+      }
+      if (applied.length) {
+        render();
+        scheduleAutosave();
+        showToast(`Chat applied ${applied.length} graph change${applied.length === 1 ? '' : 's'}.`);
+      }
+      return applied;
+    }
+
+    function normalizeTitle(name, text) {
+      const cleanName = name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
+      const lines = text.split(/\n+/).map(line => line.trim()).filter(Boolean);
+      const titleLine = lines.find(line => line.length > 18 && line.length < 160 && !/[{}@]/.test(line));
+      return titleLine || cleanName || 'Untitled paper';
+    }
+
+    function extractTitle(raw, cleanedText, fileName) {
+      const title = fieldMatch(raw, ['title', 'TI', 'T1'], 1200)
+        || fieldMatch(cleanedText, ['title'], 400);
+      if (title) return cleanField(title).replace(/\.$/, '');
+      return normalizeTitle(fileName, cleanedText);
+    }
+
+    function firstMatch(text, patterns) {
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match?.[1]) return match[1].trim();
+      }
+      return '';
+    }
+
+    function cleanField(value) {
+      return stripMarkup(value || '')
+        .replace(/\r/g, '\n')
+        .replace(/-\n(?=[a-z])/g, '')
+        .replace(/\n(?=[a-z])/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/^[{["']+|[}\]"']+$/g, '')
+        .trim();
+    }
+
+    function stripMarkup(value) {
+      const text = String(value || '');
+      const abstractMatch = text.match(/<jats:sec[^>]*>\s*<jats:title>\s*Abstract\s*<\/jats:title>([\s\S]*?)(?=<jats:sec[^>]*>\s*<jats:title>\s*(?:Key points?|Keywords?)\s*<\/jats:title>|<\/jats:sec>\s*$)/i);
+      const scoped = abstractMatch ? abstractMatch[1] : text;
+      const withoutKeyPoints = scoped.replace(/<jats:sec[^>]*>\s*<jats:title>\s*(?:Key points?|Keywords?)\s*<\/jats:title>[\s\S]*?<\/jats:sec>/gi, ' ');
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = withoutKeyPoints
+        .replace(/<\/?(?:jats:)?title[^>]*>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ');
+      return textarea.value.replace(/\u00a0/g, ' ').replace(/\s+([,.;:])/g, '$1');
+    }
+
+    function splitKeywords(value) {
+      return cleanField(value)
+        .replace(/\bkeywords?\b\s*[:.\-]*/i, '')
+        .split(/\s*(?:;|,|\||\n|•|·)\s*/)
+        .map(item => item.trim())
+        .filter(item => item.length > 1 && item.length < 80 && !/^(keywords?|index terms?)$/i.test(item))
+        .slice(0, 24);
+    }
+
+    function cleanAuthorName(str) {
+      if (!str) return '';
+      let s = String(str)
+        .replace(/\s*\([^)]*\)/g, '')
+        .replace(/\s*\[[^\]]*\]/g, '')
+        .trim();
+      s = s.replace(/^[\s\d*†‡§#.,;:"'([\]{}<>/\\-]+/, '').trim();
+      s = s.replace(/[\s*†‡§#,:;"'([\]{}<>/\\-]+$/, '').trim();
+      if (/[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]{2,}\.$/.test(s)) {
+        s = s.slice(0, -1).trim();
+      }
+      return s;
+    }
