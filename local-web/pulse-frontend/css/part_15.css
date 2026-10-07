@@ -1,0 +1,384 @@
+
+.header-v-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+  margin: 0 2px;
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  user-select: none;
+}
+
+/* ─── 3. Discovery Methods Ribbon ─── */
+.pulse-discovery-ribbon {
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  z-index: 10;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ribbon-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.ribbon-cards {
+  display: flex;
+  gap: 5px;
+}
+
+.ribbon-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.ribbon-card:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+}
+
+.ribbon-card.active {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.08);
+  box-shadow: 0 0 0 1px #6366f1;
+}
+
+.ribbon-card-icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ribbon-svg-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.ribbon-svg-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.icon-cit { background: #3b82f6; }
+.icon-net { background: #8b5cf6; }
+.icon-sem { background: #10b981; }
+.icon-con { background: #f59e0b; }
+
+.ribbon-card-text strong {
+  display: block;
+  font-size: 11px;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.ribbon-card-text small {
+  display: block;
+  font-size: 9.5px;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.ribbon-v-divider {
+  width: 1px;
+  height: 36px;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+.ribbon-pills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pill-btn-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.pill-btn-sm svg, .pill-btn-sm .feather-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.pill-btn-sm:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.pill-btn-sm.active {
+  background: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+  font-weight: 600;
+}
+
+.pill-btn-sm small {
+  color: inherit;
+  opacity: 0.75;
+  font-size: 9.5px;
+}
+
+/* ─── 4. Three-Column Workspace Layout ─── */
+.pulse-workspace-cols {
+  --bottom-dock-space: 84px;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ─── Column 1: Library List (with Swipe Motion) ─── */
+.pulse-col-library {
+  width: 290px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  z-index: 5;
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), width 0.32s cubic-bezier(0.16, 1, 0.3, 1), margin-left 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease;
+  transform: translateX(0);
+}
+
+.pulse-col-library.is-swiped-hidden {
+  margin-left: -290px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-100%);
+}
+
+.col-library-header {
+  padding: 10px 12px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.col-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.close-library-swipe-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: all 0.15s ease;
+}
+
+.close-library-swipe-btn:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.col-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.col-header-left h3 {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.library-paper-badge {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.library-params-bar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.params-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.param-sort-pill {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  transition: all 0.12s ease;
+}
+
+.param-sort-pill:hover {
+  color: var(--ink);
+  background: var(--surface-3);
+}
+
+.param-sort-pill.active {
+  color: #4f46e5;
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.25);
+  font-weight: 600;
+}
+
+.sort-dir-arrow {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.add-paper-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: all 0.15s ease;
+}
+
+.add-paper-btn:hover {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4f46e5;
+}
+
+.library-search-filter {
+  margin: 2px 10px 6px;
+  display: flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 4px 2px 7px;
+  gap: 4px;
+}
+
+.lib-search-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.library-search-filter input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 11.5px;
+  flex: 1;
+  color: var(--ink);
+  padding: 3px 0;
+}
+
+.lib-tags-btn {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  color: var(--ink-2);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.dropzone-compact {
+  margin: 4px 10px;
+  padding: 8px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.dropzone-compact input { display: none; }
+
+.dropzone-compact.is-dragover {
+  border-color: #4f46e5;
+  background: rgba(99, 102, 241, 0.06);
+  color: #4f46e5;
+}

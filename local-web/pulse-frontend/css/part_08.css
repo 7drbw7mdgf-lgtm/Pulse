@@ -1,0 +1,281 @@
+.pipeline-step::before {
+  content: counter(step);
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  color: var(--accent);
+  font: 600 12px var(--font-mono);
+}
+.pipeline-step strong { font-size: 12.5px; font-weight: 600; }
+.pipeline-step span { color: var(--muted); font-size: 11.5px; line-height: 1.4; }
+
+/* ─── Toast ────────────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: 84px;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition: opacity 0.2s, transform 0.2s var(--ease);
+}
+.toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+
+/* ─── Narrow windows ───────────────────────────────────────────────── */
+
+@media (max-width: 1180px) {
+  .hbtn-label { display: none; }
+  .hbtn { width: 30px; padding: 0; justify-content: center; }
+  .segmented button { min-width: 0; }
+  .canvas-head { max-width: calc(100% - 380px); }
+}
+
+@media (max-width: 900px) {
+  :root { --sidebar-w: 290px; }
+  .app-header { grid-template-columns: auto 1fr auto; }
+  .save-state-pill, .brand-version { display: none; }
+  .threshold-control label { display: none; }
+  .metrics .metric:last-child { display: none; }
+  .canvas-title p { display: none; }
+  .settings-shell { grid-template-columns: 1fr; }
+  .settings-nav { flex-direction: row; border-right: 0; border-bottom: 1px solid var(--line); }
+  .provider-summary, .pipeline-list, .settings-choice-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ─── Literature Discovery Modal ─────────────────────────────────────── */
+
+.discovery-modal-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.discovery-modal-card {
+  display: flex;
+  flex-direction: column;
+  width: min(880px, 94vw);
+  max-height: min(86vh, 860px);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: card-in 0.22s var(--ease);
+}
+
+.discovery-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.discovery-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.discovery-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.discovery-source-pill {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-line);
+}
+
+.discovery-modal-header h2 {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--ink);
+  margin: 0;
+}
+
+.discovery-modal-header p {
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 680px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.discovery-modal-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.discovery-filter-row-primary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.discovery-search-box {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.discovery-search-box .search-icon {
+  position: absolute;
+  left: 9px;
+  font-size: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.discovery-search-box input {
+  width: 100%;
+  height: 32px;
+  padding: 0 26px 0 28px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 11.5px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.discovery-search-box input:focus {
+  border-color: var(--accent);
+}
+
+.clear-icon-btn {
+  position: absolute;
+  right: 6px;
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.clear-icon-btn:hover {
+  color: var(--ink);
+}
+
+.filter-input-compact {
+  height: 32px;
+  width: 135px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 11.5px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.filter-input-compact:focus {
+  border-color: var(--accent);
+}
+
+.filter-select-compact {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 11.5px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.filter-select-compact:focus {
+  border-color: var(--accent);
+}
+
+.discovery-filter-row-secondary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.discovery-branch-filters {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.branch-filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.branch-filter-btn {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 550;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+}
+
+.branch-filter-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.branch-filter-btn.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.discovery-selection-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}

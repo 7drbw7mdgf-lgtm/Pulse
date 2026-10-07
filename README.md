@@ -35,6 +35,10 @@ Pulse 1.3.1 restores the familiar 1.2 workspace inside the Tauri Mac app, with T
 
 ![The same library arranged chronologically in Timeline.](docs/images/timeline.png)
 
+## Updated local web workspace
+
+The [local-web workspace](local-web/README.md) includes DOI-first metadata parsing, local Ollama paper summaries, map file imports, a compact discovery menu, and full-screen library controls. Follow its separate setup guide to run these source updates. The downloadable Mac release above does not include this update.
+
 ## Get started
 
 1. Download the [Pulse DMG](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.3.1/Pulse-Tauri-1.3.1.dmg), open it, and drag the app into **Applications**.

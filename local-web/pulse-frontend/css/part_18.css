@@ -1,0 +1,259 @@
+
+/* ─── Toolbar Icon Buttons (.tool-icon-btn) ─── */
+.tool-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tool-icon-btn svg, .tool-icon-btn .feather-icon {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+.tool-icon-btn:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.tool-icon-btn:active {
+  transform: scale(0.97);
+}
+
+.tool-icon-btn.accent {
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.tool-icon-btn.accent:hover {
+  background: rgba(99, 102, 241, 0.14);
+}
+
+.btn-label-compact {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* ─── Header Theme Switch & Save Pill ─── */
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.theme-icon-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.theme-icon-btn svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.theme-icon-btn:hover {
+  color: var(--ink);
+}
+
+.theme-icon-btn.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.save-state-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.save-state-pill.saving {
+  color: #4f46e5;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+/* ─── Canvas Dock Elements ─── */
+.toggle-checkbox {
+  accent-color: #4f46e5;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+/* ─── Graph Panel Button Row ─── */
+.graph-btn-row {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.graph-btn-row .button {
+  flex: 1;
+  font-size: 11px;
+  padding: 6px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ─── Inspector Placeholder ─── */
+.inspector-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  min-height: 320px;
+  padding: 32px 20px;
+  color: var(--muted);
+}
+
+.inspector-placeholder-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+.inspector-placeholder h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.inspector-placeholder p {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 240px;
+}
+
+/* ─── Compact Dropzone in Library ─── */
+.dropzone-compact {
+  margin: 6px 10px;
+  padding: 10px 8px;
+  border: 1.5px dashed var(--line);
+  border-radius: 8px;
+  text-align: center;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.dropzone-compact input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.drop-copy-compact {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+  pointer-events: none;
+}
+
+.dropzone-compact:hover, .dropzone-compact.is-dragging {
+  border-color: #4f46e5;
+  background: rgba(99, 102, 241, 0.05);
+}
+
+/* ─── Edge legend indicators ─── */
+.lg-sim { display: inline-block; width: 10px; height: 3px; background: var(--edge); border-radius: 1px; vertical-align: middle; margin-right: 4px; }
+.lg-cit { display: inline-block; width: 10px; height: 3px; background: var(--edge-citation); border-radius: 1px; vertical-align: middle; margin-right: 4px; }
+.lg-bib { display: inline-block; width: 10px; height: 3px; background: var(--edge-biblio); border-radius: 1px; vertical-align: middle; margin-right: 4px; }
+.lg-coc { display: inline-block; width: 10px; height: 3px; background: var(--edge-cocite); border-radius: 1px; vertical-align: middle; margin-right: 4px; }
+
+
+
+/* ─── Timeline View ─────────────────────────────────────────── */
+.timeline-view { position: absolute; inset: 0; overflow: auto; padding: 28px max(24px, 5vw) 60px; background: var(--surface); z-index: 10; }
+.timeline-header { max-width: 1120px; margin: 0 auto; }
+.timeline-header h1 { margin: 8px 0; font-size: 28px; }
+.timeline-header p { font-size: 13px; color: var(--muted); }
+.timeline-track { max-width: 1120px; margin: 28px auto 0; position: relative; }
+.timeline-track::before { content: ''; position: absolute; left: 110px; top: 12px; bottom: 12px; width: 2px; background: var(--line); z-index: 1; }
+.timeline-year-heading { display: flex; align-items: baseline; gap: 12px; margin: 32px 0 16px; position: relative; z-index: 2; }
+.timeline-year-heading h2.timeline-year { color: var(--accent); font-size: 22px; font-weight: 700; margin: 0; }
+.timeline-year-badge { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 2px 9px; }
+.timeline-paper { position: relative; z-index: 2; display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 24px; padding: 18px 20px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-sm); align-items: start; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
+.timeline-paper:hover { border-color: var(--accent-line); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.timeline-paper.is-selected { border-color: var(--accent); background: var(--accent-soft); }
+.timeline-date-wrap { display: flex; flex-direction: column; gap: 6px; padding-top: 3px; }
+.timeline-date { font-size: 12px; font-weight: 600; color: var(--ink); }
+.timeline-cite-pill { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; width: fit-content; }
+.timeline-content { display: flex; flex-direction: column; gap: 5px; }
+.timeline-title-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.timeline-paper-title { text-align: left; color: var(--ink); background: transparent; border: 0; font-size: 16px; font-weight: 650; line-height: 1.4; padding: 0; cursor: pointer; }
+.timeline-paper-title:hover { color: var(--accent); text-decoration: underline; }
+.timeline-seminal-badge { font-size: 10.5px; font-weight: 600; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 1px 7px; border-radius: 4px; }
+.timeline-paper p { color: var(--muted); font-size: 12px; margin: 0; line-height: 1.5; }
+.timeline-paper .timeline-abstract { color: var(--ink-2); font-size: 12.5px; margin-top: 4px; }
+.timeline-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.timeline-empty { padding: 40px; color: var(--muted); text-align: center; }
+
+
+/* ─── Discovery Hero Dropzone ───────────────────────────────────────── */
+.discovery-hero-dropzone {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 12px 18px 6px;
+  padding: 16px 20px;
+  border: 2px dashed var(--accent-line, #3b82f6);
+  border-radius: 10px;
+  background: var(--surface-2, #161b22);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.discovery-hero-dropzone:hover, .discovery-hero-dropzone.is-dragover {
+  background: var(--accent-soft, rgba(59, 130, 246, 0.12));
+  border-color: var(--accent, #3b82f6);
+  transform: translateY(-1px);
+}
+.disc-drop-icon { font-size: 28px; line-height: 1; flex: none; }
+.disc-drop-text { display: flex; flex-direction: column; gap: 3px; }
+.disc-drop-text strong { font-size: 13.5px; color: var(--ink); font-weight: 600; }
+.disc-drop-text span { font-size: 12px; color: var(--muted); }

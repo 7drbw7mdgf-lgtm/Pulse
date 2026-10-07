@@ -1,0 +1,281 @@
+.tag-filter-input-wrap input:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.mini-clear-btn {
+  position: absolute;
+  right: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.mini-clear-btn:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.tag-cloud-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 10.5px;
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.tag-cloud-toggle-btn:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+.filter-badge {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 1.3;
+}
+.button-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.button-link:hover {
+  color: var(--ink);
+}
+
+.active-tag-filters-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.active-tag-filters-list:empty {
+  display: none;
+}
+.filter-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  animation: card-in 0.15s ease;
+}
+.filter-tag-chip .remove-filter-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transition: all 0.12s;
+}
+.filter-tag-chip .remove-filter-btn:hover {
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+}
+
+.tag-filter-dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-md);
+  max-height: 160px;
+  overflow-y: auto;
+}
+.library-tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.cloud-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.cloud-tag-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.cloud-tag-chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.cloud-tag-count {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  opacity: 0.8;
+}
+
+/* Canvas filter status bar */
+.canvas-filter-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--accent-line);
+  box-shadow: var(--shadow-sm);
+  animation: card-in 0.18s ease;
+}
+.canvas-filter-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1;
+}
+.canvas-filter-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.canvas-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+}
+.canvas-filter-pill button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+}
+.canvas-filter-clear {
+  background: none;
+  border: 0;
+  padding: 0 3px;
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border-left: 1px solid var(--line);
+  margin-left: 2px;
+}
+.canvas-filter-clear:hover {
+  color: var(--danger);
+}
+
+/* Graph filter states */
+.node.is-filter-dimmed {
+  opacity: 0.15 !important;
+  transition: opacity 0.2s ease;
+}
+.node.is-filter-dimmed circle {
+  filter: none !important;
+}
+.node.is-filter-dimmed text {
+  opacity: 0.2 !important;
+}
+.node.is-filter-match circle {
+  stroke: var(--accent) !important;
+  stroke-width: 3.5px !important;
+  filter: drop-shadow(0 0 6px rgba(43, 130, 91, 0.6)) !important;
+}
+.edge.is-filter-dimmed {
+  opacity: 0.04 !important;
+}
+
+/* ─── Floating Tag Action Menu ─────────────────────────────────────── */
+
+.tag-action-menu {
+  position: fixed;
+  z-index: 70;
+  min-width: 220px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg), 0 8px 24px rgba(0, 0, 0, 0.14);
+  padding: 5px;
+  animation: card-in 0.15s var(--ease);
+}
+.tag-action-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 3px;
+}
+.tag-action-menu-icon {
+  font-size: 12px;
+}
+.tag-action-menu-title {
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--ink);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tag-menu-close-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+}
+.tag-menu-close-btn:hover {
+  color: var(--ink);
+}

@@ -1,0 +1,284 @@
+.tag-action-menu-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tag-action-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.tag-action-item:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.tag-action-item.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.tag-action-item .action-icon {
+  font-size: 12px;
+  width: 15px;
+  text-align: center;
+}
+.tag-action-item .action-label {
+  flex: 1;
+}
+
+/* ─── Actions Mini Grid in Details ─────────────────────────────────── */
+
+.actions-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  margin-bottom: 8px;
+}
+.actions-mini-grid .button {
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Streamlined Steering Workspace in Details ─────────────────────── */
+
+.recommend-steer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  margin-top: 6px;
+  animation: card-in 0.18s ease;
+}
+.steer-compact-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.steer-compact-head h3 {
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--ink);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.steer-chips-unified {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-height: 20px;
+  align-items: center;
+}
+.subtle-empty {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-style: italic;
+  padding: 2px 0;
+}
+.steer-mini-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 550;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  transition: all 0.12s;
+}
+.steer-mini-chip button.chip-label {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.steer-mini-chip button.chip-label:hover {
+  text-decoration: underline;
+}
+.steer-mini-chip .chip-remove-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+.steer-mini-chip .chip-remove-btn:hover {
+  color: var(--danger);
+}
+
+.steer-mini-chip.chip-steer {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.steer-mini-chip.chip-graph {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+.steer-mini-chip.chip-exclude {
+  border-color: var(--danger-soft);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.steer-input-compact-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.steer-input-compact-bar input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 11px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.steer-input-compact-bar input:focus {
+  border-color: var(--accent);
+}
+.steer-action-btn-group {
+  display: flex;
+  gap: 3px;
+  flex: none;
+}
+
+.steer-paper-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 2px 0;
+}
+.steer-subtle-hint {
+  font-size: 9.5px;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+  flex: none;
+}
+.steer-paper-tags-list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 3px;
+  overflow-x: auto;
+}
+.mini-tag-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 9.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.mini-tag-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.steer-sliders-compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.steer-compact-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.steer-compact-slider input[type="range"] {
+  height: 14px;
+}
+
+.steer-advanced-details {
+  font-size: 10px;
+  color: var(--muted);
+  border-top: 1px dashed var(--line);
+  padding-top: 3px;
+}
+.steer-advanced-details summary {
+  cursor: pointer;
+  font-weight: 550;
+  user-select: none;
+}
+.steer-advanced-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-top: 3px;
+}
+.steer-advanced-grid input {
+  height: 22px;
+  font-size: 10px;
+  padding: 0 6px;
+}
+
+/* ==========================================================================
+   PaperPulse Template Layout System (Three-Column + Dark Rail Navigation)
+   ========================================================================== */
+
+.pulse-app-root {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: var(--font-ui);
+  color: var(--ink);
+}
+
+/* ─── 1. Left Vertical Navigation Rail (Dark Indigo Theme) ─── */
+.pulse-nav-rail {
+  width: 200px;
+  height: 100vh;
+  background: #0f172a;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  user-select: none;
+  z-index: 30;
+}
