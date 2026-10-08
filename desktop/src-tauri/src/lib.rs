@@ -43,12 +43,23 @@ fn launch_backend(app: &tauri::AppHandle) -> Result<(Child, Launch), Box<dyn std
         "/usr/bin/python3",
     ]
     .into_iter()
-    .find(|p| std::path::Path::new(p).is_file())
-    .ok_or("Python 3 is required to open Pulse")?;
+    .find(|p| {
+        std::path::Path::new(p).is_file()
+            && Command::new(p)
+                .args(["-c", "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)"])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .map(|status| status.success())
+                .unwrap_or(false)
+    })
+    .ok_or("Python 3.10 or later is required to open Pulse")?;
     let mut child = Command::new(python)
         .arg(backend.join("pulse_backend.py"))
         .current_dir(&backend)
         .env("PULSE_PORT", "0")
+        .env("PULSE_WEB_ROOT", &backend)
+        .env("PULSE_APP_VERSION", env!("CARGO_PKG_VERSION"))
         .env("PULSE_LAUNCH_FILE", &launch_path)
         .env("PYTHONDONTWRITEBYTECODE", "1")
         .stdout(Stdio::null())
@@ -114,6 +125,7 @@ pub fn run() {
             let open_window = handle.clone();
             let port = launch.port;
             let result = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
+                .disable_drag_drop_handler()
                 .title("Pulse — Scientific Literature Discovery & Synthesis")
                 .inner_size(1400.0, 920.0)
                 .min_inner_size(1024.0, 720.0)

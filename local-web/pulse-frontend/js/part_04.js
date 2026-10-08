@@ -333,6 +333,7 @@
 
     async function loadBackendSettings() {
       try {
+        await backendReady;
         const response = await fetch(backendUrl('/api/settings'), { headers: apiHeaders() });
         const settings = await response.json();
         if (!response.ok) throw new Error(settings.error || 'Could not read backend settings.');

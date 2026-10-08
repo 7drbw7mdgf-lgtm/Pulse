@@ -274,6 +274,7 @@
               if (area) showToast(`Placed "${compactTitle(paper.title)}" in ${area.name}.`);
               render();
             } else {
+              inspectPaper(id);
               // Rapid tap / click double-click detection
               const now = Date.now();
               if (lastNodeClickTime && (now - lastNodeClickTime < 380) && lastNodeClickId === id) {

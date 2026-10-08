@@ -27,13 +27,13 @@ def s2_request_headers(api_key=None):
         headers["x-api-key"] = api_key
     return headers
 
-def fetch_s2_json(url, api_key=None, timeout=14):
-    cached = s2_cache_get(url)
+def fetch_s2_json(url, api_key=None, timeout=14, cache=True):
+    cached = s2_cache_get(url) if cache else None
     if cached:
         return cached
     request = urllib.request.Request(url, headers=s2_request_headers(api_key), method="GET")
     try:
-        return request_json(request, timeout=timeout)
+        return request_json(request, timeout=timeout, cache=cache)
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         if error.code == 404:
@@ -78,8 +78,9 @@ def s2_to_metadata(item):
         "doi": doi,
         "s2PaperId": item.get("paperId"),
         "abstract": (item.get("abstract") or "").strip(),
-        "citationCount": item.get("citationCount") or 0,
-        "referenceCount": item.get("referenceCount") or 0,
+        "citationCount": item.get("citationCount"),
+        "referenceCount": item.get("referenceCount"),
+        "influentialCitationCount": item.get("influentialCitationCount"),
         "metadataSource": "Semantic Scholar",
     }
 

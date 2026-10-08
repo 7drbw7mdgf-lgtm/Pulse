@@ -1,5 +1,8 @@
 const state = {
       papers: [],
+      librarySelectedIds: new Set(),
+      libraryMutation: false,
+      libraryUndoId: null,
       vectors: new Map(),
       keywords: new Map(),
       links: [],
@@ -75,14 +78,14 @@ const state = {
       if (window.__TAURI__ && window.__TAURI__.core) {
         try { const port = await window.__TAURI__.core.invoke('get_backend_port'); if (port) apiBase = 'http://127.0.0.1:' + port; } catch (_) {}
       }
-      if (!apiToken && apiBase) {
+      if (!apiToken) {
         try {
           const res = await fetch(apiBase + '/api/session');
           if (res.ok) { const data = await res.json(); if (data.token) { apiToken = data.token; window.__PULSE_API_TOKEN__ = data.token; } }
         } catch (_) {}
       }
     }
-    initTauriBackend();
+    const backendReady = initTauriBackend();
 
     const stopwords = new Set(`
       a about above across after again against all almost alone along already also although always among an and another any
@@ -132,7 +135,6 @@ const state = {
       compressGraphButton: document.getElementById('compressGraphButton'),
       fitCanvasButton: document.getElementById('fitCanvasButton'),
       addPaperDropBtn: document.getElementById('addPaperDropBtn'),
-      graphLegend: document.getElementById('graphLegend'),
       linkageButton: document.getElementById('linkageButton'),
       linkagePanel: document.getElementById('linkagePanel'),
       linkageCloseButton: document.getElementById('linkageCloseButton'),

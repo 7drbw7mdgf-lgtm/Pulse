@@ -7,10 +7,10 @@
 }
 
 .rail-logo {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .rail-brand-text {

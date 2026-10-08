@@ -5,14 +5,14 @@ import urllib.request
 from pulse_core.constants import ClientError
 from pulse_performance import request_json
 
-def fetch_json(url):
+def fetch_json(url, cache=True):
     request = urllib.request.Request(
         url,
         headers={"User-Agent": "Pulse/1.4-local", "Accept": "application/json"},
         method="GET",
     )
     try:
-        return request_json(request, timeout=12)
+        return request_json(request, timeout=12, cache=cache)
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         raise ClientError(error.code, f"DOI lookup failed: {details[:500]}")

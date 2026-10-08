@@ -1,9 +1,12 @@
 import pulse_core as _core
-__all__ = ["load_settings", "write_settings", "load_library", "save_library", "_save_library", "save_settings", "public_settings", "SAVE_REVISIONS"]
+__all__ = ["load_settings", "write_settings", "load_library", "save_library", "_save_library", "save_settings", "public_settings", "SAVE_REVISIONS", "change_library", "list_recovery", "restore_recovery"]
 import json
 import os
 import shutil
 import tempfile
+import uuid
+import re
+import copy
 from datetime import datetime
 from pathlib import Path
 from pulse_core.constants import (
@@ -110,23 +113,21 @@ def _save_library(payload):
         raise ClientError(400, "Library payload must be a JSON object.")
     if not isinstance(payload.get("papers"), list) or not all(isinstance(paper, dict) for paper in payload["papers"]):
         raise ClientError(400, "Library papers must be an array of paper objects.")
+    if not payload["papers"] and not payload.get("reset") and not payload.get("allowEmpty"):
+        if load_library().get("papers"):
+            raise ClientError(409, "An empty autosave cannot replace a saved library. Reload your papers or use Clear papers.")
     _core.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     backup_dir = _core.CONFIG_DIR / "backups"
     backup_dir.mkdir(parents=True, exist_ok=True)
     data = dict(payload)
+    data.pop("allowEmpty", None)
     data["format"] = data.get("format") or "pulse-map"
     data["version"] = data.get("version") or APP_VERSION
     data["savedAt"] = time_iso()
-    is_reset = bool(payload.get("reset")) or len(payload.get("papers", [])) == 0
-    if is_reset:
-        if backup_dir.exists():
-            for old in backup_dir.glob("library_*.json"):
-                try: old.unlink()
-                except OSError: pass
-    elif _core.LIBRARY_PATH.exists() and _core.LIBRARY_PATH.stat().st_size > 10:
+    if _core.LIBRARY_PATH.exists() and _core.LIBRARY_PATH.stat().st_size > 10:
         try:
             json.loads(_core.LIBRARY_PATH.read_text("utf-8"))
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             backup_file = backup_dir / f"library_{ts}.json"
             shutil.copy2(_core.LIBRARY_PATH, backup_file)
             all_b = sorted(backup_dir.glob("library_*.json"), key=os.path.getmtime)
@@ -151,6 +152,102 @@ def _save_library(payload):
             try: os.unlink(temp_path)
             except OSError: pass
     return {"ok": True, "path": str(_core.LIBRARY_PATH), "savedAt": data["savedAt"]}
+
+def _validate_workspace(data):
+    if not isinstance(data, dict) or not isinstance(data.get('papers'), list) or not all(isinstance(p, dict) and isinstance(p.get('id'), str) for p in data['papers']):
+        raise ClientError(400, 'A valid workspace is required.')
+    if len({p['id'] for p in data['papers']}) != len(data['papers']):
+        raise ClientError(400, 'Paper IDs must be unique.')
+    return copy.deepcopy(data)
+
+def _write_recovery(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix='.recovery-')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+            json.dump(data, stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary): os.unlink(temporary)
+
+def _snapshot(workspace, reason, ids=None):
+    identity = uuid.uuid4().hex
+    _write_recovery(_core.CONFIG_DIR / 'recovery' / (identity + '.json'),
+                    {'id': identity, 'reason': reason, 'createdAt': time_iso(), 'paperIds': ids,
+                     'workspace': workspace})
+    return identity
+
+def list_recovery():
+    items = []
+    with LIBRARY_WRITE_LOCK:
+        for path in (_core.CONFIG_DIR / 'recovery').glob('*.json'):
+            try:
+                data = json.loads(path.read_text('utf-8'))
+                papers = data['workspace']['papers']
+                count = len(data['paperIds']) if data.get('paperIds') is not None else len(papers)
+                items.append({key: data.get(key) for key in ('id', 'reason', 'createdAt', 'restoredAt')} | {'count': count})
+            except (OSError, ValueError, KeyError, TypeError): continue
+    return {'items': sorted(items, key=lambda item: item['createdAt'] or '', reverse=True)}
+
+def change_library(payload):
+    with LIBRARY_WRITE_LOCK:
+        before = _validate_workspace(payload.get('workspace'))
+        reason = payload.get('action')
+        if reason not in {'remove', 'clear'}: raise ClientError(400, 'Choose remove or clear.')
+        ids = payload.get('ids')
+        if reason == 'remove':
+            if not isinstance(ids, list) or not ids or not all(isinstance(i, str) for i in ids):
+                raise ClientError(400, 'Choose papers to remove.')
+            available = {p['id'] for p in before['papers']}
+            ids = list(dict.fromkeys(ids))
+            if not set(ids) <= available: raise ClientError(409, 'Some chosen papers are no longer in the library.')
+            after = copy.deepcopy(before)
+            after['papers'] = [p for p in before['papers'] if p['id'] not in ids]
+            after['links'] = [link for link in before.get('links', []) if link.get('source') not in ids and link.get('target') not in ids]
+            for key in ('selectedId', 'centerId'):
+                if after.get(key) in ids: after[key] = None
+        else:
+            ids = None
+            after = {'papers': [], 'areas': [], 'reset': True, 'format': 'pulse-map'}
+        # Recovery must be durable before the destructive write is attempted.
+        identity = _snapshot(before, reason, ids)
+        _core._save_library(dict(after, allowEmpty=True))
+        return {'ok': True, 'recoveryId': identity, 'workspace': after}
+
+def restore_recovery(payload):
+    with LIBRARY_WRITE_LOCK:
+        identity = payload.get('id', '')
+        if not isinstance(identity, str) or not re.fullmatch(r'[a-f0-9]{32}', identity):
+            raise ClientError(400, 'Choose a valid recovery point.')
+        path = _core.CONFIG_DIR / 'recovery' / (identity + '.json')
+        try: snapshot = json.loads(path.read_text('utf-8'))
+        except (OSError, ValueError): raise ClientError(404, 'This recovery point is unavailable.')
+        if snapshot.get('restoredAt'): raise ClientError(409, 'This recovery point has already been restored.')
+        current = _validate_workspace(payload.get('workspace'))
+        saved = _validate_workspace(snapshot['workspace'])
+        if snapshot.get('paperIds') is not None:
+            after = copy.deepcopy(current)
+            existing = {p['id'] for p in current['papers']}
+            restored = [p for p in saved['papers'] if p['id'] in snapshot['paperIds'] and p['id'] not in existing]
+            after['papers'].extend(restored)
+            restored_areas = {p.get('areaId') for p in restored}
+            area_ids = {a['id'] for a in current.get('areas', [])}
+            after['areas'] = current.get('areas', []) + [a for a in saved.get('areas', []) if a['id'] in restored_areas and a['id'] not in area_ids]
+        else:
+            after = saved
+        # Restoring a whole workspace is also reversible, including newer papers.
+        undo_id = _snapshot(current, 'restore')
+        _core._save_library(dict(after, allowEmpty=True))
+        snapshot['restoredAt'] = time_iso()
+        try:
+            _write_recovery(path, snapshot)
+        except OSError:
+            # The restored library and its undo point are already durable.
+            # A failed status update must not make the UI autosave the old state.
+            pass
+        return {'ok': True, 'recoveryId': undo_id, 'workspace': after}
 
 def save_settings(payload):
     from pulse_core.ollama_mgr import normalize_gemma_model, normalize_ollama_endpoint

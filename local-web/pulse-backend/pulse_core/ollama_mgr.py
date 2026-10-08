@@ -35,6 +35,8 @@ def ollama_server_responds(timeout=0.45):
         return False
 
 def ensure_ollama_runtime():
+    if os.environ.get("PULSE_DISABLE_BUNDLED_OLLAMA") == "1":
+        return False
     global OLLAMA_PROCESS, OLLAMA_BOOT_STATUS
     if ollama_server_responds():
         OLLAMA_BOOT_STATUS = {"started": True, "reason": "already-running"}

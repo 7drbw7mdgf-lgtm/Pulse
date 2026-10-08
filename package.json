@@ -1,11 +1,12 @@
 {
   "name": "pulse-literature",
-  "version": "1.3.1",
+  "version": "1.5.7",
   "private": true,
   "description": "Local scientific literature discovery and paper linkage workspace",
   "scripts": {
-    "start": "python3 pulse_backend.py",
-    "test": "python3 -m unittest discover -s tests -p 'test_*.py' && node tests/ui.cjs && node tests/graph.cjs && node tests/performance.cjs"
+    "start": "python3 local-web/pulse-backend/pulse_backend.py",
+    "test": "python3 -m unittest discover -s tests -p 'test_*.py' && node tests/ui.cjs && node tests/graph.cjs && node tests/performance.cjs",
+    "test:workspace": "cd local-web && python3 -m unittest discover -s tests -p 'test_*.py' && node tests/parser.cjs && node tests/library.cjs && node tests/bulk_library.cjs && node tests/selection.cjs && node tests/selected_report.cjs && node tests/mendeley_ui.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

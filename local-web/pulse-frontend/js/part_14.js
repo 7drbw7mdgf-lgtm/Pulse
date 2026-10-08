@@ -45,27 +45,27 @@
         const facts = [
           paperStudyType(paper),
           `${authorCount || 'No'} author${authorCount === 1 ? '' : 's'}`,
-          paper.citedByCount ? `${paper.citedByCount} citations` : ''
+          paperCitationCount(paper) !== null ? `${paperCitationCount(paper)} citations (${paper.citationMetrics.source})` : ''
         ].filter(Boolean);
         return `<div class="paper-facts">${facts.map(fact => `<span class="paper-fact">${escapeHtml(fact)}</span>`).join('')}</div>`;
       };
       const renderCompactPaper = paper => `
-        <article class="pulse-paper-card${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${paper.id}">
+        <article class="pulse-paper-card${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${paper.id}" tabindex="0" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
           <input type="checkbox" class="paper-chk" ${paper.selected !== false ? 'checked' : ''} data-action="toggle-paper-active" title="Toggle paper on map">
           <div class="pulse-paper-card-body">
             <div class="pulse-paper-title">${escapeHtml(paper.title || 'Untitled paper')}</div>
-            <div class="pulse-paper-meta">
-              <span>${escapeHtml(paperAuthorSummary(paper))}</span>
+            <div class="pulse-paper-meta" title="${escapeHtml([paperAuthorSummary(paper), paper.year, paper.journal].filter(Boolean).join(' · '))}">
+              <span class="pulse-paper-author">${escapeHtml(paperAuthors(paper).length > 1 ? paperAuthors(paper)[0] + ' et al.' : paperAuthorSummary(paper))}</span>
               <span>· ${escapeHtml(paper.year || 'No year')}</span>
-              ${paper.journal ? `<span class="pulse-paper-journal">· ${escapeHtml(!state.libraryFullscreen && paper.journal.length > 20 ? paper.journal.slice(0, 18) + '...' : paper.journal)}</span>` : ''}
-              ${paper.citedByCount ? `<span class="pulse-paper-badge-cit" title="Citations">★ ${paper.citedByCount}</span>` : ''}
+
+              ${paperCitationCount(paper) !== null ? `<span class="pulse-paper-badge-cit" title="${escapeHtml(paper.citationMetrics.source)} citations">★ ${paperCitationCount(paper)}</span>` : ''}
               ${paper.doi ? `<span class="pulse-paper-badge-doi" title="${escapeHtml(paper.doi)}">DOI</span>` : ''}
             </div>
           </div>
         </article>
       `;
       const renderExpandedPaper = paper => `
-        <article class="paper-card${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${paper.id}">
+        <article class="paper-card${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${paper.id}" tabindex="0" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
           ${paperHeaderMarkup(paper)}
           <div class="paper-title">${escapeHtml(paper.title || 'Untitled paper')}</div>
           <div class="paper-authors">${escapeHtml(paperAuthorSummary(paper))}</div>
@@ -110,6 +110,19 @@
           ${paperOrganizeMarkup(paper)}
         </article>
       `;
+      const renderLibraryTable = papers => {
+        const columns = [['title', 'Paper'], ['authors', 'Authors'], ['year', 'Year'], ['journal', 'Journal'], ['citations', 'Citations']];
+        const headers = columns.map(([key, label]) => `<th scope="col" aria-sort="${state.librarySortKey === key ? (state.librarySortAsc ? 'ascending' : 'descending') : 'none'}"><button type="button" data-table-sort="${key}">${label}${state.librarySortKey === key ? (state.librarySortAsc ? ' ↑' : ' ↓') : ''}</button></th>`).join('');
+        return `<table class="library-table"><caption class="sr-only">Papers in your library. Select a paper to open its inspector.</caption><thead><tr><th scope="col" class="library-select-column"><input id="librarySelectVisible" type="checkbox" aria-label="Select all visible papers"></th><th scope="col" class="library-map-column">On map</th>${headers}<th scope="col">DOI</th><th scope="col">Tags</th></tr></thead><tbody>${papers.map(paper => {
+          const count = paperCitationCount(paper);
+          return `<tr class="library-table-row${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${escapeHtml(paper.id)}" tabindex="0" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
+          <td class="library-select-column"><input type="checkbox" data-action="select-library-row" ${state.librarySelectedIds.has(paper.id) ? 'checked' : ''} aria-label="Select ${escapeHtml(paper.title || 'Untitled paper')} for bulk actions"></td><td class="library-map-column"><input type="checkbox" data-action="toggle-paper-active" ${paper.selected !== false ? 'checked' : ''} aria-label="Show ${escapeHtml(paper.title || 'Untitled paper')} on map"></td>
+          <td class="library-title-cell"><button type="button" data-action="focus" class="library-title-button">${escapeHtml(paper.title || 'Untitled paper')}</button></td>
+          <td>${escapeHtml(paperAuthors(paper).join(', ') || '—')}</td><td class="library-year-cell">${escapeHtml(paper.year || '—')}</td>
+          <td>${escapeHtml(paper.journal || '—')}</td><td class="library-citations-cell" title="${escapeHtml(count !== null ? 'Verified from ' + paper.citationMetrics.source : 'Citation count not checked')}">${count !== null ? count.toLocaleString() : '—'}</td>
+          <td class="library-doi-cell">${paper.doi ? `<a href="${escapeHtml(safePaperUrl('https://doi.org/' + paper.doi))}" target="_blank" rel="noreferrer">${escapeHtml(paper.doi)}</a>` : '—'}</td><td><div class="library-table-tags">${paperMetaChips(paper)}</div></td></tr>`;
+        }).join('')}</tbody></table>`;
+      };
       const hasFilter = Boolean(state.filterTags && state.filterTags.length > 0);
       let displayPapers = state.papers.filter(paperMatchesFilters);
 
@@ -123,8 +136,8 @@
           valA = (paperAuthors(a)[0] || '').toLowerCase();
           valB = (paperAuthors(b)[0] || '').toLowerCase();
         } else if (sortKey === 'citations') {
-          valA = Number(a.citedByCount || 0);
-          valB = Number(b.citedByCount || 0);
+          valA = (paperCitationCount(a) ?? -1);
+          valB = (paperCitationCount(b) ?? -1);
           return isAsc ? valA - valB : valB - valA;
         } else if (sortKey === 'year') {
           valA = String(valA);
@@ -158,21 +171,22 @@
             const firstAuthor = paperAuthors(p)[0] ? paperAuthors(p)[0].split(/\s+/).pop() : '';
             const sub = [firstAuthor, p.year].filter(Boolean).join(' · ');
             return `
-            <div class="rail-card-item" data-paper="${p.id}" title="${escapeHtml(p.title || 'Untitled')}">
+            <div class="rail-card-item${state.selectedId === p.id ? ' is-selected' : ''}" data-paper="${p.id}" role="button" tabindex="0" aria-label="Inspect ${escapeHtml(p.title || 'Untitled paper')}" title="${escapeHtml([p.title || 'Untitled', sub].filter(Boolean).join(' · '))}">
               <span class="session-dot"></span>
               <div class="rail-card-item-body">
                 <span class="rail-card-item-title">${escapeHtml(p.title || 'Untitled')}</span>
-                ${sub ? `<span class="rail-card-item-sub">${escapeHtml(sub)}</span>` : ''}
+
               </div>
             </div>`;
           }).join('');
           els.railCardList.querySelectorAll('.rail-card-item').forEach(card => {
             card.addEventListener('click', () => {
-              const id = card.dataset.paper;
-              if (id) {
-                state.selectedId = id;
-                renderSelection();
-                renderDetails();
+              inspectPaper(card.dataset.paper);
+            });
+            card.addEventListener('keydown', event => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                inspectPaper(card.dataset.paper);
               }
             });
           });
@@ -196,6 +210,8 @@
         }
       });
 
+      els.paperList.classList.toggle('is-table', state.libraryFullscreen);
+      els.paperList.setAttribute('role', state.libraryFullscreen ? 'region' : 'list');
       if (!displayPapers.length) {
         els.paperList.innerHTML = hasFilter
           ? `<div class="empty-filter-state" style="padding: 24px 16px; text-align: center; color: var(--muted);">
@@ -206,10 +222,18 @@
 
         els.paperList.querySelector('[data-action="clear-filters-from-list"]')?.addEventListener('click', clearFilterTags);
       } else {
-        els.paperList.innerHTML = displayPapers.map(paper => (
+        els.paperList.innerHTML = state.libraryFullscreen ? renderLibraryTable(displayPapers) : displayPapers.map(paper => (
           state.paperView === 'compact' ? renderCompactPaper(paper) : renderExpandedPaper(paper)
         )).join('');
       }
+
+      renderLibraryBulkActions(displayPapers);
+      els.paperList.querySelectorAll('[data-table-sort]').forEach(button => button.addEventListener('click', () => {
+        const key = button.dataset.tableSort;
+        state.librarySortAsc = state.librarySortKey === key ? !state.librarySortAsc : ['title', 'authors', 'journal'].includes(key);
+        state.librarySortKey = key;
+        renderPapers();
+      }));
 
       els.paperList.querySelectorAll('[data-field]').forEach(input => {
         input.addEventListener('change', event => {
@@ -240,20 +264,13 @@
       els.paperList.querySelectorAll('[data-action="remove"]').forEach(button => {
         button.addEventListener('click', event => {
           const id = event.target.closest('[data-paper]').dataset.paper;
-          state.papers = state.papers.filter(paper => paper.id !== id);
-          if (state.selectedId === id) state.selectedId = null;
-          if (state.selectedLinkId?.includes(id)) state.selectedLinkId = null;
-          if (state.centerId === id) state.centerId = null;
-          render();
+          removePapersWithRecovery([id]);
         });
       });
 
       els.paperList.querySelectorAll('[data-action="focus"]').forEach(button => {
         button.addEventListener('click', event => {
-          state.selectedId = event.target.closest('[data-paper]').dataset.paper;
-          if (state.libraryFullscreen) setLibraryFullscreen(false);
-          renderDetails();
-          renderSelection();
+          inspectPaper(event.target.closest('[data-paper]').dataset.paper);
         });
       });
 
@@ -278,12 +295,16 @@
         });
       });
 
-      els.paperList.querySelectorAll('.pulse-paper-card, .paper-card').forEach(card => {
+      els.paperList.querySelectorAll('.pulse-paper-card, .paper-card, .library-table-row').forEach(card => {
         card.addEventListener('click', event => {
-          if (event.target.closest('button, input, select, textarea, .compact-chip')) return;
-          state.selectedId = card.dataset.paper;
-          renderSelection();
-          renderDetails();
+          if (event.target.closest('button, a, input, select, textarea, .compact-chip')) return;
+          inspectPaper(card.dataset.paper);
+        });
+        card.addEventListener('keydown', event => {
+          if (event.target === card && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            inspectPaper(card.dataset.paper);
+          }
         });
       });
 

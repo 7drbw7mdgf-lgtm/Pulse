@@ -59,6 +59,7 @@
     function normalizeImportedPaper(paper, source) {
       return {
         id: paper.id || uid(),
+        selected: paper.selected !== false,
         name: paper.name || source,
         title: cleanField(paper.title || paper.name || 'Untitled paper'),
         authors: paperAuthors(paper),
@@ -82,7 +83,9 @@
         openAlexUrl: paper.openAlexUrl || (paper.openAlexId ? `https://openalex.org/${normalizeOpenAlexId(paper.openAlexId)}` : ''),
         referenceIds: dedupeList((paper.referenceIds || []).map(normalizeOpenAlexId).filter(Boolean)).slice(0, 160),
         citedByIds: dedupeList((paper.citedByIds || []).map(normalizeOpenAlexId).filter(Boolean)).slice(0, 160),
-        citedByCount: Number(paper.citedByCount || 0),
+        citedByCount: Number.isFinite(paper.citedByCount) ? paper.citedByCount : null,
+        s2PaperId: paper.s2PaperId || '',
+        citationMetrics: paper.citationMetrics || null,
         text: String(paper.text || paper.abstract || '').slice(0, 120000),
         size: Number(paper.size || 0),
         x: Number(paper.x || 0),
@@ -201,7 +204,8 @@
       if ((metadata.citedByIds || []).length) {
         paper.citedByIds = dedupeList([...(paper.citedByIds || []), ...metadata.citedByIds].map(normalizeOpenAlexId).filter(Boolean)).slice(0, 160);
       }
-      if (metadata.citedByCount) paper.citedByCount = Number(metadata.citedByCount || 0);
+      if (Number.isFinite(metadata.citedByCount)) paper.citedByCount = metadata.citedByCount;
+      if (metadata.s2PaperId) paper.s2PaperId = metadata.s2PaperId;
     }
 
     function tokenize(text) {

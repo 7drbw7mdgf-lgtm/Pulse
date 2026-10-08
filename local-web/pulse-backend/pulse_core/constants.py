@@ -37,7 +37,7 @@ LOCAL_BACKEND_DEFAULTS = {
     "autoGemmaExtraction": True,
 }
 DEFAULT_GEMMA_MODEL = LOCAL_BACKEND_DEFAULTS["chatModel"]
-APP_VERSION = os.environ.get("PULSE_APP_VERSION") or os.environ.get("IRATXE_APP_VERSION") or "1.3.0"
+APP_VERSION = os.environ.get("PULSE_APP_VERSION") or os.environ.get("IRATXE_APP_VERSION") or "1.5.7"
 CONTACT_EMAIL = (os.environ.get("PULSE_CONTACT_EMAIL") or os.environ.get("IRATXE_CONTACT_EMAIL") or "").strip()
 API_TOKEN = (os.environ.get("PULSE_API_TOKEN") or os.environ.get("IRATXE_API_TOKEN") or "").strip() or secrets.token_urlsafe(32)
 BOUND_PORT = int(os.environ.get("PULSE_PORT") or os.environ.get("IRATXE_PORT") or "8000")

@@ -1,10 +1,10 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.4 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=library-actions-20261007-2">
-<link rel="icon" type="image/png" href="favicon.png"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v1.5.7 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261008-9">
+<link rel="icon" type="image/png" href="favicon.png?v=1.5.7"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
-<aside class="pulse-nav-rail"> <div class="rail-brand"> <img src="favicon.png" alt="Pulse icon" class="rail-logo"> <div class="rail-brand-text">
-<span class="rail-title">Pulse</span> <span class="rail-version">v1.4</span> </div> </div> <nav class="rail-menu">
+<aside class="pulse-nav-rail"> <div class="rail-brand"> <img src="favicon.png?v=1.5.7" alt="Pulse icon" class="rail-logo"> <div class="rail-brand-text">
+<span class="rail-title">Pulse</span> <span class="rail-version">v1.5.7</span> </div> </div> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
 <button class="rail-item" data-rail="library" id="railLibraryBtn" type="button" title="Toggle Library Panel"> <span data-feather="book-open"></span> <span>Library</span> <span id="railLibraryBadge" class="rail-badge">0</span> </button>
 <button class="rail-item" data-rail="trends" type="button" title="Literature trends & clusters"> <span data-feather="trending-up"></span> <span>Trends</span> </button>
@@ -61,6 +61,7 @@
 <button class="pill-btn-sm" data-special="recent" type="button" title="Latest recent publications"> <span data-feather="clock"></span>
 <span>Recent <small>Latest</small></span> </button> </div> </div> <div class="discovery-popup-footer"><span>Choose how to explore your papers.</span><button id="discoveryOptionsDone" type="button">Done</button></div>
 </div></div>
+<div class="library-connection-pill" aria-label="Library connections"><button id="zoteroPill" type="button" aria-haspopup="dialog" aria-controls="libraryManagersDialog"><strong>Zotero</strong><small id="zoteroPillStatus">Check connection</small></button><button id="mendeleyPill" type="button" aria-haspopup="dialog" aria-controls="libraryManagersDialog"><strong>Mendeley</strong><small id="mendeleyPillStatus">Export citations</small></button></div>
 <label class="inspector-toggle"><span>Inspector</span><input id="inspectorToggle" type="checkbox" role="switch" aria-label="Show paper inspector" aria-controls="details" checked><span class="switch-track" aria-hidden="true"></span></label>
 </section>
 <!-- THREE-COLUMN WORKSPACE BODY -->
@@ -69,6 +70,7 @@
 <div class="col-header-actions">
 <button id="paperViewToggle" class="library-density-toggle" type="button" aria-label="Show expanded library view" aria-pressed="false" title="Show expanded library view">Expanded</button>
 <button id="closeLibrarySwipeBtn" class="library-action-button library-fullscreen-button" type="button" title="Expand library to full screen" aria-label="Expand library to full screen" aria-expanded="false" aria-controls="colLibrary">Full screen</button>
+<button id="libraryUndo" class="library-action-button" type="button" disabled>Undo</button><button id="libraryRecovery" class="library-action-button" type="button">Recovery</button>
 <button id="clearButton" class="library-action-button library-clear-button" type="button" title="Clear all papers from this workspace">Clear papers</button>
 </div> </div>
 <div class="library-search-filter"> <span data-feather="search" class="lib-search-icon"></span>
@@ -82,6 +84,11 @@
 <button class="param-sort-pill" data-sort="authors" type="button">Author</button>
 <button class="param-sort-pill" data-sort="journal" type="button">Journal</button>
 <button class="param-sort-pill" data-sort="citations" type="button">Citations</button>
+</div>
+<div id="libraryBulkBar" class="library-bulk-bar" hidden>
+<span id="libraryBulkCount" role="status">0 selected</span><button id="libraryBulkDeselect" class="button small secondary" type="button">Deselect</button>
+<label class="sr-only" for="libraryBulkFormat">Export format</label><select id="libraryBulkFormat" aria-label="Export format"><option value="ris">RIS</option><option value="csv">CSV</option><option value="json">JSON</option></select>
+<button id="libraryBulkExport" class="button small secondary" type="button">Export selected</button><button id="libraryBulkTag" class="button small secondary" type="button">Tag selected</button><button id="libraryBulkTransfer" class="button small secondary" type="button">Transfer selected</button><button id="libraryBulkRemove" class="button small secondary danger" type="button">Remove selected</button>
 </div>
 <div id="activeTagFiltersList" class="active-tag-chips"></div> <div id="tagFilterDropdown" class="tag-filter-dropdown" hidden>
 <div id="libraryTagCloud" class="library-tag-cloud"></div> </div>
@@ -109,13 +116,6 @@
 <h2>Your map starts with the first paper</h2>
 <p>Each node is a scientific paper. Connections grow stronger when publications share methods, citations, or concepts.</p>
 <p class="empty-hint">Drop paper files directly here, or use <strong>Add paper</strong> and <strong>Import</strong> in the left sidebar.</p> </div> </div>
-<!-- FLOATING CLUSTER LEGEND (Top Left) -->
-<div id="graphLegend" class="floating-cluster-legend" aria-label="Cluster legend">
-<div class="legend-row"><span class="legend-dot" style="background:#3b82f6"></span> <span class="legend-label">Host response</span></div>
-<div class="legend-row"><span class="legend-dot" style="background:#10b981"></span> <span class="legend-label">Bacterial physiology</span></div>
-<div class="legend-row"><span class="legend-dot" style="background:#f87171"></span> <span class="legend-label">Innate immunity</span></div>
-<div class="legend-row"><span class="legend-dot" style="background:#8b5cf6"></span> <span class="legend-label">Metabolism</span></div>
-<div class="legend-row"><span class="legend-dot" style="background:#64748b"></span> <span class="legend-label">Other</span></div> </div>
 <!-- FLOATING DOCK (Bottom Center Floating Bubble - 2 Rows) -->
 <div class="canvas-dock-modern">
 <div class="dock-row dock-row-top">
@@ -176,22 +176,29 @@
 <span>AI agent</span><span id="aiAgentFabCount" class="agent-fab-count" hidden></span>
 </button>
 <aside id="aiPanel" class="ai-panel card floating-overlay-card paper-agent-panel" hidden role="dialog" aria-modal="false" aria-labelledby="aiAgentTitle">
-<div class="agent-heading"><div><span class="agent-eyebrow">YOUR LOCAL READING ASSISTANT</span><h2 id="aiAgentTitle">Paper summaries</h2></div>
+<div class="agent-heading"><div class="agent-heading-title"><span class="agent-heading-icon" aria-hidden="true">✦</span><div><h2 id="aiAgentTitle">Paper assistant</h2><p>A report on your selected paper</p></div></div>
 <button id="aiCloseButton" class="ai-close" type="button" aria-label="Close AI panel">×</button></div>
-<div class="agent-connection"><span id="aiAgentStatus" role="status">Checking Ollama…</span><button id="aiAgentRefresh" type="button" class="agent-text-button">Refresh</button></div>
-<p class="agent-intro">Read your library with Ollama. Paper text stays on this Mac.</p>
-<div class="agent-controls"><label>Local model<select id="aiAgentModel" aria-label="Local summary model"><option value="">Connecting…</option></select></label>
-<label>Papers to scan<select id="aiAgentScope" aria-label="Papers to scan"><option value="all">Entire library</option><option value="selected">Selected paper</option></select></label></div>
+<div class="agent-setup">
+<div class="agent-connection"><span id="aiAgentStatus" role="status">Preparing assistant…</span><button id="aiAgentSetup" type="button" class="agent-text-button" hidden>Settings</button><button id="aiAgentRefresh" type="button" class="agent-text-button">Try again</button></div>
+<p id="aiAgentContext" class="agent-context"></p>
+<details class="agent-focus"><summary>Add a focus <span>optional</span></summary>
 <label class="agent-focus-label" for="aiPrompt">Focus <span>(optional)</span></label>
 <textarea id="aiPrompt" class="ai-prompt" rows="2" placeholder="For example: main findings and limitations"></textarea>
-<div class="agent-run-row"><button id="aiAnalyzeButton" class="button primary" type="button">Summarize papers</button><button id="aiAgentStop" class="button" type="button" hidden>Stop scan</button><button id="aiAgentExport" class="agent-text-button" type="button" hidden>Download summaries</button></div>
+</details>
+<div class="agent-run-row"><button id="aiAnalyzeButton" class="button primary" type="button">Create report</button><button id="aiAgentStop" class="button" type="button" hidden>Stop</button><button id="aiAgentExport" class="button secondary" type="button" hidden>Download report</button></div>
 <div class="agent-progress" id="aiAgentProgress" hidden><progress id="aiAgentProgressBar" max="1" value="0" aria-label="Paper scan progress"></progress></div>
 <div id="aiAgentScanStatus" class="agent-scan-status" role="status" aria-live="polite"></div>
-<div id="aiResult" class="agent-results"><div class="agent-empty"><span aria-hidden="true">✦</span><strong>A little clarity for your library</strong><p>Scan papers for their aim, methods, findings and limitations. Each summary shows the source it used.</p></div></div>
+</div>
+<div id="aiAgentResultsHeading" class="agent-results-heading" hidden><h3>Paper report</h3><span id="aiAgentResultCount"></span></div>
+<div id="aiResult" class="agent-results"><div class="agent-empty"><span aria-hidden="true">✦</span><strong>Start with a paper</strong><p>Select a paper to get a report on its aim, methods, findings and limitations.</p></div></div>
+<footer class="agent-footer"><span aria-hidden="true">⌁</span> Your report uses only the selected paper.</footer>
 </aside>
+<dialog id="libraryTagDialog" class="clear-papers-dialog"><form id="libraryTagForm"><h2>Tag selected papers</h2><p>Tags are added to every selected paper. Existing tags are kept.</p><label>Tags <input id="libraryBulkTags" placeholder="Separate tags with semicolons" required maxlength="1000"></label><div class="clear-papers-dialog-actions"><button id="libraryTagCancel" type="button" class="button secondary">Cancel</button><button type="submit" class="button">Add tags</button></div></form></dialog>
+<dialog id="libraryRemoveDialog" class="clear-papers-dialog"><h2 id="libraryRemoveTitle">Remove selected papers?</h2><p>You can undo this or restore the papers from Recovery later.</p><div class="clear-papers-dialog-actions"><button id="libraryRemoveCancel" class="button secondary" type="button">Cancel</button><button id="libraryRemoveConfirm" class="button clear-papers-confirm" type="button">Remove papers</button></div></dialog>
+<dialog id="libraryRecoveryDialog" class="clear-papers-dialog library-recovery-dialog"><h2>Workspace recovery</h2><p>Removed papers are merged into your current library. Restoring a cleared workspace brings back its papers, tags and map settings. Your current workspace is saved as another recovery point first.</p><div id="libraryRecoveryList" class="library-recovery-list" role="status"></div><div class="clear-papers-dialog-actions"><button id="libraryRecoveryClose" class="button secondary" type="button">Close</button></div></dialog>
 <dialog id="clearPapersDialog" class="clear-papers-dialog" aria-labelledby="clearPapersTitle" aria-describedby="clearPapersDescription">
 <h2 id="clearPapersTitle">Clear all papers?</h2>
-<p id="clearPapersDescription">This removes the papers, their tags, map areas and graph links from this workspace. This cannot be undone.</p>
+<p id="clearPapersDescription">This removes the papers, their tags, map areas and graph links from this workspace. You can restore this workspace from Recovery, including after restarting Pulse.</p>
 <div class="clear-papers-dialog-actions"><button id="clearPapersCancel" class="button" type="button">Cancel</button><button id="clearPapersConfirm" class="button clear-papers-confirm" type="button">Clear all papers</button></div>
 </dialog>
 <!-- MODALS: MACOS NATIVE WINDOW REVAMP -->
@@ -394,24 +401,40 @@
 <span class="action-label" id="tagActionGraphLabel">Focus map graph around this tag</span> </button>
 <button class="tag-action-item" data-action="toggle-exclude" type="button"> <span class="action-icon">⛔</span>
 <span class="action-label" id="tagActionExcludeLabel">Exclude from recommendations</span> </button> </div> </div>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=agent-20261007"></script>
-<script src="js/part_02.js?v=agent-20261007"></script>
-<script src="js/part_03.js?v=agent-20261007"></script>
-<script src="js/part_04.js?v=agent-20261007"></script>
-<script src="js/part_05.js?v=agent-20261007"></script>
-<script src="js/part_06.js?v=agent-20261007"></script>
-<script src="js/part_07.js?v=agent-20261007"></script>
-<script src="js/part_08.js?v=agent-20261007"></script>
-<script src="js/part_09.js?v=agent-20261007"></script>
-<script src="js/part_10.js?v=library-20261007"></script>
-<script src="js/part_11.js?v=agent-20261007"></script>
-<script src="js/part_12.js?v=agent-20261007"></script>
-<script src="js/part_13.js?v=agent-20261007"></script>
-<script src="js/part_14.js?v=library-20261007"></script>
-<script src="js/part_15.js?v=agent-20261007"></script>
-<script src="js/part_16.js?v=agent-20261007"></script>
-<script src="js/part_17.js?v=agent-20261007"></script>
-<script src="js/part_18.js?v=library-actions-20261007-2"></script>
-<script src="js/part_19.js?v=library-actions-20261007-2"></script>
-<script src="js/part_20.js?v=library-actions-20261007-2"></script>
-<script src="js/part_21.js?v=library-actions-20261007-2"></script> <script src="js/part_22.js?v=agent-20261007-2"></script> </body> </html>
+<dialog id="paperRelationsDialog" class="record-dialog" aria-labelledby="relationTitle">
+<header><h2 id="relationTitle">Citation list</h2><button id="relationClose" type="button" aria-label="Close citation list">×</button></header>
+<div class="record-dialog-body"><p id="relationCoverage" role="status"></p><small id="relationNote"></small>
+<label>Filter loaded records<input id="relationFilter" type="search" placeholder="Title, author, year or DOI"></label>
+<div class="record-actions"><select id="relationProvider" aria-label="Citation list provider"><option value="">Best available index</option><option>Semantic Scholar</option><option>OpenAlex</option></select><button id="relationLoadNext" class="button secondary" type="button">Load next 100</button><button id="relationLoadAll" class="button primary" type="button">Load all</button><button id="relationStop" class="button secondary" type="button" hidden>Stop loading</button><select id="relationExportFormat" aria-label="Citation list export format"><option value="ris">RIS</option><option value="csv">CSV</option><option value="json">JSON</option></select><button id="relationExport" class="button secondary" type="button">Export loaded list</button></div>
+<p id="relationError" class="record-feedback record-error" role="alert"></p><ol id="relationList" class="relations-list"></ol><button id="relationMoreVisible" class="button secondary" type="button" hidden>Show 100 more</button></div></dialog>
+<dialog id="libraryManagersDialog" class="record-dialog" aria-labelledby="managerTitle">
+<header><div><h2 id="managerTitle">Library connections</h2><small>Send discovered papers to your reference manager.</small></div><button id="managerClose" type="button" aria-label="Close library connections">×</button></header>
+<div class="record-dialog-body"><div class="record-actions"><label>Papers to send <select id="managerScope"><option value="selected">Selected paper</option><option value="discoveries">Selected discovery results</option><option value="relations">Loaded citation / reference list</option><option value="bulk">Selected library rows</option><option value="all">Entire Pulse library</option></select></label><span id="managerSelectionCount" class="subtle"></span><button id="managerRefresh" class="button secondary" type="button">Refresh connections</button></div>
+<div class="manager-provider-grid"><section class="manager-provider-card"><h3>Zotero</h3><p id="zoteroConnectionNote"></p><small>Uses Zotero Desktop on this Mac. Records go to the library or collection selected in Zotero.</small><div class="record-actions"><button id="zoteroSend" class="button primary" type="button" disabled>Send to Zotero</button></div></section>
+<section class="manager-provider-card"><h3>Mendeley</h3><p id="mendeleyConnectionNote"></p><small id="mendeleyHowTo">Export your chosen citations, then import the file into Mendeley.</small><div class="record-actions"><button id="mendeleyConnect" class="button secondary" type="button">Set up direct transfer</button><button id="mendeleyDisconnect" class="button secondary" type="button" hidden>Disconnect</button><button id="mendeleySend" class="button primary" type="button" disabled>Export for Mendeley</button></div><a id="mendeleyAuthorizeLink" target="_blank" rel="noreferrer" hidden>Authorize Mendeley</a><p id="mendeleyAuthorizationNote" class="record-feedback" role="status"></p><p id="mendeleyImportHelp"><small>In Mendeley, drag in the downloaded RIS file, or choose Add New → Import Library → RIS. <a href="https://www.elsevier.support/mendeley/answer/how-can-i-add-new-references-to-my-library-in-mendeley-reference-manager" target="_blank" rel="noreferrer">Import guide</a></small></p></section></div>
+<p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your Mac until you import them. PDFs and full paper text are not uploaded.</small></p>
+<details id="mendeleyDeveloperSettings"><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this Mac's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
+<p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261008-9"></script>
+<script src="js/part_02.js?v=ui-20261008-9"></script>
+<script src="js/part_03.js?v=ui-20261008-9"></script>
+<script src="js/part_04.js?v=ui-20261008-9"></script>
+<script src="js/part_05.js?v=ui-20261008-9"></script>
+<script src="js/part_06.js?v=ui-20261008-9"></script>
+<script src="js/part_07.js?v=ui-20261008-9"></script>
+<script src="js/part_08.js?v=ui-20261008-9"></script>
+<script src="js/part_09.js?v=ui-20261008-9"></script>
+<script src="js/part_10.js?v=ui-20261008-9"></script>
+<script src="js/part_11.js?v=ui-20261008-9"></script>
+<script src="js/part_12.js?v=ui-20261008-9"></script>
+<script src="js/part_13.js?v=ui-20261008-9"></script>
+<script src="js/part_14.js?v=ui-20261008-9"></script>
+<script src="js/part_15.js?v=ui-20261008-9"></script>
+<script src="js/part_23.js?v=ui-20261008-9"></script>
+<script src="js/part_24.js?v=ui-20261008-9"></script>
+<script src="js/part_16.js?v=ui-20261008-9"></script>
+<script src="js/part_17.js?v=ui-20261008-9"></script>
+<script src="js/part_18.js?v=ui-20261008-9"></script>
+<script src="js/part_19.js?v=ui-20261008-9"></script>
+<script src="js/part_20.js?v=ui-20261008-9"></script>
+<script src="js/part_21.js?v=ui-20261008-9"></script> <script src="js/part_22.js?v=ui-20261008-9"></script> </body> </html>

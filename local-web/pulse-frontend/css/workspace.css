@@ -89,6 +89,8 @@ button:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
 .library-fullscreen .pulse-paper-title { font-size: 14px; }
 .library-fullscreen .pulse-paper-meta { font-size: 12px; flex-wrap: wrap; white-space: normal; row-gap: 4px; margin-top: 5px; }
 .library-fullscreen .paper-card { padding: 18px; gap: 9px; }
+.pulse-paper-card:focus-visible, .paper-card:focus-visible, .rail-card-item:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.rail-card-item.is-selected { background:rgba(99,102,241,.2); box-shadow:inset 2px 0 #a5b4fc; }
 .library-fullscreen .paper-title { font-size: 20px; }
 .library-fullscreen .paper-authors { font-size: 13px; }
 .library-fullscreen .paper-edit-grid { grid-template-columns: 1fr 1fr; gap: 14px 22px; padding-top: 10px; }
@@ -104,8 +106,8 @@ button:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
 
 /* Keep destructive and full-screen actions visible in both library layouts. */
 .col-library-header { flex-wrap: wrap; gap: 8px; }
-.col-header-actions { width: 100%; gap: 6px; }
-.library-action-button { border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--ink); padding: 4px 7px; font-family: inherit; font-size: 10px; font-weight: 550; cursor: pointer; }
+.col-header-actions { width: 100%; gap: 6px; flex-wrap: wrap; }
+.library-action-button { border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--ink); padding: 4px 7px; font-family: inherit; font-size: 10px; font-weight: 550; cursor: pointer; white-space: nowrap; flex: 0 0 auto; }
 .library-action-button:hover { border-color: var(--accent-line); color: var(--accent); }
 .library-action-button:disabled { opacity: .4; cursor: default; }
 .library-clear-button { color: #be4545; }
@@ -120,3 +122,59 @@ button:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
 .clear-papers-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .clear-papers-confirm { background: #be4545; border-color: #be4545; color: white; }
 .clear-papers-confirm:hover { background: #ad3030; border-color: #ad3030; }
+
+/* Full-screen library is a sortable table; sidebar density remains independent. */
+.library-fullscreen .pulse-paper-list.is-table { display:block; overflow:auto; padding:0 24px 90px; }
+.library-fullscreen #paperViewToggle[hidden] { display:none !important; }
+.library-table { width:100%; min-width:980px; border-collapse:separate; border-spacing:0; font-size:12px; table-layout:fixed; }
+.library-table caption.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+.library-table th { position:sticky; top:0; z-index:1; padding:12px 10px; text-align:left; font-size:11px; color:var(--muted); background:var(--surface-2); border-bottom:1px solid var(--line); }
+.library-table th button { border:0; padding:0; background:transparent; font:inherit; color:inherit; font-weight:600; cursor:pointer; }
+ .library-table th:nth-child(3) { width:25%; }
+.library-table th:nth-child(4) { width:16%; }
+.library-table th:nth-child(5) { width:52px; }
+.library-table th:nth-child(6) { width:14%; }
+.library-table th:nth-child(7) { width:65px; }
+.library-table th:nth-child(8) { width:14%; }
+.library-table th:nth-child(9) { width:13%; }
+.library-table .library-select-column { width:35px; text-align:center; }
+.library-table td { padding:15px 10px; vertical-align:top; border-bottom:1px solid var(--line); line-height:1.6; color:var(--ink-2); overflow-wrap:anywhere; }
+.library-table .library-map-column { width:48px; text-align:center; }
+.library-table input[type=checkbox] { accent-color:var(--accent); cursor:pointer; }
+.library-table-row { cursor:pointer; }
+.library-table-row:hover { background:var(--surface-2); }
+.library-table-row.is-selected { background:var(--accent-soft); }
+.library-title-button { background:transparent; border:0; padding:0; text-align:left; color:var(--ink); font:inherit; font-weight:600; line-height:1.6; cursor:pointer; }
+.library-title-button:hover, .library-table a:hover { color:var(--accent); text-decoration:underline; }
+.library-table a { color:var(--accent); text-decoration:none; }
+.library-table-tags { display:flex; gap:4px; flex-wrap:wrap; }
+.library-citations-cell, .library-year-cell { font-variant-numeric:tabular-nums; }
+.library-table :focus-visible, .library-table-row:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+
+.library-bulk-bar { display:flex; align-items:center; gap:10px; padding:12px 24px; flex-wrap:wrap; border-bottom:1px solid var(--line); background:var(--surface-2); }
+.library-bulk-bar[hidden] { display:none; }
+.library-bulk-bar #libraryBulkCount { margin-right:auto; font-size:12px; color:var(--muted); }
+.library-bulk-bar select { width:auto; max-width:100px; flex:0 0 auto; margin:0; border:1px solid var(--line); border-radius:6px; padding:6px; background:var(--surface); color:var(--ink); }
+.library-bulk-bar .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+.library-table-row.is-bulk-selected { background:var(--accent-soft); }
+.library-table-row.is-selected:not(.is-bulk-selected) { background:var(--surface); }
+.library-table-row.is-selected .library-title-button { color:var(--accent); }
+.library-table-row.is-bulk-selected td:first-child { box-shadow:inset 3px 0 var(--accent); }
+.library-recovery-dialog { width:min(620px, calc(100vw - 40px)); max-height:80vh; }
+.library-recovery-list { max-height:45vh; overflow:auto; margin-bottom:20px; }
+.library-recovery-item { display:flex; gap:16px; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.library-recovery-item small { display:block; margin-top:5px; color:var(--muted); }
+#libraryTagForm input { width:100%; box-sizing:border-box; padding:10px; border:1px solid var(--line); border-radius:7px; margin:8px 0 22px; }
+
+/* Compact navigation preview and library sidebar; full titles remain in the inspector. */
+.rail-papers-card { padding:8px; gap:5px; box-shadow:none; }
+.rail-card-list { gap:2px; max-height:108px; }
+.rail-card-item { padding:4px 5px; min-height:22px; box-sizing:border-box; }
+.rail-card-item-title { font-size:10.5px; line-height:1.35; }
+.rail-card-open-btn { padding:4px 6px; min-height:24px; font-size:10px; }
+.pulse-col-library .pulse-paper-card { padding:6px; gap:6px; border-radius:5px; }
+.pulse-paper-title { font-size:11.5px; line-height:1.3; }
+.pulse-paper-meta { gap:4px; font-size:10px; margin-top:3px; }
+.pulse-paper-author { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pulse-paper-meta > span:not(.pulse-paper-author) { flex-shrink:0; }
+.pulse-paper-badge-cit { margin-left:0; }

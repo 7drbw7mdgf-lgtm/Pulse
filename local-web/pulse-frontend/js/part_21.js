@@ -272,6 +272,7 @@
         const rail = state.libraryPreviousRail === 'library' ? 'network' : state.libraryPreviousRail || 'network';
         document.querySelectorAll('.pulse-nav-rail .rail-item').forEach(item => item.classList.toggle('active', item.dataset.rail === rail));
       }
+      syncDensityButtons();
       renderPapers();
       requestAnimationFrame(() => { if (!state.libraryFullscreen) render(); });
       els.closeLibrarySwipeBtn.focus();
@@ -325,9 +326,10 @@
 
     loadBackendSettings();
     render();
-    restoreLibrary().finally(() => {
-      state.autosaveReady = true;
+    restoreLibrary().then(restored => {
+      state.autosaveReady = restored;
       render();
+      if (!restored) showToast('Saved papers could not be loaded. Refresh before making changes.');
     });
 
     function parsePaperDate(paper) {
@@ -358,23 +360,21 @@
         const year = date?.year || 'Undated';
         const heading = year !== previousYear ? `<div class="timeline-year-heading"><h2 class="timeline-year">${escapeHtml(year)}</h2><span class="timeline-year-badge">${ordered.filter(o => (o.date?.year || 'Undated') === year).length} paper${ordered.filter(o => (o.date?.year || 'Undated') === year).length === 1 ? '' : 's'}</span></div>` : '';
         previousYear = year;
-        const citations = Number(paper.citationCount ?? paper.citations ?? 0);
-        const citeHtml = citations > 0 ? `<span class="timeline-cite-pill">★ ${citations.toLocaleString()} cites</span>` : '';
+        const citations = paperCitationCount(paper);
+        const citeHtml = citations !== null ? `<span class="timeline-cite-pill">★ ${citations.toLocaleString()} cites</span>` : '';
         const isSelected = state.selectedId === paper.id ? ' is-selected' : '';
         const isSeminal = (citations > 100 || (paper.tags && paper.tags.includes('seminal')));
         const seminalBadge = isSeminal ? '<span class="timeline-seminal-badge">Seminal</span>' : '';
         return `${heading}<article class="timeline-paper${isSelected}" data-timeline-id="${escapeHtml(paper.id)}"><div class="timeline-date-wrap"><span class="timeline-date">${escapeHtml(date?.label || 'Date unknown')}</span>${citeHtml}</div><div class="timeline-content"><div class="timeline-title-row"><button type="button" class="timeline-paper-title" data-timeline-inspect="${escapeHtml(paper.id)}">${escapeHtml(paper.title)}</button>${seminalBadge}</div><p>${escapeHtml([paperAuthorSummary(paper), paper.journal].filter(Boolean).join(' · '))}</p>${paper.abstract ? `<p class="timeline-abstract">${escapeHtml(paper.abstract.slice(0, 240))}${paper.abstract.length > 240 ? '…' : ''}</p>` : ''}</div><div class="timeline-actions"><button type="button" class="button secondary xs" data-timeline-discover="${escapeHtml(paper.id)}">Discover related</button><button type="button" class="button xs" data-timeline-focus="${escapeHtml(paper.id)}">View in graph</button></div></article>`;
       }).join('') || '<div class="timeline-empty">Add papers to see how the literature develops over time.</div>'}</div>`;
       els.timelineView.querySelectorAll('[data-timeline-inspect]').forEach(button => button.addEventListener('click', () => {
-        state.selectedId = button.dataset.timelineInspect;
-        render();
-        renderDetails();
+        inspectPaper(button.dataset.timelineInspect);
       }));
       els.timelineView.querySelectorAll('[data-timeline-discover]').forEach(button => button.addEventListener('click', () => {
         if (state.papers.length) runDiscoveryPipeline();
       }));
       els.timelineView.querySelectorAll('[data-timeline-focus]').forEach(button => button.addEventListener('click', () => {
-        state.selectedId = button.dataset.timelineFocus;
+        inspectPaper(button.dataset.timelineFocus);
         state.centerId = button.dataset.timelineFocus;
         state.mode = 'network';
         if (els.timelineView) els.timelineView.hidden = true;

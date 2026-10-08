@@ -2,200 +2,103 @@
 
 ## A connected workspace for scientific literature discovery
 
-**Capability white paper · 8 October 2026**
+**Capability white paper · Pulse 1.5.7 · 8 October 2026**
 
-Pulse brings paper discovery, bibliography management, visual exploration, and optional local AI summaries into one Mac workspace. A researcher can begin with a DOI, a paper title, or an imported PDF; identify the paper; explore related publications; and build a reading collection that can be examined as a network, a timeline, or a bibliography.
+Pulse brings paper discovery, bibliography management, visual exploration and optional local AI reports into one Mac workspace. Begin with a DOI, a title, an imported PDF or a bibliography; confirm the paper's identity; explore related publications; and keep a collection that can be examined as a network, timeline or full-screen table.
 
-This document describes capabilities through the **locally verified 1.5.2 development build**. The current published GitHub installer is **1.3.1**. The repository's `local-web` workspace contains an earlier subset of the newer features. See [Availability and getting started](#9-availability-and-getting-started) for the distinction.
+**[Download Pulse 1.5.7 for Mac](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.5.7/Pulse-1.5.7.dmg)** · [Installation guide](docs/MACOS-INSTALL.md) · [Release notes](docs/releases/1.5.7.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
 
-**[Published Mac download](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.3.1/Pulse-Tauri-1.3.1.dmg)** · [Releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases) · [Installation guide](docs/MACOS-INSTALL.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
+![Pulse 1.5.7 with compact library cards, a clear graph canvas and the inspector hidden.](docs/images/pulse-1.5.7-workspace.jpg)
 
-![Pulse 1.5.2 workspace with a paper network, DOI-verified metadata, source-linked citation metrics, and reference-manager connections.](docs/images/pulse-1.5.2-workspace.png)
-
-*The current 1.5.2 development workspace. Screenshots in this document use an isolated demonstration library containing public bibliographic records. Citation counts are provider snapshots captured on 8 October 2026.*
+*Current screenshots use an isolated library of synthetic demonstration papers. They do not contain a user's reading list or imply verified citation counts for these examples.*
 
 ## Abstract
 
-Literature exploration involves several connected tasks: identifying a publication, finding its intellectual neighbors, comparing sources, deciding what to read, and preserving a useful bibliography. Pulse connects these tasks around a shared local paper library. It combines citation-based exploration with recommendation and concept-search branches, supports multiple visual views of the same collection, and offers local summaries through Ollama.
+Literature exploration connects several tasks: identifying a publication, tracing its neighbors, comparing evidence, deciding what to read and preserving a useful bibliography. Pulse connects these tasks around a shared local library. Citation-led discovery, concept search, several visual views, reference-manager integration and selected-paper AI reports support a repeating identify–explore–inspect–organize workflow.
 
-The 1.5.2 development build adds provider-attributed citation metrics, pageable citation and reference lists, and connections to Zotero and Mendeley through both the interface and a Model Context Protocol (MCP) bridge. Its central principle is to preserve the distinction between a publication's identity, an index's reported evidence, a calculated relationship, and an AI-generated interpretation. Researchers remain responsible for selecting papers and checking their contents. Pulse supports exploratory research and review preparation; it does not establish the completeness of a systematic search or the validity of a scientific claim.
+The interface distinguishes a publication's identity, an index's reported evidence, a calculated relationship and an AI-generated interpretation. Researchers select the papers and check their contents. Pulse supports exploratory reviews and reading-list preparation; it does not establish the completeness of a systematic search or the validity of a scientific claim.
 
-## 1. The research workflow
+## 1. Capabilities at a glance
 
-Pulse organizes literature work around a repeating sequence:
-
-1. **Identify.** Import a paper or bibliography and resolve its bibliographic identity.
-2. **Explore.** Follow references, incoming citations, shared citation neighborhoods, and topic-based recommendations.
-3. **Inspect.** Examine metadata, source-linked metrics, abstracts, and relationships before accepting a candidate.
-4. **Organize.** Select papers, adjust the map, filter the library, and use tags and chronological views to plan further reading.
-5. **Synthesize and transfer.** Generate optional local summaries, export records, or send chosen papers to a reference manager.
-
-The collection connects these activities. A paper selected in the library or on the map becomes the context for inspection and further discovery. Researchers can expand from several seed papers and review candidates before adding them, keeping the collection focused on their question.
-
-## 2. Capabilities at a glance
-
-The table describes the 1.5.2 development build; release availability is listed in Section 9.
-
-| Capability | What Pulse supports | Research value |
-| --- | --- | --- |
-| Paper ingestion | PDF and bibliography imports, pasted identifiers or text, and direct file drops onto the map | Start from existing reading material |
-| Metadata resolution | DOI-first lookup, followed by matching against available bibliographic metadata | Reduce manual entry and mistaken identities |
-| Literature discovery | References, incoming citations, citation neighborhoods, provider recommendations, and concept search | Explore several routes beyond a seed paper |
-| Visual exploration | Network, cluster and radial layouts, a chronological Timeline, and bibliography views | Examine relationships and publication order |
-| Library management | Search, filters, tags, sorting, full-screen library, and compact or expanded records | Keep a growing collection navigable |
-| Citation evidence | Source-linked counts, time checked, and separate list-coverage reporting | Assess what an index actually reports |
-| Paper summaries | Optional background scans using installed local Ollama chat models | Prepare an initial reading overview |
-| Reference-manager connections | Explicit metadata sends to Zotero Desktop and an authorized Mendeley account | Carry selected discoveries into a writing workflow |
-| MCP tools | Library search, metrics, citation/reference pages, connection status, and selected-record saves | Make bibliographic operations available to a compatible assistant |
-
-### Latest workspace improvements
-
-- **A simpler discovery header.** A compact dropdown opens a floating options panel for discovery methods and exploration depth. Add, Import and Export sit at the bottom of the left navigation; the library preview sits beneath Settings.
-- **Drop papers onto the map.** PDF, BibTeX, RIS and JSON files can be added directly in the network area. DOI extraction leads the lookup, with available bibliographic metadata used when no reliable DOI is found.
-- **More room for a growing library.** Switch between the sidebar and a full-screen library, choose compact or expanded records, and clear papers after confirmation. Hide the inspector with its toggle to expand the map.
-- **Inspect the citation evidence.** Confirm a paper's identity, see the metric source and check time, then browse, filter or export citing-paper and reference lists. Load additional pages or all records available from the selected index.
-- **Summarize and connect.** Open the floating local AI agent for a focused paper scan, or use the top connection box to configure Zotero and Mendeley and send chosen records. The MCP bridge exposes the same bibliographic workflow to compatible assistants.
-
-## 3. From imported files to identifiable papers
-
-Pulse accepts paper identifiers and several bibliography formats, including BibTeX, RIS, CSV, JSON and supported EndNote records. PDFs can provide extractable text, embedded metadata, and links that help identify the publication. In the newer workspace, files can be dropped directly onto the map, keeping import close to exploration.
-
-The parsing workflow extracts and normalizes DOI candidates from the available record. A DOI lookup is attempted first. When the paper cannot be identified that way, the resolver searches using the available title, authors, year, journal and other bibliographic fields. Matching considers the candidate's agreement with the imported record; weak or ambiguous results preserve the extracted record rather than replacing it with an uncertain identity.
-
-This is useful when a filename is uninformative, a citation is pasted as prose, or a bibliography uses wrapped fields and multiple author entries. Identification quality still depends on the input. The current summary/import workflow does not provide OCR for image-only PDFs or retrieve paywalled article text. A readable PDF, an abstract, or a structured bibliography gives the app more evidence to work with.
-
-## 4. Discovery through several kinds of evidence
-
-Pulse's discovery workflow combines branches that answer different questions. Direct references reveal the work a seed paper cites. Incoming citations find publications that cite the seed. Additional traversal expands this neighborhood across further hops, within configured limits.
-
-Citation-network methods offer another perspective. **Co-citation** links papers cited together by other works. **Bibliographic coupling** connects papers that share references. Provider recommendations and concept searches can bring in relevant publications outside an immediate citation path. Keywords, exclusions, exploration depth, and recency or impact preferences help steer the candidates.
-
-Candidates are merged, deduplicated and ranked for review. Ranking uses signals such as title overlap, author or journal overlap, steering terms, and agreement across discovery branches. These scores help order candidates; they are not calibrated probabilities of relevance or measures of scientific quality. Recommendation labels also do not imply that a specific embedding model has been run locally. Local text-based relationships depend on the configured model or available fallback.
-
-The graph supports navigation and comparison. Some connections reflect bibliographic evidence; others reflect calculated text or concept similarity. A visible link should be interpreted according to its evidence and type. It does not, by itself, establish that two studies reach the same conclusion or that one validates the other.
-
-## 5. One collection, complementary views
-
-The Network workspace places papers, relationships, the library, and the inspector within the same working area. Force, cluster and radial arrangements provide different ways to examine the collection. Link filters, labels and thresholds let users adjust what is visible.
-
-Timeline arranges papers chronologically, helping researchers move from earlier work to newer developments. Bibliography and library views emphasize titles, authors, years and journals. Search, tags and sorting help narrow the collection. Full-screen library mode and compact/expanded density controls in the newer workspace support focused reading-list management. The inspector can be hidden to give the map more space.
-
-![Pulse 1.5.2 full-screen library with expanded paper records, editable metadata, compact-view toggle and clear-papers control.](docs/images/pulse-1.5.2-library.png)
-
-*Full-screen library in expanded mode. Each record brings its bibliographic details and abstract into view; Compact returns to a denser reading list, and Exit full screen restores the map workspace.*
-
-Together, these views support concrete tasks: tracing a field's development, comparing a small group of related studies, organizing papers for a seminar, or assembling a bibliography around a research question.
-
-## 6. Citation metrics with provenance and coverage
-
-The 1.5.2 development build retrieves metrics only after confirming a paper match. A DOI must agree exactly; title-based resolution considers other available metadata and rejects ambiguous candidates. Metrics record the provider, its identifier, a source link, and the time checked. Semantic Scholar is used when a confirmed record is available, with OpenAlex as an alternative. A selected source remains attached to its counts and lists.
-
-The inspector displays citation and reference counts and, where supplied, influential-citation counts. Actual zeros remain **0**; unavailable values appear as **—**. Influential counts are not estimated from citation totals. **Average per year** is a calculation: citations divided by the calendar years since publication, including the current year. It is not an annual citation-history measurement.
-
-**Citing papers** and **References** open searchable lists. Users can load another page of up to 100 records or continue through all available pages, stop loading, add individual records to Pulse, and export the loaded list as RIS, CSV or JSON. A partial list remains identified as partial.
-
-Coverage is reported separately from headline metrics. A provider's paper counter can differ from the count returned by its searchable list index. Some indexed references may be unresolved, and some lists may be withheld. Pulse exposes these differences instead of inventing missing records. “All available pages loaded” describes the response of the chosen index, not a claim that every published citation has been recovered.
-
-![Pulse 1.5.2 citing-paper list with provider coverage, filtering, pagination, load-all and export controls.](docs/images/pulse-1.5.2-citations.png)
-
-*The citing-paper browser for the PRISMA 2020 statement, with 200 records loaded. The reported paper counter and searchable-list count are displayed separately. The same browser supports references; exports contain the records loaded so far.*
-
-## 7. Optional local AI and connected bibliographies
-
-### Local paper summaries
-
-The floating AI agent in the newer workspace uses installed local Ollama chat models. Researchers choose a model and can request a focus for the scan. Long inputs are read in chunks and their notes are combined into a summary. Background progress, cancellation and summary downloads support a manageable reading workflow; completed results are retained when a scan is stopped.
-
-Results identify whether the source was extracted paper text, an abstract, or metadata only. A bibliography entry alone is not treated as evidence of a study's methods or findings. The summarizer is instructed to stay within the supplied source and distinguish reported findings from inference. Generated summaries still require comparison with the article, especially for numerical results, limitations and interpretation. No independent summary-accuracy benchmark is claimed.
-
-Ollama and its model weights are installed separately. The dedicated summary agent uses local inference. Broader AI settings also support optional cloud analysis; data handling therefore depends on the feature and provider selected. Basic bibliography management and graph exploration do not require an AI model.
-
-![Pulse 1.5.2 local AI agent with Ollama model selection, selected-paper scope, a focus prompt, completed scan and downloadable summary.](docs/images/pulse-1.5.2-agent.png)
-
-*A completed local Ollama scan of the public PRISMA abstract. The result is labeled Abstract, identifying the evidence supplied to the model. This demonstrates the summary workflow; generated interpretations still require checking against the paper.*
-
-### Zotero and Mendeley
-
-The 1.5.2 development build adds a compact connection box at the top of the page. It lets users choose a selected paper, selected discovery results, the loaded citation/reference list, or the entire Pulse library for transfer.
-
-Zotero uses the Desktop application on the same Mac and imports into its currently selected editable library or collection. Mendeley uses a user-configured registered application: client ID, client secret, and matching redirect URL, followed by account authorization. Connection status is checked before the interface enables sending.
-
-Transfers contain bibliographic metadata and abstracts. These connector operations do not upload PDFs or full paper text. Pulse tracks its own successful sends and retains successful receipts if a later record fails. This reduces repeat sends through Pulse, while duplicates created outside Pulse still require reference-manager review.
-
-![Pulse 1.5.2 reference-manager connection panel with Zotero Desktop status, configurable Mendeley application settings and a transfer-scope selector.](docs/images/pulse-1.5.2-connections.png)
-
-*Connection setup in the 1.5.2 development build. The demonstration accounts are not connected; sending becomes available after the destination is ready and, for Mendeley, the user authorizes the account.*
-
-### MCP access
-
-The Pulse bridge exposes six bibliographic tools to a compatible MCP client:
-
-| Tool | Operation |
+| Capability | What Pulse supports |
 | --- | --- |
-| `pulse_papers` | List or search the saved Pulse library |
-| `paper_metrics` | Retrieve confirmed, provider-attributed metrics |
-| `paper_citations_references` | Retrieve a citation/reference page and its continuation |
-| `library_manager_status` | Check Zotero and Mendeley connections |
-| `library_manager_search` | Search a connected manager library |
-| `library_manager_save` | Save explicitly chosen records to a selected destination |
+| Paper ingestion | PDF and bibliography imports, pasted identifiers or text, and file drops directly onto the graph |
+| Metadata resolution | DOI-first lookup, followed by matching against available bibliographic metadata |
+| Discovery | References, incoming citations, citation neighborhoods, recommendations and concept searches |
+| Exploration | Network, cluster and radial arrangements, Timeline and bibliography views |
+| Library management | Compact sidebar cards, a full-screen table, search, filters, tags and sorting |
+| Bulk actions | Row selection to export, tag, transfer or remove several papers together |
+| Recovery | Undo and saved recovery points for removals and cleared workspaces |
+| Citation evidence | Provider-linked counts, check time, pageable citation/reference lists and coverage reporting |
+| Local AI | A focused report for the selected paper, with cancellation and downloads |
+| Reference managers | Zotero Desktop transfer; Mendeley RIS export and configurable direct account connection |
+| MCP | Bibliographic library reads, metrics, citation/reference pages and explicitly chosen manager saves |
 
-The save tool changes the destination library and is intended for explicit user requests. Account setup remains in Pulse; credentials are not returned by the tools. The bibliographic tools omit full PDF text. Zotero library search requires its local API to be enabled. MCP clients receive the records they request, and their own settings govern subsequent handling of that data.
+## 2. From imported files to identifiable papers
 
-## 8. Architecture, data flow and verification
+Pulse accepts DOI and PubMed identifiers, titles, pasted citations, PDF files and common bibliography formats, including BibTeX, RIS, CSV, JSON and supported EndNote records. PDFs can supply extractable text, document metadata and links. Drop supported paper files directly onto the network grid or use the sidebar's Add paper and Import controls.
 
-Pulse uses a Tauri desktop shell, a browser-based workspace, and a Python backend served on localhost. Library and settings data are held on the Mac. Scholarly metadata and discovery use online services, including Semantic Scholar, OpenAlex, Crossref and PubMed. Optional AI and connector operations have their own destinations.
+The resolver extracts and normalizes DOI candidates, then attempts DOI lookup first. When that cannot identify the paper, it searches the available title, authors, year, journal and other bibliographic fields. Candidate agreement is checked; weak or ambiguous matches preserve the imported record. Source errors also preserve available metadata.
 
-```mermaid
-flowchart LR
-    A["PDFs and bibliography records"] --> B["Parse and confirm metadata"]
-    B --> C["Local paper library"]
-    D["Scholarly services"] <--> B
-    C --> E["Discovery, network and timeline"]
-    D <--> E
-    C --> F["Optional local summaries with Ollama"]
-    C --> G["User-selected records"]
-    G --> H["Zotero Desktop or authorized Mendeley"]
-    I["MCP client"] <--> J["Pulse MCP bridge"]
-    J <--> C
-    J <--> D
-    J <--> H
-```
+Readable source material matters. Image-only PDFs need OCR or manually supplied metadata; Pulse does not provide OCR or retrieve paywalled article text.
 
-*Conceptual flow for the 1.5.2 development build. Online requests are part of metadata lookup and discovery; local storage does not imply that every operation is offline.*
+## 3. Discovery and citation evidence
+
+Direct references reveal the work a seed paper cites. Incoming citations reveal work that cites it. Additional hops expand this neighborhood within configured limits. Co-citation connects papers cited together; bibliographic coupling connects papers that share references. Recommendations and concept searches can bring in publications outside an immediate citation path. Discovery options include steering terms, exclusions, depth and recency or impact preferences.
+
+Candidates are merged, deduplicated and ranked for review. Relationship scores help navigation; they are not calibrated relevance probabilities or measures of scientific quality. A visible graph link does not establish that studies reach the same conclusion.
+
+Citation metrics are retrieved only after a confirmed paper match. Counts retain their provider, source link and check time. Semantic Scholar and OpenAlex coverage can differ. Actual zero values remain **0**; missing counts appear as **—**. Influential counts are not estimated from totals. Average per year is a calculation from citation count and publication year, rather than a measured annual history.
+
+**Citing papers** and **References** open filterable lists. Load more pages, stop loading, add records to Pulse or export the loaded results. List coverage is reported separately from the provider's headline count; all available pages describes that index's response, not every citation in existence.
+
+## 4. A library that stays manageable
+
+The sidebar keeps titles and author/year lines compact, with full metadata available on hover and in the inspector. Clicking a paper selects its details. Clicking empty graph space hides the inspector and gives the network more room; selecting a paper node reopens it. The Inspector toggle remains available.
+
+The full-screen library is a table. Row-selection checkboxes are independent of map visibility. Export, tag, transfer and remove operate on the selected rows; selection hidden by filters is counted. The header selection control selects visible rows.
+
+![Pulse 1.5.7 full-screen library table with bulk actions and recovery controls.](docs/images/pulse-1.5.7-library.jpg)
+
+Use **Undo** for the latest change or **Recovery** for saved removal and workspace recovery points. Recovery survives restarting Pulse. Removed papers merge into the current library. Restoring a cleared workspace recovers papers, tags, areas and map settings, while saving the current workspace first. Recovery is local to the Mac; JSON export makes a portable copy.
+
+## 5. Selected-paper reports and reference managers
+
+The floating **AI agent** button opens a reading assistant for the selected paper. It scans available extracted text or an abstract using local Ollama, with an optional focus, progress, cancellation and a downloadable report. Changing the selected paper changes the report context and cancels a running report for the previous paper. The main panel keeps model and service configuration out of the reading workflow.
+
+Reports identify their source, including metadata-only records. A bibliography entry is not treated as evidence of methods or findings. Generated interpretations require checking against the article. Ollama and model weights are installed separately; basic library management works without AI.
+
+The connection box at the top provides Zotero and Mendeley actions. Zotero sends chosen metadata and abstracts to the currently selected editable library or collection in Zotero Desktop. Mendeley offers **Export for Mendeley** without developer registration: download a RIS file for the chosen scope, then import it in Mendeley.
+
+![Pulse 1.5.7 reference-manager panel with Mendeley export and direct-transfer setup.](docs/images/pulse-1.5.7-mendeley.jpg)
+
+**Direct Mendeley account transfer still requires a registered application.** Set up direct transfer opens its configuration. The shared application has not been activated, and provider PKCE enforcement has not been verified. Pulse uses authorization-code sign-in with an S256 challenge/verifier; the old implicit flow is disabled and no application secret is shipped. See the [activation review](docs/MENDELEY-ACTIVATION.md) for the remaining requirements. This release does not claim a live Mendeley account-transfer test.
+
+Direct manager transfers contain bibliographic metadata and abstracts. These operations do not upload PDFs or full paper text. Exported files remain local until the user imports them.
+
+The included stdio MCP bridge exposes `pulse_papers`, `paper_metrics`, `paper_citations_references`, `library_manager_status`, `library_manager_search` and `library_manager_save`. Save operations require explicit intent and a configured destination. Tools omit full PDF text and never return credentials. Account setup remains in Pulse; the requesting MCP client's settings govern its handling of returned records.
+
+## 6. Architecture and data flow
+
+The current Mac app uses a Tauri shell, the `local-web/pulse-frontend` workspace and a Python backend served on localhost. Libraries, settings and recovery points are stored on the Mac. Scholarly matching and discovery contact online services including Semantic Scholar, OpenAlex, Crossref and PubMed. Local Ollama reports, optional cloud analysis and manager transfers have separate destinations.
 
 | Operation | Data destination |
 | --- | --- |
-| Library management and map exploration | Local Pulse storage and workspace |
-| Metadata matching and literature discovery | The scholarly services used for that operation |
-| Dedicated Ollama summary scans | A local Ollama model on the Mac |
-| Optional cloud AI analysis | The configured cloud provider |
-| Zotero/Mendeley sends | The chosen reference manager, with metadata and abstracts |
-| MCP reads | The requesting MCP client |
+| Library, map and recovery | Local Pulse storage |
+| Metadata lookup and discovery | Scholarly services used for that operation |
+| Dedicated Ollama report | Local Ollama on the Mac |
+| Optional cloud analysis | Configured cloud provider |
+| Direct reference-manager send | Chosen manager; metadata and abstract |
+| MCP reads | Requesting MCP client |
 
-Session authentication, loopback request checks, protected local credential storage, bounded extraction, background jobs and caches support the local service architecture. They do not constitute an independent security certification. Network availability, provider limits, input quality, model resources, and collection size affect results and responsiveness.
+Session authentication, loopback checks, protected credential storage, bounded extraction and background jobs support the local architecture. They are not an independent security certification. Index coverage, service limits, input quality, model resources and collection size affect results.
 
-The locally built 1.5.2 package passed **42 Python tests**, JavaScript parser/library checks, and MCP initialization and tool-discovery smoke checks. Live checks verified public-paper identity and counts, retrieved available references, and traversed successive citation pages. The exact packaged backend and PDF dependency were checked; the app's deep signature and disk-image integrity were verified.
+## 7. Availability, checks and getting started
 
-These checks used isolated data. Connector writes were tested with mocks; live Zotero/Mendeley account exports await account setup and authorization. The checks do not establish discovery recall, summary accuracy, or performance for every library. [Performance notes](docs/PERFORMANCE.md) contain release-specific observations for 1.3.1; those measurements should not be transferred to a different build.
+The **1.5.7 Mac release** includes the current workspace described above. It targets Apple Silicon Macs on macOS 11 or later and requires Python 3.10 or later. PDF extraction dependencies are included; a Python interpreter, Ollama and model weights are installed separately. The app is ad hoc signed and has not been notarized by Apple.
 
-## 9. Availability and getting started
+Download the DMG, drag Pulse into Applications and launch it. Add a seed paper, inspect its record, open Discovery options and review related candidates before adding them. The [installation guide](docs/MACOS-INSTALL.md) documents setup; the [source guide](local-web/README.md) supports a separate local test library.
 
-| Distribution | Availability | Scope |
-| --- | --- | --- |
-| **1.3.1 Mac release** | [Published DMG](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.3.1) | Shared library, discovery, network, Timeline and bibliography workspace |
-| **Repository `local-web` workspace** | [Source and setup guide](local-web/README.md) | Earlier local-web updates, including DOI-first parsing, Ollama summaries and expanded library controls |
-| **1.5.2 development build** | Built and verified locally; installer and MCP package are not yet GitHub release assets | Updated desktop drops, sourced metrics, pageable citation/reference lists, and Zotero/Mendeley/MCP connections described above |
+For this release, **62 Python checks and six JavaScript suites passed**, alongside syntax checks and isolated browser verification. Tests cover parsing, metadata matching, selected-paper reports, selection, bulk scope, save ordering, recovery, manager UI and OAuth guards using synthetic fixtures and mocked services. Packaging verifies resource contents, version, app signature and disk-image integrity. Live account transfers remain dependent on account setup and authorization. These checks do not establish search recall, summary accuracy or performance for every library.
 
-For the published app, download the DMG, copy Pulse into **Applications**, launch it, and add a seed paper. Inspect its record, choose discovery options, review candidates, and explore the resulting collection in Network or Timeline. The [installation guide](docs/MACOS-INSTALL.md) documents the public release.
-
-The published 1.3.1 Mac build targets Apple Silicon and macOS 11 or later, with Python 3.9 or later available to the launcher. The locally verified 1.5.2 build requires Python 3.10 or later at `/opt/homebrew/bin/python3` or `/usr/local/bin/python3`. PDF extraction dependencies are included in that package; a Python interpreter, Ollama and model weights are installed separately. These builds are ad hoc signed and are not Apple-notarized.
-
-For a separately runnable source workspace, follow the [local-web instructions](local-web/README.md). Its isolated data-directory option allows experimentation with a separate library. Export a copy of valuable work before clearing a collection.
-
-## 10. Scope and ongoing development
-
-Pulse is useful for exploratory literature reviews, topic familiarization, teaching, reading-group preparation and citation-led discovery. The researcher selects the question, judges relevance, reads the evidence, and decides which papers to preserve or transfer.
-
-Current practical limits include incomplete scholarly indexes, provider restrictions, ambiguous metadata, PDFs without readable text, model-dependent summary quality, and account-dependent integrations. A rigorous review still needs a documented search strategy and independent screening. Cross-platform installers, Apple notarization, OCR and quantitative evaluations of discovery and summarization remain outside the capabilities established here.
-
-For development setup, packaging, implementation provenance and tests of the published workspace, see [Development notes](docs/DEVELOPMENT.md). Report reproducible issues with the app version, the operation attempted and the observed result in [GitHub Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues).
+See [development notes](docs/DEVELOPMENT.md) for source layout, checks, MCP and reproducible packaging. Historical root workspace files and tests remain for compatibility; the current desktop build stages the `local-web` source. Apple notarization, cross-platform installers, OCR and quantitative discovery/summary evaluation remain outside the capabilities established here.

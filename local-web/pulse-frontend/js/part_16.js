@@ -55,20 +55,14 @@
         ? rawAbstract.slice(0, 297) + '...'
         : rawAbstract;
 
-      // 1. Relevance scores
-      const strongestLink = related[0]?.score || 0;
-      const semScore = Math.min(99, Math.max(30, Math.round(strongestLink * 100 || 84)));
-      const citScore = Math.min(98, Math.max(25, Math.round((Math.log10(Math.max(paper.citedByCount || 1, 1)) / 2.8) * 100)));
-      const cocScore = Math.min(95, Math.max(20, Math.round((related.filter(r => r.paper.journal === paper.journal).length / Math.max(1, related.length)) * 50 + 45)));
-      const conScore = Math.min(98, Math.max(35, Math.round(Math.min(1, (mergedKeywords(paper).length / 8)) * 45 + 50)));
-
-      // 2. Metrics (4-box row)
-      const metricCitations = paper.citedByCount ? String(paper.citedByCount) : '—';
-      const metricReferences = paper.referenceIds?.length ? String(paper.referenceIds.length) : (paper.references?.length ? String(paper.references.length) : '—');
-      const metricInfluential = paper.influentialCitationCount ? String(paper.influentialCitationCount) : (paper.citedByCount ? String(Math.max(1, Math.round(paper.citedByCount * 0.14))) : '—');
-      const yearNum = parseInt(paper.year || (String(paper.date || '').match(/\b(19|20)\d{2}\b/) || [''])[0]);
-      const yearsActive = yearNum ? Math.max(1, 2026 - yearNum) : 1;
-      const metricVelocity = (paper.citedByCount && yearNum) ? (paper.citedByCount / yearsActive).toFixed(1) : '—';
+      const metrics = metricsForPaper(paper);
+      const metricCitations = metricValue(metrics?.citationCount);
+      const metricReferences = metricValue(metrics?.referenceCount);
+      const metricInfluential = metricValue(metrics?.influentialCitationCount);
+      const yearNum = Number(paper.year);
+      const currentYear = new Date().getFullYear();
+      const metricVelocity = Number.isInteger(yearNum) && yearNum > 1500 && yearNum <= currentYear && Number.isFinite(metrics?.citationCount)
+        ? (metrics.citationCount / (currentYear - yearNum + 1)).toFixed(1) : '—';
 
       // 3. Key concepts
       const topConcepts = mergedKeywords(paper).slice(0, 8);
@@ -78,13 +72,11 @@
       if (related.length) {
         whyList.push({ icon: '🔗', text: `Strong linkage with <strong>${escapeHtml(compactTitle(related[0].paper.title))}</strong> (${Math.round(related[0].score * 100)}% match)` });
       }
-      if (paper.citedByCount && paper.citedByCount > 50) {
-        whyList.push({ icon: '⭐', text: `Cornerstone publication with <strong>${paper.citedByCount}</strong> verified citations` });
-      } else {
-        whyList.push({ icon: '🧠', text: `High SPECTER2 semantic affinity to active research graph` });
+      if (Number.isFinite(metrics?.citationCount)) {
+        whyList.push({ icon: '📚', text: `${escapeHtml(metrics.source)} indexes <strong>${metrics.citationCount}</strong> citations for this paper.` });
       }
       if (topConcepts.length) {
-        whyList.push({ icon: '🎯', text: `Shares key concepts: <em>${escapeHtml(topConcepts.slice(0, 3).join(', '))}</em>` });
+        whyList.push({ icon: '🏷️', text: `Extracted concepts: <em>${escapeHtml(topConcepts.slice(0, 3).join(', '))}</em>` });
       }
 
       els.details.hidden = false;
@@ -124,32 +116,6 @@
         </div>
 
         <div class="inspector-section">
-          <div class="inspector-section-title">Relevance to your search</div>
-          <div class="relevance-bars-list">
-            <div class="relevance-bar-row">
-              <span class="relevance-bar-label">Semantic similarity</span>
-              <div class="relevance-track"><div class="relevance-fill fill-sem" style="width:${semScore}%"></div></div>
-              <span class="relevance-score">${semScore}%</span>
-            </div>
-            <div class="relevance-bar-row">
-              <span class="relevance-bar-label">Citation proximity</span>
-              <div class="relevance-track"><div class="relevance-fill fill-cit" style="width:${citScore}%"></div></div>
-              <span class="relevance-score">${citScore}%</span>
-            </div>
-            <div class="relevance-bar-row">
-              <span class="relevance-bar-label">Co-citation strength</span>
-              <div class="relevance-track"><div class="relevance-fill fill-coc" style="width:${cocScore}%"></div></div>
-              <span class="relevance-score">${cocScore}%</span>
-            </div>
-            <div class="relevance-bar-row">
-              <span class="relevance-bar-label">Concept overlap</span>
-              <div class="relevance-track"><div class="relevance-fill fill-con" style="width:${conScore}%"></div></div>
-              <span class="relevance-score">${conScore}%</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="inspector-section">
           <div class="inspector-section-title" style="display:flex; justify-content:space-between; align-items:center;">
             <span>Key concepts</span>
             <button class="button small secondary tag-edit-chip" data-action="open-paper-keywords" data-paper="${paper.id}" type="button">Manage tags</button>
@@ -166,7 +132,7 @@
         </div>
 
         <div class="inspector-section">
-          <div class="inspector-section-title">Citation metrics</div>
+          <div class="inspector-section-title metrics-heading"><span>Citation metrics</span><button data-action="refresh-metrics" class="inspector-btn secondary" type="button">Refresh</button></div>
           <div class="metrics-quad-grid">
             <div class="metric-quad-box">
               <div class="metric-quad-label">Citations</div>
@@ -181,11 +147,14 @@
               <div class="metric-quad-val">${escapeHtml(metricInfluential)}</div>
             </div>
             <div class="metric-quad-box">
-              <div class="metric-quad-label">Rate / yr</div>
+              <div class="metric-quad-label" title="Citations divided by calendar years since publication, including the current year">Avg / yr</div>
               <div class="metric-quad-val">${escapeHtml(metricVelocity)}</div>
             </div>
           </div>
         </div>
+
+        <div class="citation-source-note" role="status">${metricsStatusText(paper)}</div>
+        <div class="citation-list-actions"><button class="inspector-btn secondary" data-action="list-citations" type="button">Citing papers</button><button class="inspector-btn secondary" data-action="list-references" type="button">References</button></div>
 
         <div class="inspector-section">
           <div class="inspector-section-title">Why this paper?</div>
@@ -288,6 +257,10 @@
         </div>
       `;
 
+      els.details.querySelector('[data-action="refresh-metrics"]')?.addEventListener('click', () => refreshPaperMetrics(paper, true));
+      els.details.querySelector('[data-action="list-citations"]')?.addEventListener('click', () => openPaperRelations(paper, 'citations'));
+      els.details.querySelector('[data-action="list-references"]')?.addEventListener('click', () => openPaperRelations(paper, 'references'));
+      refreshPaperMetrics(paper);
       els.details.querySelector('[data-action="close-details"]')?.addEventListener('click', closePaperPopup);
       els.details.querySelector('[data-action="lookup-metadata"]')?.addEventListener('click', async event => {
         event.currentTarget.disabled = true;

@@ -41,6 +41,9 @@ from pulse_core.metadata_scanner import (
     scan_file_for_metadata,
 )
 from pulse_core.metadata_resolution import resolve_metadata
+from pulse_core.paper_metrics import paper_metrics, paper_relations
+from pulse_core.library_managers import manager_status, configure_mendeley, public_config, disconnect_mendeley, save_manager_records, search_manager
+from pulse_core.mendeley_oauth import start_oauth
 from pulse_core.paper_agent import agent_status, PAPER_SUMMARY_JOBS
 from pulse_core.ollama_mgr import (
     OLLAMA_PROCESS,
@@ -48,6 +51,7 @@ from pulse_core.ollama_mgr import (
     test_gemma_settings,
 )
 from pulse_core.storage import (
+    change_library, list_recovery, restore_recovery,
     load_library,
     load_settings,
     public_settings,
@@ -113,6 +117,12 @@ class PulseHandler(SimpleHTTPRequestHandler):
         if not self.request_is_allowed(parsed):
             return
         path = parsed.path
+        if path == "/api/managers/status":
+            self.write_json(200, manager_status())
+            return
+        if path == "/api/managers/config":
+            self.write_json(200, public_config())
+            return
         if path == "/api/agent/status":
             self.write_json(200, agent_status())
             return
@@ -138,6 +148,9 @@ class PulseHandler(SimpleHTTPRequestHandler):
         if path == "/api/library":
             self.write_json(200, load_library())
             return
+        if path == "/api/library/recovery":
+            self.write_json(200, list_recovery())
+            return
         if path == "/api/health":
             settings = load_settings()
             self.write_json(200, {
@@ -162,11 +175,15 @@ class PulseHandler(SimpleHTTPRequestHandler):
             return
         path = parsed.path
         valid_post_endpoints = {
+            "/api/papers/metrics", "/api/papers/relations",
+            "/api/managers/config", "/api/managers/mendeley/connect", "/api/managers/mendeley/disconnect",
+            "/api/managers/save", "/api/managers/search",
             "/api/agent/start",
             "/api/agent/cancel",
             "/api/analyze",
             "/api/settings",
             "/api/library",
+            "/api/library/change", "/api/library/recovery/restore",
             "/api/test",
             "/api/metadata/doi",
             "/api/metadata/resolve",
@@ -190,10 +207,19 @@ class PulseHandler(SimpleHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length) or b"{}")
             handlers = {
+                "/api/papers/metrics": paper_metrics,
+                "/api/papers/relations": paper_relations,
+                "/api/managers/config": configure_mendeley,
+                "/api/managers/mendeley/connect": start_oauth,
+                "/api/managers/mendeley/disconnect": disconnect_mendeley,
+                "/api/managers/save": save_manager_records,
+                "/api/managers/search": search_manager,
                 "/api/agent/start": PAPER_SUMMARY_JOBS.start,
                 "/api/agent/cancel": PAPER_SUMMARY_JOBS.cancel,
                 "/api/settings": lambda p: public_settings(save_settings(p)),
                 "/api/library": save_library,
+                "/api/library/change": change_library,
+                "/api/library/recovery/restore": restore_recovery,
                 "/api/metadata/doi": lookup_doi_metadata,
                 "/api/metadata/resolve": resolve_metadata,
                 "/api/metadata/pmid": lookup_pmid_metadata,
@@ -402,6 +428,13 @@ def main():
             Path(port_file).write_text(str(bound_port), "utf-8")
         except Exception as e:
             print(f"Warning: could not write port file: {e}", file=sys.stderr)
+    launch_file = os.environ.get("PULSE_LAUNCH_FILE")
+    if launch_file:
+        descriptor = os.open(launch_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w") as output:
+            json.dump({"port": bound_port, "token": API_TOKEN}, output)
+            output.flush()
+            os.fsync(output.fileno())
     settings = load_settings()
     if resolve_ai_provider(settings) == "local":
         start_ollama_runtime_background()

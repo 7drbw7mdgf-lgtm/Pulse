@@ -67,10 +67,30 @@
       els.map.querySelectorAll('.node').forEach(node => {
         node.classList.toggle('is-selected', node.dataset.id === state.selectedId);
         node.classList.toggle('is-centered', node.dataset.id === state.centerId);
+        node.classList.toggle('is-linked', selectedLinkEndpoints().has(node.dataset.id));
       });
+      els.map.querySelectorAll('.edge').forEach(edge => edge.classList.toggle('is-selected', edge.dataset.link === state.selectedLinkId));
       els.map.querySelectorAll('.area-region').forEach(region => {
         region.classList.toggle('is-selected', region.dataset.area === state.selectedAreaId);
       });
+      document.querySelectorAll('.pulse-paper-card, .paper-card, .library-table-row, .rail-card-item, .timeline-paper').forEach(card => {
+        const id = card.dataset.paper || card.dataset.timelineId;
+        card.classList.toggle('is-selected', id === state.selectedId);
+      });
+    }
+
+    function inspectPaper(id, { closeAgent = true } = {}) {
+      if (!state.papers.some(paper => paper.id === id)) return;
+      state.selectedId = id;
+      state.selectedLinkId = null;
+      state.detailsAbstractExpanded = false;
+      if (state.libraryFullscreen) setLibraryFullscreen(false);
+      if (!state.inspectorVisible) setInspectorVisible(true);
+      if (closeAgent && !els.aiPanel.hidden) setAiPanelOpen(false);
+      renderSelection();
+      renderDetails();
+      els.details.scrollTop = 0;
+      if (typeof updateAgentControls === 'function') updateAgentControls();
     }
 
     function metadataSummary(paper) {

@@ -18,6 +18,7 @@
     }
 
     function render() {
+      if (typeof updateAgentControls === 'function') updateAgentControls();
       calculateRelatedness();
       if (state.selectedLinkId && !state.links.some(link => linkId(link) === state.selectedLinkId)) {
         state.selectedLinkId = null;

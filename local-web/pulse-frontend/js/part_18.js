@@ -277,6 +277,7 @@
         btn.classList.toggle('is-active', btn.dataset.density === state.paperView);
       });
       if (els.paperViewToggle) {
+        els.paperViewToggle.hidden = state.libraryFullscreen;
         els.paperViewToggle.textContent = state.paperView === 'compact' ? 'Expanded' : 'Compact';
         const densityLabel = `Show ${state.paperView === 'compact' ? 'expanded' : 'compact'} library view`;
         els.paperViewToggle.setAttribute('aria-label', densityLabel);

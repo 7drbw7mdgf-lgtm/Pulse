@@ -74,6 +74,7 @@
 
     function serializeMap() {
       return {
+        selectedId: state.selectedId, centerId: state.centerId, selectedAreaId: state.selectedAreaId,
         format: 'pulse-map',
         version: '1.0',
         generatedAt: new Date().toISOString(),
@@ -94,6 +95,7 @@
         areas: state.areas.map(area => ({ ...area })),
         papers: state.papers.map(paper => ({
           id: paper.id,
+          selected: paper.selected !== false,
           title: paper.title,
           name: paper.name,
           authors: paper.authors || [],
@@ -108,7 +110,9 @@
           openAlexUrl: paper.openAlexUrl || '',
           referenceIds: paper.referenceIds || [],
           citedByIds: paper.citedByIds || [],
-          citedByCount: paper.citedByCount || 0,
+          citedByCount: paper.citedByCount ?? null,
+          s2PaperId: paper.s2PaperId || '',
+          citationMetrics: paper.citationMetrics || null,
           abstract: paper.abstract || '',
           paperKeywords: paper.paperKeywords || [],
           gemmaKeywords: paper.gemmaKeywords || [],
@@ -198,6 +202,7 @@
         paperKeywords: paper.paperKeywords || paper.keywords || [],
         text: paper.text || paper.fullText || paper.abstract || ''
       }, source));
+      state.allowEmptySave = false;
       document.querySelectorAll('[data-mode]').forEach(button => {
         button.classList.toggle('is-active', button.dataset.mode === state.mode);
       });
@@ -206,6 +211,7 @@
     }
 
     async function restoreLibrary() {
+      await backendReady;
       let backendResponded = false;
       try {
         const response = await fetch(backendUrl('/api/library'), { headers: apiHeaders() });
@@ -263,12 +269,14 @@
 
     async function saveLibrary() {
       if (!state.autosaveReady) return;
+      if (state.papers.length) state.allowEmptySave = false;
       const payload = {
         ...serializeMap(),
         paperView: state.paperView,
         centerId: state.centerId,
         selectedId: state.selectedId,
-        selectedAreaId: state.selectedAreaId
+        selectedAreaId: state.selectedAreaId,
+        allowEmpty: state.allowEmptySave === true
       };
       try {
         localStorage.setItem('pulse-autosave-library', JSON.stringify(payload));
@@ -283,22 +291,27 @@
         });
         state.pendingLibraryWrites ||= new Set();
         state.pendingLibraryWrites.add(write);
-        try { await write; } finally { state.pendingLibraryWrites.delete(write); }
+        try {
+          const response = await write;
+          if (!response.ok) throw new Error('The library could not be saved.');
+        } finally { state.pendingLibraryWrites.delete(write); }
         updateSaveStatePill('Saved');
         setTimeout(() => updateSaveStatePill('Ready'), 1800);
       } catch {
-        updateSaveStatePill('Ready');
+        updateSaveStatePill('Not saved');
       }
     }
 
     function saveLibrarySync() {
       if (!state.autosaveReady) return;
+      if (state.papers.length) state.allowEmptySave = false;
       const payload = {
         ...serializeMap(),
         paperView: state.paperView,
         centerId: state.centerId,
         selectedId: state.selectedId,
-        selectedAreaId: state.selectedAreaId
+        selectedAreaId: state.selectedAreaId,
+        allowEmpty: state.allowEmptySave === true
       };
       try {
         localStorage.setItem('pulse-autosave-library', JSON.stringify(payload));

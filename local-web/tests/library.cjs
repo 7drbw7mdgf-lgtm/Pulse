@@ -5,7 +5,7 @@ function fixture(response = {ok:true, json:async()=>({ok:true})}, confirm = true
  const paper={id:'test',title:'Synthetic test paper'}, calls=[];
  const state={papers:[paper],links:[{source:'test'}],areas:[{id:'area'}],clusters:[],vectors:new Map([['test',1]]),keywords:new Map([['test',['tag']]]),autosaveReady:true,filterTags:['tag']};
  const context={state,els:{},AbortSignal,confirmClearPapers:async()=>confirm,clearTimeout(){},localStorage:{removeItem(){},setItem(k,v){calls.push(['cache',JSON.parse(v)])}},
-  fetch:async(url,options)=>{calls.push(['reset',JSON.parse(options.body)]);return response},backendUrl:p=>p,apiHeaders:x=>x,showToast:m=>calls.push(['toast',m])};
+  serializeMap:()=>({papers:state.papers,areas:state.areas}), libraryMutationRequest:async(url,payload)=>{calls.push(['reset',payload]);const result=await response.json();if(!response.ok)throw new Error(result.error);return result},backendUrl:p=>p,apiHeaders:x=>x,showToast:m=>calls.push(['toast',m])};
  for(const name of ['updateMetrics','updateSaveStatePill','render','renderPapers','renderDetails','renderAreasPanel','renderLinkages','scheduleAutosave'])context[name]=()=>{};
  vm.createContext(context);vm.runInContext(clearSource+'\nasync function promptClearLibrary()'+promptSource,context);
  return {context,state,paper,calls};
@@ -14,7 +14,7 @@ function fixture(response = {ok:true, json:async()=>({ok:true})}, confirm = true
  const success=fixture();assert.equal(await success.context.clearAppToDefault(true),true);
  assert.equal(success.state.papers.length,0);assert.equal(success.state.links.length,0);assert.equal(success.state.vectors.size,0);
  assert.equal(success.state.autosaveReady,true);assert.equal(success.state.clearingLibrary,false);
- assert.equal(success.calls.find(c=>c[0]==='reset')[1].reset,true);
+ assert.equal(success.calls.find(c=>c[0]==='reset')[1].action,'clear');
  const failure=fixture({ok:false,json:async()=>({error:'Test server rejection'})});
  assert.equal(await failure.context.clearAppToDefault(true),false);assert.equal(failure.state.papers[0],failure.paper);assert.equal(failure.state.filterTags[0],'tag');
  assert.equal(failure.state.autosaveReady,true);assert(!failure.calls.some(c=>c[0]==='cache'));

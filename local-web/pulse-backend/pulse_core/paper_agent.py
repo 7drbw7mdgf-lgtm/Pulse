@@ -142,8 +142,10 @@ class PaperSummaryJobs:
         papers = payload.get("papers")
         if not isinstance(papers, list) or not papers or not all(isinstance(p, dict) for p in papers):
             raise ClientError(400, "Add at least one paper before starting a scan.")
-        if len(papers) > 200 or any(len(str(p.get("text") or "")) > 300000 for p in papers):
-            raise ClientError(400, "Scan up to 200 papers at a time, with up to 300,000 characters of extracted text per paper.")
+        if len(papers) != 1:
+            raise ClientError(400, "Select exactly one paper to create a report.")
+        if len(str(papers[0].get("text") or "")) > 300000:
+            raise ClientError(400, "Use a paper with up to 300,000 characters of extracted text.")
         status = agent_status()
         if not status["online"]:
             raise ClientError(503, status["message"])
@@ -162,7 +164,7 @@ class PaperSummaryJobs:
                 del self.jobs[min(self.jobs, key=lambda key: self.jobs[key]["created"])]
             job_id = uuid.uuid4().hex
             view = {"id": job_id, "status": "running", "model": model, "total": len(papers),
-                    "completed": 0, "stage": "Preparing papers…", "results": [], "error": ""}
+                    "paperId": str(papers[0].get("id") or "1"), "completed": 0, "stage": "Preparing paper…", "results": [], "error": ""}
             job = {"view": view, "cancel": threading.Event(), "created": time.time()}
             self.jobs[job_id] = job
             snapshot = copy.deepcopy(view)

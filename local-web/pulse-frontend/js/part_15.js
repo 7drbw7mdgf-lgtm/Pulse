@@ -156,9 +156,7 @@
 
       els.details.querySelectorAll('[data-action="inspect-paper"]').forEach(btn => {
         btn.addEventListener('click', () => {
-          state.selectedId = btn.dataset.paper;
-          state.selectedLinkId = null;
-          render();
+          inspectPaper(btn.dataset.paper);
         });
       });
 

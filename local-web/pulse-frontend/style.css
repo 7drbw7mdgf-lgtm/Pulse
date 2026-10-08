@@ -17,6 +17,8 @@
 @import url("css/part_17.css");
 @import url("css/part_18.css");
 
-@import url("css/workspace.css?v=library-actions-20261007-2");
+@import url("css/workspace.css?v=ui-20261008-9");
 
-@import url("css/paper-agent.css?v=agent-20261007-2");
+@import url("css/paper-agent.css?v=ui-20261008-9");
+
+@import url("css/library-connections.css?v=metrics-20261008");

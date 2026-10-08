@@ -263,12 +263,12 @@
     function applyCitationMetadata(paper, metadata = {}) {
       mergeDoiMetadata(paper, metadata);
       if (metadata.s2PaperId) paper.s2PaperId = metadata.s2PaperId;
-      if (metadata.influentialCitationCount) paper.influentialCitationCount = metadata.influentialCitationCount;
+      if (Number.isFinite(metadata.influentialCitationCount)) paper.influentialCitationCount = metadata.influentialCitationCount;
       paper.openAlexId = normalizeOpenAlexId(metadata.openAlexId || metadata.openAlexUrl || paper.openAlexId || '');
       paper.openAlexUrl = metadata.openAlexUrl || paper.openAlexUrl || (paper.openAlexId ? `https://openalex.org/${paper.openAlexId}` : '');
       paper.referenceIds = dedupeList([...(paper.referenceIds || []), ...(metadata.referenceIds || [])].map(normalizeOpenAlexId).filter(Boolean)).slice(0, 160);
       paper.citedByIds = dedupeList([...(paper.citedByIds || []), ...(metadata.citedByIds || [])].map(normalizeOpenAlexId).filter(Boolean)).slice(0, 160);
-      paper.citedByCount = Number(metadata.citedByCount || paper.citedByCount || 0);
+      if (Number.isFinite(metadata.citedByCount)) paper.citedByCount = metadata.citedByCount;
     }
 
     async function mapCitationTopology() {

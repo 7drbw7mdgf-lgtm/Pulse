@@ -1,0 +1,21 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
+const source=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/part_23.js'),'utf8');
+const selected=source.slice(source.indexOf('function managerSelectedPapers()'),source.indexOf('async function refreshManagers()'));
+const elements=new Map();function element(){return {value:'selected',textContent:'',hidden:false,disabled:false,classList:{toggle(){}}};}
+const managerUi={status:{mendeley:{configured:true,sharedRegistration:true,connected:false},zotero:{connected:false}},busy:false,connecting:false};
+const context={document:{getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id);}},managerUi,state:{papers:[{id:'one'},{id:'two'}],selectedId:'two'}};
+vm.createContext(context);vm.runInContext(selected,context);context.updateManagers();
+assert.equal(elements.get('mendeleyDeveloperSettings').hidden,true);assert.equal(elements.get('mendeleyConnect').disabled,false);assert(elements.get('mendeleyConnectionNote').textContent.includes('Sign in'));
+managerUi.status.mendeley.pending=true;context.updateManagers();assert.equal(elements.get('mendeleyConnect').disabled,true);
+managerUi.status.mendeley.pending=false;managerUi.status.mendeley.connected=true;context.updateManagers();assert.equal(elements.get('mendeleyConnect').hidden,true);assert.equal(elements.get('mendeleySend').disabled,false);
+context.state.selectedId=null;context.updateManagers();assert.equal(elements.get('mendeleySend').disabled,true);
+managerUi.status.mendeley={configured:false,connected:false};context.updateManagers();assert.equal(elements.get('mendeleyConnect').disabled,false);assert.equal(elements.get('mendeleyConnect').textContent,'Set up direct transfer');assert(elements.get('mendeleyConnectionNote').textContent.includes('Export'));
+context.state.selectedId='two';context.updateManagers();assert.equal(elements.get('mendeleySend').disabled,false);assert.equal(elements.get('mendeleySend').textContent,'Export for Mendeley');
+const recordDownloads=[];context.downloadRecordFile=(...args)=>recordDownloads.push(args);context.recordRis=papers=>papers.map(p=>p.id).join(',');
+const exporter=source.slice(source.indexOf('function exportMendeleyCitations()'),source.indexOf("for (const provider of ['zotero','mendeley']) document.getElementById(provider+'Send')"));
+vm.runInContext(exporter,context);context.exportMendeleyCitations();assert.equal(recordDownloads[0][1],'two');assert(elements.get('managerFeedback').textContent.includes('Exported 1 citation'));
+context.state.selectedId=null;context.exportMendeleyCitations();assert.equal(recordDownloads.length,1);
+const connector=source.slice(source.indexOf('async function connectMendeley()'),source.indexOf("document.getElementById('mendeleyConnect').addEventListener"));
+context.document.getElementById('mendeleyClientId').focus=()=>{};context.pulseRecordsRequest=()=>{throw new Error('Unconfigured setup must not request authorization');};
+vm.runInContext(connector,context);context.connectMendeley();assert.equal(elements.get('mendeleyDeveloperSettings').open,true);
+console.log('PASS: shared registration hides developer settings; pending sign-in prevents duplicate requests; sending requires connection and chosen citations; unconfigured Mendeley offers selected-only export and actionable setup.');

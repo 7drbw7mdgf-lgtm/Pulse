@@ -17,6 +17,11 @@ class Summaries(unittest.TestCase):
  def test_full_text_and_abstract_both_read(self):
   text,source,_=paper_source({'name':'study.pdf','text':'Detailed study text. '*40,'abstract':'Study abstract.'})
   self.assertIn('Study abstract.',text);self.assertIn('Detailed study',text);self.assertEqual(source,'Extracted paper text')
+ def test_multi_paper_reports_are_rejected_before_model_access(self):
+  with patch("pulse_core.paper_agent.agent_status") as status:
+   with self.assertRaisesRegex(ClientError,"exactly one paper"):
+    PaperSummaryJobs().start({"papers":[{"id":"one"},{"id":"two"}]})
+   status.assert_not_called()
  def test_cloud_and_missing_models_rejected(self):
   with patch('pulse_core.paper_agent.agent_status',return_value={'online':True,'models':['local'],'model':'local'}):
    with self.assertRaises(ClientError):PaperSummaryJobs().start({'papers':[{}],'model':'cloud'})

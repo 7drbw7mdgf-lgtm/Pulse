@@ -1,6 +1,6 @@
 
     async function clearAppToDefault(skipConfirm = false) {
-      if (state.clearingLibrary) return false;
+      if (state.clearingLibrary || state.libraryMutation) return false;
       if (!skipConfirm && !await confirmClearPapers(state.papers.length)) return false;
 
       const autosaveWasReady = state.autosaveReady;
@@ -13,13 +13,8 @@
       try {
         // Complete older saves before resetting, so they cannot restore cleared papers.
         await Promise.allSettled([...(state.pendingLibraryWrites || [])]);
-        const response = await fetch(backendUrl('/api/library'), {
-          method: 'POST', headers: apiHeaders({ 'Content-Type': 'application/json' }),
-          signal: AbortSignal.timeout(15000),
-          body: JSON.stringify({reset: true, papers: [], areas: [], format: 'pulse-map', version: '1.0'})
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || 'The library could not be cleared.');
+        const result = await libraryMutationRequest('/api/library/change', {action:'clear', workspace:serializeMap()});
+        state.librarySelectedIds?.clear();
 
         // Clear the browser only after the backend has saved the empty workspace.
         state.papers = [];
@@ -64,7 +59,7 @@
         renderDetails();
         renderAreasPanel();
         renderLinkages();
-        showToast('All papers cleared.');
+        showToast('All papers cleared. Use Undo or Recovery to restore them.');
         return true;
       } catch (error) {
         showToast(`Could not clear papers: ${error.message}`);
@@ -270,14 +265,15 @@
     els.map?.addEventListener('dblclick', event => {
       if (!event.target.closest?.('.node') && !event.target.closest?.('.area-region')) clearCenteredPaper();
     });
-    els.map?.addEventListener('click', event => {
-      if (event.target === els.map || event.target.tagName === 'svg') {
-        state.selectedId = null;
-        state.selectedLinkId = null;
-        render();
-        renderDetails();
-      }
-    });
+    function handleGraphBackgroundClick(event) {
+      if (event.target.closest?.('.node, .edge, .edge-hit, .area-region')) return;
+      state.selectedId = null;
+      state.selectedLinkId = null;
+      setInspectorVisible(false, false);
+      render();
+      renderDetails();
+    }
+    els.map?.addEventListener('click', handleGraphBackgroundClick);
     bindCanvasPanEvents();
     els.settingsButton?.addEventListener('click', () => setSettingsOpen(true));
     els.settingsCloseButton?.addEventListener('click', () => setSettingsOpen(false));
