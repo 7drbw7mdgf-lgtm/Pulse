@@ -10,6 +10,10 @@ This document describes capabilities through the **locally verified 1.5.2 develo
 
 **[Published Mac download](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.3.1/Pulse-Tauri-1.3.1.dmg)** · [Releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases) · [Installation guide](docs/MACOS-INSTALL.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
 
+![Pulse 1.5.2 workspace with a paper network, DOI-verified metadata, source-linked citation metrics, and reference-manager connections.](docs/images/pulse-1.5.2-workspace.png)
+
+*The current 1.5.2 development workspace. Screenshots in this document use an isolated demonstration library containing public bibliographic records. Citation counts are provider snapshots captured on 8 October 2026.*
+
 ## Abstract
 
 Literature exploration involves several connected tasks: identifying a publication, finding its intellectual neighbors, comparing sources, deciding what to read, and preserving a useful bibliography. Pulse connects these tasks around a shared local paper library. It combines citation-based exploration with recommendation and concept-search branches, supports multiple visual views of the same collection, and offers local summaries through Ollama.
@@ -44,9 +48,13 @@ The table describes the 1.5.2 development build; release availability is listed 
 | Reference-manager connections | Explicit metadata sends to Zotero Desktop and an authorized Mendeley account | Carry selected discoveries into a writing workflow |
 | MCP tools | Library search, metrics, citation/reference pages, connection status, and selected-record saves | Make bibliographic operations available to a compatible assistant |
 
-![Pulse's Network workspace, library and paper inspector.](docs/images/network.png)
+### Latest workspace improvements
 
-*Published 1.3.1 interface with an illustrative sample library. This image demonstrates the workspace layout; it does not show every 1.5.2 addition.*
+- **A simpler discovery header.** A compact dropdown opens a floating options panel for discovery methods and exploration depth. Add, Import and Export sit at the bottom of the left navigation; the library preview sits beneath Settings.
+- **Drop papers onto the map.** PDF, BibTeX, RIS and JSON files can be added directly in the network area. DOI extraction leads the lookup, with available bibliographic metadata used when no reliable DOI is found.
+- **More room for a growing library.** Switch between the sidebar and a full-screen library, choose compact or expanded records, and clear papers after confirmation. Hide the inspector with its toggle to expand the map.
+- **Inspect the citation evidence.** Confirm a paper's identity, see the metric source and check time, then browse, filter or export citing-paper and reference lists. Load additional pages or all records available from the selected index.
+- **Summarize and connect.** Open the floating local AI agent for a focused paper scan, or use the top connection box to configure Zotero and Mendeley and send chosen records. The MCP bridge exposes the same bibliographic workflow to compatible assistants.
 
 ## 3. From imported files to identifiable papers
 
@@ -72,9 +80,9 @@ The Network workspace places papers, relationships, the library, and the inspect
 
 Timeline arranges papers chronologically, helping researchers move from earlier work to newer developments. Bibliography and library views emphasize titles, authors, years and journals. Search, tags and sorting help narrow the collection. Full-screen library mode and compact/expanded density controls in the newer workspace support focused reading-list management. The inspector can be hidden to give the map more space.
 
-![Pulse's chronological Timeline view.](docs/images/timeline.png)
+![Pulse 1.5.2 full-screen library with expanded paper records, editable metadata, compact-view toggle and clear-papers control.](docs/images/pulse-1.5.2-library.png)
 
-*Timeline in the published 1.3.1 interface, using demonstration records.*
+*Full-screen library in expanded mode. Each record brings its bibliographic details and abstract into view; Compact returns to a denser reading list, and Exit full screen restores the map workspace.*
 
 Together, these views support concrete tasks: tracing a field's development, comparing a small group of related studies, organizing papers for a seminar, or assembling a bibliography around a research question.
 
@@ -88,6 +96,10 @@ The inspector displays citation and reference counts and, where supplied, influe
 
 Coverage is reported separately from headline metrics. A provider's paper counter can differ from the count returned by its searchable list index. Some indexed references may be unresolved, and some lists may be withheld. Pulse exposes these differences instead of inventing missing records. “All available pages loaded” describes the response of the chosen index, not a claim that every published citation has been recovered.
 
+![Pulse 1.5.2 citing-paper list with provider coverage, filtering, pagination, load-all and export controls.](docs/images/pulse-1.5.2-citations.png)
+
+*The citing-paper browser for the PRISMA 2020 statement, with 200 records loaded. The reported paper counter and searchable-list count are displayed separately. The same browser supports references; exports contain the records loaded so far.*
+
 ## 7. Optional local AI and connected bibliographies
 
 ### Local paper summaries
@@ -98,6 +110,10 @@ Results identify whether the source was extracted paper text, an abstract, or me
 
 Ollama and its model weights are installed separately. The dedicated summary agent uses local inference. Broader AI settings also support optional cloud analysis; data handling therefore depends on the feature and provider selected. Basic bibliography management and graph exploration do not require an AI model.
 
+![Pulse 1.5.2 local AI agent with Ollama model selection, selected-paper scope, a focus prompt, completed scan and downloadable summary.](docs/images/pulse-1.5.2-agent.png)
+
+*A completed local Ollama scan of the public PRISMA abstract. The result is labeled Abstract, identifying the evidence supplied to the model. This demonstrates the summary workflow; generated interpretations still require checking against the paper.*
+
 ### Zotero and Mendeley
 
 The 1.5.2 development build adds a compact connection box at the top of the page. It lets users choose a selected paper, selected discovery results, the loaded citation/reference list, or the entire Pulse library for transfer.
@@ -105,6 +121,10 @@ The 1.5.2 development build adds a compact connection box at the top of the page
 Zotero uses the Desktop application on the same Mac and imports into its currently selected editable library or collection. Mendeley uses a user-configured registered application: client ID, client secret, and matching redirect URL, followed by account authorization. Connection status is checked before the interface enables sending.
 
 Transfers contain bibliographic metadata and abstracts. These connector operations do not upload PDFs or full paper text. Pulse tracks its own successful sends and retains successful receipts if a later record fails. This reduces repeat sends through Pulse, while duplicates created outside Pulse still require reference-manager review.
+
+![Pulse 1.5.2 reference-manager connection panel with Zotero Desktop status, configurable Mendeley application settings and a transfer-scope selector.](docs/images/pulse-1.5.2-connections.png)
+
+*Connection setup in the 1.5.2 development build. The demonstration accounts are not connected; sending becomes available after the destination is ready and, for Mendeley, the user authorizes the account.*
 
 ### MCP access
 
