@@ -12,6 +12,7 @@ import os
 import json
 import zlib
 import tempfile
+import subprocess
 import urllib.request
 import urllib.parse
 from pathlib import Path
@@ -23,11 +24,21 @@ os.environ.setdefault('PULSE_CONFIG_DIR', tempfile.mkdtemp(prefix='pulse-securit
 import pulse_backend
 
 def test_version():
-    print("[*] Testing version bump to 1.3.1...")
-    assert pulse_backend.APP_VERSION == "1.3.1", f"Expected 1.3.1, got {pulse_backend.APP_VERSION}"
-    package_json = json.loads((Path(__file__).resolve().parent / "package.json").read_text("utf-8"))
-    assert package_json.get("version") == "1.3.1", f"package.json version is {package_json.get('version')}"
-    print("    [+] Version 1.3.1 verified.")
+    print("[*] Testing current release version consistency and legacy backend...")
+    root = Path(__file__).resolve().parent
+    version = json.loads((root / "package.json").read_text("utf-8"))["version"]
+    for relative in ("package-lock.json", "desktop/package.json", "desktop/package-lock.json", "desktop/src-tauri/tauri.conf.json"):
+        actual = json.loads((root / relative).read_text("utf-8"))["version"]
+        assert actual == version, f"{relative} version is {actual}; expected {version}"
+    env = {key: value for key, value in os.environ.items() if key not in ("PULSE_APP_VERSION", "IRATXE_APP_VERSION")}
+    current = subprocess.check_output(
+        [sys.executable, "-c", "from pulse_core.constants import APP_VERSION; print(APP_VERSION)"],
+        cwd=root / "local-web/pulse-backend", env=env, text=True).strip()
+    assert current == version, f"Current backend version is {current}; expected {version}"
+    frontend = (root / "local-web/pulse-frontend/index.html").read_text("utf-8")
+    assert f"<title>Pulse v{version} " in frontend, "Frontend release version differs"
+    assert pulse_backend.APP_VERSION == "1.3.1", "Historical compatibility backend changed unexpectedly"
+    print(f"    [+] Current release {version} and legacy compatibility version verified.")
 
 def test_credential_encryption():
     print("[*] Testing credential encryption at rest...")
