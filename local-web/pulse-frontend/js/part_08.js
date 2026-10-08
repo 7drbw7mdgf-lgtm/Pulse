@@ -19,7 +19,7 @@
           journal: get(['journal', 'publication', 'source', 'container-title']),
           doi: normalizeDoi(get(['doi', 'DOI', 'url', 'link'])),
           pmid: get(['pmid', 'pubmed id']), volume: get(['volume']), issue: get(['issue', 'number']),
-          pages: get(['pages', 'page']), issn: get(['issn']),
+          pages: get(['pages', 'page']), issn: get(['issn']), publisher: get(['publisher']), url: get(['url','link']), articleNumber: get(['articlenumber','article number']), isbn: get(['isbn']), language: get(['language']),
           abstract: get(['abstract', 'summary']),
           paperKeywords: splitKeywords(get(['keywords', 'keyword', 'tags'])),
           text: row.join(' ')
@@ -70,6 +70,8 @@
         doiVerified: Boolean(paper.doiVerified),
         pmid: String(paper.pmid || ''),
         volume: String(paper.volume || ''), issue: String(paper.issue || ''), pages: String(paper.pages || ''), issn: String(paper.issn || ''),
+        publisher: String(paper.publisher || ''), url: String(paper.url || ''), articleNumber: String(paper.articleNumber || ''), isbn: String(paper.isbn || ''), language: String(paper.language || ''), publicationType: String(paper.publicationType || ''),
+        metadataCheckedAt: paper.metadataCheckedAt || '', metadataSnapshot: paper.metadataSnapshot || null, mendeleySource: paper.mendeleySource || null,
         metadataNote: paper.metadataNote || '',
         metadataMatch: paper.metadataMatch || null,
         abstract: cleanAbstract(paper.abstract || ''),
@@ -165,7 +167,8 @@
         if (!response.ok) throw new Error(result.error || 'DOI lookup failed.');
         paper.doi = result.doi || doi;
         paper.doiVerified = true;
-        mergeDoiMetadata(paper, result.metadata || {});
+        applyVerifiedMetadata(paper, result.metadata || {});
+        if (result.matched) paper.metadataCheckedAt = new Date().toISOString();
         paper.metadataSource = result.source || 'DOI';
         return true;
       } catch (error) {
@@ -182,7 +185,7 @@
       if (metadata.journal) paper.journal = metadata.journal;
       if (metadata.doi) paper.doi = normalizeDoi(metadata.doi);
       if (metadata.doiVerified !== undefined) paper.doiVerified = Boolean(metadata.doiVerified);
-      for (const field of ['pmid', 'volume', 'issue', 'pages', 'issn']) {
+      for (const field of ['pmid', 'volume', 'issue', 'pages', 'issn', 'publisher', 'url', 'articleNumber', 'isbn', 'language', 'publicationType']) {
         if (metadata[field]) paper[field] = String(metadata[field]);
       }
       if (metadata.abstract && (!paper.abstract || paper.abstract.length < 120 || looksBinary(paper.abstract))) paper.abstract = metadata.abstract;
@@ -367,17 +370,19 @@
     }
     const metadataResolutionCache = new Map();
     async function resolvePaperMetadata(paper, options = {}) {
-      if (paper.doiVerified && !options.force) return true;
+      if (!options.force && paper.metadataMatch?.matched && Date.now() - Date.parse(paper.metadataCheckedAt || '') < 7 * 86400000) return true;
       const payload = {
-        name: paper.name, title: paper.title === paper.name ? '' : paper.title, authors: paperAuthors(paper), doi: paper.doi || '',
+        name: paper.name, title: paper.title === paper.name && /\.pdf$/i.test(paper.name || '') ? '' : paper.title, authors: paperAuthors(paper), doi: paper.doi || '',
         pmid: paper.pmid || '', year: paper.year || '', date: paper.date || '', journal: paper.journal || '',
         volume: paper.volume || '', issue: paper.issue || '', pages: paper.pages || '', issn: paper.issn || '',
         abstract: paper.abstract || '', keywords: (paper.paperKeywords || []).join('; '),
-        text: options.text || paper.text || '', parseInput: Boolean(options.parseInput)
+        text: (options.text || (paper.doi && !options.parseInput ? '' : paper.text || '')).slice(0,12000), parseInput: Boolean(options.parseInput)
       };
       const cacheKey = JSON.stringify(payload);
+      if (options.force) metadataResolutionCache.delete(cacheKey);
       try {
         if (!metadataResolutionCache.has(cacheKey)) {
+          if (metadataResolutionCache.size >= 128) metadataResolutionCache.delete(metadataResolutionCache.keys().next().value);
           metadataResolutionCache.set(cacheKey, (async () => {
             const response = await fetch(backendUrl('/api/metadata/resolve'), {
               method: 'POST', headers: apiHeaders({'Content-Type':'application/json'}), body: JSON.stringify(payload)
@@ -388,7 +393,9 @@
           })());
         }
         const result = await metadataResolutionCache.get(cacheKey);
-        mergeDoiMetadata(paper, result.metadata || {});
+        if (!result.matched) metadataResolutionCache.delete(cacheKey);
+        applyVerifiedMetadata(paper, result.metadata || {});
+        if (result.matched) paper.metadataCheckedAt = new Date().toISOString();
         paper.metadataSource = result.source || paper.metadataSource;
         paper.metadataMatch = { matched: result.matched, strategy: result.strategy, ambiguous: result.ambiguous,
           score: result.match?.score, candidates: result.candidates || [] };
@@ -403,6 +410,57 @@
         paper.metadataNote = `Lookup unavailable. Extracted details kept: ${error.message}`;
         return false;
       }
+    }
+
+    const bibliographicFields = ['title','authors','year','date','journal','doi','pmid','volume','issue','pages','issn','publisher','url','articleNumber','isbn','language','publicationType','abstract'];
+    function applyVerifiedMetadata(paper, metadata) {
+      const previous = paper.metadataSnapshot;
+      const edits = {};
+      if (previous) for (const key of bibliographicFields) {
+        if (Object.prototype.hasOwnProperty.call(previous, key) && JSON.stringify(paper[key] || '') !== JSON.stringify(previous[key] || '')) edits[key] = paper[key];
+      }
+      mergeDoiMetadata(paper, metadata);
+      const baseline = Object.fromEntries(bibliographicFields.map(key => [key, paper[key] || '']));
+      Object.assign(paper, edits);
+      const keywords = metadata.paperKeywords || splitKeywords(metadata.keywords || '');
+      if (keywords.length) paper.paperKeywords = [...new Set([...(paper.paperKeywords || []), ...keywords])];
+      paper.metadataSnapshot = baseline;
+    }
+    const paperLookupJobs = new WeakMap();
+    function lookupPaperOnce(paper, options = {}) {
+      if (!paperLookupJobs.has(paper)) {
+        const job = resolvePaperMetadata(paper, options).finally(() => paperLookupJobs.delete(paper));
+        paperLookupJobs.set(paper, job);
+      }
+      return paperLookupJobs.get(paper);
+    }
+    let automaticMetadataRunning = false;
+    const automaticMetadataAttempts = new WeakMap();
+    async function enrichLibraryAutomatically() {
+      if (automaticMetadataRunning || !state.autosaveReady || state.libraryMutation || state.clearingLibrary) return;
+      automaticMetadataRunning = true;
+      try {
+        for (const paper of [...state.papers]) {
+          if (state.libraryMutation || state.clearingLibrary) break;
+          if (!state.papers.includes(paper)) continue;
+          if (paper.metadataMatch?.matched && Date.now() - Date.parse(paper.metadataCheckedAt || '') < 7 * 86400000) continue;
+          if (Date.now() - (automaticMetadataAttempts.get(paper) || 0) < 300000) continue;
+          automaticMetadataAttempts.set(paper, Date.now());
+          await lookupPaperOnce(paper);
+          if (state.papers.includes(paper)) render();
+        }
+      } finally { automaticMetadataRunning = false; }
+    }
+    async function preparePaperExport(papers) {
+      showToast('Checking citation details…');
+      let next = 0;
+      await Promise.all(Array.from({length: Math.min(2, papers.length)}, async () => {
+        while (next < papers.length) await lookupPaperOnce(papers[next++]);
+      }));
+      if (papers.some(p => state.papers.includes(p))) render();
+      const missing = papers.filter(p => !paperAuthors(p).length || !p.year || !p.journal || (!p.pages && !p.articleNumber));
+      if (missing.length) showToast(`Citation details checked. ${missing.length} paper${missing.length === 1 ? ' has' : 's have'} details the source did not supply; available metadata will be exported.`);
+      return papers;
     }
 
     function paperMetadataSearchText(paper) {

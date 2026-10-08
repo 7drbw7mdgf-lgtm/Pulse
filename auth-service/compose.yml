@@ -1,0 +1,38 @@
+services:
+  broker:
+    build: .
+    env_file: .env
+    environment:
+      PULSE_AUTH_ORIGIN: https://${PULSE_AUTH_DOMAIN}
+      PULSE_AUTH_DATABASE: /data/auth.sqlite
+      PULSE_TRUST_PROXY: '1'
+    volumes:
+      - auth-data:/data
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  tls:
+    image: caddy:2-alpine
+    environment:
+      PULSE_AUTH_DOMAIN: ${PULSE_AUTH_DOMAIN}
+    ports: ['443:443', '80:80']
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - tls-data:/data
+      - tls-config:/config
+    restart: unless-stopped
+    depends_on:
+      broker:
+        condition: service_healthy
+volumes:
+  auth-data:
+  tls-data:
+  tls-config:

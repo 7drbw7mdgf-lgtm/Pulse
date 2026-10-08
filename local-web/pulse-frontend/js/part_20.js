@@ -4,6 +4,11 @@
       if (!skipConfirm && !await confirmClearPapers(state.papers.length)) return false;
 
       const autosaveWasReady = state.autosaveReady;
+      const ignoredBefore = state.mendeleyIgnored;
+      const syncPausedBefore = state.mendeleySyncPaused;
+      rememberMendeleyRemovals(state.papers);
+      state.mendeleySyncPaused = true;
+      state.syncEpoch = (state.syncEpoch || 0) + 1;
       state.clearingLibrary = true;
       state.autosaveReady = false;
       clearTimeout(state.autosaveTimer);
@@ -62,6 +67,7 @@
         showToast('All papers cleared. Use Undo or Recovery to restore them.');
         return true;
       } catch (error) {
+        state.mendeleyIgnored = ignoredBefore; state.mendeleySyncPaused = syncPausedBefore;
         showToast(`Could not clear papers: ${error.message}`);
         return false;
       } finally {
@@ -103,14 +109,15 @@
       return `"${text.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
     }
 
-    function exportSummaryTable() {
+    async function exportSummaryTable() {
+      await preparePaperExport([...state.papers]);
       const headers = [
         'Title',
         'Authors',
         'Year',
         'Date',
         'Journal',
-        'DOI',
+        'DOI', 'Volume', 'Issue', 'Pages', 'Article number', 'Publisher', 'ISSN', 'ISBN', 'URL', 'Language',
         'Abstract',
         'Key findings',
         'Keywords',
@@ -136,7 +143,7 @@
           paper.year || '',
           paper.date || '',
           paper.journal || '',
-          paper.doi || '',
+          paper.doi || '', ...['volume','issue','pages','articleNumber','publisher','issn','isbn','url','language'].map(k => paper[k] || ''),
           paper.abstract || '',
           keyFindings(paper),
           mergedKeywords(paper),

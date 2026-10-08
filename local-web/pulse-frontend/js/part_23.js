@@ -110,8 +110,8 @@ function downloadRecordFile(name,text,type) {
 }
 function recordRis(records) {
   const clean=v=>String(v || '').replace(/[\r\n]+/g,' ');
-  return records.map(p=>['TY  - JOUR','TI  - '+clean(p.title),...paperAuthors(p).map(a=>'AU  - '+clean(a)),
-    ...[['PY','year'],['JO','journal'],['DO','doi']].filter(([_,key])=>p[key]).map(([tag,key])=>tag+'  - '+clean(p[key])),...(p.abstract ? ['AB  - '+clean(p.abstract)] : []),...(p.paperKeywords || []).map(k=>'KW  - '+clean(k)),'ER  - '].join('\n')).join('\n\n')+'\n';
+  return records.map(p=>['TY  - '+({book:'BOOK','proceedings-article':'CONF',dissertation:'THES'}[p.publicationType] || 'JOUR'),'TI  - '+clean(p.title),...paperAuthors(p).map(a=>'AU  - '+clean(a)),
+    ...[['PY','year'],['DA','date'],['JO','journal'],['DO','doi'],['VL','volume'],['IS','issue'],['PB','publisher'],['LA','language']].filter(([_,key])=>p[key]).map(([tag,key])=>tag+'  - '+clean(p[key])),...(p.pages ? ['SP  - '+clean(p.pages.split(/[-–—]+/)[0]), ...(p.pages.split(/[-–—]+/)[1] ? ['EP  - '+clean(p.pages.split(/[-–—]+/)[1])] : [])] : p.articleNumber ? ['SP  - '+clean(p.articleNumber)] : []), ...[...String(p.issn || p.isbn || '').split(/;\s*/)].filter(Boolean).map(v=>'SN  - '+clean(v)), ...(p.url || p.doi ? ['UR  - '+clean(p.url || 'https://doi.org/'+p.doi)] : []), ...(p.pmid ? ['AN  - PMID:'+clean(p.pmid)] : []), ...(p.abstract ? ['AB  - '+clean(p.abstract)] : []),...(p.paperKeywords || []).map(k=>'KW  - '+clean(k)),'ER  - '].join('\n')).join('\n\n')+'\n';
 }
 document.getElementById('relationClose').addEventListener('click',()=>relationDialog.close());
 relationDialog.addEventListener('close',()=>relationUi.controller?.abort());
@@ -121,11 +121,12 @@ document.getElementById('relationLoadAll').addEventListener('click',()=>loadRela
 document.getElementById('relationProvider').addEventListener('change',event=>openPaperRelations(relationUi.paper,relationUi.kind,event.target.value));
 document.getElementById('relationStop').addEventListener('click',()=>relationUi.controller?.abort());
 document.getElementById('relationMoreVisible').addEventListener('click',()=>{relationUi.limit+=100;updateRelations();});
-document.getElementById('relationExport').addEventListener('click',()=>{
+document.getElementById('relationExport').addEventListener('click',async()=>{
+  await preparePaperExport(relationUi.items);
   const format=document.getElementById('relationExportFormat').value;
   const name=`pulse-${relationUi.kind}-${relationUi.complete ? 'available' : 'partial'}`;
   if(format==='ris') downloadRecordFile(name+'.ris',recordRis(relationUi.items),'text/plain');
-  else if(format==='csv') {const fields=['title','authors','year','journal','doi'];const quote=v=>'"'+String(v ?? '').replaceAll('"','""')+'"';
+  else if(format==='csv') {const fields=['title','authors','year','date','journal','doi','volume','issue','pages','articleNumber','publisher','issn','isbn','url','abstract'];const quote=v=>'"'+String(v ?? '').replaceAll('"','""')+'"';
     downloadRecordFile(name+'.csv',[fields.join(','),...relationUi.items.map(p=>fields.map(k=>quote(k==='authors' ? p.authors.join('; ') : p[k])).join(','))].join('\n'),'text/csv');}
   else downloadRecordFile(name+'.json',JSON.stringify({paper:relationUi.paper.title,kind:relationUi.kind,source:relationUi.source,indexedTotal:relationUi.total,reportedPaperTotal:relationUi.reportedTotal,complete:relationUi.complete,unresolved:relationUi.unresolved,papers:relationUi.items},null,2),'application/json');
 });
@@ -144,7 +145,7 @@ function updateManagers() {
     const label=provider==='zotero' ? 'Zotero' : 'Mendeley';
     document.getElementById(provider+'PillStatus').textContent=info?.connected ? 'Connected' : provider==='mendeley' && !info?.configured ? 'Export citations' : info?.label || 'Check connection';
     document.getElementById(provider+'PillStatus').classList.toggle('is-connected',Boolean(info?.connected));
-    document.getElementById(provider+'ConnectionNote').textContent=info?.connected ? label+' · '+info.destination : info?.message || (provider==='zotero' ? 'Open Zotero Desktop to connect locally.' : info?.pending ? 'Finish signing in with Mendeley, then return here.' : info?.configured ? 'Sign in to connect your Mendeley library.' : 'Export citations for Mendeley, or set up a direct connection.');
+    document.getElementById(provider+'ConnectionNote').textContent=info?.connected ? label+' · '+info.destination : info?.message || (provider==='zotero' ? 'Open Zotero Desktop to connect locally.' : info?.pending ? 'Finish signing in with Mendeley, then return here.' : info?.configured ? 'Sign in to connect your Mendeley library.' : 'Direct sign-in is awaiting Pulse service activation. You can export citations for Mendeley now.');
     document.getElementById(provider+'Send').disabled=managerUi.busy || (provider==='zotero' && !info?.connected) || !managerSelectedPapers().length;
   }
   const count=managerSelectedPapers().length;
@@ -153,11 +154,15 @@ function updateManagers() {
   document.getElementById('mendeleySend').textContent=mendeley?.connected ? 'Send to Mendeley' : 'Export for Mendeley';
   document.getElementById('mendeleyHowTo').textContent=mendeley?.connected ? 'Send your chosen citations directly to your Mendeley library.' : mendeley?.configured ? 'Sign in to send citations directly, or export a file for Mendeley.' : 'Export your chosen citations, then import the file into Mendeley.';
   document.getElementById('mendeleyImportHelp').hidden=Boolean(mendeley?.connected);
-  document.getElementById('mendeleyConnect').textContent=mendeley?.configured ? 'Connect Mendeley' : 'Set up direct transfer';
-  document.getElementById('mendeleyDeveloperSettings').hidden=Boolean(mendeley?.sharedRegistration && mendeley?.configured);
-  document.getElementById('mendeleyConnect').disabled=managerUi.connecting || Boolean(managerUi.status?.mendeley?.pending);
+  document.getElementById('mendeleyConnect').textContent='Connect Mendeley';
+  document.getElementById('mendeleyDeveloperSettings').hidden=!mendeley?.developerSettingsAvailable;
+  document.getElementById('mendeleyConnect').disabled=!mendeley?.configured || managerUi.connecting || Boolean(managerUi.status?.mendeley?.pending);
   document.getElementById('mendeleyConnect').hidden=Boolean(managerUi.status?.mendeley?.connected);
   document.getElementById('mendeleyDisconnect').hidden=!managerUi.status?.mendeley?.connected;
+  document.getElementById('mendeleySyncBox').hidden=!mendeley?.connected;
+  document.getElementById('mendeleyAutomaticSync').checked=mendeley?.automaticSync !== false && !state.mendeleySyncPaused;
+  document.getElementById('mendeleySyncNow').disabled=Boolean(managerUi.syncing) || !mendeley?.connected;
+  document.getElementById('mendeleySyncStatus').textContent=managerUi.syncMessage || (state.mendeleySyncPaused ? 'Automatic sync paused after clearing. Choose Sync now or enable sync.' : mendeley?.lastSyncedAt ? 'Last synced '+new Date(mendeley.lastSyncedAt).toLocaleString() : 'Ready to import your Mendeley library.');
   document.getElementById('mendeleyAuthorizationNote').textContent=managerUi.status?.mendeley?.authorizationMessage || '';
 }
 async function refreshManagers() {
@@ -195,9 +200,7 @@ document.getElementById('mendeleySettingsForm').addEventListener('submit',async 
 async function connectMendeley() {
   if(managerUi.connecting) return;
   if(!managerUi.status?.mendeley?.configured) {
-    const settings=document.getElementById('mendeleyDeveloperSettings'); settings.hidden=false; settings.open=true;
-    document.getElementById('managerFeedback').textContent='For direct transfer, register a Mendeley application and save its settings below. Export for Mendeley is available now.';
-    document.getElementById('mendeleyClientId').focus();
+    document.getElementById('managerFeedback').textContent='Direct sign-in is awaiting Pulse service activation. Export for Mendeley is available now.';
     return;
   }
   managerUi.connecting=true;
@@ -206,28 +209,31 @@ async function connectMendeley() {
     const link=document.getElementById('mendeleyAuthorizeLink');link.href=result.authorizationUrl;link.hidden=false;
     document.getElementById('managerFeedback').textContent='Mendeley will open for sign-in or account creation. Approve access there, then return here to send your citations.';
     link.textContent='Continue with Mendeley';link.click();
-    clearInterval(managerUi.timer);managerUi.timer=setInterval(async()=>{await refreshManagers();if(!managerUi.status?.mendeley?.pending) {clearInterval(managerUi.timer);if(managerUi.status?.mendeley?.connected){document.getElementById('mendeleyAuthorizeLink').hidden=true;document.getElementById('managerFeedback').textContent='Mendeley connected. Choose your citations and click Send to Mendeley.';}}},4000);
+    clearInterval(managerUi.timer);managerUi.timer=setInterval(async()=>{await refreshManagers();if(!managerUi.status?.mendeley?.pending) {clearInterval(managerUi.timer);if(managerUi.status?.mendeley?.connected){document.getElementById('mendeleyAuthorizeLink').hidden=true;document.getElementById('managerFeedback').textContent='Mendeley connected. Your library can now sync here.';}}},4000);
     await refreshManagers();
   } catch(error) {document.getElementById('managerFeedback').textContent=error.message;} finally {managerUi.connecting=false;updateManagers();}
 }
 document.getElementById('mendeleyConnect').addEventListener('click',connectMendeley);
 document.getElementById('mendeleyDisconnect').addEventListener('click',async()=>{
-  try {await pulseRecordsRequest('/api/managers/mendeley/disconnect',{});document.getElementById('mendeleyAuthorizeLink').hidden=true;await refreshManagers();}
+  try {const result=await pulseRecordsRequest('/api/managers/mendeley/disconnect',{});document.getElementById('managerFeedback').textContent=result.message || 'Mendeley disconnected.';state.syncEpoch=(state.syncEpoch || 0)+1;document.getElementById('mendeleyAuthorizeLink').hidden=true;await refreshManagers();}
   catch(error) {document.getElementById('managerFeedback').textContent=error.message;}
 });
-function exportMendeleyCitations() {
+async function exportMendeleyCitations() {
   const papers=managerSelectedPapers();
   if(!papers.length) return;
+  await preparePaperExport(papers);
   downloadRecordFile('pulse-mendeley-citations.ris',recordRis(papers),'application/x-research-info-systems');
   document.getElementById('managerFeedback').textContent=`Exported ${papers.length} citation${papers.length===1 ? '' : 's'}. Drag the downloaded RIS file into Mendeley, or use Add New → Import Library → RIS.`;
 }
 for (const provider of ['zotero','mendeley']) document.getElementById(provider+'Send').addEventListener('click',async()=>{
   if(managerUi.busy) return;
-  if(provider==='mendeley' && !managerUi.status?.mendeley?.connected) {exportMendeleyCitations();return;}
-  const records=managerSelectedPapers().map(p=>({title:p.title,authors:paperAuthors(p),year:p.year,journal:p.journal,doi:p.doi,pmid:p.pmid,abstract:p.abstract}));
-  if(!records.length) return;
+  const papers=managerSelectedPapers();
+  if(!papers.length) return;
   managerUi.busy=true;updateManagers();let saved=0,skipped=0;
   try {
+    if(provider==='mendeley' && !managerUi.status?.mendeley?.connected) {await exportMendeleyCitations();return;}
+    await preparePaperExport(papers);
+    const records=papers.map(p=>({...Object.fromEntries(bibliographicFields.map(k=>[k,p[k]])),authors:paperAuthors(p),keywords:p.paperKeywords || [],metadataCheckedAt:p.metadataCheckedAt}));
     for(let offset=0;offset<records.length;offset+=10) {
       document.getElementById('managerFeedback').textContent=`Sending ${offset+1}–${Math.min(offset+10,records.length)} of ${records.length} papers to ${provider==='zotero' ? 'Zotero' : 'Mendeley'}…`;
       const result=await pulseRecordsRequest('/api/managers/save',{provider,papers:records.slice(offset,offset+10)});

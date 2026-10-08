@@ -56,6 +56,19 @@ def crossref_date(item):
             return str(parts[0][0])
     return ""
 
+def crossref_full_date(item):
+    for field in ('published-print', 'published-online', 'issued'):
+        parts = (item.get(field) or {}).get('date-parts') or []
+        if parts and parts[0]:
+            values = parts[0][:3]
+            return '-'.join(str(value) if index == 0 else str(value).zfill(2) for index, value in enumerate(values))
+    return ''
+
+def openalex_pages(item):
+    biblio = item.get('biblio') or {}
+    first, last = str(biblio.get('first_page') or ''), str(biblio.get('last_page') or '')
+    return first + ('-' + last if first and last and last != first else '')
+
 def crossref_to_metadata(item):
     if not isinstance(item, dict):
         return {}
@@ -82,6 +95,10 @@ def crossref_to_metadata(item):
         "metadataSource": "Crossref",
         "volume": str(item.get("volume") or ""), "issue": str(item.get("issue") or ""),
         "pages": str(item.get("page") or ""), "issn": "; ".join(item.get("ISSN") or []),
+        "date": crossref_full_date(item), "publisher": clean_crossref_text(item.get("publisher")),
+        "url": str(item.get("URL") or ''), "articleNumber": str(item.get("article-number") or ''),
+        "isbn": "; ".join(item.get("ISBN") or []), "language": str(item.get("language") or ''),
+        "publicationType": str(item.get("type") or ''),
         "keywords": "; ".join(item.get("subject") or []),
     }
 
@@ -122,7 +139,11 @@ def openalex_to_metadata(item):
         "metadataSource": "OpenAlex",
         "volume": str((item.get("biblio") or {}).get("volume") or ""),
         "issue": str((item.get("biblio") or {}).get("issue") or ""),
-        "pages": str((item.get("biblio") or {}).get("first_page") or ""),
+        "pages": openalex_pages(item), "date": str(item.get("publication_date") or ''),
+        "issn": "; ".join(host_venue.get('issn') or []),
+        "publisher": str(host_venue.get('host_organization_name') or ''),
+        "url": str((item.get('primary_location') or {}).get('landing_page_url') or item.get('doi') or ''),
+        "publicationType": str(item.get('type') or ''), "language": str(item.get('language') or ''),
         "keywords": "; ".join(entry.get("display_name") or "" for entry in item.get("keywords") or []),
     }
 

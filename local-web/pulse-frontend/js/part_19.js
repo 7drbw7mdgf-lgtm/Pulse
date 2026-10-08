@@ -77,6 +77,7 @@
         selectedId: state.selectedId, centerId: state.centerId, selectedAreaId: state.selectedAreaId,
         format: 'pulse-map',
         version: '1.0',
+        mendeleyIgnored: state.mendeleyIgnored || [], mendeleySyncPaused: Boolean(state.mendeleySyncPaused),
         generatedAt: new Date().toISOString(),
         threshold: state.threshold,
         mode: state.mode,
@@ -105,6 +106,8 @@
           doi: paper.doi || '',
           doiVerified: Boolean(paper.doiVerified), pmid: paper.pmid || '',
           volume: paper.volume || '', issue: paper.issue || '', pages: paper.pages || '', issn: paper.issn || '',
+          publisher: String(paper.publisher || ''), url: String(paper.url || ''), articleNumber: String(paper.articleNumber || ''), isbn: String(paper.isbn || ''), language: String(paper.language || ''), publicationType: String(paper.publicationType || ''),
+        metadataCheckedAt: paper.metadataCheckedAt || '', metadataSnapshot: paper.metadataSnapshot || null, mendeleySource: paper.mendeleySource || null,
           metadataMatch: paper.metadataMatch || null,
           openAlexId: paper.openAlexId || '',
           openAlexUrl: paper.openAlexUrl || '',
@@ -135,7 +138,8 @@
       };
     }
 
-    function exportMap() {
+    async function exportMap() {
+      await preparePaperExport([...state.papers]);
       const payload = serializeMap();
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -153,6 +157,9 @@
     function applyMapPayload(data, source = 'saved library') {
       if (!data || !Array.isArray(data.papers)) return false;
       if (!data.papers.length && !(Array.isArray(data.areas) && data.areas.length) && !data.reset && source !== 'Autosaved library') return false;
+      state.mendeleyIgnored = Array.isArray(data.mendeleyIgnored) ? data.mendeleyIgnored : [];
+      state.mendeleySyncPaused = Boolean(data.mendeleySyncPaused);
+      state.syncEpoch = (state.syncEpoch || 0) + 1;
       state.threshold = Math.min(0.75, Math.max(0.01, Number(data.threshold || 0.05)));
       els.threshold.value = Math.round(state.threshold * 100);
       state.mode = data.mode || 'network';
@@ -225,6 +232,8 @@
                 return true;
               }
             } else {
+              state.mendeleyIgnored = data.mendeleyIgnored || [];
+              state.mendeleySyncPaused = Boolean(data.mendeleySyncPaused);
               // The library is explicitly empty on disk (reset or fresh workspace)
               state.papers = [];
               state.links = [];
@@ -271,6 +280,8 @@
       if (!state.autosaveReady) return;
       if (state.papers.length) state.allowEmptySave = false;
       const payload = {
+        _saveSession: state.librarySaveSession ||= uid(),
+        _saveRevision: state.librarySaveRevision = (state.librarySaveRevision || 0) + 1,
         ...serializeMap(),
         paperView: state.paperView,
         centerId: state.centerId,
@@ -283,12 +294,13 @@
       } catch (e) {}
       updateSaveStatePill('Saving...');
       try {
-        const write = fetch(backendUrl('/api/library'), {
+        const write = (state.libraryWriteQueue || Promise.resolve()).catch(() => {}).then(() => fetch(backendUrl('/api/library'), {
           method: 'POST',
           headers: apiHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(payload),
           signal: AbortSignal.timeout(15000)
-        });
+        }));
+        state.libraryWriteQueue = write;
         state.pendingLibraryWrites ||= new Set();
         state.pendingLibraryWrites.add(write);
         try {
@@ -297,8 +309,10 @@
         } finally { state.pendingLibraryWrites.delete(write); }
         updateSaveStatePill('Saved');
         setTimeout(() => updateSaveStatePill('Ready'), 1800);
+        return true;
       } catch {
         updateSaveStatePill('Not saved');
+        return false;
       }
     }
 
@@ -306,6 +320,8 @@
       if (!state.autosaveReady) return;
       if (state.papers.length) state.allowEmptySave = false;
       const payload = {
+        _saveSession: state.librarySaveSession ||= uid(),
+        _saveRevision: state.librarySaveRevision = (state.librarySaveRevision || 0) + 1,
         ...serializeMap(),
         paperView: state.paperView,
         centerId: state.centerId,

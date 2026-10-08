@@ -233,7 +233,7 @@ def resolve_metadata(payload):
                 continue
             if expected.get('title') and similarity(expected['title'], returned.get('title')) < .65:
                 continue
-            metadata = merge_metadata(returned, expected)
+            metadata = merge_metadata(returned, {k:v for k,v in expected.items() if k != "authors" or not returned.get("authors")})
             metadata.update(doi=doi, doiVerified=True)
             return {'ok': True, 'matched': True, 'strategy': 'doi', 'source': result.get('source'), 'metadata': metadata,
                     'query': doi, 'candidates': [], 'extracted': expected}

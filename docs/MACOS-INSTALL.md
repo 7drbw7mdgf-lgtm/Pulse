@@ -1,25 +1,23 @@
-# Install Pulse 1.5.7
+# Install Pulse 1.5.8
 
-Quit Pulse, open **Pulse-1.5.7.dmg**, and drag **Pulse.app** into **Applications**.
+Quit Pulse, open **Pulse-1.5.8.dmg**, and drag **Pulse.app** into **Applications**.
 
-This build is for Apple Silicon Macs running macOS 11 or later. It requires Python 3.10 or later at `/opt/homebrew/bin/python3` or `/usr/local/bin/python3`. PDF extraction dependencies are included. The app is ad hoc signed and has not been notarized by Apple. Ollama is installed separately for local AI reports.
+Apple Silicon Mac, macOS 11 or later, and Python 3.10 or later are required. PDF extraction dependencies are included. Python, Ollama and model weights are installed separately. This app is ad hoc signed and has not been notarized by Apple.
 
-## Mendeley citations
+## Automatic paper details
 
-Open the **Mendeley** pill at the top of the page. Choose which papers to export, then click **Export for Mendeley**. In Mendeley, drag in the RIS file or choose **Add New → Import Library → RIS**.
+Pulse checks imported and restored paper records automatically. DOI lookup comes first; title, authors, year and other available metadata support a conservative search when there is no DOI. Export checks citation details and carries available publication fields through to RIS, CSV, JSON and reference-manager transfers. Missing registry details remain empty. Local corrections are retained on refresh.
 
-For direct account transfer, click **Set up direct transfer** and configure a registered Mendeley application. Shared application registration and provider verification remain unfinished; no application secret is bundled. See the included activation review for the remaining steps.
+## Mendeley
 
-## Graph and compact library
+Citation export works now: open the Mendeley pill, choose the papers, and use **Export for Mendeley**. Import the RIS file into Mendeley.
 
-The static topic legend has been removed from the map.
+Shared sign-in and library sync are implemented but await the Pulse owner's application registration and HTTPS hosting. They are unavailable in this default installer. Once activated, users simply connect their Mendeley account; developer settings are hidden. The included activation document explains the remaining owner steps.
 
-Click empty graph space to hide the inspector; click a paper node to show its details. Library cards use compact titles and author/year lines. Hover for full metadata, or expand the library into the full-screen table.
+## Library sync after activation
 
-## Bulk actions and recovery
-
-In the full-screen table, tick row-selection checkboxes to export, tag, transfer or remove the chosen papers. Map checkboxes remain independent. Use **Undo** for the latest change or **Recovery** for saved removal and workspace recovery points, which survive restarting Pulse. Recovery is local; JSON export makes a portable backup.
+Automatic sync imports new and updated records while Pulse is open, with **Sync now** also available. Local edits and tags are preserved. Remote deletions do not delete local papers. Removed papers remain out of automatic imports; clearing pauses sync. Undo and Recovery remain available.
 
 ## Verification
 
-Six frontend JavaScript test suites, syntax checks and isolated browser checks passed for this update. Packaging verifies the app signature, resource contents, version and disk image. The four existing saved papers and their content were preserved. No live Mendeley transfer was performed.
+75 current-app Python checks, 11 shared sign-in checks, eight JavaScript suites and 23 backend compatibility checks passed. An isolated browser preview verified automatic metadata completion, simulated library import and a downloaded selected-paper RIS file. Real Mendeley authentication has not been tested. The package signature, version, bundled resources and disk image were checked.

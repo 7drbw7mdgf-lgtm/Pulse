@@ -1,0 +1,11 @@
+{$PULSE_AUTH_DOMAIN} {
+    request_body {
+        max_size 32KB
+    }
+    reverse_proxy broker:8000 {
+        header_up Host {$PULSE_AUTH_DOMAIN}
+        header_up X-Pulse-Client-IP {remote_host}
+    }
+    header Strict-Transport-Security "max-age=31536000"
+    # Access logging stays disabled: callback URLs carry short-lived codes.
+}

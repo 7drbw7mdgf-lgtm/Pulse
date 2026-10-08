@@ -4,7 +4,7 @@ const promptSource = fs.readFileSync('pulse-frontend/js/part_19.js','utf8').spli
 function fixture(response = {ok:true, json:async()=>({ok:true})}, confirm = true) {
  const paper={id:'test',title:'Synthetic test paper'}, calls=[];
  const state={papers:[paper],links:[{source:'test'}],areas:[{id:'area'}],clusters:[],vectors:new Map([['test',1]]),keywords:new Map([['test',['tag']]]),autosaveReady:true,filterTags:['tag']};
- const context={state,els:{},AbortSignal,confirmClearPapers:async()=>confirm,clearTimeout(){},localStorage:{removeItem(){},setItem(k,v){calls.push(['cache',JSON.parse(v)])}},
+ const context={rememberMendeleyRemovals:()=>{},state,els:{},AbortSignal,confirmClearPapers:async()=>confirm,clearTimeout(){},localStorage:{removeItem(){},setItem(k,v){calls.push(['cache',JSON.parse(v)])}},
   serializeMap:()=>({papers:state.papers,areas:state.areas}), libraryMutationRequest:async(url,payload)=>{calls.push(['reset',payload]);const result=await response.json();if(!response.ok)throw new Error(result.error);return result},backendUrl:p=>p,apiHeaders:x=>x,showToast:m=>calls.push(['toast',m])};
  for(const name of ['updateMetrics','updateSaveStatePill','render','renderPapers','renderDetails','renderAreasPanel','renderLinkages','scheduleAutosave'])context[name]=()=>{};
  vm.createContext(context);vm.runInContext(clearSource+'\nasync function promptClearLibrary()'+promptSource,context);

@@ -191,6 +191,11 @@ def list_recovery():
             except (OSError, ValueError, KeyError, TypeError): continue
     return {'items': sorted(items, key=lambda item: item['createdAt'] or '', reverse=True)}
 
+def _write_barrier(payload):
+    session,revision = payload.get('_saveSession'),payload.get('_saveRevision')
+    if isinstance(session,str) and 0 < len(session) <= 100 and isinstance(revision,int):
+        SAVE_REVISIONS[session] = max(revision,SAVE_REVISIONS.get(session,-1))
+
 def change_library(payload):
     with LIBRARY_WRITE_LOCK:
         before = _validate_workspace(payload.get('workspace'))
@@ -210,10 +215,11 @@ def change_library(payload):
                 if after.get(key) in ids: after[key] = None
         else:
             ids = None
-            after = {'papers': [], 'areas': [], 'reset': True, 'format': 'pulse-map'}
+            after = {'papers': [], 'areas': [], 'reset': True, 'format': 'pulse-map', 'mendeleyIgnored':before.get('mendeleyIgnored',[]), 'mendeleySyncPaused':True}
         # Recovery must be durable before the destructive write is attempted.
         identity = _snapshot(before, reason, ids)
         _core._save_library(dict(after, allowEmpty=True))
+        _write_barrier(payload)
         return {'ok': True, 'recoveryId': identity, 'workspace': after}
 
 def restore_recovery(payload):
@@ -240,6 +246,7 @@ def restore_recovery(payload):
         # Restoring a whole workspace is also reversible, including newer papers.
         undo_id = _snapshot(current, 'restore')
         _core._save_library(dict(after, allowEmpty=True))
+        _write_barrier(payload)
         snapshot['restoredAt'] = time_iso()
         try:
             _write_recovery(path, snapshot)

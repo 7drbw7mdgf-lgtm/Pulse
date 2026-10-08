@@ -1,10 +1,10 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.5.7 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261008-9">
-<link rel="icon" type="image/png" href="favicon.png?v=1.5.7"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v1.5.8 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261008-10">
+<link rel="icon" type="image/png" href="favicon.png?v=1.5.8"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
-<aside class="pulse-nav-rail"> <div class="rail-brand"> <img src="favicon.png?v=1.5.7" alt="Pulse icon" class="rail-logo"> <div class="rail-brand-text">
-<span class="rail-title">Pulse</span> <span class="rail-version">v1.5.7</span> </div> </div> <nav class="rail-menu">
+<aside class="pulse-nav-rail"> <div class="rail-brand"> <img src="favicon.png?v=1.5.8" alt="Pulse icon" class="rail-logo"> <div class="rail-brand-text">
+<span class="rail-title">Pulse</span> <span class="rail-version">v1.5.8</span> </div> </div> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
 <button class="rail-item" data-rail="library" id="railLibraryBtn" type="button" title="Toggle Library Panel"> <span data-feather="book-open"></span> <span>Library</span> <span id="railLibraryBadge" class="rail-badge">0</span> </button>
 <button class="rail-item" data-rail="trends" type="button" title="Literature trends & clusters"> <span data-feather="trending-up"></span> <span>Trends</span> </button>
@@ -411,30 +411,31 @@
 <header><div><h2 id="managerTitle">Library connections</h2><small>Send discovered papers to your reference manager.</small></div><button id="managerClose" type="button" aria-label="Close library connections">×</button></header>
 <div class="record-dialog-body"><div class="record-actions"><label>Papers to send <select id="managerScope"><option value="selected">Selected paper</option><option value="discoveries">Selected discovery results</option><option value="relations">Loaded citation / reference list</option><option value="bulk">Selected library rows</option><option value="all">Entire Pulse library</option></select></label><span id="managerSelectionCount" class="subtle"></span><button id="managerRefresh" class="button secondary" type="button">Refresh connections</button></div>
 <div class="manager-provider-grid"><section class="manager-provider-card"><h3>Zotero</h3><p id="zoteroConnectionNote"></p><small>Uses Zotero Desktop on this Mac. Records go to the library or collection selected in Zotero.</small><div class="record-actions"><button id="zoteroSend" class="button primary" type="button" disabled>Send to Zotero</button></div></section>
-<section class="manager-provider-card"><h3>Mendeley</h3><p id="mendeleyConnectionNote"></p><small id="mendeleyHowTo">Export your chosen citations, then import the file into Mendeley.</small><div class="record-actions"><button id="mendeleyConnect" class="button secondary" type="button">Set up direct transfer</button><button id="mendeleyDisconnect" class="button secondary" type="button" hidden>Disconnect</button><button id="mendeleySend" class="button primary" type="button" disabled>Export for Mendeley</button></div><a id="mendeleyAuthorizeLink" target="_blank" rel="noreferrer" hidden>Authorize Mendeley</a><p id="mendeleyAuthorizationNote" class="record-feedback" role="status"></p><p id="mendeleyImportHelp"><small>In Mendeley, drag in the downloaded RIS file, or choose Add New → Import Library → RIS. <a href="https://www.elsevier.support/mendeley/answer/how-can-i-add-new-references-to-my-library-in-mendeley-reference-manager" target="_blank" rel="noreferrer">Import guide</a></small></p></section></div>
+<section class="manager-provider-card"><h3>Mendeley</h3><p id="mendeleyConnectionNote"></p><small id="mendeleyHowTo">Export your chosen citations, then import the file into Mendeley.</small><div class="record-actions"><button id="mendeleyConnect" class="button secondary" type="button" disabled>Connect Mendeley</button><button id="mendeleyDisconnect" class="button secondary" type="button" hidden>Disconnect</button><button id="mendeleySend" class="button primary" type="button" disabled>Export for Mendeley</button></div><a id="mendeleyAuthorizeLink" target="_blank" rel="noreferrer" hidden>Authorize Mendeley</a><p id="mendeleyAuthorizationNote" class="record-feedback" role="status"></p><div id="mendeleySyncBox" class="mendeley-sync-box" hidden><label><input id="mendeleyAutomaticSync" type="checkbox" checked> Keep Mendeley library in sync</label><p><small>Imports new and updated citations while Pulse is open. Your edits stay here; removed papers stay removed. Sending to Mendeley uses the papers you choose.</small></p><button id="mendeleySyncNow" class="button secondary" type="button">Sync now</button><p id="mendeleySyncStatus" class="record-feedback" role="status"></p></div><p id="mendeleyImportHelp"><small>In Mendeley, drag in the downloaded RIS file, or choose Add New → Import Library → RIS. <a href="https://www.elsevier.support/mendeley/answer/how-can-i-add-new-references-to-my-library-in-mendeley-reference-manager" target="_blank" rel="noreferrer">Import guide</a></small></p></section></div>
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your Mac until you import them. PDFs and full paper text are not uploaded.</small></p>
-<details id="mendeleyDeveloperSettings"><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this Mac's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
+<details id="mendeleyDeveloperSettings" hidden><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this Mac's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261008-9"></script>
-<script src="js/part_02.js?v=ui-20261008-9"></script>
-<script src="js/part_03.js?v=ui-20261008-9"></script>
-<script src="js/part_04.js?v=ui-20261008-9"></script>
-<script src="js/part_05.js?v=ui-20261008-9"></script>
-<script src="js/part_06.js?v=ui-20261008-9"></script>
-<script src="js/part_07.js?v=ui-20261008-9"></script>
-<script src="js/part_08.js?v=ui-20261008-9"></script>
-<script src="js/part_09.js?v=ui-20261008-9"></script>
-<script src="js/part_10.js?v=ui-20261008-9"></script>
-<script src="js/part_11.js?v=ui-20261008-9"></script>
-<script src="js/part_12.js?v=ui-20261008-9"></script>
-<script src="js/part_13.js?v=ui-20261008-9"></script>
-<script src="js/part_14.js?v=ui-20261008-9"></script>
-<script src="js/part_15.js?v=ui-20261008-9"></script>
-<script src="js/part_23.js?v=ui-20261008-9"></script>
-<script src="js/part_24.js?v=ui-20261008-9"></script>
-<script src="js/part_16.js?v=ui-20261008-9"></script>
-<script src="js/part_17.js?v=ui-20261008-9"></script>
-<script src="js/part_18.js?v=ui-20261008-9"></script>
-<script src="js/part_19.js?v=ui-20261008-9"></script>
-<script src="js/part_20.js?v=ui-20261008-9"></script>
-<script src="js/part_21.js?v=ui-20261008-9"></script> <script src="js/part_22.js?v=ui-20261008-9"></script> </body> </html>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261008-10"></script>
+<script src="js/part_02.js?v=ui-20261008-10"></script>
+<script src="js/part_03.js?v=ui-20261008-10"></script>
+<script src="js/part_04.js?v=ui-20261008-10"></script>
+<script src="js/part_05.js?v=ui-20261008-10"></script>
+<script src="js/part_06.js?v=ui-20261008-10"></script>
+<script src="js/part_07.js?v=ui-20261008-10"></script>
+<script src="js/part_08.js?v=ui-20261008-10"></script>
+<script src="js/part_09.js?v=ui-20261008-10"></script>
+<script src="js/part_10.js?v=ui-20261008-10"></script>
+<script src="js/part_11.js?v=ui-20261008-10"></script>
+<script src="js/part_12.js?v=ui-20261008-10"></script>
+<script src="js/part_13.js?v=ui-20261008-10"></script>
+<script src="js/part_14.js?v=ui-20261008-10"></script>
+<script src="js/part_15.js?v=ui-20261008-10"></script>
+<script src="js/part_23.js?v=ui-20261008-10"></script>
+<script src="js/mendeley-sync.js?v=ui-20261008-10"></script>
+<script src="js/part_24.js?v=ui-20261008-10"></script>
+<script src="js/part_16.js?v=ui-20261008-10"></script>
+<script src="js/part_17.js?v=ui-20261008-10"></script>
+<script src="js/part_18.js?v=ui-20261008-10"></script>
+<script src="js/part_19.js?v=ui-20261008-10"></script>
+<script src="js/part_20.js?v=ui-20261008-10"></script>
+<script src="js/part_21.js?v=ui-20261008-10"></script> <script src="js/part_22.js?v=ui-20261008-10"></script> </body> </html>

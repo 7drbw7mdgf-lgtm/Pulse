@@ -18,7 +18,7 @@ oauth = importlib.import_module('pulse_core.mendeley_oauth')
 from pulse_core.constants import ClientError
 import pulse_mcp
 
-PAPER = {'title':'A theory of human motivation', 'doi':'10.1037/h0054346', 'authors':['Abraham H. Maslow'], 'year':'1943'}
+PAPER = {'title':'A theory of human motivation', 'doi':'10.1037/h0054346', 'authors':['Abraham H. Maslow'], 'year':'1943', 'metadataCheckedAt':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())}
 RAW = {'paperId':'abc123','title':PAPER['title'],'authors':[{'name':'Abraham H. Maslow'}], 'year':1943,
        'externalIds':{'DOI':PAPER['doi']}, 'citationCount':0, 'referenceCount':202, 'influentialCitationCount':0}
 

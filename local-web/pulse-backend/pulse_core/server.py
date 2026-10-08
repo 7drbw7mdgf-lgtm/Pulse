@@ -44,6 +44,7 @@ from pulse_core.metadata_resolution import resolve_metadata
 from pulse_core.paper_metrics import paper_metrics, paper_relations
 from pulse_core.library_managers import manager_status, configure_mendeley, public_config, disconnect_mendeley, save_manager_records, search_manager
 from pulse_core.mendeley_oauth import start_oauth
+from pulse_core.mendeley_sync import page as mendeley_sync_page, preferences as mendeley_sync_preferences
 from pulse_core.paper_agent import agent_status, PAPER_SUMMARY_JOBS
 from pulse_core.ollama_mgr import (
     OLLAMA_PROCESS,
@@ -177,7 +178,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
         valid_post_endpoints = {
             "/api/papers/metrics", "/api/papers/relations",
             "/api/managers/config", "/api/managers/mendeley/connect", "/api/managers/mendeley/disconnect",
-            "/api/managers/save", "/api/managers/search",
+            "/api/managers/save", "/api/managers/search", "/api/managers/mendeley/sync-page", "/api/managers/mendeley/sync-preferences",
             "/api/agent/start",
             "/api/agent/cancel",
             "/api/analyze",
@@ -214,6 +215,8 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/managers/mendeley/disconnect": disconnect_mendeley,
                 "/api/managers/save": save_manager_records,
                 "/api/managers/search": search_manager,
+                "/api/managers/mendeley/sync-page": mendeley_sync_page,
+                "/api/managers/mendeley/sync-preferences": mendeley_sync_preferences,
                 "/api/agent/start": PAPER_SUMMARY_JOBS.start,
                 "/api/agent/cancel": PAPER_SUMMARY_JOBS.cancel,
                 "/api/settings": lambda p: public_settings(save_settings(p)),

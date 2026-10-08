@@ -16,7 +16,8 @@ from pulse_core.doi_utils import normalize_doi
 from pulse_core.security import encrypt_secret, decrypt_secret
 
 _LOCK = threading.RLock()
-SECRETS = {'clientSecret', 'accessToken', 'refreshToken'}
+_TRANSFER_LOCK = threading.Lock()
+SECRETS = {'clientSecret', 'accessToken', 'refreshToken', 'brokerSession'}
 ZOTERO = 'http://127.0.0.1:23119'
 MENDELEY = 'https://api.mendeley.com'
 
@@ -41,7 +42,10 @@ def read_config():
     registration = Path(__file__).with_name('mendeley-client.json')
     if not data.get('clientId') and registration.exists():
         public = json.loads(registration.read_text())
-        if public.get('clientId'):
+        if public.get('brokerUrl'):
+            from pulse_core.mendeley_broker import origin
+            data.update(brokerUrl=origin(public['brokerUrl']),authFlow='broker',sharedRegistration=True)
+        elif public.get('clientId'):
             data.update(clientId=public['clientId'], redirectUri=validate_redirect(public['redirectUri']),
                         authFlow='pkce', pkceVerified=public.get('pkceVerified') is True, sharedRegistration=True)
     return data
@@ -62,7 +66,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
-def request(url, method='GET', data=None, headers=None, timeout=10):
+def request(url, method='GET', data=None, headers=None, timeout=10, envelope=False):
     # Credentials may only reach the fixed provider; redirects are not followed.
     if not (url.startswith(ZOTERO + '/') or url.startswith(MENDELEY + '/')):
         raise ClientError(400, 'Unsupported library service address.')
@@ -73,15 +77,21 @@ def request(url, method='GET', data=None, headers=None, timeout=10):
     req = urllib.request.Request(url, data=data, headers=h, method=method)
     try:
         with urllib.request.build_opener(NoRedirect()).open(req, timeout=timeout) as response:
-            body = response.read(4 * 1024 * 1024)
-            if not body: return {}
-            if 'json' in response.headers.get('Content-Type', ''):
-                return json.loads(body)
-            try: return json.loads(body)
+            body = response.read(4 * 1024 * 1024 + 1)
+            if len(body) > 4 * 1024 * 1024: raise ValueError('Response too large')
+            try: result = json.loads(body) if body else {}
             except ValueError:
-                if url.startswith(ZOTERO + '/connector/import?'):
-                    return {'accepted': True}
-                raise
+                if url.startswith(ZOTERO + '/connector/import?'): result = {'accepted': True}
+                else: raise
+            if not envelope: return result
+            following = None
+            for entry in response.headers.get('Link', '').split(','):
+                match = re.match(r'\s*<([^>]+)>\s*;\s*rel="?next"?', entry)
+                if match:
+                    target = urllib.parse.urlsplit(match[1])
+                    if target.scheme != 'https' or target.netloc != 'api.mendeley.com' or target.path != '/documents' or target.fragment: raise ValueError('Invalid page link')
+                    following = target.path + ('?' + target.query if target.query else '')
+            return {'data': result, 'next': following}
     except urllib.error.HTTPError as error:
         raise ClientError(error.code, f'{"Zotero" if url.startswith(ZOTERO) else "Mendeley"} returned HTTP {error.code}.')
     except (OSError, ValueError) as error:
@@ -105,7 +115,7 @@ def configure_mendeley(payload):
     with config_lock():
         config = read_config()
         if config.get('clientId') != client_id or config.get('redirectUri') != redirect or payload.get('clientSecret'):
-            for key in ('accessToken', 'refreshToken', 'expiresAt', 'profile', 'mendeleyReceipts'): config.pop(key, None)
+            for key in ('accessToken', 'refreshToken', 'expiresAt', 'profile', 'mendeleyReceipts', 'brokerSession', 'mendeleyAccountId'): config.pop(key, None)
         config.update(clientId=client_id, redirectUri=redirect, authFlow='code', sharedRegistration=False)
         config['authGeneration'] = config.get('authGeneration', 0) + 1
         if payload.get('clientSecret'): config['clientSecret'] = str(payload['clientSecret']).strip()
@@ -117,8 +127,9 @@ def configure_mendeley(payload):
 def public_config():
     with config_lock(): config = read_config()
     return {'clientId': config.get('clientId', ''), 'redirectUri': config.get('redirectUri', 'http://127.0.0.1:8765/mendeley/callback'),
-            'hasClientSecret': bool(config.get('clientSecret')), 'configured': bool(config.get('clientId') and ((config.get('authFlow', 'code') == 'code' and config.get('clientSecret')) or (config.get('authFlow') == 'pkce' and config.get('pkceVerified') is True))),
-            'sharedRegistration': bool(config.get('sharedRegistration')), 'authFlow': config.get('authFlow', 'code')}
+            'hasClientSecret': bool(config.get('clientSecret')), 'configured': bool((config.get('authFlow')=='broker' and config.get('brokerUrl')) or config.get('clientId') and ((config.get('authFlow', 'code') == 'code' and config.get('clientSecret')) or (config.get('authFlow') == 'pkce' and config.get('pkceVerified') is True))),
+            'sharedRegistration': bool(config.get('sharedRegistration')), 'authFlow': config.get('authFlow', 'code'),
+            'developerSettingsAvailable': os.environ.get('PULSE_MENDELEY_ADMIN')=='1'}
 
 def token_exchange(config, fields):
     import base64
@@ -166,6 +177,10 @@ def access_token():
     raise ClientError(401, 'Connect your Mendeley account first.')
 
 def mendeley_request(path, method='GET', data=None):
+    with config_lock(): config=read_config()
+    if config.get('authFlow')=='broker':
+        from pulse_core.mendeley_broker import library
+        return library(path,method,data,config)['data']
     return request(MENDELEY + path, method, data, {'Authorization': 'Bearer ' + access_token(),
                    'Accept': 'application/vnd.mendeley-document.1+json', 'Content-Type': 'application/vnd.mendeley-document.1+json'})
 
@@ -183,13 +198,19 @@ def manager_status():
     config = public_config()
     mendeley = dict(config, connected=False, label='Connect' if config['configured'] else 'Not activated')
     with config_lock(): private = read_config()
-    if private.get('accessToken') or private.get('refreshToken'):
+    if private.get('brokerSession'):
+        try:
+            mendeley_request('/profiles/v2/me')
+            mendeley.update(connected=True,label='Connected',destination='Your Mendeley library')
+        except ClientError as error: mendeley['message']=str(error)
+    elif private.get('accessToken') or private.get('refreshToken'):
         try:
             request(MENDELEY + '/profiles/v2/me', headers={'Authorization': 'Bearer ' + access_token(),
                     'Accept': 'application/json'}, timeout=5)
             mendeley.update(connected=True, label='Connected', destination='Your Mendeley library')
         except ClientError as error:
             mendeley['message'] = str(error)
+    mendeley.update(automaticSync=private.get('mendeleyAutomaticSync',True), lastSyncedAt=private.get('mendeleyLastSyncedAt',''))
     mendeley.update(oauth_status())
     return {'ok': True, 'zotero': zotero, 'mendeley': mendeley}
 
@@ -197,11 +218,16 @@ def disconnect_mendeley(payload=None):
     from pulse_core.mendeley_oauth import cancel_oauth
     cancel_oauth()
     with config_lock():
-        config = read_config()
-        config['authGeneration'] = config.get('authGeneration', 0) + 1
-        for key in ('accessToken', 'refreshToken', 'expiresAt', 'profile', 'mendeleyReceipts'): config.pop(key, None)
+        previous = read_config()
+        config = dict(previous, authGeneration=previous.get('authGeneration', 0) + 1)
+        for key in ('accessToken', 'refreshToken', 'expiresAt', 'profile', 'mendeleyReceipts', 'brokerSession', 'mendeleyAccountId'): config.pop(key, None)
         write_config(config)
-    return {'ok': True}
+    message = ''
+    if previous.get('brokerSession'):
+        from pulse_core.mendeley_broker import request as broker_request
+        try: broker_request(previous['brokerUrl'], '/disconnect', {}, previous['brokerSession'])
+        except ClientError: message = 'Disconnected on this Mac. The connection service could not confirm revocation; revoke Pulse access in Mendeley for immediate server revocation.'
+    return {'ok': True, 'message': message}
 
 def record_metadata(record):
     if not isinstance(record, dict) or not str(record.get('title') or '').strip():
@@ -209,9 +235,30 @@ def record_metadata(record):
     authors = record.get('authors') or []
     if isinstance(authors, str): authors = [authors]
     authors = [str(a.get('name') or '') if isinstance(a, dict) else str(a) for a in authors][:200]
-    return {'title': str(record['title'])[:500], 'authors': authors, 'year': str(record.get('year') or '')[:4],
-            'journal': str(record.get('journal') or '')[:255], 'doi': normalize_doi(record.get('doi')) or '',
-            'abstract': str(record.get('abstract') or '')[:10000], 'pmid': str(record.get('pmid') or '')[:100]}
+    result = {'title': str(record['title'])[:500], 'authors': authors, 'year': str(record.get('year') or '')[:4],
+              'doi': normalize_doi(record.get('doi')) or '', 'abstract': str(record.get('abstract') or '')[:10000]}
+    for field in ('journal','pmid','date','volume','issue','pages','articleNumber','publisher','url','issn','isbn','language','publicationType'):
+        result[field] = str(record.get(field) or '')[:2000 if field == 'url' else 255]
+    keywords = record.get('keywords') or record.get('paperKeywords') or []
+    result['keywords'] = [str(k)[:300] for k in (keywords if isinstance(keywords,list) else re.split(r';\s*',str(keywords)))][:100]
+    return result
+
+def complete_record(record):
+    """Resolve before transfers from either UI or MCP, retaining user's supplied fields."""
+    from pulse_core.metadata_resolution import resolve_metadata
+    result = record_metadata(record)
+    try:
+        checked = __import__('datetime').datetime.fromisoformat(str(record.get('metadataCheckedAt') or '').replace('Z','+00:00')).timestamp()
+    except ValueError: checked = 0
+    if time.time() - checked < 7 * 86400: return result
+    try:
+        resolved = resolve_metadata(result)
+        if resolved.get('matched'):
+            for key,value in (resolved.get('metadata') or {}).items():
+                if value and not result.get(key): result[key] = value
+            result = record_metadata(result)
+    except Exception: pass  # An unavailable registry must not discard the citation.
+    return result
 
 def fingerprint(record):
     return ('doi:' + record['doi'].lower()) if record['doi'] else ('title:' + record['title'].strip().casefold() + ':' + record['year'])
@@ -219,69 +266,123 @@ def fingerprint(record):
 def ris(records):
     def clean(value): return str(value).replace('\r', ' ').replace('\n', ' ')
     out = []
-    for p in records:
-        lines = ['TY  - JOUR', 'TI  - ' + clean(p['title'])]
+    for record in records:
+        p = record_metadata(record)
+        lines = ['TY  - ' + {'book':'BOOK','proceedings-article':'CONF','dissertation':'THES'}.get(p['publicationType'],'JOUR'), 'TI  - ' + clean(p['title'])]
         lines += ['AU  - ' + clean(a) for a in p['authors']]
-        for tag, key in [('PY','year'), ('JO','journal'), ('DO','doi'), ('AB','abstract')]:
+        for tag,key in [('PY','year'), ('DA','date'), ('JO','journal'), ('DO','doi'), ('AB','abstract'), ('VL','volume'), ('IS','issue'), ('PB','publisher'), ('LA','language')]:
             if p[key]: lines.append(tag + '  - ' + clean(p[key]))
-        if p['doi']: lines.append('UR  - https://doi.org/' + clean(p['doi']))
+        pages = re.split(r'[-–—]+',p['pages'])
+        if p['pages']: lines.append('SP  - ' + clean(pages[0]))
+        elif p['articleNumber']: lines.append('SP  - ' + clean(p['articleNumber']))
+        if len(pages)>1: lines.append('EP  - ' + clean(pages[1]))
+        lines += ['SN  - ' + clean(v) for v in re.split(r';\s*', p['issn'] or p['isbn']) if v]
+        lines += ['KW  - ' + clean(v) for v in p['keywords']]
+        if p['url'] or p['doi']: lines.append('UR  - ' + clean(p['url'] or 'https://doi.org/' + p['doi']))
+        if p['pmid']: lines.append('AN  - PMID:' + clean(p['pmid']))
         lines.append('ER  - ')
         out.append('\n'.join(lines))
     return '\n\n'.join(out) + '\n'
 
-def save_manager_records(payload):
-    provider = payload.get('provider')
-    if provider not in {'zotero', 'mendeley'}: raise ClientError(400, 'Choose Zotero or Mendeley.')
-    records = payload.get('papers')
-    if not isinstance(records, list) or not 1 <= len(records) <= 50:
-        raise ClientError(400, 'Choose between 1 and 50 papers to send.')
-    records = list({fingerprint(p): p for p in map(record_metadata, records)}.values())
-    saved, skipped, errors = [], [], []
-    if provider == 'mendeley': access_token()
-    # Serialize writes across UI and MCP processes, including receipt updates.
+def mendeley_author(name):
+    if ',' in name:
+        family,given = name.split(',',1)
+        return {'first_name':given.strip(),'last_name':family.strip()}
+    return {'first_name':name.rsplit(' ',1)[0] if ' ' in name else '', 'last_name':name.rsplit(' ',1)[-1]}
+
+def mendeley_document(record):
+    data = {'type': {'book':'book','proceedings-article':'conference_proceedings','dissertation':'thesis'}.get(record.get('publicationType'),'journal'),
+            'title':record['title'], 'source':record['journal'], 'abstract':record['abstract'],
+            'authors':[mendeley_author(a) for a in record['authors']],
+            'identifiers':{k:record[k] for k in ('doi','pmid','issn','isbn') if record[k]}, 'keywords':record['keywords']}
+    for field in ('volume','issue','pages','publisher','language'):
+        if record[field]: data[field] = record[field]
+    if not data.get('pages') and record['articleNumber']: data['pages'] = record['articleNumber']
+    if record['url']: data['websites'] = [record['url']]
+    if record['year'].isdigit(): data['year'] = int(record['year'])
+    date = re.fullmatch(r'(\d{4})-(\d{2})(?:-(\d{2}))?',record['date'])
+    if date:
+        data['month'] = int(date[2])
+        if date[3]: data['day'] = int(date[3])
+    return data
+
+@contextmanager
+def transfer_lock():
+    CONFIG_DIR.mkdir(parents=True,exist_ok=True)
+    with _TRANSFER_LOCK, (CONFIG_DIR / 'manager-transfers.lock').open('a') as lock:
+        try:
+            import fcntl
+            fcntl.flock(lock,fcntl.LOCK_EX)
+        except ImportError: pass
+        yield
+
+def same_connection(expected,current):
+    return (expected.get('authGeneration',0)==current.get('authGeneration',0) and
+            expected.get('brokerSession')==current.get('brokerSession') and
+            expected.get('mendeleyAccountId')==current.get('mendeleyAccountId'))
+
+def record_receipt(provider,key,value,expected,scope=None):
     with config_lock():
-        config = read_config()
-        if provider == 'zotero':
-            target = request(ZOTERO + '/connector/getSelectedCollection', 'POST', {})
-            if target.get('editable') is False: raise ClientError(403, 'Select an editable Zotero library.')
-            destination = target.get('name') or 'Selected Zotero library / collection'
-            scope = str(target.get('libraryID')) + ':' + str(target.get('id'))
-            receipts = config.setdefault('zoteroReceipts', {}).setdefault(scope, {})
-            pending = []
+        current=read_config()
+        if provider=='mendeley':
+            if not same_connection(expected,current): raise ClientError(409,'The Mendeley connection changed during transfer. Check that library before sending again.')
+            current.setdefault('mendeleyReceipts',{})[key]=value
+        else: current.setdefault('zoteroReceipts',{}).setdefault(scope,{})[key]=value
+        write_config(current)
+
+def save_manager_records(payload):
+    provider=payload.get('provider')
+    if provider not in {'zotero','mendeley'}: raise ClientError(400,'Choose Zotero or Mendeley.')
+    records=payload.get('papers')
+    if not isinstance(records,list) or not 1<=len(records)<=50: raise ClientError(400,'Choose between 1 and 50 papers to send.')
+    records=list({fingerprint(p):p for p in map(complete_record,records)}.values())
+    saved,skipped,errors=[],[],[]
+    if provider=='mendeley':
+        with config_lock(): before=read_config()
+        if before.get('authFlow')!='broker': access_token()
+    # Serialize transfers and receipts across UI/MCP, but let sign-out update config immediately.
+    with transfer_lock():
+        with config_lock(): config=read_config()
+        if provider=='zotero':
+            target=request(ZOTERO+'/connector/getSelectedCollection','POST',{})
+            if target.get('editable') is False: raise ClientError(403,'Select an editable Zotero library.')
+            destination=target.get('name') or 'Selected Zotero library / collection'
+            scope=str(target.get('libraryID'))+':'+str(target.get('id'))
+            receipts=config.get('zoteroReceipts',{}).get(scope,{})
+            pending=[]
             for record in records:
                 if fingerprint(record) in receipts: skipped.append(record['title'])
                 else: pending.append(record)
             if pending:
-                request(ZOTERO + '/connector/import?' + urllib.parse.urlencode({'session': 'pulse-' + uuid.uuid4().hex}),
-                        'POST', ris(pending).encode(), {'Content-Type': 'text/plain'}, timeout=25)
+                request(ZOTERO+'/connector/import?'+urllib.parse.urlencode({'session':'pulse-'+uuid.uuid4().hex}),
+                    'POST',ris(pending).encode(),{'Content-Type':'text/plain'},timeout=25)
                 for record in pending:
-                    receipts[fingerprint(record)] = True
-                    saved.append(record['title'])
-                write_config(config)
+                    record_receipt(provider,fingerprint(record),True,config,scope);saved.append(record['title'])
         else:
-            destination = 'Your Mendeley library'
-            token = config.get('accessToken')
-            if not token or config.get('expiresAt', 0) <= time.time() + 60:
-                raise ClientError(401, 'Refresh the Mendeley connection before sending papers.')
-            receipts = config.setdefault('mendeleyReceipts', {})
+            destination='Your Mendeley library';token=config.get('accessToken')
+            if config.get('authFlow')!='broker' and (not token or config.get('expiresAt',0)<=time.time()+60):
+                raise ClientError(401,'Refresh the Mendeley connection before sending papers.')
+            receipts=config.get('mendeleyReceipts',{})
             for record in records:
-                key = fingerprint(record)
-                if key in receipts:
-                    skipped.append(record['title']); continue
-                data = {'type':'journal', 'title':record['title'], 'source':record['journal'], 'abstract':record['abstract'],
-                        'authors':[{'first_name':a.rsplit(' ',1)[0] if ' ' in a else '', 'last_name':a.rsplit(' ',1)[-1]} for a in record['authors']],
-                        'identifiers':{k: record[k] for k in ('doi','pmid') if record[k]}}
-                if record['year'].isdigit(): data['year'] = int(record['year'])
+                key=fingerprint(record)
+                if key in receipts: skipped.append(record['title']);continue
+                data=mendeley_document(record)
                 try:
-                    result = request(MENDELEY + '/documents', 'POST', data, {'Authorization':'Bearer ' + token,
-                        'Accept':'application/vnd.mendeley-document.1+json', 'Content-Type':'application/vnd.mendeley-document.1+json'})
-                    if not result.get('id'): raise ClientError(502, 'Mendeley did not confirm the saved document.')
-                    receipts[key] = result['id']
+                    with config_lock(): current=read_config()
+                    if not same_connection(config,current): raise ClientError(409,'The Mendeley connection changed. Transfer stopped.')
+                    if config.get('authFlow')=='broker':
+                        from pulse_core.mendeley_broker import library
+                        result=library('/documents','POST',data,config)['data']
+                    else:
+                        result=request(MENDELEY+'/documents','POST',data,{'Authorization':'Bearer '+token,
+                            'Accept':'application/vnd.mendeley-document.1+json','Content-Type':'application/vnd.mendeley-document.1+json'})
+                    if not result.get('id'): raise ClientError(502,'Mendeley did not confirm the saved document.')
                     saved.append(record['title'])
-                    write_config(config)
+                    record_receipt(provider,key,result['id'],config)
                 except ClientError as error:
-                    errors.append({'title':record['title'], 'error':str(error)})
-    return {'ok': not errors, 'destination':destination, 'saved':saved, 'skipped':skipped, 'errors':errors}
+                    errors.append({'title':record['title'],'error':str(error)})
+                    if error.status in {401,409}: break
+    return {'ok':not errors,'destination':destination,'saved':saved,'skipped':skipped,'errors':errors}
 
 def search_manager(payload):
     query = str(payload.get('query') or '').strip()[:300]

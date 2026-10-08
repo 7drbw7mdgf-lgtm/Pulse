@@ -2,13 +2,13 @@
 
 ## A connected workspace for scientific literature discovery
 
-**Capability white paper · Pulse 1.5.7 · 8 October 2026**
+**Capability white paper · Pulse 1.5.8 · 8 October 2026**
 
 Pulse brings paper discovery, bibliography management, visual exploration and optional local AI reports into one Mac workspace. Begin with a DOI, a title, an imported PDF or a bibliography; confirm the paper's identity; explore related publications; and keep a collection that can be examined as a network, timeline or full-screen table.
 
-**[Download Pulse 1.5.7 for Mac](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.5.7/Pulse-1.5.7.dmg)** · [Installation guide](docs/MACOS-INSTALL.md) · [Release notes](docs/releases/1.5.7.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
+**[Download Pulse 1.5.8 for Mac](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.5.8/Pulse-1.5.8.dmg)** · [Installation guide](docs/MACOS-INSTALL.md) · [Release notes](docs/releases/1.5.8.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
 
-![Pulse 1.5.7 with compact library cards, a clear graph canvas and the inspector hidden.](docs/images/pulse-1.5.7-workspace.jpg)
+![Pulse 1.5.8 in a synthetic workspace with the inspector hidden.](docs/images/pulse-1.5.8-workspace.png)
 
 *Current screenshots use an isolated library of synthetic demonstration papers. They do not contain a user's reading list or imply verified citation counts for these examples.*
 
@@ -31,14 +31,14 @@ The interface distinguishes a publication's identity, an index's reported eviden
 | Recovery | Undo and saved recovery points for removals and cleared workspaces |
 | Citation evidence | Provider-linked counts, check time, pageable citation/reference lists and coverage reporting |
 | Local AI | A focused report for the selected paper, with cancellation and downloads |
-| Reference managers | Zotero Desktop transfer; Mendeley RIS export and configurable direct account connection |
+| Reference managers | Zotero Desktop transfer; Mendeley RIS export, shared sign-in service and protected library sync |
 | MCP | Bibliographic library reads, metrics, citation/reference pages and explicitly chosen manager saves |
 
 ## 2. From imported files to identifiable papers
 
 Pulse accepts DOI and PubMed identifiers, titles, pasted citations, PDF files and common bibliography formats, including BibTeX, RIS, CSV, JSON and supported EndNote records. PDFs can supply extractable text, document metadata and links. Drop supported paper files directly onto the network grid or use the sidebar's Add paper and Import controls.
 
-The resolver extracts and normalizes DOI candidates, then attempts DOI lookup first. When that cannot identify the paper, it searches the available title, authors, year, journal and other bibliographic fields. Candidate agreement is checked; weak or ambiguous matches preserve the imported record. Source errors also preserve available metadata.
+The resolver extracts and normalizes DOI candidates, then attempts DOI lookup first. When that cannot identify the paper, it searches the available title, authors, year, journal and other bibliographic fields. Candidate agreement is checked; weak or ambiguous matches preserve the imported record. Source errors also preserve available metadata. Lookup runs automatically for imported and restored papers, and before citation export. Available date, volume, issue, pages or article number, publisher, ISSN/ISBN, language, URL and keywords are retained throughout exports and reference-manager sends. User corrections are preserved on subsequent refreshes; a registry cannot supply fields it has never received.
 
 Readable source material matters. Image-only PDFs need OCR or manually supplied metadata; Pulse does not provide OCR or retrieve paywalled article text.
 
@@ -58,7 +58,7 @@ The sidebar keeps titles and author/year lines compact, with full metadata avail
 
 The full-screen library is a table. Row-selection checkboxes are independent of map visibility. Export, tag, transfer and remove operate on the selected rows; selection hidden by filters is counted. The header selection control selects visible rows.
 
-![Pulse 1.5.7 full-screen library table with bulk actions and recovery controls.](docs/images/pulse-1.5.7-library.jpg)
+![Pulse 1.5.8 full-screen library table with selected rows and bulk actions.](docs/images/pulse-1.5.8-library.png)
 
 Use **Undo** for the latest change or **Recovery** for saved removal and workspace recovery points. Recovery survives restarting Pulse. Removed papers merge into the current library. Restoring a cleared workspace recovers papers, tags, areas and map settings, while saving the current workspace first. Recovery is local to the Mac; JSON export makes a portable copy.
 
@@ -70,9 +70,11 @@ Reports identify their source, including metadata-only records. A bibliography e
 
 The connection box at the top provides Zotero and Mendeley actions. Zotero sends chosen metadata and abstracts to the currently selected editable library or collection in Zotero Desktop. Mendeley offers **Export for Mendeley** without developer registration: download a RIS file for the chosen scope, then import it in Mendeley.
 
-![Pulse 1.5.7 reference-manager panel with Mendeley export and direct-transfer setup.](docs/images/pulse-1.5.7-mendeley.jpg)
+**Shared Mendeley sign-in is implemented but not activated.** Pulse includes a deployable HTTPS service that keeps the confidential application's secret and provider tokens on the server. Once its owner completes registration and hosting, each user signs in and approves access; users and new devices do not enter developer settings. [Activation guide](docs/MENDELEY-ACTIVATION.md) · [Service deployment](auth-service/README.md).
 
-**Direct Mendeley account transfer still requires a registered application.** Set up direct transfer opens its configuration. The shared application has not been activated, and provider PKCE enforcement has not been verified. Pulse uses authorization-code sign-in with an S256 challenge/verifier; the old implicit flow is disabled and no application secret is shipped. See the [activation review](docs/MENDELEY-ACTIVATION.md) for the remaining requirements. This release does not claim a live Mendeley account-transfer test.
+Connected accounts can import their library automatically while Pulse is open, or use **Sync now**. Pulse reads every available page before applying results, preserves local edits and tags, and keeps removed papers out of automatic imports. Clearing pauses sync. Remote deletion does not remove local papers. Sending selected citations remains an explicit action. The current default installer has no activated shared service; local sign-in and sync tests use a simulated provider.
+
+![Mendeley sync controls in a synthetic test workspace. The account is simulated.](docs/images/pulse-1.5.8-mendeley-sync.png)
 
 Direct manager transfers contain bibliographic metadata and abstracts. These operations do not upload PDFs or full paper text. Exported files remain local until the user imports them.
 
@@ -95,10 +97,10 @@ Session authentication, loopback checks, protected credential storage, bounded e
 
 ## 7. Availability, checks and getting started
 
-The **1.5.7 Mac release** includes the current workspace described above. It targets Apple Silicon Macs on macOS 11 or later and requires Python 3.10 or later. PDF extraction dependencies are included; a Python interpreter, Ollama and model weights are installed separately. The app is ad hoc signed and has not been notarized by Apple.
+The **1.5.8 Mac release** includes the current workspace described above. It targets Apple Silicon Macs on macOS 11 or later and requires Python 3.10 or later. PDF extraction dependencies are included; a Python interpreter, Ollama and model weights are installed separately. The app is ad hoc signed and has not been notarized by Apple.
 
 Download the DMG, drag Pulse into Applications and launch it. Add a seed paper, inspect its record, open Discovery options and review related candidates before adding them. The [installation guide](docs/MACOS-INSTALL.md) documents setup; the [source guide](local-web/README.md) supports a separate local test library.
 
-For this release, **62 Python checks and six JavaScript suites passed**, alongside syntax checks and isolated browser verification. Tests cover parsing, metadata matching, selected-paper reports, selection, bulk scope, save ordering, recovery, manager UI and OAuth guards using synthetic fixtures and mocked services. Packaging verifies resource contents, version, app signature and disk-image integrity. Live account transfers remain dependent on account setup and authorization. These checks do not establish search recall, summary accuracy or performance for every library.
+For this release, **75 app Python checks, 11 shared sign-in checks and eight JavaScript suites passed**, alongside syntax checks and isolated browser verification. Tests cover parsing, metadata matching, selected-paper reports, selection, bulk scope, save ordering, recovery, manager UI and OAuth guards using synthetic fixtures and mocked services. Packaging verifies resource contents, version, app signature and disk-image integrity. Live account transfers remain dependent on account setup and authorization. These checks do not establish search recall, summary accuracy or performance for every library.
 
 See [development notes](docs/DEVELOPMENT.md) for source layout, checks, MCP and reproducible packaging. Historical root workspace files and tests remain for compatibility; the current desktop build stages the `local-web` source. Apple notarization, cross-platform installers, OCR and quantitative discovery/summary evaluation remain outside the capabilities established here.

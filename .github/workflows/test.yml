@@ -30,3 +30,13 @@ jobs:
           node-version: '22'
       - run: python3 -m pip install -r local-web/requirements.txt
       - run: npm run test:workspace
+
+  shared-sign-in:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install -r auth-service/requirements.txt
+      - run: python3 -m unittest discover -s auth-service/tests -v

@@ -38,3 +38,6 @@
 .citation-list-actions {display:flex;gap:8px;padding:0 16px 16px}
 @media(max-width:1150px) {.library-connection-pill small {display:none}.library-connection-pill button {padding:8px}.discovery-heading>span {display:none}}
 @media(max-width:600px) {.manager-provider-grid {grid-template-columns:1fr}.record-dialog header,.record-dialog-body {padding:16px}.relations-list li {flex-direction:column}}
+.mendeley-sync-box { margin-top:16px; padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+.mendeley-sync-box > label { display:flex; gap:8px; align-items:center; font-weight:600; }
+.mendeley-sync-box input { width:16px; height:16px; accent-color:var(--accent); }

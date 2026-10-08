@@ -36,6 +36,17 @@ class LibraryRecoveryTests(unittest.TestCase):
         result=storage.restore_recovery({'id':cleared['recoveryId'],'workspace':current})
         undo=storage.restore_recovery({'id':result['recoveryId'],'workspace':result['workspace']})
         self.assertEqual(undo['workspace'],current)
+    def test_delayed_save_cannot_resurrect_a_clear(self):
+        storage.SAVE_REVISIONS.clear();before=self.workspace()
+        storage.save_library(dict(before,_saveSession='fixture-session',_saveRevision=1))
+        storage.change_library({'action':'clear','workspace':before,'_saveSession':'fixture-session','_saveRevision':3})
+        result=storage.save_library(dict(before,_saveSession='fixture-session',_saveRevision=2))
+        self.assertTrue(result['superseded']);self.assertEqual(storage.load_library()['papers'],[])
+    def test_clear_retains_sync_removal_and_pause_state(self):
+        before=dict(self.workspace(),mendeleyIgnored=['account:removed'])
+        storage.change_library({'action':'clear','workspace':before})
+        after=storage.load_library()
+        self.assertTrue(after['mendeleySyncPaused']);self.assertEqual(after['mendeleyIgnored'],['account:removed'])
     def test_last_removal_and_restore(self):
         self.seed();before=storage.load_library()
         result=storage.change_library({'action':'remove','ids':['fixture'],'workspace':before})

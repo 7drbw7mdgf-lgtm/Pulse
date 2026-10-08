@@ -16,10 +16,15 @@ _PENDING = None
 _STATUS = {'pending': False, 'authorizationMessage': ''}
 
 def oauth_status():
-    with _LOCK: return dict(_STATUS)
+    from pulse_core.mendeley_broker import status
+    shared=status()
+    with _LOCK: local=dict(_STATUS)
+    return shared if shared.get('pending') or shared.get('authorizationMessage') else local
 
 def cancel_oauth():
     global _PENDING
+    from pulse_core.mendeley_broker import cancel
+    cancel()
     with _LOCK:
         previous = _PENDING
         if previous: previous['cancelled'] = True
@@ -39,6 +44,10 @@ def start_oauth(payload=None):
     global _PENDING
     with config_lock(): config = read_config()
     flow = config.get('authFlow', 'code')
+    if flow=='broker':
+        cancel_oauth()
+        from pulse_core.mendeley_broker import start
+        return start(config)
     if flow == 'implicit':
         raise ClientError(400, 'This older Mendeley sign-in is disabled. Activate an authorization-code connection.')
     public_pkce = flow == 'pkce' and config.get('pkceVerified') is True

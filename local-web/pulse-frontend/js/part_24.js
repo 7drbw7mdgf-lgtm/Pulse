@@ -38,6 +38,7 @@ function renderLibraryBulkActions(visiblePapers = state.papers.filter(paperMatch
 async function libraryMutationRequest(path, payload) {
   if (state.libraryMutation) throw new Error('Please wait for the current library change.');
   const wasReady = state.autosaveReady;
+  state.syncEpoch = (state.syncEpoch || 0) + 1;
   state.libraryMutation = true;
   state.autosaveReady = false;
   clearTimeout(state.autosaveTimer);
@@ -46,7 +47,7 @@ async function libraryMutationRequest(path, payload) {
     await Promise.allSettled([...(state.pendingLibraryWrites || [])]);
     const response = await fetch(backendUrl(path), {
       method:'POST', headers:apiHeaders({'Content-Type':'application/json'}),
-      body:JSON.stringify(payload), signal:AbortSignal.timeout(30000)
+      body:JSON.stringify({...payload,_saveSession:state.librarySaveSession ||= uid(),_saveRevision:state.librarySaveRevision=(state.librarySaveRevision || 0)+1}), signal:AbortSignal.timeout(30000)
     });
     const result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error || 'Your library was not changed.');
@@ -67,17 +68,21 @@ function applyRecoveredWorkspace(workspace) {
   state.librarySelectedIds.clear();
   applyMapPayload({...workspace, reset:workspace.papers.length === 0}, 'Autosaved library');
   state.papers = workspace.papers;
+  const restored = new Set(state.papers.filter(p => p.mendeleySource).flatMap(p => [mendeleyRemoteKey(p.mendeleySource.account,p.mendeleySource.id),mendeleyRemoteKey(p.mendeleySource.account,'identity:'+paperIdentityKey(p))]));
+  state.mendeleyIgnored = (state.mendeleyIgnored || []).filter(k => !restored.has(k));
   state.allowEmptySave = state.papers.length === 0;
   render();
   try { localStorage.setItem('pulse-autosave-library', JSON.stringify(serializeMap())); } catch (_) {}
 }
 async function removePapersWithRecovery(ids) {
   if (state.libraryMutation || state.clearingLibrary) return;
+  const ignoredBefore = state.mendeleyIgnored;
   try {
+    rememberMendeleyRemovals(state.papers.filter(p => ids.includes(p.id)));
     const result = await libraryMutationRequest('/api/library/change', {action:'remove', ids, workspace:serializeMap()});
     applyRecoveredWorkspace(result.workspace);
     showToast(`Removed ${ids.length} paper${ids.length === 1 ? '' : 's'}. Use Undo or Recovery to restore them.`);
-  } catch (error) { showToast(`Could not remove papers: ${error.message}`); }
+  } catch (error) { state.mendeleyIgnored = ignoredBefore; showToast(`Could not remove papers: ${error.message}`); }
 }
 async function restoreLibraryRecovery(id) {
   if (state.libraryMutation || state.clearingLibrary) return;
@@ -104,12 +109,13 @@ async function refreshLibraryRecovery() {
     await refreshLibraryRecovery();
   }));
 }
-function exportLibrarySelection(format) {
+async function exportLibrarySelection(format) {
   const papers = libraryBulkPapers();
   if (!papers.length) return;
+  await preparePaperExport(papers);
   if (format === 'ris') downloadRecordFile('pulse-selected-papers.ris', recordRis(papers), 'text/plain');
   else if (format === 'csv') {
-    const columns = ['title','authors','year','journal','doi','paperKeywords'];
+    const columns = ['title','authors','year','date','journal','doi','pmid','volume','issue','pages','articleNumber','publisher','issn','isbn','url','language','abstract','paperKeywords','metadataSource'];
     downloadRecordFile('pulse-selected-papers.csv', [columns.map(csvCell).join(','), ...papers.map(p => columns.map(key => csvCell(p[key])).join(','))].join('\n'), 'text/csv');
   } else {
     const ids = new Set(papers.map(p => p.id));

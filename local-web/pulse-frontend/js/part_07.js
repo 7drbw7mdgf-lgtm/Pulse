@@ -389,7 +389,7 @@
           authors: (fields.author || '').split(/\s+and\s+/i).filter(Boolean),
           year: fields.year || '', date: fields.date || fields.year || '',
           journal: fields.journaltitle || fields.journal || fields.booktitle || '',
-          volume: fields.volume || '', issue: fields.number || fields.issue || '', pages: fields.pages || '', issn: fields.issn || '',
+          volume: fields.volume || '', issue: fields.number || fields.issue || '', pages: fields.pages || '', issn: fields.issn || '', publisher: fields.publisher || '', url: fields.url || '', articleNumber: fields.eid || fields.article_number || '', isbn: fields.isbn || '', language: fields.language || '', publicationType: {book:'book',inproceedings:'proceedings-article',phdthesis:'dissertation',mastersthesis:'dissertation'}[match[1].toLowerCase()] || 'journal-article',
           doi: normalizeDoi(fields.doi || fields.url || fields.eprint || '') || findPrimaryDoi(raw),
           abstract: fields.abstract || '', paperKeywords: splitKeywords(fields.keywords || ''), text: raw
         }, 'BibTeX'));
@@ -417,7 +417,7 @@
           name: `${name} record ${index + 1}`, title: first('TI','T1'),
           authors: fields.AU || fields.A1 || fields.FAU || [],
           journal: first('JF','JO','T2','JA'), date: first('DA','Y1','PY'), year: first('PY','Y1').slice(0,4),
-          volume: first('VL'), issue: first('IS'), pages: [first('SP'),first('EP')].filter(Boolean).join('-'), issn: first('SN'),
+          volume: first('VL'), issue: first('IS'), pages: [first('SP'),first('EP')].filter(Boolean).join('-'), issn: first('SN'), publisher: first('PB'), url: first('UR'), language: first('LA'), pmid: first('AN').replace(/^PMID:/i,''), date: first('DA') || first('Y1'),
           doi: normalizeDoi(first('DO','UR','L1')) || findPrimaryDoi(record), pmid: first('PM'),
           abstract: first('AB','N2'), paperKeywords: fields.KW || [], text: record
         }, 'RIS/EndNote');
