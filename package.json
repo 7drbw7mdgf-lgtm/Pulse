@@ -3,6 +3,7 @@
   "version": "1.5.9",
   "private": true,
   "description": "Local scientific literature discovery and paper linkage workspace",
+  "license": "MIT",
   "scripts": {
     "start": "python3 local-web/pulse-backend/pulse_backend.py",
     "test": "python3 -m unittest discover -s tests -p 'test_*.py' && node tests/ui.cjs && node tests/graph.cjs && node tests/performance.cjs",

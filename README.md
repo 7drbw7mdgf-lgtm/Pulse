@@ -4,6 +4,8 @@
 
 **Capability white paper · Pulse 1.5.9 · 11 October 2026**
 
+> **Local-first literature discovery for unpublished work.** Your library, PDFs and AI analysis stay on your Mac. AI runs through local Ollama models by default, no account is needed, and your papers and manuscripts are never uploaded.
+
 Pulse brings paper discovery, bibliography management, visual exploration and optional local AI reports into one Mac workspace. Begin with a DOI, a title, an imported PDF or a bibliography; confirm the paper's identity; explore related publications; and keep a collection that can be examined as a network, timeline or full-screen table.
 
 **[Download Pulse 1.5.9 for Mac](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.5.9/Pulse-1.5.9.dmg)** · [Run from source](local-web/README.md) · [1.5.9 release notes](docs/releases/1.5.9.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
@@ -17,6 +19,25 @@ Pulse brings paper discovery, bibliography management, visual exploration and op
 Literature exploration connects several tasks: identifying a publication, tracing its neighbors, comparing evidence, deciding what to read and preserving a useful bibliography. Pulse connects these tasks around a shared local library. Citation-led discovery, concept search, several visual views, reference-manager integration and selected-paper AI reports support a repeating identify–explore–inspect–organize workflow.
 
 The interface distinguishes a publication's identity, an index's reported evidence, a calculated relationship and an AI-generated interpretation. Researchers select the papers and check their contents. Pulse supports exploratory reviews and reading-list preparation; it does not establish the completeness of a systematic search or the validity of a scientific claim.
+
+## Why Pulse: local-first and private
+
+Most literature-mapping tools run in the browser. They hold your reading list on their servers and, increasingly, send what you upload to a cloud language model. For a researcher with an unpublished manuscript, a confidential grant proposal, a pre-submission dataset or sensitive clinical material, that is often unacceptable, and institutional data policies may forbid it.
+
+Pulse is built the other way round:
+
+| | Pulse | Typical cloud literature tools |
+| --- | --- | --- |
+| Where your library lives | On your Mac | On the provider's servers |
+| PDFs and extracted full text | Read and kept on your Mac; never uploaded | Often uploaded for processing |
+| AI analysis | Local Ollama models by default; cloud AI only if you switch it on and add your own key | Cloud models |
+| Account required | No | Usually |
+| Works when a service shuts down or changes pricing | Yes; the library is a local file you own and can export | Depends on the provider |
+| Source code | Open (MIT) and auditable | Usually closed |
+
+**What does leave your Mac, and why.** Discovery needs the public scholarly indexes. To identify papers and find related work, Pulse sends identifiers, titles, author and journal metadata, and your search terms (including any research question you type) to the services listed in [Architecture and data flow](#6-architecture-and-data-flow): Crossref, OpenAlex, Semantic Scholar, PubMed, Europe PMC, CORE and, if configured, Dimensions. These are the same lookups a researcher makes in a browser. Pulse does not send PDF files, extracted full text, notes, tags, relevance labels or AI prompts and reports to those services. Mendeley receives metadata only when you choose to send papers there; Zotero transfers go to Zotero Desktop on the same Mac. If you enable the optional cloud AI provider, the text you ask it to analyse goes to that provider; leave it on local to keep analysis on the Mac.
+
+Avoid typing confidential wording into the research-question or search fields, because search terms are sent to the indexes. Everything you import, read and analyse stays local.
 
 ## 1. Capabilities at a glance
 
@@ -114,3 +135,7 @@ Download the DMG, drag Pulse into Applications and launch it. Add a seed paper, 
 For this release, **110 backend tests, 23 root workspace tests and 15 JavaScript suites passed**, alongside syntax checks and isolated browser verification on 11 October 2026. Checks cover parsing, metadata matching, query planning, ranking, provider paging, selected-paper reports, selection, bulk scope, recovery, timeline navigation and ribbon collapse using synthetic fixtures and mocked services. The repository also contains separate shared sign-in tests and packaging checks. Live account transfers remain dependent on account setup and authorization. These checks do not establish real-world search recall, summary accuracy or performance for every library.
 
 See [development notes](docs/DEVELOPMENT.md) for source layout, checks, MCP and reproducible packaging. Historical root workspace files and tests remain for compatibility; the current desktop build stages the `local-web` source. Apple notarization, cross-platform installers, OCR, real-world discovery evaluation and quantitative summary evaluation remain outside the capabilities established here.
+
+## License
+
+Pulse is released under the [MIT License](LICENSE). You may use, modify and redistribute it, including in commercial work, provided the copyright and license notice are kept. The software is provided without warranty.
