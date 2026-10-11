@@ -11,6 +11,27 @@ def title_key(value):
     return " ".join(re.findall(r"\w+", value))
 
 
+# Supporting-information and figure/table DOIs identify a part of a paper.
+SUPPLEMENT_DOI_RE = re.compile(r"^(10\.(?:1021|1371)/.+?)\.(?:s|g|t|sd)\d{3,}$", re.I)
+
+
+def canonical_doi(value):
+    doi = normalize_doi(value)
+    match = SUPPLEMENT_DOI_RE.match(doi)
+    return match.group(1) if match else doi
+
+
+def sane_year(record):
+    """Blank impossible publication years (index artefacts such as 1753)."""
+    import datetime
+    year = str(record.get("year") or "")[:4]
+    if year.isdigit() and not 1800 <= int(year) <= datetime.date.today().year + 1:
+        record["year"] = ""
+        if str(record.get("date") or "").startswith(year):
+            record["date"] = ""
+    return record
+
+
 def compatible(first, second):
     years = [str(record.get("year") or record.get("date") or "")[:4] for record in (first, second)]
     if all(years) and years[0] != years[1]:
@@ -26,7 +47,10 @@ def compatible(first, second):
 
 
 def merge_search_records(records):
-    records = [copy.deepcopy(record) for record in records if record.get("title") or record.get("doi")]
+    records = [sane_year(copy.deepcopy(record)) for record in records if record.get("title") or record.get("doi")]
+    for record in records:
+        if record.get("doi"):
+            record["doi"] = canonical_doi(record["doi"])
     groups, by_doi, by_title = [], {}, {}
     # Establish DOI identities before attaching records which only have a title.
     ordered = sorted(enumerate(records), key=lambda pair: not bool(normalize_doi(pair[1].get("doi"))))

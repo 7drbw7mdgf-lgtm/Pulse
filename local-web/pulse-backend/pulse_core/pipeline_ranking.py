@@ -49,25 +49,54 @@ def balanced_frontier(papers, seeds, count=4):
     return [papers[i] for i in indices]
 
 
+# DOI registrants that host copies of papers published elsewhere (repositories,
+# preprint servers, data archives). A copy folds into the publisher's record.
+REPOSITORY_DOI_PREFIXES = ('10.5281/', '10.6084/', '10.17863/', '10.25418/', '10.22541/', '10.21203/',
+    '10.1101/', '10.48550/', '10.20944/', '10.2139/', '10.31219/', '10.17605/', '10.31234/', '10.36227/',
+    '10.32942/', '10.5167/', '10.26434/', '10.7287/', '10.35542/', '10.18452/', '10.15488/')
+
+
 def _versions(records):
     groups = []
     def family(name):
-        value=title_key(str(name).split(',')[0]);return value.split()[-1] if value else ''
+        # "Surname, Given", "Given Surname" and "Surname AB" all yield the surname;
+        # parenthesised IDs and ORCIDs from repositories are ignored.
+        name = re.sub(r'\(.*?\)|\[.*?\]|\d+', ' ', str(name))
+        words = title_key(name.split(',')[0]).split()
+        if not words: return ''
+        if ',' in name: return words[-1]
+        return words[0] if len(words) > 1 and len(words[-1]) <= 2 else words[-1]
     def preprint(p): return bool(re.search(r'preprint|posted-content|working.?paper', str(p.get('documentType') or p.get('publicationType') or p.get('type') or ''), re.I))
+    def copy_record(p):
+        doi = str(p.get('doi') or '').lower()
+        return preprint(p) or not doi or doi.startswith(REPOSITORY_DOI_PREFIXES)
     for record in records:
         group = None
         for candidate in groups:
-            # A matching generic title is insufficient to collapse different DOIs.
-            if preprint(record)==preprint(candidate): continue
             authors_a = {family(a) for a in record.get('authors') or [] if family(a)}
             authors_b = {family(a) for a in candidate.get('authors') or [] if family(a)}
             years = [str(p.get('year') or '')[:4] for p in (record,candidate)]
-            if (authors_a and authors_b and len(authors_a & authors_b)/min(len(authors_a),len(authors_b))>=.75
-                and similarity(record.get('title'),candidate.get('title'))>=.96
-                and all(y.isdigit() for y in years) and abs(int(years[0])-int(years[1]))<=3):
+            both_listed = bool(authors_a and authors_b)
+            same_authors = both_listed and len(authors_a & authors_b)/min(len(authors_a),len(authors_b))>=.75
+            shared_author = bool(authors_a & authors_b)
+            words = len(title_key(record.get('title')).split())
+            gap = abs(int(years[0])-int(years[1])) if all(y.isdigit() for y in years) else None
+            title = similarity(record.get('title'),candidate.get('title'))
+            if copy_record(record) or copy_record(candidate):
+                # A preprint or repository copy folds into the matching record.
+                # Without full author lists, a specific title must carry identity.
+                same = (title>=.96 and (gap is None or gap<=3)
+                        and (same_authors or (words>=6 and (shared_author or not both_listed))))
+            else:
+                # Two publisher DOIs can be different editions of a generic title;
+                # merge only long identical titles (not "Part 1"/"Part 2"), same year, shared authors.
+                same = (title_key(record.get('title'))==title_key(candidate.get('title')) and words>=8
+                        and gap is not None and gap<=1 and shared_author)
+            if same:
                 group = candidate; break
         if group is None: groups.append(record); continue
-        published = record if not preprint(record) else group
+        rank = lambda p: (not copy_record(p), bool(p.get('doi')), int(p.get('citationCount') or p.get('citedByCount') or 0))
+        published = record if rank(record) > rank(group) else group
         other = group if published is record else record
         published['relatedVersions'] = (published.get('relatedVersions') or []) + [
             {key:other.get(key) for key in ('title','doi','url','year','documentType','sourceList')}]
@@ -164,6 +193,18 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         record['branches'] = sorted(record['branches'])
     records = _versions(records)
     records.sort(key=lambda p:(-p['score'],title_key(p.get('title')),p.get('doi') or ''))
+    # Many unrelated works share generic titles ("Protein structure prediction").
+    # Keep the best-ranked one in place and move repeats to the end, so they
+    # cannot crowd out specific results but remain available.
+    seen_generic, kept, repeats = set(), [], []
+    for record in records:
+        key = title_key(record.get('title'))
+        if key and len(key.split()) <= 5:
+            if key in seen_generic:
+                repeats.append(record); continue
+            seen_generic.add(key)
+        kept.append(record)
+    records = kept + repeats
     if options.get('diversify',True):
         # MMR within a bounded leading window keeps relevance primary while
         # preventing one vocabulary cluster from monopolising the first screen.

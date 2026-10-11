@@ -63,6 +63,18 @@ def extract_text_metadata(text, filename=''):
             result['volume'] = pagination[1]
             if pagination[2]: result['issue'] = pagination[2]
             result['pages'] = re.sub(r'\s+', '', pagination[3]).replace('–','-').replace('—','-')
+    # Vancouver/numbered references: "Huang C, Wang Y, et al. Title. Lancet 2020;395(10223):497-506."
+    vancouver = re.match(
+        r'^(?:\[?\d{1,3}[\].)]\s*)?(?P<authors>[^.]{2,400}?(?:,?\s*et al)?)\.\s+(?P<title>[^.]{12,350}?[?!]?)\.?\s+'
+        r'(?P<journal>[A-Z][^.;\d]{1,100}?)\.?\s+(?P<year>(?:19|20)\d{2})[^;:]{0,20};\s*(?P<volume>\d+)'
+        r'(?:\((?P<issue>[^)]+)\))?\s*:\s*(?P<pages>[A-Za-z]?\d+(?:\s*[-\u2013]\s*[A-Za-z]?\d+)?)',
+        clean(text[:1500]))
+    if vancouver and not result.get('title'):
+        result.update(title=vancouver['title'].strip(), year=vancouver['year'], journal=vancouver['journal'].strip(' .'),
+                      volume=vancouver['volume'], pages=re.sub(r'\s+', '', vancouver['pages']).replace('\u2013', '-'))
+        if vancouver['issue']:
+            result['issue'] = vancouver['issue']
+        result['authors'] = [name.strip() for name in re.split(r',\s*', re.sub(r',?\s*et al$', '', vancouver['authors'])) if name.strip()]
     if not result.get('title'):
         for line in lines[:14]:
             if meaningful_title(line) and not re.match(r'^(?:[{@]|https?://|doi\b|journal\b|copyright\b|volume\b|issn\b|authors?\b|university\b|department\b|received\b|accepted\b|published\b)', line, re.I):
@@ -110,11 +122,86 @@ def similarity(left, right):
     return max(overlap, sequence)
 
 
+# Registry records that repeat a paper's title but are not the paper itself.
+NON_ARTICLE_TITLE_RE = re.compile(
+    r'^\s*(?:faculty opinions recommendation of|f1000(?:prime)? recommendation of|'
+    r'review (?:for|of)\s*[:"“]|decision letter|author response|reviewer report|peer review (?:of|for)|'
+    r'correction(?: to)?\s*[:–-]|erratum|corrigendum|retraction(?: note)?(?: to| of)?\s*[:–-]|'
+    r'expression of concern)', re.I)
+NON_ARTICLE_TYPES = {'peer-review', 'component'}
+PREPRINT_TYPES = {'posted-content', 'preprint'}
+
+
+def normalized_title(value):
+    # Dashes and other punctuation separate words ("protein–protein"); split on
+    # them before accents are folded away.
+    spaced = re.sub(r'[^\w]+', ' ', clean(value)).replace('_', ' ')
+    folded = unicodedata.normalize('NFKD', spaced).encode('ascii', 'ignore').decode().lower()
+    return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9]+', ' ', folded)).strip()
+
+
+def title_similarity(expected, candidate):
+    """Order-sensitive title agreement; a missing or extra subtitle still counts."""
+    a, b = normalized_title(expected), normalized_title(candidate)
+    if not a or not b:
+        return 0.0
+    if a == b:
+        return 1.0
+    # Compare words in order, so "in mice" and "in rats" differ by a word rather
+    # than a few characters. A long word one or two letters off counts as a typo.
+    words_a, words_b = a.split(), b.split()
+    vocabulary = set(words_b)
+    def corrected(word):
+        if word in vocabulary or len(word) < 5:
+            return word
+        close = [other for other in vocabulary if len(other) >= 5 and SequenceMatcher(None, word, other).ratio() >= .85]
+        return close[0] if close else word
+    ratio = SequenceMatcher(None, [corrected(word) for word in words_a], words_b, autojunk=False).ratio()
+    shorter, longer, raw_longer = (a, b, clean(candidate)) if len(a) <= len(b) else (b, a, clean(expected))
+    if len(shorter.split()) >= 5 and longer.startswith(shorter + ' '):
+        # "Title" against "Title: subtitle" is the same work; "Title" against
+        # "Title of familial clustering..." is not, so require a subtitle break.
+        cut = normalized_title(raw_longer.split(':', 1)[0]) if ':' in raw_longer else ''
+        if cut == shorter or re.search(r'[:–—]|\s-\s', raw_longer):
+            ratio = max(ratio, .96)
+    return ratio
+
+
+def is_non_article(candidate, expected_title=''):
+    title = candidate.get('title') or ''
+    if NON_ARTICLE_TITLE_RE.search(title) and not NON_ARTICLE_TITLE_RE.search(expected_title or ''):
+        return True
+    if str(candidate.get('doi') or '').lower().startswith('10.3410/'):
+        return True  # Faculty Opinions / F1000Prime recommendations
+    return str(candidate.get('publicationType') or '').lower() in NON_ARTICLE_TYPES
+
+
+def is_preprint(candidate):
+    doi = str(candidate.get('doi') or '').lower()
+    return (str(candidate.get('publicationType') or '').lower() in PREPRINT_TYPES
+            or doi.startswith(('10.1101/', '10.48550/', '10.21203/', '10.20944/', '10.2139/ssrn')))
+
+
+def citation_contains_title(citation, title):
+    """True when a pasted reference contains the candidate's full title."""
+    text, wanted = normalized_title(citation), normalized_title(title)
+    if len(wanted.split()) < 4 or not text:
+        return False
+    if wanted in text:
+        return True
+    match = SequenceMatcher(None, text, wanted).find_longest_match(0, len(text), 0, len(wanted))
+    return match.size >= .92 * len(wanted)
+
+
 def candidate_score(expected, candidate):
     """Require identifying evidence; publication year alone cannot identify a paper."""
     parts, weights = {}, {}
     if meaningful_title(expected.get('title')):
-        parts['title'] = similarity(expected['title'], candidate.get('title'))
+        parts['title'] = title_similarity(expected['title'], candidate.get('title'))
+        weights['title'] = .7
+    citation = expected.get('_citation')
+    if citation and citation_contains_title(citation, candidate.get('title')):
+        parts['title'] = max(parts.get('title', 0), .97)
         weights['title'] = .7
     authors = expected.get('authors') or []
     if authors:
@@ -146,10 +233,18 @@ def candidate_score(expected, candidate):
     score = sum(parts[key]*weights[key] for key in weights) / total if total else 0
     title = parts.get('title')
     if title is not None:
-        accepted = title >= .72 and score >= .74
-        # Near-exact titles suffice, but reject obvious author/year conflicts.
-        if title >= .94:
-            accepted = not (parts.get('authors', 1) < .5 and parts.get('year') == 0)
+        # Independent evidence that this is the same work, beyond the title.
+        support = sum((parts.get('authors', 0) >= .65, parts.get('year', 0) == 1.0,
+                       parts.get('journal', 0) >= .75, bool(parts.get('pages'))))
+        conflict = parts.get('authors', 1) < .5 and parts.get('year') == 0
+        if title >= .95:
+            # A near-exact title identifies the work unless authors and year both disagree.
+            accepted = not conflict
+        elif title >= .85:
+            # Partial or garbled titles need two independent agreeing fields.
+            accepted = support >= 2 and not conflict and score >= .8
+        else:
+            accepted = False
     else:
         accepted = (parts.get('authors', 0) >= .65 and parts.get('journal', 0) >= .75
                     and parts.get('year', 0) >= .5 and score >= .75)
@@ -168,18 +263,22 @@ def search_metadata(expected):
         return {'matched': False, 'candidates': [], 'query': query, 'errors': []}
     candidates, errors = [], []
     try:
-        data = fetch_json('https://api.crossref.org/works?' + urllib.parse.urlencode({'query.bibliographic': query, 'rows': 5}))
+        data = fetch_json('https://api.crossref.org/works?' + urllib.parse.urlencode({'query.bibliographic': query, 'rows': 10}))
         candidates += [crossref_to_metadata(item) for item in (data.get('message') or {}).get('items') or []]
     except Exception as error:
         errors.append('Crossref: ' + str(error))
     def ranked(items):
-        scored = [(candidate_score(expected, candidate), candidate) for candidate in items if candidate.get('title')]
+        scored = [(candidate_score(expected, candidate), candidate) for candidate in items
+                  if candidate.get('title') and not is_non_article(candidate, title)]
         return sorted(scored, key=lambda item: (item[0]['accepted'], item[0]['score']), reverse=True)
     results = ranked(candidates)
-    if not results or not results[0][0]['accepted']:
+    # Crossref's first page can miss a paper entirely (for example when review
+    # records repeat its title), so consult OpenAlex unless the title is exact.
+    exact = bool(results and results[0][0]['accepted'] and results[0][0]['fields'].get('title', 0) >= .99)
+    if not exact:
         try:
             term = title if meaningful_title(title) else clean(' '.join(filter(None, [expected.get('abstract'), expected.get('keywords')])) or query, 700)
-            data = fetch_json('https://api.openalex.org/works?' + urllib.parse.urlencode({'search': term, 'per-page': 5}))
+            data = fetch_json('https://api.openalex.org/works?' + urllib.parse.urlencode({'search': term, 'per-page': 10}))
             candidates += [openalex_to_metadata(item) for item in data.get('results') or []]
         except Exception as error:
             errors.append('OpenAlex: ' + str(error))
@@ -209,7 +308,29 @@ def search_metadata(expected):
             seen.add(key.lower())
             unique.append((evidence, candidate))
     best = unique[0] if unique else None
-    ambiguous = bool(best and len(unique) > 1 and best[0]['score'] - unique[1][0]['score'] < .05 and unique[1][0]['accepted'])
+    contenders = [item for item in unique if item[0]['accepted'] and best and best[0]['score'] - item[0]['score'] < .05]
+    if best and best[0]['fields'].get('title', 0) >= .99:
+        # An exact title outranks works that only extend it with a subtitle.
+        contenders = [item for item in contenders if item[0]['fields'].get('title', 0) >= .99]
+    if len(contenders) > 1:
+        # Same-title records: prefer the published version of a preprint, then a
+        # decisively more-cited work. Otherwise report the ambiguity honestly.
+        # A preprint yields to its published version only when they share
+        # authors; an unrelated journal article with the same title must not win.
+        def surnames(item):
+            return {token_set(name.split(',')[0]).pop() if ',' in name else (sorted(token_set(name), key=len)[-1] if token_set(name) else '')
+                    for name in item[1].get('authors') or []} - {''}
+        published = [item for item in contenders if not is_preprint(item[1])]
+        preprints = [item for item in contenders if is_preprint(item[1])]
+        if published and preprints and all(any(surnames(pre) & surnames(pub) for pub in published) for pre in preprints):
+            contenders = published
+        if len(contenders) > 1:
+            by_citations = sorted(contenders, key=lambda item: int(item[1].get('citationCount') or 0), reverse=True)
+            top, runner = (int(item[1].get('citationCount') or 0) for item in by_citations[:2])
+            if top >= 50 and top >= 10 * max(runner, 1):
+                contenders = by_citations[:1]
+        best = contenders[0]
+    ambiguous = len(contenders) > 1
     matched = bool(best and best[0]['accepted'] and not ambiguous)
     return {'matched': matched, 'ambiguous': ambiguous, 'metadata': best[1] if matched else {},
             'match': best[0] if best else {}, 'query': query, 'errors': errors,
@@ -232,6 +353,10 @@ def resolve_metadata(payload):
         expected['authors'] = [x.strip() for x in re.split(r';|\s+and\s+', expected['authors']) if x.strip()]
     if not meaningful_title(expected.get('title')):
         expected.pop('title', None)
+    # A single pasted reference: let candidates prove their full title appears in it.
+    single = clean(text, 2000)
+    if payload.get('parseInput') and 30 <= len(single) <= 1500 and '\n' not in text.strip() and re.search(r'\b(?:19|20)\d{2}\b', single):
+        expected['_citation'] = single
     explicit = normalize_doi(payload.get('doi') or '')
     candidates = [explicit] if explicit else primary_doi_candidates(text)
     for item in payload.get('doiCandidates') or []:
@@ -264,6 +389,7 @@ def resolve_metadata(payload):
         except Exception as error:
             errors.append('PubMed: ' + str(error))
     found = search_metadata(expected)
+    expected.pop('_citation', None)
     matched = found['matched']
     metadata = merge_metadata(found.get('metadata'), expected) if matched else expected
     if explicit and not metadata.get('doi'):
