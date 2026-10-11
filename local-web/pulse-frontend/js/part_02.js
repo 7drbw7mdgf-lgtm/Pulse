@@ -191,7 +191,7 @@
       });
     }
 
-    // ─── Discovery review workspace (1.8) ───
+    // ─── Discovery review workspace (1.7.1) ───
     const DISCOVERY_SOURCE_LABELS = {
       citationGraph: 'Citation graph', citationNetwork: 'Citation network', semanticSearch: 'Semantic search',
       lexicalConceptual: 'Semantic Scholar', europePmc: 'Europe PMC', core: 'CORE'
@@ -216,7 +216,7 @@
       return DISCOVERY_WHY_GROUPS[kind] || 'search';
     }
 
-    // Results from before 1.8 have no whyFound; keep their specific reasons, drop the generic one.
+    // Results from before 1.7.1 have no whyFound; keep their specific reasons, drop the generic one.
     function discoveryWhy(item) {
       if (Array.isArray(item.whyFound) && item.whyFound.length) return item.whyFound;
       const reasons = (item.matchReasons || []).filter(reason => !/^Provider ranks combined/i.test(reason));
@@ -273,7 +273,9 @@
         const error = errors[key];
         if (error) {
           const limited = /429|rate|too many/i.test(error);
-          return { key, name, status: limited ? 'warn' : 'fail', detail: limited ? 'Rate limited — add a free API key in Settings for full results' : String(error).replace(/^[^:]+:\s*/, '').slice(0, 120) };
+          const canAddKey = ['citationGraph', 'citationNetwork', 'semanticSearch', 'lexicalConceptual', 'core'].includes(key);
+          return { key, name, status: limited ? 'warn' : 'fail', canAddKey: limited && canAddKey,
+            detail: limited ? (canAddKey ? 'Rate limited — try later or configure an API key in Settings' : 'Rate limited — try again later') : String(error).replace(/^[^:]+:\s*/, '').slice(0, 120) };
         }
         if (done.has(key) || counts[key] !== undefined || !searching) return { key, name, status: 'ok', detail: counts[key] !== undefined ? `${counts[key]} papers` : 'Done' };
         return { key, name, status: 'run', detail: 'Searching…' };
@@ -441,7 +443,7 @@
               <span class="dv-progress-bar"><span style="width:${percent}%"></span></span>
               <button type="button" class="dv-btn" data-dv-action="stop-review">Stop and review</button>
             </div>
-            <div class="dv-progress-sources">${rows.map(row => `<div class="dv-source-card is-${row.status}"><i></i><span><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.detail)}</small></span>${row.status === 'warn' ? '<button type="button" class="dv-btn small" data-dv-action="open-settings">Add key</button>' : ''}</div>`).join('')}</div>`;
+            <div class="dv-progress-sources">${rows.map(row => `<div class="dv-source-card is-${row.status}"><i></i><span><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.detail)}</small></span>${row.canAddKey ? '<button type="button" class="dv-btn small" data-dv-action="open-settings">Add key</button>' : ''}</div>`).join('')}</div>`;
         }
       }
 

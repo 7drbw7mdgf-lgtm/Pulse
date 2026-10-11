@@ -28,6 +28,7 @@ function initDiscoveryReview(){
   document.getElementById('discoveryFullTextOnly')?.addEventListener('change',event=>{state.discoveryFullTextOnly=event.currentTarget.checked;renderDiscoveryModal();});
   document.getElementById('discoveryResetFilters')?.addEventListener('click',()=>{
     state.discoveryFilterText='';state.discoveryFilterAuthor='';state.discoveryFilterYear='all';state.discoveryFilterBranch='all';state.discoveryQuickTag='';state.discoveryFullTextOnly=false;
+    state.discoveryWhyKinds=new Set();state.discoveryHiddenStrengths=new Set();
     for(const id of ['discoveryFilterText','discoveryFilterAuthor'])document.getElementById(id).value='';
     document.getElementById('discoveryFilterYear').value='all';document.getElementById('discoveryFullTextOnly').checked=false;renderDiscoveryModal();
   });

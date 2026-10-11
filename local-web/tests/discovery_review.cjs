@@ -11,7 +11,7 @@ assert.equal(context.discoveryRating(paper),2);assert.equal(state.discoveryJudge
 context.labelDiscoveryPaper(paper,0);assert.equal(state.discoveryJudgements.length,1);assert.equal(context.discoveryRating(paper),0);
 state.discoveryRunContext={researchQuestion:'Transit frequency',seedPapers:[]};assert.equal(context.discoveryRating(paper),undefined,'Labels belong to their research context');
 handlers.discoveryFullTextOnly({currentTarget:{checked:true}});assert(state.discoveryFullTextOnly);
-state.discoveryFilterText='cycling';state.discoveryFilterBranch='concepts';handlers.discoveryResetFilters();assert.equal(state.discoveryFilterText,'');assert.equal(state.discoveryFilterBranch,'all');assert(!state.discoveryFullTextOnly);
+state.discoveryFilterText='cycling';state.discoveryFilterBranch='concepts';state.discoveryWhyKinds=new Set(['authors']);state.discoveryHiddenStrengths=new Set(['related']);handlers.discoveryResetFilters();assert.equal(state.discoveryFilterText,'');assert.equal(state.discoveryFilterBranch,'all');assert(!state.discoveryFullTextOnly);assert.equal(state.discoveryWhyKinds.size,0,'Reset must clear the reason filters');assert.equal(state.discoveryHiddenStrengths.size,0,'Reset must restore every match strength');
 assert(!fs.readFileSync(path.join(frontend,'part_02.js'),'utf8').includes('class="discovery-relevance-review" onclick='),'Nested handlers must not prevent delegated relevance clicks');
 console.log('PASS: delegated relevance labels, replacement grades, context isolation, autosave, full-text control and filter reset.');
 

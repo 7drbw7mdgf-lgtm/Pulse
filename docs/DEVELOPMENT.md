@@ -1,4 +1,4 @@
-# Pulse 1.5.7 development
+# Pulse 1.7.1 development
 
 The current Tauri desktop app stages `local-web/pulse-frontend` and `local-web/pulse-backend`. Historical root workspace files and tests remain for compatibility.
 
@@ -35,7 +35,7 @@ Requires macOS, Xcode command-line tools, Rust and Node.js:
 ```sh
 python3 -m venv /tmp/pulse-pdf-deps
 /tmp/pulse-pdf-deps/bin/python3 -m pip install -r local-web/requirements.txt
-bash scripts/package-desktop.sh /tmp/pulse-1.5.7-release /tmp/pulse-pdf-deps/lib/python3.12/site-packages
+bash scripts/package-desktop.sh /tmp/pulse-1.7.1-release /tmp/pulse-pdf-deps/lib/python3.12/site-packages
 ```
 
 Adjust the dependency path to the Python version used. The optional second argument is a directory of PDF dependencies built for the target Mac; it is not a previous app bundle. Omit it to rely on separately installed dependencies. The script stages source, builds Tauri, verifies the app signature, creates a DMG and writes its SHA-256 checksum. Stage outputs and build files are ignored; no user library or settings are packaged.

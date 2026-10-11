@@ -29,7 +29,7 @@ Undo and Recovery restore removals or a cleared workspace and survive restart. R
 
 Use the Discovery ribbon to enter an optional research question and choose 50–500 results (200 by default). Searches use seed titles, abstracts and keywords, with conservative identity matching, bounded query expansion, rank fusion, normalised citation evidence and optional local semantic reranking. Citation preference is off by default. Avoid keywords lowers priority; Exclude completely removes matching records. Varied perspectives and conservative preprint/published version groups reduce repetition. Progress and cancellation keep longer searches manageable.
 
-Results explain matches and offer full-text filters and local relevance labels. See the [search guide](../docs/SEARCH-SOURCES.md) and [benchmark](../benchmarks/README.md). A locally installed Ollama embedding model is detected automatically; absence or failure falls back to text/citation ranking. Search never downloads a model or sends papers to cloud AI.
+Results open in a three-column review workspace with source progress, named match reasons, review queues, grouped matches, filters and an abstract preview. Stop and review keeps completed-source candidates and marks partial results. Bulk action counts follow your selected papers. J/K moves, R/N judges, A adds and Space selects. Reset filters clears every facet. Local relevance labels stay in your workspace. See the [search guide](../docs/SEARCH-SOURCES.md) and [benchmark](../benchmarks/README.md). A locally installed Ollama embedding model is detected automatically; absence or failure falls back to text/citation ranking. Search never downloads a model or sends papers to cloud AI.
 
 ## Reports and reference managers
 

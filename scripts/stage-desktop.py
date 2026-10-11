@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage Pulse 1.5 local-web source and optional PDF dependencies for Tauri."""
+"""Stage Pulse local-web source and optional PDF dependencies for Tauri."""
 import argparse
 from pathlib import Path
 import shutil
@@ -23,7 +23,7 @@ def stage(python_dependencies=None):
     if python_dependencies:
         shutil.copytree(python_dependencies, backend / 'python',
                         ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
-    print('Staged Pulse 1.5 frontend, backend and PDF dependencies')
+    print('Staged Pulse frontend, backend and PDF dependencies')
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--python-dependencies', type=Path)

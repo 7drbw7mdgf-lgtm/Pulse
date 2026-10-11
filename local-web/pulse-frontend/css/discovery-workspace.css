@@ -1,4 +1,4 @@
-/* ─── Research discovery review workspace (1.8) ─── */
+/* ─── Research discovery review workspace (1.7.1) ─── */
 .dv-modal.settings-panel { padding: 16px; }
 .dv-modal .dv-card { width: min(1520px, 100%); height: min(940px, calc(100vh - 32px)); max-height: none; display: flex; flex-direction: column; border-radius: 14px; outline: none; color: var(--ink); }
 .dv-modal svg { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
