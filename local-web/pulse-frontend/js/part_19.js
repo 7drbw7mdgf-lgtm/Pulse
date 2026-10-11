@@ -138,6 +138,8 @@
           keywords: mergedKeywords(paper),
           color: paper.color || '',
           areaId: paper.areaId || '',
+          readingStatus: paper.readingStatus || '', relevance: paper.relevance || '',
+          notes: paper.notes || '', userTags: paper.userTags || [],
           text: paper.text || '',
           size: paper.size || 0,
           x: paper.x || 0,

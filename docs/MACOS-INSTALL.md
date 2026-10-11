@@ -1,6 +1,6 @@
-# Install Pulse 1.6.0
+# Install Pulse 1.7.0
 
-Quit Pulse, open **Pulse-1.6.0.dmg**, and drag **Pulse.app** into **Applications**.
+Quit Pulse, open **Pulse-1.7.0.dmg**, and drag **Pulse.app** into **Applications**.
 
 This build includes the latest stacked timeline, scrolling date rail, collapsible inspector and streamlined toolbar.
 

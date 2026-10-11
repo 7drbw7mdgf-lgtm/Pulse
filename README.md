@@ -2,17 +2,17 @@
 
 ## A connected workspace for scientific literature discovery
 
-**Capability white paper · Pulse 1.6.0 · 11 October 2026**
+**Capability white paper · Pulse 1.7.0 · 11 October 2026**
 
 > **Local-first literature discovery for unpublished work.** Your library, PDFs and AI analysis stay on your Mac. AI runs through local Ollama models by default, no account is needed, and your papers and manuscripts are never uploaded.
 
 Pulse brings paper discovery, bibliography management, visual exploration and optional local AI reports into one Mac workspace. Begin with a DOI, a title, an imported PDF or a bibliography; confirm the paper's identity; explore related publications; and keep a collection that can be examined as a network, timeline or full-screen table.
 
-**[Download Pulse 1.6.0 for Mac](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.6.0/Pulse-1.6.0.dmg)** · [Run from source](local-web/README.md) · [1.6.0 release notes](docs/releases/1.6.0.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
+**[Download Pulse 1.7.0 for Mac](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.0/Pulse-1.7.0.dmg)** · [Run from source](local-web/README.md) · [1.7.0 release notes](docs/releases/1.7.0.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
 
 ![Pulse 1.5.9 Discovery ribbon, research question, 500-result option, network and collapsible paper inspector.](docs/images/pulse-1.5.9-discovery.png)
 
-*This document describes Pulse 1.6.0; the linked installer is built from the same source. Screenshots show the 1.5.9 interface, which 1.6.0 keeps unchanged, and use an isolated synthetic demonstration library, captured on 11 October 2026. They contain no user's reading list, and unavailable citation counts remain blank.*
+*This document describes Pulse 1.7.0; the linked installer is built from the same source. Screenshots show the 1.5.9 interface; the 1.7 paper inspector is described in [its release notes](docs/releases/1.7.0.md). They use an isolated synthetic demonstration library, captured on 11 October 2026. They contain no user's reading list, and unavailable citation counts remain blank.*
 
 ## Abstract
 
@@ -95,6 +95,8 @@ The timeline uses the available canvas height for a native scrolling deck. Neigh
 
 Use **Undo** for the latest change or **Recovery** for saved removal and workspace recovery points. Recovery survives restarting Pulse. Removed papers merge into the current library. Restoring a cleared workspace recovers papers, tags, areas and map settings, while saving the current workspace first. Recovery is local to the Mac; JSON export makes a portable copy.
 
+**The paper inspector (1.7).** Selecting a paper opens a panel with a fixed header: ‹ › steps through the library in its current order, a compact line gives authors, year, journal and pages, and chips show DOI status, the discovery seed and your reading status. Open paper and Discover related are always visible; maintenance actions, Copy citation and Send to Zotero or Mendeley sit in a ⋯ menu. Three tabs organise the rest. **Overview** puts the abstract first, then citation metrics, key findings and concepts. **Connections** shows the paper's links to your other papers, with their type, strength and shared concepts, and then citing papers, references and discovery. **Notes** holds your reading status, relevance, personal tags and private notes. These personal fields are stored with your library on the Mac, included in JSON exports, and your tags join the library filter.
+
 ## 5. Selected-paper reports and reference managers
 
 The **AI agent** button at the top right opens a reading assistant for the selected paper. It scans available extracted text or an abstract using local Ollama, with an optional focus, progress, cancellation and a downloadable report. Changing the selected paper changes the report context and cancels a running report for the previous paper. The main panel keeps model and service configuration out of the reading workflow.
@@ -130,11 +132,11 @@ Session authentication, loopback checks, protected credential storage, bounded e
 
 ## 7. Availability, checks and getting started
 
-The **[Pulse 1.6.0 Mac installer](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.6.0)** contains the capabilities described here; the release page lists its SHA-256 checksum. To run from source instead, use the [source guide](local-web/README.md). The Mac app targets Apple Silicon on macOS 11 or later and requires Python 3.10 or later. PDF extraction dependencies are included in packaged builds; a Python interpreter, Ollama and model weights are installed separately. The installer is ad hoc signed and has not been notarized by Apple.
+The **[Pulse 1.7.0 Mac installer](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.0)** contains the capabilities described here; the release page lists its SHA-256 checksum. To run from source instead, use the [source guide](local-web/README.md). The Mac app targets Apple Silicon on macOS 11 or later and requires Python 3.10 or later. PDF extraction dependencies are included in packaged builds; a Python interpreter, Ollama and model weights are installed separately. The installer is ad hoc signed and has not been notarized by Apple.
 
 Download the DMG, drag Pulse into Applications and launch it. Add a seed paper, inspect its record, open Discovery options and review related candidates before adding them. The [installation guide](docs/MACOS-INSTALL.md) documents setup; the [source guide](local-web/README.md) supports a separate local test library.
 
-For this release, **129 backend tests, 23 root workspace tests and 15 JavaScript suites passed**, alongside syntax checks and isolated browser verification on 11 October 2026. Checks cover parsing, metadata matching, query planning, ranking, provider paging, selected-paper reports, selection, bulk scope, recovery, timeline navigation and ribbon collapse using synthetic fixtures and mocked services. The repository also contains separate shared sign-in tests and packaging checks. Live account transfers remain dependent on account setup and authorization. These checks do not establish real-world search recall, summary accuracy or performance for every library.
+For this release, **129 backend tests, 23 root workspace tests and 16 JavaScript suites passed**, alongside syntax checks and isolated browser verification on 11 October 2026. Checks cover parsing, metadata matching, query planning, ranking, provider paging, selected-paper reports, selection, bulk scope, recovery, timeline navigation and ribbon collapse using synthetic fixtures and mocked services. The repository also contains separate shared sign-in tests and packaging checks. Live account transfers remain dependent on account setup and authorization. These checks do not establish real-world search recall, summary accuracy or performance for every library.
 
 See [development notes](docs/DEVELOPMENT.md) for source layout, checks, MCP and reproducible packaging. Historical root workspace files and tests remain for compatibility; the current desktop build stages the `local-web` source. Apple notarization, cross-platform installers, OCR, real-world discovery evaluation and quantitative summary evaluation remain outside the capabilities established here.
 

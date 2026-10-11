@@ -276,7 +276,7 @@
 
     function paperMatchesFilters(paper) {
       if (!state.filterTags || !state.filterTags.length) return true;
-      const paperTags = mergedKeywords(paper).map(k => k.toLowerCase().trim());
+      const paperTags = [...paperUserTags(paper), ...mergedKeywords(paper)].map(k => k.toLowerCase().trim());
       if (state.filterMode === 'any') {
         return state.filterTags.some(tag => {
           const t = tag.toLowerCase().trim();
@@ -292,7 +292,7 @@
     function getLibraryAllTags() {
       const counts = new Map();
       state.papers.forEach(paper => {
-        const kws = mergedKeywords(paper);
+        const kws = [...new Set([...paperUserTags(paper), ...mergedKeywords(paper)])];
         kws.forEach(kw => {
           const cleaned = cleanField(kw);
           if (!cleaned) return;

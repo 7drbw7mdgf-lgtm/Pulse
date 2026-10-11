@@ -1,7 +1,7 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.6.0 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261011-7">
-<link rel="icon" type="image/png" href="favicon.png?v=1.6.0"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v1.7.0 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261011-10">
+<link rel="icon" type="image/png" href="favicon.png?v=1.7.0"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
@@ -21,13 +21,13 @@
 <span data-feather="upload"></span> <span>Export</span> </button>
 <input id="importInput" type="file" multiple accept=".txt,.md,.csv,.bib,.ris,.pdf,.json,.xml,.enw" hidden>
 <button id="settingsButton" class="hbtn icon-only" type="button" title="Settings" aria-label="Open settings" aria-expanded="false" style="display:none">
-<span data-feather="settings"></span> </button> </div>
-<div class="rail-utility-row"><div class="theme-switch">
+<span data-feather="settings"></span> </button>
+<div class="theme-switch">
 <button class="theme-icon-btn active" id="theme-toggle" type="button" title="Switch to dark theme (⌘D)" aria-label="Switch to dark theme" aria-pressed="false">
 <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
 <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.6 6.6 0 0 0 21 12.8Z"></path></svg>
-</button></div>
-</div> </footer> </aside>
+</button></div> </div>
+ </footer> </aside>
 <!-- 2. MAIN VIEWPORT AREA -->
 <div class="pulse-main-viewport">
 <!-- TOP HEADER BAR -->
@@ -157,7 +157,7 @@
 <div id="canvasFilterBar" hidden><div id="canvasFilterTags"></div><button id="canvasClearFilterButton">Clear</button></div> </section>
 <!-- COLUMN 3: RIGHT INSPECTOR (PAPER DETAILS) -->
 <aside id="details" class="pulse-col-inspector" aria-label="Paper details">
-<div class="inspector-panel-header"><span>Paper details</span><button id="inspectorToggle" class="inspector-panel-button" type="button" aria-label="Hide paper details" title="Hide paper details" aria-controls="details" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M8 9l3 3-3 3"></path></svg></button></div>
+<div class="inspector-panel-header"><div class="inspector-nav"><button id="inspectorPrev" class="inspector-panel-button" type="button" aria-label="Previous paper in library" title="Previous paper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button><span id="inspectorPosition" class="inspector-position" aria-live="polite">Paper details</span><button id="inspectorNext" class="inspector-panel-button" type="button" aria-label="Next paper in library" title="Next paper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button></div><button id="inspectorToggle" class="inspector-panel-button" type="button" aria-label="Hide paper details" title="Hide paper details" aria-controls="details" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M8 9l3 3-3 3"></path></svg></button></div>
 <div id="detailsContent" class="inspector-content"><!-- Rendered dynamically by renderDetails() --></div>
 </aside> </div> </div> </div>
 <!-- FLOATING PANELS (Style, Areas, Linkages, AI Analyst) -->
@@ -437,30 +437,30 @@
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your Mac until you import them. PDFs and full paper text are not uploaded.</small></p>
 <details id="mendeleyDeveloperSettings" hidden><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this Mac's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261011-7"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261011-9"></script>
 <script src="js/part_02.js?v=ui-20261011-5"></script>
-<script src="js/part_03.js?v=ui-20261011-1"></script>
+<script src="js/part_03.js?v=ui-20261011-10"></script>
 <script src="js/part_04.js?v=ui-20261011-2"></script>
 <script src="js/part_05.js?v=ui-20261011-2"></script>
 <script src="js/part_06.js?v=ui-20261010-2"></script>
 <script src="js/part_07.js?v=ui-20261010-2"></script>
-<script src="js/part_08.js?v=ui-20261011-2"></script>
+<script src="js/part_08.js?v=ui-20261011-11"></script>
 <script src="js/part_09.js?v=ui-20261010-2"></script>
 <script src="js/part_10.js?v=ui-20261010-2"></script>
 <script src="js/part_11.js?v=ui-20261010-2"></script>
 <script src="js/part_12.js?v=ui-20261010-2"></script>
-<script src="js/part_13.js?v=ui-20261011-7"></script>
-<script src="js/part_14.js?v=ui-20261011-7"></script>
+<script src="js/part_13.js?v=ui-20261011-9"></script>
+<script src="js/part_14.js?v=ui-20261011-10"></script>
 <script src="js/part_15.js?v=ui-20261010-2"></script>
 <script src="js/part_23.js?v=ui-20261011-1"></script>
 <script src="js/mendeley-sync.js?v=ui-20261010-2"></script>
 <script src="js/part_24.js?v=ui-20261010-2"></script>
 <script src="js/discovery-controls.js?v=ui-20261011-6"></script>
-<script src="js/part_16.js?v=ui-20261011-2"></script>
+<script src="js/inspector.js?v=ui-20261011-11"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
 <script src="js/part_17.js?v=ui-20261011-5"></script>
 <script src="js/part_18.js?v=ui-20261011-5"></script>
 <script src="js/discovery-review.js?v=ui-20261011-5"></script>
-<script src="js/part_19.js?v=ui-20261011-5"></script>
+<script src="js/part_19.js?v=ui-20261011-10"></script>
 <script src="js/part_20.js?v=ui-20261010-2"></script>
-<script src="js/timeline.js?v=ui-20261011-7"></script>
-<script src="js/part_21.js?v=ui-20261011-7"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>
+<script src="js/timeline.js?v=ui-20261011-9"></script>
+<script src="js/part_21.js?v=ui-20261011-9"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>

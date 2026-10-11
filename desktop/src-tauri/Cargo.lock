@@ -2686,7 +2686,7 @@ dependencies = [
 
 [[package]]
 name = "pulse-desktop"
-version = "1.6.0"
+version = "1.7.0"
 dependencies = [
  "dirs 5.0.1",
  "serde",

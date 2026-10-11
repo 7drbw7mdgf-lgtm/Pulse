@@ -124,31 +124,7 @@
         }).join('')}</tbody></table>`;
       };
       const hasFilter = Boolean(state.filterTags && state.filterTags.length > 0);
-      let displayPapers = state.papers.filter(paperMatchesFilters);
-
-      // Sort by chosen key parameter
-      const sortKey = state.librarySortKey || 'year';
-      const isAsc = Boolean(state.librarySortAsc);
-      displayPapers.sort((a, b) => {
-        let valA = a[sortKey] || '';
-        let valB = b[sortKey] || '';
-        if (sortKey === 'authors') {
-          valA = (paperAuthors(a)[0] || '').toLowerCase();
-          valB = (paperAuthors(b)[0] || '').toLowerCase();
-        } else if (sortKey === 'citations') {
-          valA = (paperCitationCount(a) ?? -1);
-          valB = (paperCitationCount(b) ?? -1);
-          return isAsc ? valA - valB : valB - valA;
-        } else if (sortKey === 'year') {
-          valA = String(valA);
-          valB = String(valB);
-          return isAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        } else {
-          valA = String(valA).toLowerCase();
-          valB = String(valB).toLowerCase();
-        }
-        return isAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      });
+      const displayPapers = libraryDisplayPapers();
 
       if (els.paperCount) {
         els.paperCount.textContent = hasFilter

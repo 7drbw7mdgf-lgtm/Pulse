@@ -11,16 +11,17 @@
 @import url("css/part_11.css");
 @import url("css/part_12.css");
 @import url("css/part_13.css");
-@import url("css/part_14.css?v=ui-20261011-7");
+@import url("css/part_14.css?v=ui-20261011-9");
 @import url("css/part_15.css?v=ui-20261011-6");
 @import url("css/part_16.css");
 @import url("css/part_17.css?v=ui-20261010-2");
 @import url("css/part_18.css?v=ui-20261010-2");
 
-@import url("css/workspace.css?v=ui-20261011-7");
+@import url("css/workspace.css?v=ui-20261011-9");
 
 @import url("css/paper-agent.css?v=ui-20261010-2");
 
 @import url("css/library-connections.css?v=ui-20261010-2");
 
-@import url("css/timeline.css?v=ui-20261011-7");
+@import url("css/timeline.css?v=ui-20261011-9");
+@import url("css/inspector.css?v=ui-20261011-10");

@@ -99,6 +99,10 @@
         y: Number(paper.y || 0),
         color: paper.color || '',
         areaId: paper.areaId || '',
+        readingStatus: ['to-read', 'reading', 'read'].includes(paper.readingStatus) ? paper.readingStatus : '',
+        relevance: ['relevant', 'not-relevant'].includes(paper.relevance) ? paper.relevance : '',
+        notes: String(paper.notes || '').slice(0, 20000),
+        userTags: (Array.isArray(paper.userTags) ? paper.userTags : splitKeywords(paper.userTags || '')).map(tag => cleanField(String(tag)).slice(0, 60)).filter(Boolean).slice(0, 24),
         metadataSource: paper.metadataSource || source
       };
     }
