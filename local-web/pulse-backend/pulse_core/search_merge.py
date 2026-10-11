@@ -32,6 +32,17 @@ def sane_year(record):
     return record
 
 
+def clean_title(value):
+    """Index titles sometimes carry markup ("<i>Campylobacter</i>") or entities."""
+    text = html.unescape(re.sub(r"<[^>]+>", "", html.unescape(str(value or ""))))
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def known_count(record):
+    value = record.get("citationCount", record.get("citedByCount"))
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
 def compatible(first, second):
     years = [str(record.get("year") or record.get("date") or "")[:4] for record in (first, second)]
     if all(years) and years[0] != years[1]:
@@ -51,6 +62,8 @@ def merge_search_records(records):
     for record in records:
         if record.get("doi"):
             record["doi"] = canonical_doi(record["doi"])
+        if record.get("title"):
+            record["title"] = clean_title(record["title"])
     groups, by_doi, by_title = [], {}, {}
     # Establish DOI identities before attaching records which only have a title.
     ordered = sorted(enumerate(records), key=lambda pair: not bool(normalize_doi(pair[1].get("doi"))))
@@ -81,6 +94,12 @@ def merge_search_records(records):
                     for value in record.get(key) or []:
                         if value not in base[key]:
                             base[key].append(value)
+            # Several indexes may report citations; keep the highest known count.
+            incoming = known_count(record)
+            if incoming is not None and (known_count(base) is None or incoming > known_count(base)):
+                base["citationCount"] = base["citedByCount"] = incoming
+                if record.get("citationCountSource"):
+                    base["citationCountSource"] = record["citationCountSource"]
             for key in ("sourceIdentifiers", "citationCountsBySource"):
                 if key in base or key in record:
                     base[key] = {**(record.get(key) or {}), **(base.get(key) or {})}

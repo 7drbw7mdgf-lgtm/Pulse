@@ -106,8 +106,11 @@
       const key = recommendationKey(seeds);
       state.discoveryLoading = true;
       state.recommendationLoadingKey = key;
-      state.discoveryJobId=null;state.discoveryCancelRequested=false;state.discoveryProgressText='Searching your selected sources…';state.discoveryProgressPercent=0;
+      state.discoveryJobId=null;state.discoveryCancelRequested=false;state.discoveryStopReview=false;state.discoveryProgressText='Searching your selected sources…';state.discoveryProgressPercent=0;
       renderDetails();syncDiscoveryControls();
+      // Show progress (and the first results) while the slower sources are still searching.
+      if(typeof openDiscoverySearching==='function')openDiscoverySearching(seeds[0],key,options);
+      let partial=null;
       try {
         const response = await fetch(backendUrl('/api/discovery/start'), {
           method: 'POST',
@@ -124,11 +127,18 @@
         while(data.id&&data.status==='running'){
           state.discoveryProgressText=data.stage==='ranking'?'Assessing titles and abstracts…':!data.total?'Preparing searches…':`${data.completed||0} of ${data.total} searches complete · ${(data.recommendations||[]).length} candidates`;
           state.discoveryProgressPercent=data.stage==='ranking'?95:Math.min(85,85*(data.completed||0)/Math.max(1,data.total||1));syncDiscoveryControls();
+          if((data.recommendations||[]).length)partial=data;
+          if(typeof updateDiscoverySearching==='function')updateDiscoverySearching(data);
           await new Promise(resolve=>setTimeout(resolve,650));
           const poll=await fetch(backendUrl('/api/discovery/jobs/'+encodeURIComponent(data.id)),{headers:apiHeaders()});
           data=await poll.json();if(!poll.ok)throw new Error(data.error||'Could not check discovery progress.');
         }
-        if(data.status==='cancelled'||state.discoveryCancelRequested){showToast('Discovery cancelled.');return;}
+        if(data.status==='cancelled'||state.discoveryCancelRequested){
+          // "Stop and review" keeps the results found so far; a plain cancel discards them.
+          const kept=(data.recommendations||[]).length?data:partial;
+          if(!state.discoveryStopReview||!kept){state.discoverySearching=null;if(els.discoveryModal&&!els.discoveryModal.hidden)closeDiscoveryModal();showToast('Discovery cancelled.');return;}
+          data={...kept,status:'stopped',stoppedEarly:true};
+        }
         if(data.status==='failed')throw new Error(data.error||'Discovery search failed.');
         const recs = data.recommendations || [];
         state.discoverySearchErrors ||= new Map();
@@ -139,14 +149,19 @@
         if (recommendationKey(selectedPapersForRecommendation()) === key) {
           state.discoveryResultKey=key;state.discoveryRunContext={researchQuestion:options.researchQuestion,seedPapers:seeds.map(citationPaperPayload)};
           openDiscoveryModal(recs, seeds[0],key);
+        } else if (state.discoverySearching?.key === key) {
+          // The selection changed during the search; results stay under "Review results".
+          state.discoverySearching = null;
+          if (els.discoveryModal && !els.discoveryModal.hidden) closeDiscoveryModal();
         }
         const unavailable=Object.keys(data.errors || {}).length;
         showToast(`Found ${recs.length} related paper${recs.length === 1 ? '' : 's'}${unavailable ? ` · ${unavailable} search source${unavailable===1?'':'s'} reported a problem` : ` for "${compactTitle(seeds[0].title)}"`}.`);
       } catch (error) {
         showToast(error.message);
+        if(state.discoverySearching){state.discoverySearching=null;if(els.discoveryModal&&!els.discoveryModal.hidden)closeDiscoveryModal();}
 
       } finally {
-        state.discoveryLoading = false;
+        state.discoveryLoading = false;state.discoveryStopReview=false;
         state.recommendationLoadingKey = null;state.discoveryJobId=null;state.discoveryCancelRequested=false;
         render();syncDiscoveryControls();
       }

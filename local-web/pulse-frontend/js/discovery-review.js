@@ -9,7 +9,7 @@ function discoveryRating(item) {
 function labelDiscoveryPaper(item,grade) {
   const context=discoveryReviewContext(),contextKey=JSON.stringify(context),paperKey=discoveryPaperKey(item);
   state.discoveryJudgements=(state.discoveryJudgements||[]).filter(row=>!(row.paperKey===paperKey&&row.contextKey===contextKey));
-  state.discoveryJudgements.push({paperKey,contextKey,context,grade,paper:{...item},labelledAt:new Date().toISOString()});
+  if(grade===0||grade===1||grade===2)state.discoveryJudgements.push({paperKey,contextKey,context,grade,paper:{...item},labelledAt:new Date().toISOString()});
   state.discoveryJudgements=state.discoveryJudgements.slice(-1000);
   scheduleAutosave();renderDiscoveryModal();
 }

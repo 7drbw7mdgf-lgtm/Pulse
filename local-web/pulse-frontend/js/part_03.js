@@ -1,8 +1,8 @@
 
-    function addSelectedDiscoveredToMap() {
+    function addSelectedDiscoveredToMap(options = {}) {
       if (!state.discoveryResults?.length) return;
       const seed = state.discoverySeed || state.papers.find(p => p.id === state.selectedId) || state.papers[0];
-      const selectedItems = selectedDiscoveryPapers();
+      const selectedItems = Array.isArray(options.items) ? options.items : selectedDiscoveryPapers();
       if (!selectedItems.length) {
         showToast('Please select at least one paper using the tick boxes.');
         return;
@@ -12,7 +12,7 @@
       const totalToAdd = selectedItems.length;
       selectedItems.forEach((item, index) => {
         if (recommendationAlreadyOnMap(item)) return;
-        const paper = paperFromRecommendation(item);
+        const paper = paperFromRecommendation({ ...item, title: typeof cleanDiscoveryTitle === 'function' ? cleanDiscoveryTitle(item.title) : item.title });
         const orbitIndex = Math.floor(index / 8);
         const posInOrbit = index % 8;
         const orbitRadius = 200 + orbitIndex * 120;
@@ -33,13 +33,19 @@
             target: paper.id,
             score: item.score ? Math.min(0.95, Math.max(0.4, item.score / 100)) : 0.82,
             type: ltype,
-            evidence: item.reason || 'S2AG Literature Discovery recommendation'
+            evidence: (item.whyFound || []).map(reason => reason.detail).join('; ') || item.reason || 'Literature discovery recommendation'
           });
         }
       });
 
-      closeDiscoveryModal();
-      render();
+      if (options.keepOpen) {
+        selectedItems.forEach(item => state.discoverySelectedKeys.delete(discoveryPaperKey(item)));
+        render();
+        renderDiscoveryModal();
+      } else {
+        closeDiscoveryModal();
+        render();
+      }
       if (addedCount > 0) {
         showToast(`Added ${addedCount} discovered paper${addedCount === 1 ? '' : 's'} to map & library.`);
       } else {
@@ -47,9 +53,9 @@
       }
     }
 
-    function addSelectedDiscoveredToLibrary() {
+    function addSelectedDiscoveredToLibrary(options = {}) {
       if (!state.discoveryResults?.length) return;
-      const selectedItems = selectedDiscoveryPapers();
+      const selectedItems = Array.isArray(options.items) ? options.items : selectedDiscoveryPapers();
       if (!selectedItems.length) {
         showToast('Please select at least one paper using the tick boxes.');
         return;
@@ -58,7 +64,7 @@
       let addedCount = 0;
       selectedItems.forEach(item => {
         if (recommendationAlreadyOnMap(item)) return;
-        const paper = paperFromRecommendation(item);
+        const paper = paperFromRecommendation({ ...item, title: typeof cleanDiscoveryTitle === 'function' ? cleanDiscoveryTitle(item.title) : item.title });
         paper.x = state.view.x + state.view.width / 2 + (Math.random() - 0.5) * 200;
         paper.y = state.view.y + state.view.height / 2 + (Math.random() - 0.5) * 200;
         state.papers.push(paper);

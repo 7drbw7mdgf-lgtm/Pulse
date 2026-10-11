@@ -127,7 +127,8 @@ def core_to_metadata(item):
             "publicationType": text(item.get("documentType"))}
     # CORE fullText may be a permission message. Search keeps metadata and links;
     # it never mistakes that message (or an entire document) for an abstract.
-    return provider_metadata(meta, "CORE", identifier, number(item.get("citationCount")))
+    # CORE reports 0 when it has no citation data, so 0 means "unknown" here.
+    return provider_metadata(meta, "CORE", identifier, number(item.get("citationCount")) or None)
 
 
 def query_text(value):

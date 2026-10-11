@@ -21,9 +21,9 @@ Object.assign(context.state,{papers:[imported],areas:[],links:[],clusters:[],key
 const workspace=JSON.parse(JSON.stringify(context.serializeMap())),restored=context.normalizeImportedPaper(workspace.papers[0],'Restored workspace');
 assert.equal(workspace.discoveryLimit,500,'The discovery limit must survive workspace export and autosave');
 assert.equal(restored.fullTextUrl,item.fullTextUrl);assert.equal(restored.fullTextLinks.length,1);assert.equal(restored.sourceIdentifiers.CORE,'456');assert.equal(restored.pmcid,'PMC123');assert.equal(restored.coreId,'456');assert.equal(restored.citationCountsBySource['Europe PMC'],0);assert.equal(workspace.discoverySearchSources.core,false);
-context.state.discoveryResults=[item];context.state.discoverySearchErrors.set('fixture',{core:'Search limit reached.'});
-context.renderDiscoveryModal();assert.match(context.els.discoveryPaperList.innerHTML,/Available full text/);assert.match(context.els.discoveryPaperList.innerHTML,/Europe PMC/);assert.match(context.els.discoveryPaperList.innerHTML,/CORE/);assert.match(context.els.discoveryPaperList.innerHTML,/0 citations/);
+context.state.discoveryResults=[item];context.state.discoveryQueue='all';context.state.discoverySearchErrors.set('fixture',{core:'Search limit reached.'});
+context.renderDiscoveryModal();assert.match(context.els.discoveryPaperList.innerHTML,/Full text available/);assert.match(context.els.discoveryPaperList.innerHTML,/Europe PMC/);assert.match(context.els.discoveryPaperList.innerHTML,/CORE/);assert.match(context.els.discoveryPaperList.innerHTML,/0 citations/);
 assert.equal(notice.hidden,false);assert.match(notice.textContent,/Partial results.*CORE/);
 context.state.discoverySearchErrors.clear();context.state.discoveryResults=[{...item,fullTextUrl:'javascript:alert(1)'}];context.renderDiscoveryModal();
-assert(!context.els.discoveryPaperList.innerHTML.includes('javascript:'));assert(!context.els.discoveryPaperList.innerHTML.includes('Available full text'));assert.equal(notice.hidden,true);
+assert(!context.els.discoveryPaperList.innerHTML.includes('javascript:'));assert(!context.els.discoveryPaperList.innerHTML.includes('Full text available'));assert.equal(notice.hidden,true);
 console.log('PASS: provider provenance, full-text links, keywords and citation counts survive imports; partial-source failures are visible; unsafe links are omitted.');

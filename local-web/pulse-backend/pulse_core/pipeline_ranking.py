@@ -51,6 +51,86 @@ def balanced_frontier(papers, seeds, count=4):
 
 # DOI registrants that host copies of papers published elsewhere (repositories,
 # preprint servers, data archives). A copy folds into the publisher's record.
+def _surname(name):
+    """Family name from "Abdi Elmi", "Elmi, Abdi", "A. Elmi" or "Elmi A"."""
+    name = re.sub(r'\(.*?\)|\[.*?\]|\d+', ' ', str(name or ''))
+    if ',' in name:
+        words = title_key(name.split(',')[0]).split()
+        return words[-1] if words else ''
+    words = title_key(name).split()
+    if len(words) > 1 and len(words[-1]) <= 2:
+        return words[0]
+    return words[-1] if words else ''
+
+
+def _plain_reason(text):
+    text = re.sub(r'^(?:Co-citation triangulation|Bibliographic coupling):\s*', '', str(text or '')).strip()
+    text = text.replace('with seed paper', 'with your seed paper').replace('as seed paper', 'as your seed paper')
+    return text[:1].upper() + text[1:] if text else ''
+
+
+def why_found(record, seed_papers, options, relevance=0.0):
+    """Plain-language evidence for one result, strongest kinds first."""
+    why = []
+    seed_names = {}
+    for seed in seed_papers:
+        for name in seed.get('authors') or []:
+            key = _surname(name)
+            if len(key) > 2:
+                seed_names.setdefault(key, key.title())
+    shared = []
+    for name in record.get('authors') or []:
+        label = seed_names.get(_surname(name))
+        if label and label not in shared:
+            shared.append(label)
+    if shared:
+        names = ', '.join(shared[:5]) + (f' +{len(shared) - 5}' if len(shared) > 5 else '')
+        why.append({'kind': 'authors', 'label': f"Shares {len(shared)} author{'s' if len(shared) != 1 else ''}",
+                    'detail': f'Shares authors with your seed: {names}'})
+    evidence = record.get('retrievalEvidence') or []
+    channels = [str(ev.get('channel') or '') for ev in evidence]
+    seed_word = 'your seed paper' if len(seed_papers) <= 1 else 'one of your seed papers'
+    if any(channel.startswith('citations:') and channel.endswith(':backward') for channel in channels):
+        why.append({'kind': 'cited-by-seed', 'label': 'Cited by your seed', 'detail': f'{seed_word[0].upper()}{seed_word[1:]} cites this paper'})
+    if any(channel.startswith('citations:') and channel.endswith(':forward') for channel in channels):
+        why.append({'kind': 'cites-seed', 'label': 'Cites your seed', 'detail': f'This paper cites {seed_word}'})
+    def evidence_of(kind):
+        found = next((ev for ev in evidence if kind in str(ev.get('subType') or '')), None)
+        return found or (record if kind in str(record.get('subType') or '') else None)
+    chase = evidence_of('Chase')
+    if chase:
+        via = str(chase.get('via') or record.get('chaseViaTitle') or '')
+        why.append({'kind': 'two-steps', 'label': 'Two citation steps away',
+                    'detail': f'Linked to your seed through "{via[:90]}"' if via else 'Linked to your seed through an intermediate paper'})
+    co = evidence_of('Co-citation')
+    if co:
+        why.append({'kind': 'co-cited', 'label': 'Often cited with your seed',
+                    'detail': _plain_reason(co.get('detail') or record.get('reason')) or 'Cited together with your seed paper by other papers'})
+    coupled = evidence_of('Bibliographic coupling')
+    if coupled:
+        why.append({'kind': 'shared-references', 'label': 'Shares references',
+                    'detail': _plain_reason(coupled.get('detail') or record.get('reason')) or 'Shares references with your seed paper'})
+    seed_terms, seen = [], set()
+    for seed in seed_papers:
+        for term in list(seed.get('paperKeywords') or []) + list(options.get('steerKeywords') or []):
+            key = str(term).casefold().strip()
+            if len(key) > 3 and key not in seen:
+                seen.add(key)
+                seed_terms.append(str(term).strip())
+    text = text_for_paper(record)
+    matched = [term for term in seed_terms if contains_phrase(text, term)][:3]
+    if matched:
+        why.append({'kind': 'topic', 'label': matched[0], 'detail': 'Matches your topic: ' + ', '.join(matched)})
+    if options.get('researchQuestion') and relevance >= .35:
+        why.append({'kind': 'question', 'label': 'Matches your question', 'detail': 'Title and abstract match your research question'})
+    if not any(item['kind'] not in ('topic', 'question') for item in why):
+        providers = [str(name) for name in record.get('sourceList') or [] if name] or ['the search indexes']
+        semantic = 'semanticSearch' in (record.get('branches') or [])
+        why.append({'kind': 'search', 'label': 'Similar text' if semantic else 'Topic search',
+                    'detail': ('Similar wording found by semantic search' if semantic else 'Found by topic search') + ' in ' + ', '.join(dict.fromkeys(providers))})
+    return why
+
+
 REPOSITORY_DOI_PREFIXES = ('10.5281/', '10.6084/', '10.17863/', '10.25418/', '10.22541/', '10.21203/',
     '10.1101/', '10.48550/', '10.20944/', '10.2139/', '10.31219/', '10.17605/', '10.31234/', '10.36227/',
     '10.32942/', '10.5167/', '10.26434/', '10.7287/', '10.35542/', '10.18452/', '10.15488/')
@@ -127,6 +207,12 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
             record['branches'] = [branch]
             record['sourceList'] = record.get('sourceList') or [record.get('source') or record.get('metadataSource') or branch]
             record.setdefault('retrievalEvidence',[{'channel':branch, 'provider':record['sourceList'][0], 'rank':rank}])
+            # Evidence lists survive merging; carry each path's citation relation with it.
+            record['retrievalEvidence'] = [dict(ev) for ev in record['retrievalEvidence']]
+            for ev in record['retrievalEvidence']:
+                if record.get('subType'): ev.setdefault('subType', record['subType'])
+                if record.get('reason') and branch in ('citationNetwork', 'citationGraph'): ev.setdefault('detail', record['reason'])
+                if record.get('chaseViaTitle'): ev.setdefault('via', record['chaseViaTitle'])
             candidates.append(record)
     records = merge_search_records(candidates)
     if not records: return []
@@ -186,12 +272,18 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         if sem is not None and sem>=.4: explanations.append('Related meaning in title and abstract')
         if relevance[i]>=.35: explanations.append('Matches your research question or seed topics')
         if graph: explanations.append('Connected through citations' if 'citationGraph' in record['branches'] else 'Normalised shared-reference evidence')
-        if raw_rrf[i]: explanations.append('Provider ranks combined across distinct searches')
+        record['whyFound'] = why_found(record, seed_papers, options, relevance[i])
+        if record['whyFound']: explanations = [item['detail'] for item in record['whyFound']]
         if avoided: explanations.append('Lower priority: matches an avoided keyword')
         record['matchReasons'] = explanations
         record['matchLabel'] = 'Strong match' if record['score']>=65 else 'Related' if record['score']>=40 else 'Explore'
         record['branches'] = sorted(record['branches'])
     records = _versions(records)
+    for record in records:
+        if record.get('relatedVersions'):
+            # Folded copies may add evidence (another citation path, another index).
+            record['whyFound'] = why_found(record, seed_papers, options, (record.get('scoreBreakdown') or {}).get('text') or 0)
+            record['matchReasons'] = [item['detail'] for item in record['whyFound']] or record.get('matchReasons') or []
     records.sort(key=lambda p:(-p['score'],title_key(p.get('title')),p.get('doi') or ''))
     # Many unrelated works share generic titles ("Protein structure prediction").
     # Keep the best-ranked one in place and move repeats to the end, so they
