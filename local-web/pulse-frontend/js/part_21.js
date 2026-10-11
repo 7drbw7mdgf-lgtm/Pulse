@@ -44,6 +44,8 @@
           closeKeywordModal();
         } else if (!els.settingsPanel?.hidden) {
           setSettingsOpen(false);
+        } else if (state.libraryFullscreen) {
+          setLibraryFullscreen(false);
         } else if (state.selectedLinkId) {
           clearLinkageSelection();
         }
@@ -75,6 +77,7 @@
     });
     els.clearDimensionsKeyButton?.addEventListener('click', () => saveBackendSettings({ clearDimensionsApiKey: true }));
     els.clearSemanticScholarKeyButton?.addEventListener('click', () => saveBackendSettings({ clearSemanticScholarApiKey: true }));
+    els.clearCoreKeyButton?.addEventListener('click', () => saveBackendSettings({ clearCoreApiKey: true }));
     els.clearButton?.addEventListener('click', promptClearLibrary);
     els.sidebarClearButton?.addEventListener('click', promptClearLibrary);
     els.clearAppToDefaultButton?.addEventListener('click', () => clearAppToDefault(false));
@@ -145,60 +148,20 @@
       });
     });
 
-    // Discovery Ribbon: Methods, Depth, Specialised
-    document.querySelectorAll('.pulse-discovery-ribbon .ribbon-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const method = card.dataset.method;
-        if (method === 'citations') {
-          state.discoveryBranches.citationGraph = !state.discoveryBranches.citationGraph;
-          card.classList.toggle('active', state.discoveryBranches.citationGraph);
-          showToast(`Citations branch ${state.discoveryBranches.citationGraph ? 'enabled' : 'disabled'}`);
-        } else if (method === 'network') {
-          state.discoveryBranches.citationNetwork = !state.discoveryBranches.citationNetwork;
-          card.classList.toggle('active', state.discoveryBranches.citationNetwork);
-          showToast(`Network branch ${state.discoveryBranches.citationNetwork ? 'enabled' : 'disabled'}`);
-        } else if (method === 'semantic') {
-          state.discoveryBranches.semanticSearch = !state.discoveryBranches.semanticSearch;
-          card.classList.toggle('active', state.discoveryBranches.semanticSearch);
-          showToast(`SPECTER2 semantic branch ${state.discoveryBranches.semanticSearch ? 'enabled' : 'disabled'}`);
-        } else if (method === 'concepts') {
-          state.discoveryBranches.lexicalSearch = !state.discoveryBranches.lexicalSearch;
-          card.classList.toggle('active', state.discoveryBranches.lexicalSearch);
-          showToast(`Concepts branch ${state.discoveryBranches.lexicalSearch ? 'enabled' : 'disabled'}`);
-        }
-        renderDetails();
-      });
-    });
 
-    document.querySelectorAll('.pulse-discovery-ribbon [data-depth]').forEach(pill => {
-      pill.addEventListener('click', () => {
-        document.querySelectorAll('.pulse-discovery-ribbon [data-depth]').forEach(p => p.classList.toggle('active', p === pill));
-        const depth = pill.dataset.depth;
-        showToast(`Exploration depth set to ${depth === 'iterative' ? 'Iterative' : depth + '-hop'}`);
-        if (depth === '2') {
-          chase2HopSelectedPaper();
-        }
-      });
-    });
-
-    document.querySelectorAll('.pulse-discovery-ribbon [data-special]').forEach(pill => {
-      pill.addEventListener('click', () => {
-        const special = pill.dataset.special;
-        if (special === 'seminal') {
-          findMissingSeminal();
-        } else if (special === 'recent') {
-          state.recommendationRecencyTilt = 2;
-          recommendSelectedPapers();
-          showToast('Finding recent publications');
-        }
-      });
-    });
 
     // Left Navigation Rail
     document.querySelectorAll('.pulse-nav-rail .rail-item').forEach(item => {
       item.addEventListener('click', () => {
-        document.querySelectorAll('.pulse-nav-rail .rail-item').forEach(i => i.classList.toggle('active', i === item));
         const rail = item.dataset.rail;
+        if (rail === 'settings') { setSettingsOpen(true); return; }
+        if (rail === 'library') {
+          if (state.libraryFullscreen) setLibraryFullscreen(false);
+          else toggleLibraryWithSwipe();
+          return;
+        }
+        if (!els.settingsPanel.hidden) setSettingsOpen(false);
+        highlightRail(rail);
         if (state.libraryFullscreen && ['network', 'trends', 'collections', 'bibliography', 'timeline'].includes(rail)) {
           setLibraryFullscreen(false, false);
         }
@@ -210,28 +173,21 @@
             showToast('Enter a paper title or DOI to start discovery');
           }
         } else if (rail === 'network') {
-          if (els.timelineView) els.timelineView.hidden = true;
+          setTimelineVisible(false);
           state.mode = 'network';
           render();
-        } else if (rail === 'library') {
-          toggleLibraryWithSwipe();
         } else if (rail === 'trends') {
+          setTimelineVisible(false);
           state.mode = 'clusters';
           render();
           showToast('Topic clusters & trends');
         } else if (rail === 'collections' || rail === 'bibliography') {
-          if (els.timelineView) els.timelineView.hidden = true;
+          setTimelineVisible(false);
           state.mode = 'table';
           render();
           showToast('Bibliography view active.');
         } else if (rail === 'timeline') {
-          if (els.timelineView) {
-            const isShown = !els.timelineView.hidden;
-            els.timelineView.hidden = isShown;
-            if (!isShown) renderTimeline();
-          }
-        } else if (rail === 'settings') {
-          setSettingsOpen(true);
+          setTimelineVisible(true);
         }
       });
     });
@@ -240,7 +196,9 @@
       const col = els.colLibrary || document.getElementById('colLibrary');
       if (!col) return;
       const willOpen = forceOpen !== null ? forceOpen : col.classList.contains('is-swiped-hidden');
+      if (!state.libraryFullscreen && (willOpen || activeRail() !== 'library')) state.libraryPreviousRail = workspaceRail();
       if (!willOpen && state.libraryFullscreen) setLibraryFullscreen(false);
+      highlightRail(willOpen ? 'library' : state.libraryPreviousRail || workspaceRail());
       state.libraryOpen = willOpen;
       col.classList.toggle('is-swiped-hidden', !willOpen);
       if (willOpen) {
@@ -253,7 +211,7 @@
 
     function setLibraryFullscreen(expanded, restoreNavigation = true) {
       if (expanded && !state.libraryFullscreen) {
-        state.libraryPreviousRail = document.querySelector('.pulse-nav-rail .rail-item.active')?.dataset.rail || 'network';
+        state.libraryPreviousRail = workspaceRail();
       }
       state.libraryFullscreen = Boolean(expanded);
       state.libraryOpen = true;
@@ -265,38 +223,21 @@
       els.closeLibrarySwipeBtn.setAttribute('aria-label', label);
       els.closeLibrarySwipeBtn.setAttribute('aria-expanded', String(state.libraryFullscreen));
       if (expanded) {
-        if (els.timelineView) els.timelineView.hidden = true;
+        setTimelineVisible(false);
         setAiPanelOpen(false);
-        document.querySelectorAll('.pulse-nav-rail .rail-item').forEach(item => item.classList.toggle('active', item.dataset.rail === 'library'));
+        highlightRail('library');
       } else if (restoreNavigation) {
         const rail = state.libraryPreviousRail === 'library' ? 'network' : state.libraryPreviousRail || 'network';
-        document.querySelectorAll('.pulse-nav-rail .rail-item').forEach(item => item.classList.toggle('active', item.dataset.rail === rail));
+        highlightRail(rail);
+        if (rail === 'timeline') setTimelineVisible(true);
       }
       syncDensityButtons();
       renderPapers();
       requestAnimationFrame(() => { if (!state.libraryFullscreen) render(); });
-      els.closeLibrarySwipeBtn.focus();
+      if (restoreNavigation) els.closeLibrarySwipeBtn.focus();
     }
 
     els.closeLibrarySwipeBtn?.addEventListener('click', () => setLibraryFullscreen(!state.libraryFullscreen));
-
-    els.railCardOpenBtn?.addEventListener('click', () => {
-      toggleLibraryWithSwipe(true);
-    });
-
-    // Key Parameters Sort Bar on top of Library List
-    document.querySelectorAll('.param-sort-pill').forEach(pill => {
-      pill.addEventListener('click', () => {
-        const key = pill.dataset.sort;
-        if (state.librarySortKey === key) {
-          state.librarySortAsc = !state.librarySortAsc;
-        } else {
-          state.librarySortKey = key;
-          state.librarySortAsc = key === 'title' || key === 'authors';
-        }
-        renderPapers();
-      });
-    });
 
     // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
@@ -332,57 +273,6 @@
       if (!restored) showToast('Saved papers could not be loaded. Refresh before making changes.');
     });
 
-    function parsePaperDate(paper) {
-      if (!paper) return { sortKey: '9999-99-99', label: '', year: 'Undated' };
-      const raw = (paper.date || paper.publicationDate || paper.year || '').toString().trim();
-      const match = raw.match(/(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?/);
-      if (match) {
-        const y = match[1];
-        const m = match[2] ? match[2].padStart(2, '0') : '01';
-        const d = match[3] ? match[3].padStart(2, '0') : '01';
-        return { sortKey: `${y}-${m}-${d}`, label: raw, year: y };
-      }
-      return { sortKey: '9999-99-99', label: raw || 'Date unknown', year: 'Undated' };
-    }
-
-    function chronologicalPapers() {
-      return [...state.papers]
-        .map(paper => ({ paper, date: parsePaperDate(paper) }))
-        .sort((a, b) => a.date.sortKey.localeCompare(b.date.sortKey));
-    }
-
-    function renderTimeline() {
-      if (!els.timelineView) return;
-      const ordered = chronologicalPapers();
-      let previousYear = null;
-      const count = ordered.length;
-      els.timelineView.innerHTML = `<header class="timeline-header"><span class="discovery-source-pill">Chronological Literature View</span><h1>Timeline</h1><p>Oldest to newest · ${count} papers across your research library.</p></header><div class="timeline-track">${ordered.map(({paper, date}) => {
-        const year = date?.year || 'Undated';
-        const heading = year !== previousYear ? `<div class="timeline-year-heading"><h2 class="timeline-year">${escapeHtml(year)}</h2><span class="timeline-year-badge">${ordered.filter(o => (o.date?.year || 'Undated') === year).length} paper${ordered.filter(o => (o.date?.year || 'Undated') === year).length === 1 ? '' : 's'}</span></div>` : '';
-        previousYear = year;
-        const citations = paperCitationCount(paper);
-        const citeHtml = citations !== null ? `<span class="timeline-cite-pill">★ ${citations.toLocaleString()} cites</span>` : '';
-        const isSelected = state.selectedId === paper.id ? ' is-selected' : '';
-        const isSeminal = (citations > 100 || (paper.tags && paper.tags.includes('seminal')));
-        const seminalBadge = isSeminal ? '<span class="timeline-seminal-badge">Seminal</span>' : '';
-        return `${heading}<article class="timeline-paper${isSelected}" data-timeline-id="${escapeHtml(paper.id)}"><div class="timeline-date-wrap"><span class="timeline-date">${escapeHtml(date?.label || 'Date unknown')}</span>${citeHtml}</div><div class="timeline-content"><div class="timeline-title-row"><button type="button" class="timeline-paper-title" data-timeline-inspect="${escapeHtml(paper.id)}">${escapeHtml(paper.title)}</button>${seminalBadge}</div><p>${escapeHtml([paperAuthorSummary(paper), paper.journal].filter(Boolean).join(' · '))}</p>${paper.abstract ? `<p class="timeline-abstract">${escapeHtml(paper.abstract.slice(0, 240))}${paper.abstract.length > 240 ? '…' : ''}</p>` : ''}</div><div class="timeline-actions"><button type="button" class="button secondary xs" data-timeline-discover="${escapeHtml(paper.id)}">Discover related</button><button type="button" class="button xs" data-timeline-focus="${escapeHtml(paper.id)}">View in graph</button></div></article>`;
-      }).join('') || '<div class="timeline-empty">Add papers to see how the literature develops over time.</div>'}</div>`;
-      els.timelineView.querySelectorAll('[data-timeline-inspect]').forEach(button => button.addEventListener('click', () => {
-        inspectPaper(button.dataset.timelineInspect);
-      }));
-      els.timelineView.querySelectorAll('[data-timeline-discover]').forEach(button => button.addEventListener('click', () => {
-        if (state.papers.length) runDiscoveryPipeline();
-      }));
-      els.timelineView.querySelectorAll('[data-timeline-focus]').forEach(button => button.addEventListener('click', () => {
-        inspectPaper(button.dataset.timelineFocus);
-        state.centerId = button.dataset.timelineFocus;
-        state.mode = 'network';
-        if (els.timelineView) els.timelineView.hidden = true;
-        render();
-      }));
-    }
-
-
     // Discovery Hero Dropzone
     const discDrop = document.getElementById('discoveryDropzone');
     const discFileInput = document.getElementById('discoveryFileInput');
@@ -409,35 +299,9 @@
     const railAddButton = document.getElementById('railAddButton');
     const railAddPopover = document.getElementById('railAddPopover');
     const inspectorToggle = document.getElementById('inspectorToggle');
+    const inspectorReopen = document.getElementById('inspectorReopen');
 
-    function setDiscoveryOptionsOpen(open, returnFocus = false) {
-      discoveryOptionsPopup.hidden = !open;
-      discoveryOptionsButton.setAttribute('aria-expanded', String(open));
-      if (open) {
-        setRailAddOpen(false);
-        discoveryOptionsPopup.querySelector('button').focus();
-      } else if (returnFocus) discoveryOptionsButton.focus();
-    }
-    function syncDiscoveryOptions() {
-      const branchKeys = { citations: 'citationGraph', network: 'citationNetwork', semantic: 'semanticSearch', concepts: 'lexicalSearch' };
-      const enabled = [];
-      discoveryOptionsPopup.querySelectorAll('[data-method]').forEach(button => {
-        const active = Boolean(state.discoveryBranches[branchKeys[button.dataset.method]]);
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', String(active));
-        if (active) enabled.push(button.querySelector('strong').textContent);
-      });
-      const depths = [...discoveryOptionsPopup.querySelectorAll('[data-depth]')];
-      depths.forEach(button => button.setAttribute('aria-pressed', String(button.classList.contains('active'))));
-      const depth = depths.find(button => button.classList.contains('active'))?.dataset.depth || '2';
-      const methods = enabled.length === 4 ? 'All methods' : enabled.length === 0 ? 'No methods' : enabled.length === 1 ? enabled[0] : `${enabled.length} methods`;
-      document.getElementById('discoveryOptionsSummary').textContent = `${methods} · ${depth === 'iterative' ? 'Iterative' : depth + '-hop'}`;
-    }
-    discoveryOptionsButton.addEventListener('click', () => setDiscoveryOptionsOpen(discoveryOptionsPopup.hidden));
-    document.getElementById('discoveryOptionsClose').addEventListener('click', () => setDiscoveryOptionsOpen(false, true));
-    document.getElementById('discoveryOptionsDone').addEventListener('click', () => setDiscoveryOptionsOpen(false, true));
-    discoveryOptionsPopup.addEventListener('click', syncDiscoveryOptions);
-    syncDiscoveryOptions();
+    initDiscoveryControls();
 
     function setRailAddOpen(open, returnFocus = false) {
       railAddPopover.hidden = !open;
@@ -452,7 +316,9 @@
 
     function setInspectorVisible(visible, persist = true) {
       state.inspectorVisible = visible;
-      inspectorToggle.checked = visible;
+      inspectorToggle.setAttribute('aria-expanded', String(visible));
+      inspectorReopen.setAttribute('aria-expanded', String(visible));
+      inspectorReopen.hidden = visible;
       els.app.classList.toggle('inspector-hidden', !visible);
       els.details.hidden = !visible;
       if (persist) {
@@ -460,13 +326,20 @@
       }
       requestAnimationFrame(() => render());
     }
-    inspectorToggle.addEventListener('change', () => setInspectorVisible(inspectorToggle.checked));
+    inspectorToggle.addEventListener('click', () => {
+      setInspectorVisible(false);
+      inspectorReopen.focus();
+    });
+    inspectorReopen.addEventListener('click', () => {
+      setInspectorVisible(true);
+      inspectorToggle.focus();
+    });
     let savedInspectorVisible = true;
     try { savedInspectorVisible = localStorage.getItem('pulse.inspectorVisible') !== 'false'; } catch (_) {}
     setInspectorVisible(savedInspectorVisible, false);
 
     document.addEventListener('click', event => {
-      if (!event.target.closest('.discovery-dropdown-wrap')) setDiscoveryOptionsOpen(false);
+      if (!event.target.closest('.discovery-dropdown-wrap, [data-action="open-discovery-options"]')) setDiscoveryOptionsOpen(false);
       if (!event.target.closest('.rail-actions')) setRailAddOpen(false);
     });
     document.addEventListener('keydown', event => {

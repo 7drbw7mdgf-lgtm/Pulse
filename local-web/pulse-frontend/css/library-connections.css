@@ -4,7 +4,13 @@
 .library-connection-pill button+button {border-left:1px solid var(--line)}
 .library-connection-pill small {font-size:10px;color:var(--muted)}
 .library-connection-pill .is-connected {color:#16805c}
-.library-connection-pill + .inspector-toggle {margin-left:0}
+.rail-utility-row .library-connection-pill { flex: 1; min-width: 0; gap: 0; margin: 0; padding: 2px; background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.12); border-radius: 6px; box-shadow: none; }
+.rail-utility-row .library-connection-pill button { position: relative; flex: 1; justify-content: center; gap: 4px; padding: 0 4px; height: 24px; font-size: 10px; color: #dbe2ee; border-radius: 4px; }
+.rail-utility-row .library-connection-pill button strong { font-weight: 600; }
+.rail-utility-row .library-connection-pill button:hover { background: rgba(255,255,255,.1); color: white; }
+.rail-utility-row .library-connection-pill button+button { border-color: rgba(255,255,255,.12); }
+.rail-utility-row .library-connection-pill button.is-connected::after { content: ''; width: 4px; height: 4px; border-radius: 50%; background: #6ee7b7; flex-shrink: 0; }
+.rail-utility-row .library-connection-pill small { display: block; position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .record-dialog {color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:0;width:min(850px,90vw);max-height:85vh;box-shadow:0 24px 80px #10162b40}
 .record-dialog::backdrop {background:#11182d60;backdrop-filter:blur(3px)}
 .record-dialog header {display:flex;gap:20px;justify-content:space-between;align-items:start;padding:22px 24px;border-bottom:1px solid var(--line)}

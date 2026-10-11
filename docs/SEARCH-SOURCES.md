@@ -1,0 +1,19 @@
+# Europe PMC and CORE search
+
+Open the ribbon's **Discovery** tab. In Discovery options, enable **Concepts**, then choose **Semantic Scholar**, **Europe PMC** and/or **CORE** under **Concept search sources**. All three are enabled by default. Search builds separate focused queries from each seed's title, abstract and keywords, plus an optional research question. It expands explicitly defined acronyms and a small controlled synonym set, and broadens sparse searches within a bounded budget. Europe PMC uses title/abstract fields and its synonym support; CORE uses title/abstract queries. Citation and semantic methods retain their existing providers.
+
+The **Results** selector offers 50, 100, 200 or 500 papers, with 200 as the default. The saved limit applies to both the ribbon's **Discover related** button and the inspector. Providers are paged within their supported request sizes, then merged and ranked up to the selected limit. A source may contain fewer matching papers. If a later page fails, results already retrieved are kept and the source's warning is shown.
+
+The **Reference managers** ribbon tab contains the existing Zotero and Mendeley connections for sign-in, sync and citation transfer. Switching ribbon tabs does not run a search or send citations. Press the active tab again or double-click it to collapse its tools; another press reopens them. Switching to the other tab opens that panel, and arrow keys move between tabs.
+
+[Europe PMC](https://europepmc.org/RestfulWebService) supplies biomedical article metadata, abstracts, publication identifiers and available free full-text links. [CORE](https://api.core.ac.uk/docs/v3) supplies research metadata and repository/full-text links. Search does not download full papers automatically or bypass access restrictions.
+
+Matching DOI records are combined. A record without a DOI can join a unique matching title when author/year evidence agrees. Conflicting DOIs or editions remain separate unless explicit preprint/published types, near-identical titles, matching authors and compatible dates support grouping them as versions. Results retain the contributing sources, available bibliographic fields and provider-specific citation counts. Adding results to the library preserves their full-text links and identifiers. Imported-paper metadata lookup also tries these sources when Crossref and OpenAlex cannot identify a match; ambiguous results do not overwrite extracted metadata.
+
+Both sources offer public metadata search. CORE's allowance can vary, and unavailable or rate-limited sources are reported above the results while other searches continue. Requests use Pulse's bounded, cached transport.
+
+For a larger CORE allowance, obtain a key from [CORE API registration](https://core.ac.uk/services/api), open **Settings → Search sources**, enter it and save. The key is encrypted in the local settings file, sent only in an authorization header and never returned to the browser. Leaving the field blank preserves the saved key; **Remove key** deletes it. Deployments can alternatively use the `CORE_API_KEY` environment variable.
+
+Query ranks are fused across distinct searches, without counting provider mirrors as separate relevance votes. BM25 and optional locally installed neural embeddings compare titles and abstracts. Recency and citation preference are optional; impact uses citations/year percentiles within the current candidate pool, optionally within an actual field. Scores are relative heuristics, not relevance probabilities.
+
+Use **Avoid keywords** for a soft preference, **Exclude completely** for strict phrase matches, and **Include varied perspectives** to reduce repetition. The results provide match reasons, source status, full-text filters and local Relevant / Not relevant labels. **Export labels** saves a reviewed subset for the [offline benchmark](../benchmarks/README.md). These labels do not silently change the ranker or leave the local workspace.

@@ -1,5 +1,8 @@
 import os
 
+def resolve_core_api_key(settings):
+    return str(os.environ.get("CORE_API_KEY") or settings.get("coreApiKey") or "").strip()
+
 def resolve_semantic_scholar_api_key(settings):
     return os.environ.get("SEMANTIC_SCHOLAR_API_KEY") or settings.get("semanticScholarApiKey") or ""
 

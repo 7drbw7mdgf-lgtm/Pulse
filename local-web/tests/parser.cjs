@@ -7,7 +7,7 @@ const context = vm.createContext({ console, Map, Set, TextDecoder, Uint8Array, U
   window: {}, state: {papers:[]}, els: {}, stopwords: new Set(), uid: ()=>require('node:crypto').randomUUID(),
   fetch: async()=>{throw new Error('Unexpected live request in unit test')}
 });
-for (const part of ['05','06','07','08','13']) vm.runInContext(fs.readFileSync(`pulse-frontend/js/part_${part}.js`,'utf8'),context);
+for (const part of ['05','06','07','08','11','13']) vm.runInContext(fs.readFileSync(`pulse-frontend/js/part_${part}.js`,'utf8'),context);
 const run = code=>vm.runInContext(code,context);
 for (const input of ['https://doi.org/10.1037%2Fh0054346?x=1','DOI: 10.\n1037 / h0054346.','%31%30%2E%31%30%33%37%2Fh0054346','１０．１０３７／h0054346','10&#46;1037&#47;h0054346']) {
   assert.equal(run(`normalizeDoi(${JSON.stringify(input)})`),'10.1037/h0054346');

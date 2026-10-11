@@ -8,6 +8,7 @@
       ].map(values => values.map(term => term.toLowerCase()).sort().join('__')).join('::');
       return [
         papers.map(paper => paper.id).sort().join('__'),
+        discoveryConfigurationKey(),
         steering,
         state.recommendationRecencyTilt,
         state.recommendationImpactTilt
@@ -41,6 +42,7 @@
     function setRecommendationSteerOpen(open) {
       state.recommendationSteerOpen = open;
       renderDetails();
+      setDiscoveryOptionsOpen(open);
     }
 
     function svgPoint(event) {
@@ -73,7 +75,7 @@
       els.map.querySelectorAll('.area-region').forEach(region => {
         region.classList.toggle('is-selected', region.dataset.area === state.selectedAreaId);
       });
-      document.querySelectorAll('.pulse-paper-card, .paper-card, .library-table-row, .rail-card-item, .timeline-paper').forEach(card => {
+      document.querySelectorAll('.pulse-paper-card, .paper-card, .library-table-row, .timeline-paper').forEach(card => {
         const id = card.dataset.paper || card.dataset.timelineId;
         card.classList.toggle('is-selected', id === state.selectedId);
       });
@@ -89,7 +91,11 @@
       if (closeAgent && !els.aiPanel.hidden) setAiPanelOpen(false);
       renderSelection();
       renderDetails();
-      els.details.scrollTop = 0;
+      els.detailsContent.scrollTop = 0;
+      if (els.timelineView && !els.timelineView.hidden) {
+        state.timelineFocusId = id;
+        renderTimeline();
+      }
       if (typeof updateAgentControls === 'function') updateAgentControls();
     }
 

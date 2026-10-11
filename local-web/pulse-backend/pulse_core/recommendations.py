@@ -105,7 +105,7 @@ def recommendation_rank(item, overlap, author_boost=0, journal_boost=0, penalty=
         score += min(2.0, (item["citationCount"] / 50.0) * impact_tilt)
     if recency_tilt and item.get("year"):
         try:
-            age = max(0, 2026 - int(str(item["year"])[:4]))
+            age = max(0, __import__("datetime").date.today().year - int(str(item["year"])[:4]))
             score += max(0, (10 - age) * 0.1 * recency_tilt)
         except ValueError:
             pass

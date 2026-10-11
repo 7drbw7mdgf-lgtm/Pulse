@@ -136,6 +136,7 @@ def openalex_to_metadata(item):
         "abstract": abstract,
         "citationCount": item.get("cited_by_count") or 0,
         "openAlexId": item.get("id"),
+        "field": ((item.get("primary_topic") or {}).get("field") or {}).get("display_name") or "",
         "metadataSource": "OpenAlex",
         "volume": str((item.get("biblio") or {}).get("volume") or ""),
         "issue": str((item.get("biblio") or {}).get("issue") or ""),

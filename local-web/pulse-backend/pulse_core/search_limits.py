@@ -1,0 +1,22 @@
+"""Shared discovery limits and partial results from paginated providers."""
+
+DEFAULT_DISCOVERY_LIMIT = 200
+MAX_DISCOVERY_LIMIT = 500
+
+
+def discovery_limit(value, default=DEFAULT_DISCOVERY_LIMIT):
+    try:
+        requested = int(value) if value is not None else default
+    except (ValueError, TypeError, OverflowError):
+        requested = default
+    return max(1, min(requested, MAX_DISCOVERY_LIMIT))
+
+
+class SearchResults(list):
+    warning = ""
+
+    def keep_partial(self, error):
+        if not self:
+            raise error
+        self.warning = f"Returned {len(self)} papers; additional results could not be loaded. {error}"
+        return self

@@ -5,7 +5,7 @@ const context={document:doc,window:{},Map,Set,WeakMap,TextDecoder,Uint8Array,URL
  const payload=JSON.parse(options.body);calls.push(payload);
  return {ok:true,json:async()=>({matched:true,strategy:'doi',source:'Crossref',metadata:{title:'Synthetic transport study',doi:'10.1234/test',doiVerified:true,authors:['Ada Brooks','Sam Rivera'],year:'2025',date:'2025-06-05',journal:'Transport Review',volume:'10',issue:'2',pages:'20-29',publisher:'Test Press',issn:'1234-5678',url:'https://example.org/paper',language:'en',keywords:'network; transport'}})};
 }};
-vm.createContext(context);for(const n of ['05','06','07','08','13'])vm.runInContext(fs.readFileSync(`pulse-frontend/js/part_${n}.js`,'utf8'),context);
+vm.createContext(context);for(const n of ['05','06','07','08','11','13'])vm.runInContext(fs.readFileSync(`pulse-frontend/js/part_${n}.js`,'utf8'),context);
 const records=fs.readFileSync('pulse-frontend/js/part_23.js','utf8');vm.runInContext(records.slice(records.indexOf('function recordRis('),records.indexOf("document.getElementById('relationClose')")),context);
 (async()=>{
  const paper=context.normalizeImportedPaper({title:'Synthetic transport study',doi:'10.1234/test',doiVerified:true},'test');context.state.papers=[paper];

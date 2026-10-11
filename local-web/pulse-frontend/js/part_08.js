@@ -69,6 +69,11 @@
         doi: normalizeDoi(paper.doi || paper.DOI || '') || findPrimaryDoi(paper.url || '', paper.text || ''),
         doiVerified: Boolean(paper.doiVerified),
         pmid: String(paper.pmid || ''),
+        pmcid: String(paper.pmcid || ''), coreId: String(paper.coreId || ''), europePmcId: String(paper.europePmcId || ''),
+        fullTextUrl: safeHref(paper.fullTextUrl || ''),
+        fullTextLinks: (Array.isArray(paper.fullTextLinks) ? paper.fullTextLinks : []).filter(link=>link && safeHref(link.url)).map(link=>({...link,url:safeHref(link.url)})),
+        sourceList: Array.isArray(paper.sourceList) ? paper.sourceList : [], sourceIdentifiers: paper.sourceIdentifiers || {},
+        citationCountsBySource: paper.citationCountsBySource || {}, citationCountSource: paper.citationCountSource || '',
         volume: String(paper.volume || ''), issue: String(paper.issue || ''), pages: String(paper.pages || ''), issn: String(paper.issn || ''),
         publisher: String(paper.publisher || ''), url: String(paper.url || ''), articleNumber: String(paper.articleNumber || ''), isbn: String(paper.isbn || ''), language: String(paper.language || ''), publicationType: String(paper.publicationType || ''),
         metadataCheckedAt: paper.metadataCheckedAt || '', metadataSnapshot: paper.metadataSnapshot || null, mendeleySource: paper.mendeleySource || null,
@@ -85,7 +90,7 @@
         openAlexUrl: paper.openAlexUrl || (paper.openAlexId ? `https://openalex.org/${normalizeOpenAlexId(paper.openAlexId)}` : ''),
         referenceIds: dedupeList((paper.referenceIds || []).map(normalizeOpenAlexId).filter(Boolean)).slice(0, 160),
         citedByIds: dedupeList((paper.citedByIds || []).map(normalizeOpenAlexId).filter(Boolean)).slice(0, 160),
-        citedByCount: Number.isFinite(paper.citedByCount) ? paper.citedByCount : null,
+        citedByCount: Number.isFinite(paper.citedByCount ?? paper.citationCount) ? (paper.citedByCount ?? paper.citationCount) : null,
         s2PaperId: paper.s2PaperId || '',
         citationMetrics: paper.citationMetrics || null,
         text: String(paper.text || paper.abstract || '').slice(0, 120000),
@@ -185,9 +190,15 @@
       if (metadata.journal) paper.journal = metadata.journal;
       if (metadata.doi) paper.doi = normalizeDoi(metadata.doi);
       if (metadata.doiVerified !== undefined) paper.doiVerified = Boolean(metadata.doiVerified);
-      for (const field of ['pmid', 'volume', 'issue', 'pages', 'issn', 'publisher', 'url', 'articleNumber', 'isbn', 'language', 'publicationType']) {
+      for (const field of ['pmid', 'pmcid', 'coreId', 'europePmcId', 'volume', 'issue', 'pages', 'issn', 'publisher', 'url', 'articleNumber', 'isbn', 'language', 'publicationType']) {
         if (metadata[field]) paper[field] = String(metadata[field]);
       }
+      if(safeHref(metadata.fullTextUrl || ''))paper.fullTextUrl=safeHref(metadata.fullTextUrl);
+      if(Array.isArray(metadata.fullTextLinks))paper.fullTextLinks=metadata.fullTextLinks.filter(link=>link && safeHref(link.url)).map(link=>({...link,url:safeHref(link.url)}));
+      if(metadata.sourceList)paper.sourceList=[...new Set([...(paper.sourceList || []),...metadata.sourceList])];
+      if(metadata.sourceIdentifiers)paper.sourceIdentifiers={...(paper.sourceIdentifiers || {}),...metadata.sourceIdentifiers};
+      if(metadata.citationCountsBySource)paper.citationCountsBySource={...(paper.citationCountsBySource || {}),...metadata.citationCountsBySource};
+      if(metadata.citationCountSource)paper.citationCountSource=metadata.citationCountSource;
       if (metadata.abstract && (!paper.abstract || paper.abstract.length < 120 || looksBinary(paper.abstract))) paper.abstract = metadata.abstract;
       if ((metadata.paperKeywords || []).length) {
         paper.paperKeywords = [...new Set([...(metadata.paperKeywords || []), ...(paper.paperKeywords || [])])].slice(0, 24);

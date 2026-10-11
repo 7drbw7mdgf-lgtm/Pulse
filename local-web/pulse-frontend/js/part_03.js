@@ -2,7 +2,7 @@
     function addSelectedDiscoveredToMap() {
       if (!state.discoveryResults?.length) return;
       const seed = state.discoverySeed || state.papers.find(p => p.id === state.selectedId) || state.papers[0];
-      const selectedItems = state.discoveryResults.filter(item => state.discoverySelectedKeys.has(discoveryPaperKey(item)));
+      const selectedItems = selectedDiscoveryPapers();
       if (!selectedItems.length) {
         showToast('Please select at least one paper using the tick boxes.');
         return;
@@ -49,7 +49,7 @@
 
     function addSelectedDiscoveredToLibrary() {
       if (!state.discoveryResults?.length) return;
-      const selectedItems = state.discoveryResults.filter(item => state.discoverySelectedKeys.has(discoveryPaperKey(item)));
+      const selectedItems = selectedDiscoveryPapers();
       if (!selectedItems.length) {
         showToast('Please select at least one paper using the tick boxes.');
         return;

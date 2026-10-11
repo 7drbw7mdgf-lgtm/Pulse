@@ -33,6 +33,7 @@ from pulse_core.config_resolvers import (
     resolve_ollama_embeddings_endpoint,
     resolve_ollama_tags_endpoint,
     resolve_semantic_scholar_api_key,
+    resolve_core_api_key,
 )
 from pulse_core.security import SENSITIVE_SETTING_KEYS, decrypt_secret, encrypt_secret
 from pulse_performance import LIBRARY_WRITE_LOCK
@@ -296,12 +297,18 @@ def save_settings(payload):
         settings["semanticScholarApiKey"] = s2_key.strip()
     elif payload.get("clearSemanticScholarApiKey"):
         settings["semanticScholarApiKey"] = ""
+    core_key = payload.get("coreApiKey")
+    if isinstance(core_key, str) and core_key.strip():
+        settings["coreApiKey"] = core_key.strip()
+    elif payload.get("clearCoreApiKey"):
+        settings["coreApiKey"] = ""
     return write_settings(settings)
 
 def public_settings(settings):
     from pulse_core.ollama_mgr import bundled_ollama_status, ollama_status, workflow_capabilities
     dim_key = resolve_dimensions_api_key(settings)
     s2_key = resolve_semantic_scholar_api_key(settings)
+    core_key = resolve_core_api_key(settings)
     gemini_key = resolve_gemini_api_key(settings)
     caps = workflow_capabilities()
     ollama = ollama_status(settings)
@@ -344,6 +351,7 @@ def public_settings(settings):
             "vectorDb": caps["vectorDb"],
         },
         "providers": {
+            "core": {"configured": bool(core_key), "publicSearch": True},
             "cloud": {
                 "provider": cloud_provider,
                 "model": cloud_model,

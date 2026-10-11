@@ -2,9 +2,11 @@
     async function saveBackendSettings(options = {}) {
       const clearDimensionsApiKey = Boolean(options.clearDimensionsApiKey);
       const clearSemanticScholarApiKey = Boolean(options.clearSemanticScholarApiKey);
+      const clearCoreApiKey = Boolean(options.clearCoreApiKey);
       els.saveSettingsButton.disabled = true;
       if (els.clearDimensionsKeyButton) els.clearDimensionsKeyButton.disabled = true;
       if (els.clearSemanticScholarKeyButton) els.clearSemanticScholarKeyButton.disabled = true;
+      if (els.clearCoreKeyButton) els.clearCoreKeyButton.disabled = true;
       try {
         const response = await fetch(backendUrl('/api/settings'), {
           method: 'POST',
@@ -19,6 +21,8 @@
             clearDimensionsApiKey,
             semanticScholarApiKey: clearSemanticScholarApiKey ? '' : (els.semanticScholarKeyInput ? els.semanticScholarKeyInput.value.trim() : ''),
             clearSemanticScholarApiKey,
+            coreApiKey: clearCoreApiKey ? '' : (els.coreKeyInput?.value.trim() || ''),
+            clearCoreApiKey,
             gemmaModel: els.gemmaModelInput.value.trim() || 'gemma3:4b',
             embeddingModel: els.embeddingModelInput.value.trim() || 'nomic-embed-text',
             autoGemmaExtraction: els.autoGemmaExtractionInput?.checked !== false
@@ -28,8 +32,10 @@
         if (!response.ok) throw new Error(settings.error || 'Could not save backend settings.');
         if (els.dimensionsKeyInput) els.dimensionsKeyInput.value = '';
         if (els.semanticScholarKeyInput) els.semanticScholarKeyInput.value = '';
+        if (els.coreKeyInput) els.coreKeyInput.value = '';
         renderBackendStatus(settings, 'Settings saved.');
-        if (clearSemanticScholarApiKey) showToast('Semantic Scholar key cleared.');
+        if (clearCoreApiKey) showToast('CORE key removed.');
+        else if (clearSemanticScholarApiKey) showToast('Semantic Scholar key cleared.');
         else if (clearDimensionsApiKey) showToast('Dimensions key cleared.');
         else showToast('Backend settings saved.');
       } catch (error) {

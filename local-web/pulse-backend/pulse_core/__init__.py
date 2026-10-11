@@ -9,6 +9,7 @@ from .storage import *
 from .recommendations import *
 from .external_apis import *
 from .s2_client import *
+from .literature_search import *
 from .ollama_mgr import *
 from .embeddings import *
 from .ai_inference import *

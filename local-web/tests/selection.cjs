@@ -3,7 +3,7 @@ const source = fs.readFileSync(require('path').join(__dirname,'../pulse-frontend
 const selection = source.slice(source.indexOf('    function inspectPaper('), source.indexOf('    function metadataSummary('));
 function fixture() {
   const calls = [], state = { papers: [{id:'one'}, {id:'two'}], selectedId:'one', selectedLinkId:'one__two', detailsAbstractExpanded:true, inspectorVisible:false, libraryFullscreen:true };
-  const els = {aiPanel:{hidden:false}, details:{scrollTop:200}};
+  const els = {aiPanel:{hidden:false}, detailsContent:{scrollTop:200}};
   const context = {state, els,
     setLibraryFullscreen(value){state.libraryFullscreen=value; calls.push('exit-fullscreen');},
     setInspectorVisible(value){state.inspectorVisible=value; calls.push('open-inspector');},
@@ -17,7 +17,7 @@ function fixture() {
 const test=fixture();test.context.inspectPaper('two');
 assert.equal(test.state.selectedId,'two'); assert.equal(test.state.selectedLinkId,null);
 assert.equal(test.state.inspectorVisible,true); assert.equal(test.state.libraryFullscreen,false);
-assert.equal(test.state.detailsAbstractExpanded,false); assert.equal(test.els.details.scrollTop,0);
+assert.equal(test.state.detailsAbstractExpanded,false); assert.equal(test.els.detailsContent.scrollTop,0);
 assert.equal(test.els.aiPanel.hidden,true);
 assert.deepEqual(test.calls.find(Array.isArray),['details','two',null,true]);
 assert(test.calls.includes('selection')&&test.calls.includes('agent-context'));

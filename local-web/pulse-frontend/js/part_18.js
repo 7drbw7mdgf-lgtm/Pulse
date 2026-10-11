@@ -99,41 +99,67 @@
         showToast('Select a paper first to run literature discovery.');
         return;
       }
+      if (state.discoveryLoading) return;
+      const options = discoveryConfiguration();
+      if (!Object.values(options.branches).some(Boolean)) { showToast('Choose at least one discovery method.'); return; }
+      if (options.branches.lexicalSearch && !Object.values(options.searchSources).some(Boolean) && !['citationGraph','citationNetwork','semanticSearch'].some(method=>options.branches[method])) { showToast('Choose at least one search source.'); return; }
       const key = recommendationKey(seeds);
       state.discoveryLoading = true;
       state.recommendationLoadingKey = key;
-      renderDetails();
+      state.discoveryJobId=null;state.discoveryCancelRequested=false;state.discoveryProgressText='Searching your selected sources…';state.discoveryProgressPercent=0;
+      renderDetails();syncDiscoveryControls();
       try {
-        const response = await fetch(backendUrl('/api/discovery/pipeline'), {
+        const response = await fetch(backendUrl('/api/discovery/start'), {
           method: 'POST',
           headers: apiHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             seedPapers: seeds.map(citationPaperPayload),
-            branches: state.discoveryBranches,
-            steerKeywords: state.recommendationSteerKeywords,
-            excludeKeywords: state.recommendationExcludeKeywords,
-            recencyTilt: state.recommendationRecencyTilt,
-            impactTilt: state.recommendationImpactTilt,
-            iterativeChase: true,
-            limit: 50
+            ...options
           })
         });
-        const data = await response.json();
+        let data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Discovery pipeline failed.');
+        state.discoveryJobId=data.id||null;
+        if(state.discoveryCancelRequested&&data.id)await cancelDiscoverySearch();
+        while(data.id&&data.status==='running'){
+          state.discoveryProgressText=data.stage==='ranking'?'Assessing titles and abstracts…':!data.total?'Preparing searches…':`${data.completed||0} of ${data.total} searches complete · ${(data.recommendations||[]).length} candidates`;
+          state.discoveryProgressPercent=data.stage==='ranking'?95:Math.min(85,85*(data.completed||0)/Math.max(1,data.total||1));syncDiscoveryControls();
+          await new Promise(resolve=>setTimeout(resolve,650));
+          const poll=await fetch(backendUrl('/api/discovery/jobs/'+encodeURIComponent(data.id)),{headers:apiHeaders()});
+          data=await poll.json();if(!poll.ok)throw new Error(data.error||'Could not check discovery progress.');
+        }
+        if(data.status==='cancelled'||state.discoveryCancelRequested){showToast('Discovery cancelled.');return;}
+        if(data.status==='failed')throw new Error(data.error||'Discovery search failed.');
         const recs = data.recommendations || [];
+        state.discoverySearchErrors ||= new Map();
+        state.discoverySearchErrors.set(key,data.errors || {});
         state.recommendations.set(key, recs);
-        state.discoveryResults = recs;
-        state.discoverySeed = seeds[0];
-        openDiscoveryModal(recs, seeds[0]);
-        showToast(`Literature discovery surfaced ${recs.length} papers. Review and choose papers to add in the popup.`);
+        state.discoveryRunInfo ||= new Map();state.discoveryRunInfo.set(key,{...data,runContext:{researchQuestion:options.researchQuestion,seedPapers:seeds.map(citationPaperPayload)}});
+        state.discoveryLastRun={key,recommendations:recs,seed:seeds[0]};
+        if (recommendationKey(selectedPapersForRecommendation()) === key) {
+          state.discoveryResultKey=key;state.discoveryRunContext={researchQuestion:options.researchQuestion,seedPapers:seeds.map(citationPaperPayload)};
+          openDiscoveryModal(recs, seeds[0],key);
+        }
+        const unavailable=Object.keys(data.errors || {}).length;
+        showToast(`Found ${recs.length} related paper${recs.length === 1 ? '' : 's'}${unavailable ? ` · ${unavailable} search source${unavailable===1?'':'s'} reported a problem` : ` for "${compactTitle(seeds[0].title)}"`}.`);
       } catch (error) {
         showToast(error.message);
-        state.recommendations.set(key, [{ title: 'Discovery search failed', reason: error.message }]);
+
       } finally {
         state.discoveryLoading = false;
-        state.recommendationLoadingKey = null;
-        render();
+        state.recommendationLoadingKey = null;state.discoveryJobId=null;state.discoveryCancelRequested=false;
+        render();syncDiscoveryControls();
       }
+    }
+
+    async function cancelDiscoverySearch() {
+      if(!state.discoveryLoading)return;
+      state.discoveryCancelRequested=true;state.discoveryProgressText='Cancelling…';syncDiscoveryControls();
+      if(!state.discoveryJobId)return;
+      try{
+        const response=await fetch(backendUrl('/api/discovery/cancel'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({id:state.discoveryJobId})});
+        if(!response.ok)throw new Error('Could not cancel the search.');
+      }catch(error){state.discoveryCancelRequested=false;showToast(error.message);}
     }
 
     function addSeminalPaperToMap(index) {
@@ -198,6 +224,7 @@
         headers: apiHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           limit,
+          ...discoveryConfiguration(),
           papers: seeds.map(paper => ({
             title: paper.title || '',
             authors: paper.authors || [],

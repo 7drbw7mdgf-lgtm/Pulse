@@ -8,6 +8,7 @@ const state = {
       links: [],
       clusters: [],
       selectedId: null,
+      timelineFocusId: null,
       selectedLinkId: null,
       centerId: null,
       areas: [],
@@ -33,6 +34,16 @@ const state = {
         semanticSearch: true,
         lexicalSearch: true,
       },
+      discoveryDepth: '2',
+      discoveryLimit: 200,
+      discoveryResearchQuestion: '',
+      discoveryStrictExclusions: [],
+      discoveryDiversify: true,
+      discoveryJudgements: [],
+      discoveryFullTextOnly: false,
+      discoveryRunInfo: new Map(),
+      discoverySearchSources: {semanticScholar:true,europePmc:true,core:true},
+      discoverySearchErrors: new Map(),
       discoveryLoading: false,
       discoveryResults: [],
       discoverySeed: null,
@@ -113,17 +124,13 @@ const state = {
       timelineView: document.getElementById('timelineView'),
       emptyState: document.getElementById('emptyState'),
       details: document.getElementById('details'),
+      detailsContent: document.getElementById('detailsContent'),
       quickSearchInput: document.getElementById('quickSearchInput'),
       quickAddBtn: document.getElementById('quickAddBtn'),
       railLibraryBadge: document.getElementById('railLibraryBadge'),
       railLibraryBtn: document.getElementById('railLibraryBtn'),
-      railPapersCard: document.getElementById('railPapersCard'),
-      railCardList: document.getElementById('railCardList'),
-      railCardCount: document.getElementById('railCardCount'),
-      railCardOpenBtn: document.getElementById('railCardOpenBtn'),
       colLibrary: document.getElementById('colLibrary'),
       closeLibrarySwipeBtn: document.getElementById('closeLibrarySwipeBtn'),
-      libraryParamsBar: document.getElementById('libraryParamsBar'),
       railSettingsBtn: document.getElementById('railSettingsBtn'),
       canvasLayoutSelect: document.getElementById('canvasLayoutSelect'),
       canvasLinksSelect: document.getElementById('canvasLinksSelect'),
@@ -174,8 +181,7 @@ const state = {
       headerSummaryBtn: document.getElementById('headerSummaryBtn'),
       headerSettingsBtn: document.getElementById('headerSettingsBtn'),
       saveStatePill: document.getElementById('save-state-pill'),
-      themeLight: document.getElementById('theme-light'),
-      themeDark: document.getElementById('theme-dark'),
+      themeToggle: document.getElementById('theme-toggle'),
       importInput: document.getElementById('importInput'),
       sampleButton: document.getElementById('sampleButton'),
       panelToggleButton: document.getElementById('panelToggleButton'),
@@ -198,6 +204,8 @@ const state = {
       vectorDbInput: document.getElementById('vectorDbInput'),
       dimensionsKeyInput: document.getElementById('dimensionsKeyInput'),
       semanticScholarKeyInput: document.getElementById('semanticScholarKeyInput'),
+      coreKeyInput: document.getElementById('coreKeyInput'),
+      clearCoreKeyButton: document.getElementById('clearCoreKeyButton'),
       autoGemmaExtractionInput: document.getElementById('autoGemmaExtractionInput'),
       backendDiagnostics: document.getElementById('backendDiagnostics'),
       saveSettingsButton: document.getElementById('saveSettingsButton'),
@@ -371,10 +379,33 @@ const state = {
       if (open) syncGraphControls();
     }
 
+    function highlightRail(rail) {
+      document.querySelectorAll('.pulse-nav-rail .rail-item').forEach(item => {
+        const active = item.dataset.rail === rail;
+        item.classList.toggle('active', active);
+        if (active) item.setAttribute('aria-current', 'page'); else item.removeAttribute('aria-current');
+      });
+    }
+
+    function activeRail() {
+      return document.querySelector('.pulse-nav-rail .rail-item.active')?.dataset.rail || workspaceRail();
+    }
+
+    function workspaceRail() {
+      if (els.timelineView && !els.timelineView.hidden) return 'timeline';
+      return state.mode === 'clusters' ? 'trends' : state.mode === 'table' ? 'bibliography' : 'network';
+    }
+
     function setSettingsOpen(open) {
+      const wasOpen = !els.settingsPanel.hidden;
+      if (open && !wasOpen) {
+        state.settingsPreviousRail = activeRail() === 'settings' ? workspaceRail() : activeRail();
+        highlightRail('settings');
+      }
       els.settingsPanel.hidden = !open;
       els.settingsButton.setAttribute('aria-expanded', String(open));
       if (open) loadBackendSettings();
+      else if (wasOpen && activeRail() === 'settings') highlightRail(state.settingsPreviousRail || workspaceRail());
     }
 
     function discoveryPaperKey(item) {

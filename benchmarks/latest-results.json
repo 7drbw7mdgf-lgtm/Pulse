@@ -1,0 +1,258 @@
+{
+  "cases": 20,
+  "scope": "20 synthetic non-biomedical ranking cases; manually defined relevance grades",
+  "semanticRanking": false,
+  "note": "Offline candidate-ranking regression only; provider retrieval and unjudged relevant papers are not measured.",
+  "summary": {
+    "baseline": {
+      "Recall@50": 0.0,
+      "nDCG@10": 0.0
+    },
+    "hybrid": {
+      "Recall@50": 1.0,
+      "nDCG@10": 0.9872
+    }
+  },
+  "results": [
+    {
+      "name": "Urban transport networks",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Accessible software interfaces",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Private data storage systems",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Efficient literature search methods",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Energy efficient housing design",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Public transit route planning",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Interactive scientific graphics",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Open research data repositories",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Reliable software testing practices",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Distributed database storage systems",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Secure identity management applications",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Digital library organisation systems",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Urban heat mitigation strategies",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Human computer interaction studies",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Renewable electricity forecasting models",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Inclusive education technology design",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Water conservation planning methods",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Computational geometry algorithms",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Public service scheduling models",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    },
+    {
+      "name": "Document layout analysis systems",
+      "judgedOnly": false,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9872
+      }
+    }
+  ]
+}

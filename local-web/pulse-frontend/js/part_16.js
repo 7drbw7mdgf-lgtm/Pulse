@@ -1,5 +1,50 @@
+const inspectorSectionKeys = ['concepts', 'metrics', 'abstract', 'discovery'];
+
+function inspectorSectionExpanded(key) {
+  if (!state.inspectorCollapsedSections) {
+    let saved = [];
+    try { saved = JSON.parse(localStorage.getItem('pulse-inspector-collapsed-sections') || '[]'); } catch {}
+    state.inspectorCollapsedSections = new Set(Array.isArray(saved) ? saved.filter(value => inspectorSectionKeys.includes(value)) : []);
+  }
+  return !state.inspectorCollapsedSections.has(key);
+}
+
+function inspectorSectionToggle(key, label) {
+  return `<button class="inspector-section-toggle" type="button" aria-expanded="${inspectorSectionExpanded(key)}" aria-controls="inspector-section-${key}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 3 5 5-5 5"></path></svg><span>${label}</span></button>`;
+}
+
+function setInspectorSectionExpanded(section, expanded) {
+  const key = section.dataset.inspectorSection;
+  if (!inspectorSectionKeys.includes(key)) return;
+  inspectorSectionExpanded(key);
+  const body = section.querySelector('.inspector-section-body');
+  const toggle = section.querySelector('.inspector-section-toggle');
+  if (!body || !toggle) return;
+  body.hidden = !expanded;
+  toggle.setAttribute('aria-expanded', String(expanded));
+  section.classList.toggle('is-collapsed', !expanded);
+  if (expanded) state.inspectorCollapsedSections.delete(key); else state.inspectorCollapsedSections.add(key);
+}
+
+function bindInspectorSections() {
+  els.detailsContent.querySelectorAll('[data-inspector-section]').forEach(section => {
+    const key = section.dataset.inspectorSection;
+    setInspectorSectionExpanded(section, inspectorSectionExpanded(key));
+    const toggle = section.querySelector('.inspector-section-toggle');
+    toggle?.addEventListener('click', () => {
+      setInspectorSectionExpanded(section, !inspectorSectionExpanded(key));
+      try { localStorage.setItem('pulse-inspector-collapsed-sections', JSON.stringify([...state.inspectorCollapsedSections])); } catch {}
+    });
+    section.querySelector('.discovery-run-btn')?.addEventListener('click', () => {
+      // Reveal progress and results when discovery is started from its collapsed heading.
+      setInspectorSectionExpanded(section, true);
+    });
+  });
+}
+
 
     function renderDetails() {
+      syncDiscoveryControls();
       if (!state.inspectorVisible) {
         els.details.hidden = true;
         return;
@@ -16,39 +61,20 @@
       }
       if (!paper) {
         els.details.hidden = false;
-        els.details.innerHTML = `
+        els.detailsContent.innerHTML = `
           <div class="inspector-placeholder">
             <div class="inspector-placeholder-icon">📄</div>
-            <h3>Paper Inspector</h3>
-            <p>Select any paper from the library or click a node on the map to inspect relevance scores, citation metrics, and foundational evidence.</p>
+            <h3>Select a paper</h3>
+            <p>Choose a paper from the library or map to see its details.</p>
           </div>
         `;
         return;
       }
 
-      const related = state.links
-        .filter(link => link.source === paper.id || link.target === paper.id)
-        .map(link => ({
-          score: link.score,
-          paper: state.papers.find(item => item.id === (link.source === paper.id ? link.target : link.source))
-        }))
-        .filter(item => item.paper)
-        .sort((a, b) => b.score - a.score);
       const recommendationSeeds = selectedPapersForRecommendation();
       const recKey = recommendationKey(recommendationSeeds);
       const recommendations = state.recommendations.get(recKey) || [];
       const isLoadingRecommendations = state.recommendationLoadingKey === recKey;
-      const steerText = state.recommendationSteerKeywords.join('; ');
-      const excludeText = state.recommendationExcludeKeywords.join('; ');
-      const authorText = state.recommendationAuthors.join('; ');
-      const journalText = state.recommendationJournals.join('; ');
-      const graphText = state.graphSteerKeywords.join('; ');
-      const activeSteerChips = [
-        ...state.recommendationSteerKeywords.map(t => renderMiniSteerChip(t, 'steer', '🎯 ')),
-        ...state.graphSteerKeywords.map(t => renderMiniSteerChip(t, 'graph', '🌐 ')),
-        ...state.recommendationExcludeKeywords.map(t => renderMiniSteerChip(t, 'exclude', '⛔ ')),
-      ].join('');
-
       const rawAbstract = (paper.abstract || paper.text || '').trim();
       const isAbstractLong = rawAbstract.length > 300;
       const displayAbstract = (isAbstractLong && !state.detailsAbstractExpanded)
@@ -67,20 +93,8 @@
       // 3. Key concepts
       const topConcepts = mergedKeywords(paper).slice(0, 8);
 
-      // 4. Why this paper evidence
-      const whyList = [];
-      if (related.length) {
-        whyList.push({ icon: '🔗', text: `Strong linkage with <strong>${escapeHtml(compactTitle(related[0].paper.title))}</strong> (${Math.round(related[0].score * 100)}% match)` });
-      }
-      if (Number.isFinite(metrics?.citationCount)) {
-        whyList.push({ icon: '📚', text: `${escapeHtml(metrics.source)} indexes <strong>${metrics.citationCount}</strong> citations for this paper.` });
-      }
-      if (topConcepts.length) {
-        whyList.push({ icon: '🏷️', text: `Extracted concepts: <em>${escapeHtml(topConcepts.slice(0, 3).join(', '))}</em>` });
-      }
-
       els.details.hidden = false;
-      els.details.innerHTML = `
+      els.detailsContent.innerHTML = `
         <div class="inspector-card-header">
           <div class="inspector-title-area">
             <h2 class="inspector-title">${escapeHtml(paper.title || 'Untitled paper')}</h2>
@@ -90,7 +104,6 @@
               ${paper.journal ? `<span class="inspector-journal">· ${escapeHtml(paper.journal)}</span>` : ''}
             </div>
           </div>
-          <button class="ai-close details-close-btn" data-action="close-details" type="button" title="Close inspector" aria-label="Close inspector">×</button>
         </div>
 
         ${(paper.doi || paper.metadataNote) ? `<div class="inspector-resolution-note">
@@ -109,30 +122,33 @@
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"></path></svg>
             </a>
           `}
+          ${safeHref(paper.fullTextUrl || '') ? `<a class="inspector-btn secondary" href="${escapeHtml(safeHref(paper.fullTextUrl))}" target="_blank" rel="noreferrer">Full text ↗</a>` : ''}
           <button class="inspector-btn secondary" type="button" data-action="lookup-metadata">Look up details</button>
           <button class="inspector-btn secondary" type="button" data-action="toggle-paper-seed">
             <span>${state.discoverySeed?.id === paper.id ? 'Core seed ⭐' : 'In library'}</span>
           </button>
         </div>
 
-        <div class="inspector-section">
-          <div class="inspector-section-title" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>Key concepts</span>
+        <div class="inspector-section" data-inspector-section="concepts">
+          <div class="inspector-section-heading">
+            ${inspectorSectionToggle('concepts', 'Key concepts')}
             <button class="button small secondary tag-edit-chip" data-action="open-paper-keywords" data-paper="${paper.id}" type="button">Manage tags</button>
           </div>
+          <div class="inspector-section-body" id="inspector-section-concepts">
           <div class="concept-chips-wrap">
-            ${topConcepts.map((term, i) => `
+            ${topConcepts.map(term => `
               <button class="concept-chip" data-action="tag-action-menu" data-term="${escapeHtml(term)}" type="button" title="Click for tag options">
-                <span style="opacity:0.6; margin-right:3px;">#${i + 1}</span>
                 ${escapeHtml(term)}
               </button>
             `).join('')}
             ${!topConcepts.length ? '<span class="subtle" style="font-size:11px;">No concept tags extracted yet.</span>' : ''}
           </div>
+          </div>
         </div>
 
-        <div class="inspector-section">
-          <div class="inspector-section-title metrics-heading"><span>Citation metrics</span><button data-action="refresh-metrics" class="inspector-btn secondary" type="button">Refresh</button></div>
+        <div class="inspector-section" data-inspector-section="metrics">
+          <div class="inspector-section-heading metrics-heading">${inspectorSectionToggle('metrics', 'Citation metrics')}<button data-action="refresh-metrics" class="inspector-btn secondary" type="button">Refresh</button></div>
+          <div class="inspector-section-body" id="inspector-section-metrics">
           <div class="metrics-quad-grid">
             <div class="metric-quad-box">
               <div class="metric-quad-label">Citations</div>
@@ -151,117 +167,41 @@
               <div class="metric-quad-val">${escapeHtml(metricVelocity)}</div>
             </div>
           </div>
-        </div>
-
-        <div class="citation-source-note" role="status">${metricsStatusText(paper)}</div>
-        <div class="citation-list-actions"><button class="inspector-btn secondary" data-action="list-citations" type="button">Citing papers</button><button class="inspector-btn secondary" data-action="list-references" type="button">References</button></div>
-
-        <div class="inspector-section">
-          <div class="inspector-section-title">Why this paper?</div>
-          <div class="why-paper-list">
-            ${whyList.map(item => `
-              <div class="why-paper-item">
-                <span class="why-paper-icon">${item.icon}</span>
-                <span>${item.text}</span>
-              </div>
-            `).join('')}
+          <div class="citation-list-actions"><button class="inspector-btn secondary" data-action="list-citations" type="button">Citing papers</button><button class="inspector-btn secondary" data-action="list-references" type="button">References</button></div>
+          <details class="citation-source-details"><summary>Source: ${escapeHtml(metrics?.source || 'Not retrieved')}</summary><div class="citation-source-note" role="status">${metricsStatusText(paper)}</div></details>
           </div>
         </div>
 
         ${rawAbstract ? `
-          <div class="inspector-section">
-            <div class="inspector-section-title">Abstract</div>
+          <div class="inspector-section" data-inspector-section="abstract">
+            <div class="inspector-section-heading">${inspectorSectionToggle('abstract', 'Abstract')}</div>
+            <div class="inspector-section-body" id="inspector-section-abstract">
             <p class="details-abstract-text" style="font-size:11px; line-height:1.45; color:var(--ink-2);">${escapeHtml(displayAbstract)}</p>
             ${isAbstractLong ? `<button class="details-abstract-toggle" data-action="toggle-abstract" type="button" style="margin-top:4px;">${state.detailsAbstractExpanded ? 'Show less' : 'Read full text'}</button>` : ''}
+            </div>
           </div>
         ` : ''}
 
-        <div class="inspector-section">
-          <div class="inspector-section-title">Connected in workspace (${related.length})</div>
-          <div class="related-list">
-            ${related.length ? related.map(item => `
-              <div class="related-item clickable-linkage" data-action="view-related-link" data-link="${linkId({ source: paper.id, target: item.paper.id })}" role="button" tabindex="0" title="Click to view linkage">
-                <div class="score">${Math.round(item.score * 100)}%</div>
-                <div class="related-title">${escapeHtml(item.paper.title)}</div>
-              </div>
-            `).join('') : '<p class="subtle" style="font-size:11px;">No links above threshold.</p>'}
-          </div>
-        </div>
-
-        <div class="discovery-hub" style="margin-top:12px;">
+        <div class="discovery-hub" style="margin-top:12px;" data-inspector-section="discovery">
           <div class="discovery-hub-head">
-            <div>
-              <span class="discovery-hub-tag">S2AG Exploration</span>
-              <h3>Literature Discovery</h3>
-            </div>
-            <button class="button small primary discovery-run-btn" data-action="run-discovery-pipeline" type="button" ${state.discoveryLoading ? 'disabled' : ''}>
-              ${state.discoveryLoading ? '⏳ Discovering...' : '⚡ Discover Related'}
+            ${inspectorSectionToggle('discovery', 'Related papers')}
+            <button class="button small primary discovery-run-btn" data-action="run-discovery-pipeline" type="button" ${state.discoveryLoading || !Object.values(discoveryConfiguration().branches).some(Boolean) ? 'disabled' : ''}>
+              ${state.discoveryLoading ? 'Discovering…' : 'Discover related'}
             </button>
           </div>
-
-          <div class="quick-tools-row">
-            <button class="qtool-btn" data-action="snowball-backward" type="button" title="Fetch references cited by this paper" ${state.citationLoading ? 'disabled' : ''}>← Refs</button>
-            <button class="qtool-btn" data-action="snowball-forward" type="button" title="Fetch papers citing this work" ${state.citationLoading ? 'disabled' : ''}>Cites →</button>
-            <button class="qtool-btn" data-action="chase-2hop" type="button" title="Iterative 2-Hop Chase" ${state.citationLoading ? 'disabled' : ''}>2-Hop ⟳</button>
-            <button class="qtool-btn" data-action="network-triangulate" type="button" title="Co-citation & Bibliographic Coupling" ${state.citationLoading ? 'disabled' : ''}>Co-cite ⋈</button>
-            <button class="qtool-btn" data-action="find-seminal" type="button" title="Foundational seminal papers" ${state.citationLoading ? 'disabled' : ''}>Seminal ⭐</button>
+          <div class="inspector-section-body" id="inspector-section-discovery">
+            <div class="discovery-config-summary"><span data-discovery-summary>${escapeHtml(discoveryOptionsLabel())}</span><button id="inspectorDiscoveryOptions" type="button" data-action="open-discovery-options" aria-haspopup="dialog" aria-controls="discoveryOptionsPopup" aria-expanded="false">Options</button></div>
+            ${isLoadingRecommendations ? '<p class="discovery-panel-status" role="status">Finding papers related to this paper…</p>' : recommendations.length && recommendations[0].title === 'Discovery search failed' ? `<p class="discovery-panel-status" role="alert">${escapeHtml(recommendations[0].reason)}</p>` : recommendations.length ? `<button class="discovery-view-results-btn" data-action="open-discovery-results-modal" type="button">Review ${recommendations.length} related paper${recommendations.length === 1 ? '' : 's'}</button>` : '<p class="discovery-panel-status">Use this paper as the starting point. Choose your options above, then discover related papers.</p>'}
           </div>
-
-          ${state.discoveryResults?.length ? `
-            <button class="discovery-view-results-btn" data-action="open-discovery-results-modal" type="button">
-              🔍 View Discovered Papers (${state.discoveryResults.length})
-            </button>
-          ` : ''}
-
-          <div class="discovery-steer-toggle-row">
-            <button class="button xs secondary steer-toggle-btn" data-action="toggle-recommend-steer" type="button">
-              <span>🎯 Steer &amp; Ranking options</span>
-              <span class="steer-toggle-arrow">${state.recommendationSteerOpen ? '▲' : '▼'}</span>
-            </button>
-          </div>
-
-          <div class="recommend-steer-panel" ${state.recommendationSteerOpen ? '' : 'hidden'}>
-            <div class="steer-compact-head">
-              <h3>🎯 Steer &amp; Filter</h3>
-              <span class="subtle">${state.recommendationSteerKeywords.length + state.graphSteerKeywords.length + state.recommendationExcludeKeywords.length} active</span>
-            </div>
-            <div class="steer-chips-unified">
-              ${activeSteerChips || '<span class="subtle-empty">No active steer tags. Use buttons below or click tags.</span>'}
-            </div>
-            <div class="steer-input-compact-bar">
-              <input id="newSteerTagInput" placeholder="Add tag..." autocomplete="off">
-              <div class="steer-action-btn-group">
-                <button class="button xs primary" id="addSteerTagBtn" type="button">+ Steer</button>
-                <button class="button xs" id="addGraphTagBtn" type="button">🌐 Map</button>
-                <button class="button xs danger" id="addExcludeTagBtn" type="button">⛔ Not</button>
-              </div>
-            </div>
-          </div>
-
-          ${state.seminalSuggestions?.length ? `
-            <div id="seminalResults" class="recommendation-list">${renderSeminalMarkup()}</div>
-          ` : ''}
-
-          <div id="recommendationResults" class="recommendation-list">
-            ${renderRecommendationMarkup(recommendations, isLoadingRecommendations)}
-          </div>
-        </div>
-
-        <div class="inspector-footer-btns">
-          <button class="inspector-action-large primary" data-action="add-as-new-seed" type="button">
-            🌱 Add as new seed
-          </button>
-          <button class="inspector-action-large secondary" data-action="find-similar-work" type="button">
-            🔍 Find similar
-          </button>
         </div>
       `;
 
+      bindInspectorSections();
+      syncDiscoveryControls();
       els.details.querySelector('[data-action="refresh-metrics"]')?.addEventListener('click', () => refreshPaperMetrics(paper, true));
       els.details.querySelector('[data-action="list-citations"]')?.addEventListener('click', () => openPaperRelations(paper, 'citations'));
       els.details.querySelector('[data-action="list-references"]')?.addEventListener('click', () => openPaperRelations(paper, 'references'));
       refreshPaperMetrics(paper);
-      els.details.querySelector('[data-action="close-details"]')?.addEventListener('click', closePaperPopup);
       els.details.querySelector('[data-action="lookup-metadata"]')?.addEventListener('click', async event => {
         event.currentTarget.disabled = true;
         event.currentTarget.textContent = 'Looking up…';
@@ -278,35 +218,11 @@
         renderDetails();
         showToast(state.discoverySeed ? `Set "${compactTitle(paper.title)}" as discovery seed` : 'Cleared discovery seed');
       });
-      els.details.querySelector('[data-action="add-as-new-seed"]')?.addEventListener('click', () => {
-        state.discoverySeed = paper;
-        runDiscoveryPipeline();
-      });
-      els.details.querySelector('[data-action="find-similar-work"]')?.addEventListener('click', () => {
-        state.discoverySeed = paper;
-        recommendSelectedPapers();
-      });
-      els.details.querySelector('[data-action="map-citations"]')?.addEventListener('click', mapCitationTopology);
-      els.details.querySelector('[data-action="find-seminal"]')?.addEventListener('click', findMissingSeminal);
-      els.details.querySelector('[data-action="snowball-backward"]')?.addEventListener('click', () => snowballSelectedPaper('backward'));
-      els.details.querySelector('[data-action="snowball-forward"]')?.addEventListener('click', () => snowballSelectedPaper('forward'));
-      els.details.querySelector('[data-action="chase-2hop"]')?.addEventListener('click', chase2HopSelectedPaper);
-      els.details.querySelector('[data-action="network-triangulate"]')?.addEventListener('click', triangulateNetworkSelectedPaper);
       els.details.querySelector('[data-action="run-discovery-pipeline"]')?.addEventListener('click', runDiscoveryPipeline);
+      els.details.querySelector('[data-action="open-discovery-options"]')?.addEventListener('click', () => setDiscoveryOptionsOpen(true, false, 'inspectorDiscoveryOptions'));
       els.details.querySelector('[data-action="open-discovery-results-modal"]')?.addEventListener('click', () => {
-        if (state.discoveryResults?.length) openDiscoveryModal(state.discoveryResults, state.discoverySeed || paper);
+        if (recommendations.length) openDiscoveryModal(recommendations, paper);
       });
-      els.details.querySelectorAll('[data-action="toggle-branch"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const branch = btn.dataset.branch;
-          if (branch && state.discoveryBranches[branch] !== undefined) {
-            state.discoveryBranches[branch] = !state.discoveryBranches[branch];
-            renderDetails();
-          }
-        });
-      });
-      els.details.querySelector('[data-action="recommend"]')?.addEventListener('click', recommendSelectedPapers);
-      els.details.querySelector('[data-action="toggle-recommend-steer"]')?.addEventListener('click', () => setRecommendationSteerOpen(!state.recommendationSteerOpen));
       els.details.querySelectorAll('[data-action="open-paper-keywords"]').forEach(btn => {
         btn.addEventListener('click', () => openKeywordModal(btn.dataset.paper || paper.id));
       });
@@ -316,50 +232,6 @@
           openTagActionMenu(btn.dataset.term, btn, paper.id);
         });
       });
-      els.details.querySelectorAll('[data-action="quick-steer-tag"]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          toggleRecommendationSteer(btn.dataset.tag);
-        });
-      });
-      const steerInput = els.details.querySelector('#newSteerTagInput');
-      const steerAddBtn = els.details.querySelector('#addSteerTagBtn');
-      steerAddBtn?.addEventListener('click', () => {
-        if (steerInput?.value) {
-          toggleRecommendationSteer(steerInput.value);
-          steerInput.value = '';
-        }
-      });
-      steerInput?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          if (steerInput.value) {
-            toggleRecommendationSteer(steerInput.value);
-            steerInput.value = '';
-          }
-        }
-      });
-      const graphAddBtn = els.details.querySelector('#addGraphTagBtn');
-      graphAddBtn?.addEventListener('click', () => {
-        if (steerInput?.value) {
-          toggleGraphSteer(steerInput.value);
-          steerInput.value = '';
-        }
-      });
-      const excludeAddBtn = els.details.querySelector('#addExcludeTagBtn');
-      excludeAddBtn?.addEventListener('click', () => {
-        if (steerInput?.value) {
-          toggleExcludeSteer(steerInput.value);
-          steerInput.value = '';
-        }
-      });
-      els.details.querySelectorAll('[data-action="view-related-link"]').forEach(item => {
-        item.addEventListener('click', () => {
-          if (item.dataset.link) selectLinkage(item.dataset.link);
-        });
-      });
-      bindRecommendationSteerInputs();
-      bindSteerChipButtons();
       els.details.querySelectorAll('[data-action="add-recommendation"]').forEach(button => {
         button.addEventListener('click', () => addRecommendedPaperToMap(Number(button.dataset.recIndex)));
       });

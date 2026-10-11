@@ -105,7 +105,7 @@
         return `<div class="settings-status">Searching Semantic Scholar (S2AG), OpenAlex, and Crossref${escapeHtml(steer)} for literature...</div>`;
       }
       if (!recommendations.length) {
-        return '<div class="settings-status">No literature suggestions yet. Select a paper and click ⚡ Run Pipeline or Find related papers.</div>';
+        return '<div class="settings-status">No literature suggestions yet. Select a paper and select Discover related.</div>';
       }
       return recommendations.map((item, index) => {
         const href = safeHref(item.doi ? `https://doi.org/${item.doi}` : (item.url || (item.s2PaperId ? `https://www.semanticscholar.org/paper/${item.s2PaperId}` : '') || item.openAlexId || '#'));
@@ -178,10 +178,11 @@
     }
 
     function paperFromRecommendation(item) {
+      const keywords=Array.isArray(item.paperKeywords || item.keywords) ? (item.paperKeywords || item.keywords) : splitKeywords(item.paperKeywords || item.keywords || '');
       return normalizeImportedPaper({
         ...item,
-        paperKeywords: item.paperKeywords || item.keywords || [],
-        text: `${item.title || ''}\n\n${item.abstract || ''}\n\n${(item.paperKeywords || item.keywords || []).join('; ')}`,
+        paperKeywords: keywords,
+        text: `${item.title || ''}\n\n${item.abstract || ''}\n\n${keywords.join('; ')}`,
         name: item.source ? `${item.source} recommendation` : 'Recommended paper'
       }, item.source ? `${item.source} recommendation` : 'Recommendation');
     }
@@ -249,6 +250,11 @@
         id: paper.id,
         title: paper.title || '',
         doi: paper.doi || '',
+        pmid: paper.pmid || '',
+        authors: typeof paperAuthors==='function' ? paperAuthors(paper) : (Array.isArray(paper.authors)?paper.authors:[]),
+        year: paper.year || '',
+        journal: paper.journal || '',
+        abstract: String(paper.abstract || '').slice(0,6000),
         s2PaperId: paper.s2PaperId || '',
         openAlexId: paper.openAlexId || '',
         openAlexUrl: paper.openAlexUrl || '',

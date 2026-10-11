@@ -89,6 +89,14 @@
         recommendationAuthors: state.recommendationAuthors,
         recommendationJournals: state.recommendationJournals,
         graphSteerKeywords: state.graphSteerKeywords,
+        discoveryBranches: { ...state.discoveryBranches },
+        discoverySearchSources: { ...state.discoverySearchSources },
+        discoveryDepth: state.discoveryDepth || '2',
+        discoveryLimit: state.discoveryLimit || 200,
+        discoveryResearchQuestion: state.discoveryResearchQuestion || '',
+        discoveryStrictExclusions: state.discoveryStrictExclusions || [],
+        discoveryDiversify: state.discoveryDiversify !== false,
+        discoveryJudgements: state.discoveryJudgements || [],
         recommendationRecencyTilt: state.recommendationRecencyTilt,
         recommendationImpactTilt: state.recommendationImpactTilt,
         graphStyle: { ...state.graphStyle },
@@ -105,6 +113,10 @@
           journal: paper.journal || '',
           doi: paper.doi || '',
           doiVerified: Boolean(paper.doiVerified), pmid: paper.pmid || '',
+          pmcid: paper.pmcid || '', coreId: paper.coreId || '', europePmcId: paper.europePmcId || '',
+          fullTextUrl: paper.fullTextUrl || '', fullTextLinks: paper.fullTextLinks || [],
+          sourceList: paper.sourceList || [], sourceIdentifiers: paper.sourceIdentifiers || {},
+          citationCountSource: paper.citationCountSource || '', citationCountsBySource: paper.citationCountsBySource || {},
           volume: paper.volume || '', issue: paper.issue || '', pages: paper.pages || '', issn: paper.issn || '',
           publisher: String(paper.publisher || ''), url: String(paper.url || ''), articleNumber: String(paper.articleNumber || ''), isbn: String(paper.isbn || ''), language: String(paper.language || ''), publicationType: String(paper.publicationType || ''),
         metadataCheckedAt: paper.metadataCheckedAt || '', metadataSnapshot: paper.metadataSnapshot || null, mendeleySource: paper.mendeleySource || null,
@@ -171,6 +183,14 @@
       state.recommendationAuthors = parseSteerList(listText(data.recommendationAuthors), 10);
       state.recommendationJournals = parseSteerList(listText(data.recommendationJournals), 10);
       state.graphSteerKeywords = parseSteerList(listText(data.graphSteerKeywords), 12);
+      state.discoveryBranches = Object.fromEntries(['citationGraph','citationNetwork','semanticSearch','lexicalSearch'].map(key => [key,data.discoveryBranches?.[key] !== false]));
+      state.discoverySearchSources = Object.fromEntries(['semanticScholar','europePmc','core'].map(key => [key,data.discoverySearchSources?.[key] !== false]));
+      state.discoveryDepth = ['1','2','3','iterative'].includes(String(data.discoveryDepth)) ? String(data.discoveryDepth) : '2';
+      state.discoveryLimit = [50,100,200,500].includes(Number(data.discoveryLimit)) ? Number(data.discoveryLimit) : 200;
+      state.discoveryResearchQuestion = String(data.discoveryResearchQuestion || '').slice(0,1000);
+      state.discoveryStrictExclusions = Array.isArray(data.discoveryStrictExclusions) ? data.discoveryStrictExclusions.slice(0,16) : [];
+      state.discoveryDiversify = data.discoveryDiversify !== false;
+      state.discoveryJudgements = Array.isArray(data.discoveryJudgements) ? data.discoveryJudgements.slice(-1000) : [];
       state.recommendationRecencyTilt = Number(data.recommendationRecencyTilt || 0);
       state.recommendationImpactTilt = Number(data.recommendationImpactTilt || 0);
       if (data.graphStyle && typeof data.graphStyle === 'object') {

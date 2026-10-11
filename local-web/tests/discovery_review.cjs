@@ -1,0 +1,20 @@
+const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert');
+const frontend=path.join(__dirname,'../pulse-frontend/js');
+const handlers={},nodes={};for(const id of ['discoveryFullTextOnly','discoveryResetFilters','discoveryExportLabels','discoveryFilterText','discoveryFilterAuthor','discoveryFilterYear'])nodes[id]={value:'',checked:false,addEventListener:(type,fn)=>handlers[id]=fn};
+const paper={title:'Synthetic safer cycling study',doi:'10.1234/one',rank:1,abstract:'Bicycle lanes improve safety'};
+let saved=0,rendered=0,delegated;
+const state={discoveryResearchQuestion:'Safer cycling',discoveryResults:[paper],discoveryJudgements:[],discoverySeed:{title:'Transport design'},discoveryRunContext:{researchQuestion:'Safer cycling',seedPapers:[{title:'Transport design'}]}};
+const context={state,els:{discoveryPaperList:{addEventListener:(type,fn)=>delegated=fn}},document:{getElementById:id=>nodes[id]},discoveryConfiguration:()=>({researchQuestion:'Safer cycling'}),citationPaperPayload:p=>p,discoveryPaperKey:p=>p.doi||p.title,scheduleAutosave:()=>saved++,renderDiscoveryModal:()=>rendered++};
+vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(frontend,'discovery-review.js'),'utf8'),context);context.initDiscoveryReview();
+delegated({target:{closest:()=>({dataset:{relevanceGrade:'2',paperKey:paper.doi}})},stopPropagation(){}});
+assert.equal(context.discoveryRating(paper),2);assert.equal(state.discoveryJudgements.length,1);assert.equal(saved,1);
+context.labelDiscoveryPaper(paper,0);assert.equal(state.discoveryJudgements.length,1);assert.equal(context.discoveryRating(paper),0);
+state.discoveryRunContext={researchQuestion:'Transit frequency',seedPapers:[]};assert.equal(context.discoveryRating(paper),undefined,'Labels belong to their research context');
+handlers.discoveryFullTextOnly({currentTarget:{checked:true}});assert(state.discoveryFullTextOnly);
+state.discoveryFilterText='cycling';state.discoveryFilterBranch='concepts';handlers.discoveryResetFilters();assert.equal(state.discoveryFilterText,'');assert.equal(state.discoveryFilterBranch,'all');assert(!state.discoveryFullTextOnly);
+assert(!fs.readFileSync(path.join(frontend,'part_02.js'),'utf8').includes('class="discovery-relevance-review" onclick='),'Nested handlers must not prevent delegated relevance clicks');
+console.log('PASS: delegated relevance labels, replacement grades, context isolation, autosave, full-text control and filter reset.');
+
+const payloadSource=fs.readFileSync(path.join(frontend,'part_17.js'),'utf8');vm.runInContext(payloadSource.slice(payloadSource.indexOf('    function citationPaperPayload'),payloadSource.indexOf('    function applyCitationMetadata')),context);
+const payload=context.citationPaperPayload({...paper,authors:['Ada Brooks'],year:'2024',journal:'Synthetic journal',pmid:'123'});
+assert.equal(payload.abstract,paper.abstract);assert.equal(payload.year,'2024');assert.equal(payload.pmid,'123');assert.deepEqual([...payload.authors],['Ada Brooks']);assert.equal(payload.journal,'Synthetic journal');

@@ -226,26 +226,6 @@
 .term-button:hover { background: var(--danger-soft); color: var(--danger); }
 .term-button::after { content: "×"; margin-left: 4px; opacity: 0.6; }
 
-.related-list {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  overflow: hidden;
-}
-.related-list > p { padding: 10px 12px; color: var(--muted); font-size: 12px; }
-.related-item {
-  display: grid;
-  grid-template-columns: 42px 1fr;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-}
-.related-item + .related-item { border-top: 1px solid var(--line); }
-.related-item .score { color: var(--accent); font: 600 12px var(--font-mono); }
-.related-title { overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
-
 .details-actions { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
 .recommend-steer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .recommend-control { display: grid; grid-template-columns: 1fr auto; gap: 8px; }

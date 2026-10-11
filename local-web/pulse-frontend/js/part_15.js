@@ -3,14 +3,14 @@
       const link = state.links.find(item => linkId(item) === state.selectedLinkId);
       if (!link) {
         state.selectedLinkId = null;
-        els.details.hidden = true;
+        renderDetails();
         return;
       }
       const source = state.papers.find(item => item.id === link.source);
       const target = state.papers.find(item => item.id === link.target);
       if (!source || !target) {
         state.selectedLinkId = null;
-        els.details.hidden = true;
+        renderDetails();
         return;
       }
 
@@ -49,14 +49,13 @@
       }
 
       els.details.hidden = false;
-      els.details.innerHTML = `
+      els.detailsContent.innerHTML = `
         <div class="linkage-details-card">
           <div class="details-header linkage-details-header">
             <div class="linkage-header-title">
               <span class="link-type-badge ${escapeHtml(link.type || 'similarity')}">${escapeHtml(linkTypeName(link))}</span>
               <h2>Paper Similarities</h2>
             </div>
-            <button class="ai-close" data-action="close-linkage" type="button" aria-label="Close paper similarities">×</button>
           </div>
 
           <div class="linkage-score-banner">
@@ -149,7 +148,6 @@
         </div>
       `;
 
-      els.details.querySelector('[data-action="close-linkage"]')?.addEventListener('click', clearLinkageSelection);
       els.details.querySelector('[data-action="deselect-linkage"]')?.addEventListener('click', clearLinkageSelection);
       els.details.querySelector('[data-action="focus-pair"]')?.addEventListener('click', () => focusPairOnMap(source, target));
       els.details.querySelector('[data-action="recommend-pair"]')?.addEventListener('click', recommendSelectedPapers);

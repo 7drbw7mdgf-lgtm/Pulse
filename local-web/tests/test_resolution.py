@@ -88,11 +88,11 @@ class ResolutionTests(unittest.TestCase):
         self.assertEqual(found['metadata']['title'],TITLE)
         self.assertFalse(found['metadata'].get('doiVerified',False))
     def test_service_failure_keeps_metadata(self):
-        with patch.object(r,'fetch_json',side_effect=TimeoutError('offline')):
+        with patch.object(r,'fetch_json',side_effect=TimeoutError('offline')), patch('pulse_core.literature_search.request_json',side_effect=TimeoutError('offline')):
             found=r.resolve_metadata({key:val for key,val in META.items() if key!='doi'})
         self.assertFalse(found['matched'])
         self.assertEqual(found['metadata']['authors'],META['authors'])
-        self.assertEqual(len(found['errors']),2)
+        self.assertEqual(len(found['errors']),4)
     def test_pdf_text_links_and_metadata(self):
         doc=fitz.open();page=doc.new_page()
         page.insert_text((50,60), TITLE, fontsize=18)

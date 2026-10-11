@@ -204,6 +204,10 @@
     }
 
     function renderBackendStatus(settings, message) {
+      const coreConfigured=Boolean(settings?.providers?.core?.configured);
+      if(els.coreKeyInput)els.coreKeyInput.placeholder=coreConfigured?'Key saved · leave blank to keep':'Optional';
+      const coreStatus=document.getElementById('coreSearchStatus');if(coreStatus)coreStatus.textContent=coreConfigured?'CORE key configured':'Public search · no key needed';
+      if(els.clearCoreKeyButton)els.clearCoreKeyButton.disabled=!coreConfigured;
       const url = apiBase || window.location.origin;
       els.backendUrlInput.value = url;
       els.backendStatus.classList.remove('is-ready', 'is-error');
@@ -290,7 +294,8 @@
         `Fallback embeddings: ${embeddings.fallback || 'hashed-local-fallback'} only if Ollama embeddings fail`,
         `Semantic Scholar (S2AG): ${s2Status}`,
         `Dimensions recommender: ${dimensionsStatus}`,
-        `Literature Discovery: S2AG (SPECTER2) + OpenAlex + Crossref${dimensions.configured ? ' + Dimensions' : ''}`,
+        `Literature Discovery: Semantic Scholar + OpenAlex + Europe PMC + CORE`,
+        `CORE search: ${coreConfigured ? 'API key configured' : 'Public access (optional key for a higher allowance)'}`,
         warnings.length ? `Warnings:\n${warnings.map(item => `- ${item}`).join('\n')}` : '',
         `Config: ${settings.configPath || 'local backend'}`
       ].filter(Boolean).join('\n');
@@ -314,15 +319,19 @@
     function initFrankTheme() {
       const saved = localStorage.getItem('pulse-theme') || localStorage.getItem('iratxe-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       applyFrankTheme(saved);
-      els.themeLight?.addEventListener('click', () => applyFrankTheme('light'));
-      els.themeDark?.addEventListener('click', () => applyFrankTheme('dark'));
+      els.themeToggle?.addEventListener('click', () => applyFrankTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
     }
 
     function applyFrankTheme(theme) {
+      theme = theme === 'dark' ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', theme);
       localStorage.setItem('pulse-theme', theme);
-      els.themeLight?.classList.toggle('active', theme === 'light');
-      els.themeDark?.classList.toggle('active', theme === 'dark');
+      if (els.themeToggle) {
+        const label = `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`;
+        els.themeToggle.setAttribute('aria-label', label);
+        els.themeToggle.setAttribute('aria-pressed', String(theme === 'dark'));
+        els.themeToggle.title = `${label} (⌘D)`;
+      }
     }
 
     function updateSaveStatePill(status) {

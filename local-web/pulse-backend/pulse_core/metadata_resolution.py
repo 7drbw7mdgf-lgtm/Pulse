@@ -184,6 +184,22 @@ def search_metadata(expected):
         except Exception as error:
             errors.append('OpenAlex: ' + str(error))
         results = ranked(candidates)
+    if not results or not results[0][0]['accepted']:
+        from .literature_search import search_europe_pmc, search_core
+        from .config_resolvers import resolve_core_api_key
+        from .storage import load_settings
+        from pulse_performance import parallel_branches
+        term = title if meaningful_title(title) else query
+        found, _, failures = parallel_branches({
+            'Europe PMC': lambda: search_europe_pmc(term, limit=5),
+            'CORE': lambda: search_core(term, limit=5, api_key=resolve_core_api_key(load_settings())),
+        })
+        for records in found.values():
+            candidates.extend(records)
+        errors.extend(message if message.startswith(source + ':') else source + ': ' + message for source, message in failures.items())
+        results = ranked(candidates)
+    from .search_merge import merge_search_records
+    results = ranked(merge_search_records(candidates))
     # Deduplicate provider results so the same article is not an ambiguous match.
     unique = []
     seen = set()

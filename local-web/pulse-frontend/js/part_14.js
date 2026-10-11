@@ -158,58 +158,6 @@
       if (els.railLibraryBadge) {
         els.railLibraryBadge.textContent = state.papers.length;
       }
-      if (els.railCardCount) {
-        els.railCardCount.textContent = state.papers.length;
-      }
-
-      // Render rail papers card preview
-      if (els.railCardList) {
-        if (!state.papers.length) {
-          els.railCardList.innerHTML = '<div class="rail-card-empty">No papers loaded</div>';
-        } else {
-          els.railCardList.innerHTML = state.papers.slice(0, 4).map(p => {
-            const firstAuthor = paperAuthors(p)[0] ? paperAuthors(p)[0].split(/\s+/).pop() : '';
-            const sub = [firstAuthor, p.year].filter(Boolean).join(' · ');
-            return `
-            <div class="rail-card-item${state.selectedId === p.id ? ' is-selected' : ''}" data-paper="${p.id}" role="button" tabindex="0" aria-label="Inspect ${escapeHtml(p.title || 'Untitled paper')}" title="${escapeHtml([p.title || 'Untitled', sub].filter(Boolean).join(' · '))}">
-              <span class="session-dot"></span>
-              <div class="rail-card-item-body">
-                <span class="rail-card-item-title">${escapeHtml(p.title || 'Untitled')}</span>
-
-              </div>
-            </div>`;
-          }).join('');
-          els.railCardList.querySelectorAll('.rail-card-item').forEach(card => {
-            card.addEventListener('click', () => {
-              inspectPaper(card.dataset.paper);
-            });
-            card.addEventListener('keydown', event => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                inspectPaper(card.dataset.paper);
-              }
-            });
-          });
-        }
-      }
-
-      // Update active state on sort pills
-      document.querySelectorAll('.param-sort-pill').forEach(pill => {
-        const key = pill.dataset.sort;
-        const active = key === sortKey;
-        pill.classList.toggle('active', active);
-        const arrow = pill.querySelector('.sort-dir-arrow');
-        if (active) {
-          if (!arrow) {
-            pill.insertAdjacentHTML('beforeend', ` <span class="sort-dir-arrow">${isAsc ? '↑' : '↓'}</span>`);
-          } else {
-            arrow.textContent = isAsc ? '↑' : '↓';
-          }
-        } else if (arrow) {
-          arrow.remove();
-        }
-      });
-
       els.paperList.classList.toggle('is-table', state.libraryFullscreen);
       els.paperList.setAttribute('role', state.libraryFullscreen ? 'region' : 'list');
       if (!displayPapers.length) {

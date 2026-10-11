@@ -1,0 +1,20 @@
+const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert');
+const source=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/part_16.js'),'utf8').split('    function renderDetails()')[0];
+function section(key){const toggle={attributes:{},setAttribute(name,value){this.attributes[name]=value;},addEventListener(type,fn){this[type]=fn;}};
+ const body={hidden:false},classes=new Set(),run={addEventListener(type,fn){this[type]=fn;}};
+ return {dataset:{inspectorSection:key},body,toggle,run,classList:{toggle(name,value){if(value)classes.add(name);else classes.delete(name);},contains:name=>classes.has(name)},querySelector(selector){return selector==='.inspector-section-body'?body:selector==='.inspector-section-toggle'?toggle:selector==='.discovery-run-btn'&&key==='discovery'?run:null;}};}
+let sections=[section('concepts'),section('metrics'),section('abstract'),section('discovery')];const stored={};
+const context={state:{},Set,localStorage:{getItem:key=>stored[key],setItem:(key,value)=>stored[key]=value},els:{detailsContent:{querySelectorAll:()=>sections}}};
+vm.createContext(context);vm.runInContext(source,context);context.bindInspectorSections();
+assert(sections.every(s=>!s.body.hidden));assert(sections.every(s=>s.toggle.attributes['aria-expanded']==='true'));
+sections[1].toggle.click();assert.equal(sections[1].body.hidden,true);assert.equal(sections[1].toggle.attributes['aria-expanded'],'false');
+assert(sections[1].classList.contains('is-collapsed'));assert.deepEqual(JSON.parse(stored['pulse-inspector-collapsed-sections']),['metrics']);
+sections=sections.map(s=>section(s.dataset.inspectorSection));context.bindInspectorSections();assert.equal(sections[1].body.hidden,true);assert.equal(sections[2].body.hidden,false);
+context.state.inspectorCollapsedSections=null;context.bindInspectorSections();assert.equal(sections[1].body.hidden,true);
+sections[1].toggle.click();assert.equal(sections[1].body.hidden,false);assert.deepEqual(JSON.parse(stored['pulse-inspector-collapsed-sections']),[]);
+sections[3].toggle.click();assert.equal(sections[3].body.hidden,true);sections[3].run.click();assert.equal(sections[3].body.hidden,false);
+context.state.inspectorCollapsedSections=null;stored['pulse-inspector-collapsed-sections']='{"wrong":true}';context.bindInspectorSections();assert(sections.every(s=>!s.body.hidden));
+context.state.inspectorCollapsedSections=null;stored['pulse-inspector-collapsed-sections']='["metrics","not-a-section"]';context.bindInspectorSections();assert.equal(context.state.inspectorCollapsedSections.size,1);
+context.state.inspectorCollapsedSections=null;stored['pulse-inspector-collapsed-sections']='malformed';context.bindInspectorSections();assert(sections.every(s=>!s.body.hidden));
+context.localStorage.setItem=()=>{throw new Error('storage unavailable');};sections[0].toggle.click();assert.equal(sections[0].body.hidden,true);
+console.log('PASS: independent section collapse, accessible expanded state, persistence across paper rerenders/reloads, discovery progress reveal, malformed preferences, and unavailable storage.');

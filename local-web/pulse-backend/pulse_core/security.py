@@ -6,7 +6,7 @@ import secrets
 import zlib
 from pulse_core.constants import CONFIG_DIR, ClientError
 
-SENSITIVE_SETTING_KEYS = {"apiKey", "dimensionsApiKey", "semanticScholarApiKey", "geminiApiKey"}
+SENSITIVE_SETTING_KEYS = {"apiKey", "dimensionsApiKey", "semanticScholarApiKey", "geminiApiKey", "coreApiKey"}
 MAX_DECOMPRESSED_STREAM_BYTES = 4 * 1024 * 1024  # 4 MB max per stream
 MAX_TOTAL_DECOMPRESSED_BYTES = 24 * 1024 * 1024  # 24 MB max total per document
 

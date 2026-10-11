@@ -1,20 +1,15 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.5.8 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261008-10">
-<link rel="icon" type="image/png" href="favicon.png?v=1.5.8"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v1.5.9 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261011-7">
+<link rel="icon" type="image/png" href="favicon.png?v=1.5.9"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
-<aside class="pulse-nav-rail"> <div class="rail-brand"> <img src="favicon.png?v=1.5.8" alt="Pulse icon" class="rail-logo"> <div class="rail-brand-text">
-<span class="rail-title">Pulse</span> <span class="rail-version">v1.5.8</span> </div> </div> <nav class="rail-menu">
+<aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
 <button class="rail-item" data-rail="library" id="railLibraryBtn" type="button" title="Toggle Library Panel"> <span data-feather="book-open"></span> <span>Library</span> <span id="railLibraryBadge" class="rail-badge">0</span> </button>
 <button class="rail-item" data-rail="trends" type="button" title="Literature trends & clusters"> <span data-feather="trending-up"></span> <span>Trends</span> </button>
 <button class="rail-item" data-rail="timeline" type="button" title="Papers in chronological order"> <span data-feather="clock"></span> <span>Timeline</span> </button>
 <button class="rail-item" data-rail="settings" id="railSettingsBtn" type="button" title="Settings & backend"> <span data-feather="settings"></span> <span>Settings</span> </button>
-</nav><hr class="rail-section-divider"> <div class="rail-papers-card" id="railPapersCard">
-<div class="rail-card-header"><span class="rail-card-title">Library Papers</span><span id="railCardCount" class="rail-card-badge">0</span></div>
-<div id="railCardList" class="rail-card-list"><div class="rail-card-empty">No papers loaded</div></div>
-<button id="railCardOpenBtn" class="rail-card-open-btn" type="button"><span>View list</span> <span data-feather="chevron-right"></span></button>
-</div>
+</nav>
 <footer class="rail-actions" aria-label="Paper actions">
 <button id="railAddButton" class="rail-add-button" type="button" aria-expanded="false" aria-controls="railAddPopover">+ Add paper</button>
 <div id="railAddPopover" class="rail-add-popover" role="dialog" aria-labelledby="railAddTitle" hidden>
@@ -25,20 +20,30 @@
 <span>Import</span> </button> <button id="exportButton" class="header-tool-btn" type="button" title="Export JSON map (⌘S)" disabled>
 <span data-feather="upload"></span> <span>Export</span> </button>
 <input id="importInput" type="file" multiple accept=".txt,.md,.csv,.bib,.ris,.pdf,.json,.xml,.enw" hidden>
-<span class="header-v-divider" aria-hidden="true"></span> <div class="theme-switch" role="group" aria-label="Theme">
-<button class="theme-icon-btn active" data-theme="light" id="theme-light" type="button" title="Light theme" aria-label="Light theme">
-<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
-</button> <button class="theme-icon-btn" data-theme="dark" id="theme-dark" type="button" title="Dark theme (⌘D)" aria-label="Dark theme">
-<svg viewBox="0 0 24 24"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.6 6.6 0 0 0 21 12.8Z"></path></svg> </button> </div>
 <button id="settingsButton" class="hbtn icon-only" type="button" title="Settings" aria-label="Open settings" aria-expanded="false" style="display:none">
-<span data-feather="settings"></span> </button> </div> </footer> </aside>
+<span data-feather="settings"></span> </button> </div>
+<div class="rail-utility-row"><div class="theme-switch">
+<button class="theme-icon-btn active" id="theme-toggle" type="button" title="Switch to dark theme (⌘D)" aria-label="Switch to dark theme" aria-pressed="false">
+<svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+<svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.6 6.6 0 0 0 21 12.8Z"></path></svg>
+</button></div>
+</div> </footer> </aside>
 <!-- 2. MAIN VIEWPORT AREA -->
 <div class="pulse-main-viewport">
 <!-- TOP HEADER BAR -->
 
 <!-- DISCOVERY METHODS RIBBON (Horizontal exploration bar) -->
-<section class="pulse-discovery-ribbon" aria-label="Discovery options">
-<div class="discovery-heading"><h1>Discovery</h1><span>Explore related papers</span></div>
+<section id="workspaceRibbon" class="pulse-discovery-ribbon" aria-label="Workspace ribbon">
+<div class="pulse-ribbon-topline"><div class="pulse-ribbon-tabs" role="tablist" aria-label="Workspace tools">
+<button id="ribbonDiscoveryTab" class="pulse-ribbon-tab" type="button" role="tab" aria-selected="true" aria-expanded="true" aria-controls="ribbonDiscoveryPanel" tabindex="0">Discovery</button>
+<button id="ribbonReferencesTab" class="pulse-ribbon-tab" type="button" role="tab" aria-selected="false" aria-expanded="false" aria-controls="ribbonReferencesPanel" tabindex="-1">Reference managers</button>
+</div>
+<button id="aiAgentFab" class="ai-agent-toolbar-button" type="button" aria-controls="aiPanel" aria-haspopup="dialog" aria-expanded="false" aria-label="Open AI paper agent">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4Z"/><path d="m20 2 .7 2.3L23 5l-2.3.7L20 8l-.7-2.3L17 5l2.3-.7Z"/></svg>
+<span class="ai-agent-label">AI agent</span><span id="aiAgentFabCount" class="agent-fab-count" hidden></span>
+</button></div>
+<div id="ribbonDiscoveryPanel" class="pulse-ribbon-panel" role="tabpanel" aria-labelledby="ribbonDiscoveryTab">
+<div class="discovery-heading"><h1>Find papers</h1><span>Explore related research</span></div>
 <div class="discovery-dropdown-wrap">
 <button id="discoveryOptionsButton" class="discovery-options-button" type="button" aria-expanded="false" aria-controls="discoveryOptionsPopup" aria-haspopup="dialog"><span id="discoveryOptionsSummary">All methods · 2-hop</span><span aria-hidden="true">⌄</span></button>
 <div id="discoveryOptionsPopup" class="discovery-options-popup" role="dialog" aria-labelledby="discoveryOptionsTitle" hidden>
@@ -47,22 +52,44 @@
 <div class="ribbon-cards">
 <button class="ribbon-card" data-method="citations" type="button" title="Backward references and forward citations"> <span class="ribbon-svg-icon" data-feather="share-2"></span> <div class="ribbon-card-text"><strong>Citations</strong><small>Direct &amp; citing</small></div> </button>
 <button class="ribbon-card" data-method="network" type="button" title="Co-citation and bibliographic coupling"> <span class="ribbon-svg-icon" data-feather="compass"></span> <div class="ribbon-card-text"><strong>Network</strong><small>Co-citations</small></div> </button>
-<button class="ribbon-card active" data-method="semantic" type="button" title="SPECTER2 scientific embeddings"> <span class="ribbon-svg-icon" data-feather="cpu"></span> <div class="ribbon-card-text"><strong>Semantic</strong><small>SPECTER2</small></div> </button>
+<button class="ribbon-card active" data-method="semantic" type="button" title="Related papers from scientific recommendations"> <span class="ribbon-svg-icon" data-feather="cpu"></span> <div class="ribbon-card-text"><strong>Semantic</strong><small>Related meaning</small></div> </button>
 <button class="ribbon-card" data-method="concepts" type="button" title="Keywords, MeSH terms, and entities"> <span class="ribbon-svg-icon" data-feather="tag"></span> <div class="ribbon-card-text"><strong>Concepts</strong><small>MeSH &amp; terms</small></div> </button>
-</div> </div> <span class="ribbon-v-divider" aria-hidden="true"></span> <div class="ribbon-group">
+</div> </div>
+<div class="ribbon-group discovery-search-sources"><span class="ribbon-label">Concept search sources</span><div class="ribbon-pills">
+<button class="pill-btn-sm" data-search-source="semanticScholar" type="button">Semantic Scholar</button>
+<button class="pill-btn-sm" data-search-source="europePmc" type="button">Europe PMC</button>
+<button class="pill-btn-sm" data-search-source="core" type="button">CORE</button>
+</div><small class="subtle">Search titles and keywords across the selected sources. Available full-text links appear with results.</small></div>
+<span class="ribbon-v-divider" aria-hidden="true"></span> <div class="ribbon-group">
 <span class="ribbon-label">Exploration depth</span> <div class="ribbon-pills">
 <button class="pill-btn-sm" data-depth="1" type="button">Direct <small>1-hop</small></button>
 <button class="pill-btn-sm active" data-depth="2" type="button">2-Hop <small>Extended</small></button>
 <button class="pill-btn-sm" data-depth="3" type="button">3-Hop <small>Broader</small></button>
 <button class="pill-btn-sm" data-depth="iterative" type="button">Iterative <small>Expand</small></button> </div> </div>
-<span class="ribbon-v-divider" aria-hidden="true"></span> <div class="ribbon-group"> <span class="ribbon-label">Specialised</span>
-<div class="ribbon-pills"> <button class="pill-btn-sm" data-special="seminal" type="button" title="Foundational seminal papers">
-<span data-feather="star"></span> <span>Seminal <small>Foundational</small></span> </button>
+<span class="ribbon-v-divider" aria-hidden="true"></span> <div class="ribbon-group"> <span class="ribbon-label">Prioritise</span>
+<div class="ribbon-pills"> <button class="pill-btn-sm" data-special="seminal" type="button" title="Prioritise highly cited, foundational papers">
+<span data-feather="star"></span> <span>Foundational <small>Highly cited</small></span> </button>
 <button class="pill-btn-sm" data-special="recent" type="button" title="Latest recent publications"> <span data-feather="clock"></span>
-<span>Recent <small>Latest</small></span> </button> </div> </div> <div class="discovery-popup-footer"><span>Choose how to explore your papers.</span><button id="discoveryOptionsDone" type="button">Done</button></div>
+<span>Recent <small>Prioritise latest</small></span> </button> </div> </div>
+<details id="discoveryKeywordOptions" class="discovery-keyword-options"><summary>Keywords and map focus</summary><div class="discovery-keyword-fields">
+<label for="discoverySteerInput">Prefer keywords<input id="discoverySteerInput" placeholder="e.g. network; retrieval" autocomplete="off"><small>Separate keywords with commas or semicolons.</small></label>
+<label for="discoveryExcludeInput">Avoid keywords<input id="discoveryExcludeInput" placeholder="Lower priority, still included" autocomplete="off"></label>
+<label for="discoveryStrictExcludeInput">Exclude completely<input id="discoveryStrictExcludeInput" placeholder="Phrases that must be absent" autocomplete="off"><small>Matches in title, abstract or keywords are removed.</small></label>
+<label for="discoveryGraphFocusInput">Map focus<input id="discoveryGraphFocusInput" placeholder="Keywords to highlight on the map" autocomplete="off"><small>Changes the map focus, not the search results.</small></label>
+</div></details>
+<label class="discovery-diversify"><input id="discoveryDiversify" type="checkbox" checked> Include varied perspectives <small>Reduce near-identical results at the top.</small></label>
+<div class="discovery-popup-footer"><span>Applies when you select Discover related.</span><button id="discoveryOptionsDone" type="button">Done</button></div>
 </div></div>
-<div class="library-connection-pill" aria-label="Library connections"><button id="zoteroPill" type="button" aria-haspopup="dialog" aria-controls="libraryManagersDialog"><strong>Zotero</strong><small id="zoteroPillStatus">Check connection</small></button><button id="mendeleyPill" type="button" aria-haspopup="dialog" aria-controls="libraryManagersDialog"><strong>Mendeley</strong><small id="mendeleyPillStatus">Export citations</small></button></div>
-<label class="inspector-toggle"><span>Inspector</span><input id="inspectorToggle" type="checkbox" role="switch" aria-label="Show paper inspector" aria-controls="details" checked><span class="switch-track" aria-hidden="true"></span></label>
+<label class="discovery-question" for="discoveryResearchQuestion"><span class="sr-only">Research question</span><input id="discoveryResearchQuestion" maxlength="1000" placeholder="What are you looking for? (optional)" autocomplete="off"></label>
+<label class="ribbon-result-limit" for="discoveryResultLimit"><span>Results</span><select id="discoveryResultLimit" aria-label="Discovery result limit"><option value="50">Up to 50</option><option value="100">Up to 100</option><option value="200" selected>Up to 200</option><option value="500">Up to 500</option></select></label>
+<button id="ribbonDiscoverButton" class="ribbon-discover-button" type="button">Discover related</button>
+<button id="discoveryViewResults" class="ribbon-review-button" type="button" hidden>Review results</button>
+<div id="discoveryRunProgress" class="discovery-run-progress" role="status" aria-live="polite" hidden><progress id="discoveryProgressBar" max="100" value="0" aria-label="Discovery progress"></progress><span id="discoveryProgressText">Searching…</span><button id="discoveryCancelSearch" type="button">Cancel</button></div>
+</div>
+<div id="ribbonReferencesPanel" class="pulse-ribbon-panel" role="tabpanel" aria-labelledby="ribbonReferencesTab" hidden>
+<div class="discovery-heading"><h2>Your libraries</h2><span>Connect and transfer citations</span></div>
+<div class="library-connection-pill ribbon-library-connections" aria-label="Library connections"><button id="zoteroPill" type="button" title="Zotero · Check connection" aria-haspopup="dialog" aria-controls="libraryManagersDialog"><span class="reference-manager-icon zotero-icon" aria-hidden="true">Z</span><span><strong>Zotero</strong><small id="zoteroPillStatus">Check connection</small></span><span class="reference-manager-arrow" aria-hidden="true">↗</span></button><button id="mendeleyPill" type="button" title="Mendeley · Export citations" aria-haspopup="dialog" aria-controls="libraryManagersDialog"><span class="reference-manager-icon mendeley-icon" aria-hidden="true">M</span><span><strong>Mendeley</strong><small id="mendeleyPillStatus">Export citations</small></span><span class="reference-manager-arrow" aria-hidden="true">↗</span></button></div>
+</div>
 </section>
 <!-- THREE-COLUMN WORKSPACE BODY -->
 <div class="pulse-workspace-cols"> <!-- COLUMN 1: LIBRARY LIST -->
@@ -77,14 +104,6 @@
 <input id="tagFilterSearchInput" type="text" placeholder="Filter papers..." autocomplete="off">
 <button id="toggleTagFilterDropdown" class="lib-tags-btn" type="button">Tags ▾<span id="activeFilterBadge" class="filter-badge" hidden>0</span></button>
 <button id="clearTagFiltersButton" class="mini-clear-btn" type="button" title="Clear filters" hidden>×</button> </div>
-<div class="library-params-bar" id="libraryParamsBar">
-<span class="params-label">Sort:</span>
-<button class="param-sort-pill active" data-sort="year" type="button">Year <span class="sort-dir-arrow">↓</span></button>
-<button class="param-sort-pill" data-sort="title" type="button">Title</button>
-<button class="param-sort-pill" data-sort="authors" type="button">Author</button>
-<button class="param-sort-pill" data-sort="journal" type="button">Journal</button>
-<button class="param-sort-pill" data-sort="citations" type="button">Citations</button>
-</div>
 <div id="libraryBulkBar" class="library-bulk-bar" hidden>
 <span id="libraryBulkCount" role="status">0 selected</span><button id="libraryBulkDeselect" class="button small secondary" type="button">Deselect</button>
 <label class="sr-only" for="libraryBulkFormat">Export format</label><select id="libraryBulkFormat" aria-label="Export format"><option value="ris">RIS</option><option value="csv">CSV</option><option value="json">JSON</option></select>
@@ -98,14 +117,9 @@
 <div id="loadProgressText" class="load-progress-text">Loading papers...</div> </div> <div id="paperList" class="pulse-paper-list" role="list"></div>
 </aside>
 <!-- COLUMN 2: CENTER NETWORK CANVAS --> <section class="pulse-col-canvas" aria-label="Paper linkage map">
-<!-- CANVAS SUB-BAR (Mode switch & graph tuning) -->
-<div class="canvas-subbar"> <div class="mode-switch-tabs" role="tablist" aria-label="Map view mode">
-<button class="subbar-tab is-active" data-mode="network" type="button">Network</button>
-<button class="subbar-tab" data-mode="clusters" type="button">Clusters</button>
-<button class="subbar-tab" data-mode="radial" type="button">Radial</button>
-<button class="subbar-tab" data-mode="table" type="button">Bibliography</button> </div> </div>
 <!-- SVG GRAPH CANVAS VIEWPORT -->
 <div class="map-viewport" aria-label="Map canvas — drop paper files here">
+<button id="inspectorReopen" class="inspector-reopen inspector-panel-button" type="button" aria-label="Show paper details" title="Show paper details" aria-controls="details" aria-expanded="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M11 9l-3 3 3 3"></path></svg></button>
 <div id="mapDropOverlay" class="map-drop-overlay" hidden><div><strong>Drop papers onto your map</strong><span>PDF, BibTeX, RIS, JSON and text files</span></div></div> <svg id="map" class="map" role="img" aria-label="A linkage map of related papers"></svg>
 <div id="tableView" class="table-view" hidden></div>
 <section id="timelineView" class="timeline-view" aria-label="Papers in chronological order" hidden></section>
@@ -143,7 +157,8 @@
 <div id="canvasFilterBar" hidden><div id="canvasFilterTags"></div><button id="canvasClearFilterButton">Clear</button></div> </section>
 <!-- COLUMN 3: RIGHT INSPECTOR (PAPER DETAILS) -->
 <aside id="details" class="pulse-col-inspector" aria-label="Paper details">
-<!-- Rendered dynamically by renderDetails() with template layout -->
+<div class="inspector-panel-header"><span>Paper details</span><button id="inspectorToggle" class="inspector-panel-button" type="button" aria-label="Hide paper details" title="Hide paper details" aria-controls="details" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M8 9l3 3-3 3"></path></svg></button></div>
+<div id="detailsContent" class="inspector-content"><!-- Rendered dynamically by renderDetails() --></div>
 </aside> </div> </div> </div>
 <!-- FLOATING PANELS (Style, Areas, Linkages, AI Analyst) -->
 <aside id="graphPanel" class="graph-panel card floating-overlay-card" hidden> <div class="card-head"> <div> <h2>Graph style</h2>
@@ -171,10 +186,7 @@
 <button id="linkageCloseButton" class="ai-close" type="button" aria-label="Close linkages panel">×</button> </div> <div class="card-row">
 <button id="clearLinkageButton" class="button" type="button">Clear selection</button> </div> <div id="linkageList" class="linkage-list"></div>
 </aside>
-<button id="aiAgentFab" class="ai-agent-fab" type="button" aria-controls="aiPanel" aria-expanded="false" aria-label="Open AI paper agent">
-<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4Z"/><path d="m20 2 .7 2.3L23 5l-2.3.7L20 8l-.7-2.3L17 5l2.3-.7Z"/></svg>
-<span>AI agent</span><span id="aiAgentFabCount" class="agent-fab-count" hidden></span>
-</button>
+
 <aside id="aiPanel" class="ai-panel card floating-overlay-card paper-agent-panel" hidden role="dialog" aria-modal="false" aria-labelledby="aiAgentTitle">
 <div class="agent-heading"><div class="agent-heading-title"><span class="agent-heading-icon" aria-hidden="true">✦</span><div><h2 id="aiAgentTitle">Paper assistant</h2><p>A report on your selected paper</p></div></div>
 <button id="aiCloseButton" class="ai-close" type="button" aria-label="Close AI panel">×</button></div>
@@ -223,6 +235,7 @@
 <button class="mac-sidebar-item" data-settings-tab="storage" type="button">
 <span class="mac-sidebar-icon">💾</span> <span>Storage &amp; Reset</span>
 </button>
+<button class="mac-sidebar-item" data-settings-tab="search" type="button"><span class="mac-sidebar-icon">⌕</span><span>Search sources</span></button>
 </nav>
 <div class="settings-content mac-settings-body">
 <section data-settings-pane="backend" class="settings-pane mac-pane">
@@ -313,6 +326,13 @@
 </div>
 </div>
 </section>
+<section data-settings-pane="search" class="settings-pane mac-pane" hidden>
+<div class="mac-group-card"><div class="mac-group-title">Europe PMC &amp; CORE</div>
+<p class="subtle">Public search works without account setup. Choose your sources in Discovery options. A CORE API key is optional and can provide a higher search allowance.</p>
+<div class="mac-form-row"><label class="mac-form-label" for="coreKeyInput">CORE API key</label><div class="mac-form-control"><input id="coreKeyInput" class="mac-input" type="password" autocomplete="off" placeholder="Optional"><small id="coreSearchStatus" class="subtle">Public search</small></div></div>
+<div class="mac-form-actions"><button id="clearCoreKeyButton" class="mac-btn" type="button">Remove key</button><button class="mac-btn primary" data-save-settings type="button">Save</button></div>
+<p class="subtle"><a href="https://core.ac.uk/services/api" target="_blank" rel="noreferrer">Get a CORE API key ↗</a></p></div>
+</section>
 <section data-settings-pane="storage" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card">
 <div class="mac-group-title">Storage Information</div>
@@ -335,12 +355,14 @@
 <!-- LITERATURE DISCOVERY RESULTS MODAL -->
 <div id="discoveryModal" class="settings-panel discovery-modal-panel" hidden>
 <div class="discovery-modal-card" role="dialog" aria-modal="true" aria-labelledby="discoveryModalTitle"> <div class="discovery-modal-header">
-<div class="discovery-header-info"> <div class="discovery-header-title-row"> <span class="discovery-source-pill">Interactive Discovery Lab</span>
+<div class="discovery-header-info"> <div class="discovery-header-title-row"> <span class="discovery-source-pill">Research discovery</span>
 <h2 id="discoveryModalTitle">Literature Discovery</h2> </div>
 <p id="discoveryModalSubtitle" class="subtle">Drag &amp; drop new papers below or explore related research across citations and semantic embeddings.</p>
+<p id="discoveryRankingNotice" class="discovery-ranking-notice"></p><details id="discoverySearchDetails" class="discovery-search-details"><summary>Search details</summary><div id="discoverySearchDetailsContent"></div></details>
+<p id="discoverySourceNotice" class="discovery-source-notice" role="status" hidden></p>
 </div> <button id="discoveryModalCloseButton" class="ai-close" type="button" aria-label="Close discovery results">×</button> </div>
 <div id="discoveryDropzone" class="discovery-hero-dropzone" role="button" tabindex="0"><span class="disc-drop-icon">📥</span>
-<div class="disc-drop-text"><strong>Drop PDF, BibTeX or RIS papers here to discover connections</strong> <span>Pulse will automatically extract the title, authors, abstract, and DOI</span></div>
+<div class="disc-drop-text"><strong>Add seed papers · Drop PDF, BibTeX or RIS</strong> <span>Or drop files directly onto the map</span></div>
 <input id="discoveryFileInput" type="file" multiple accept=".pdf,.txt,.bib,.ris,.json" style="display:none">
 </div>
 <div class="discovery-modal-toolbar"><div class="discovery-filter-row-primary"> <div class="discovery-search-box"> <span class="search-icon">🔍</span>
@@ -352,17 +374,17 @@
 <option value="all">All Years</option> <option value="2026">2026</option> <option value="2025">2025+</option> <option value="2024">2024+</option>
 <option value="2023">2023+</option> <option value="2022">2022+</option> <option value="2020">2020+</option> <option value="2015">2015+</option>
 <option value="older">Before 2015</option> </select> </div> <div class="discovery-filter-group">
-<select id="discoverySortBy" class="filter-select-compact" aria-label="Sort discovered papers"> <option value="score">Sort: Match Score</option>
+<select id="discoverySortBy" class="filter-select-compact" aria-label="Sort discovered papers"> <option value="score">Best match</option>
 <option value="citations">Sort: Most Cited</option> <option value="year-desc">Sort: Newest First</option>
 <option value="year-asc">Sort: Oldest First</option> <option value="title">Sort: Title (A-Z)</option> </select> </div> </div>
 <div class="discovery-filter-row-secondary"> <div class="discovery-branch-filters" role="group" aria-label="Filter by discovery branch">
 <span class="branch-filter-label">Branch:</span>
 <button class="branch-filter-btn is-active" type="button" data-branch="all">All (<span id="branchCountAll">0</span>)</button>
-<button class="branch-filter-btn" type="button" data-branch="semanticSearch">🧠 SPECTER2 (<span id="branchCountSpecter">0</span>)</button>
+<button class="branch-filter-btn" type="button" data-branch="semanticSearch">Semantic (<span id="branchCountSpecter">0</span>)</button>
 <button class="branch-filter-btn" type="button" data-branch="citationNetwork">🕸️ Network (<span id="branchCountNetwork">0</span>)</button>
 <button class="branch-filter-btn" type="button" data-branch="citationGraph">📉 Citations (<span id="branchCountCitation">0</span>)</button>
 <button class="branch-filter-btn" type="button" data-branch="lexicalConceptual">🔍 Concepts (<span id="branchCountLexical">0</span>)</button> </div>
-<div class="discovery-selection-actions"> <button id="discoverySelectAllBtn" class="button xs" type="button">Select All</button>
+<div class="discovery-selection-actions"><label class="discovery-fulltext-filter"><input id="discoveryFullTextOnly" type="checkbox"> Full text</label><button id="discoveryResetFilters" class="button xs" type="button">Reset filters</button> <button id="discoverySelectAllBtn" class="button xs" type="button">Select All</button>
 <button id="discoveryDeselectAllBtn" class="button xs" type="button">Deselect All</button>
 <button id="discoverySelectTopBtn" class="button xs secondary" type="button" title="Select top high-scoring matches">Top 10</button> </div> </div>
 <div id="discoveryKeywordChipsRow" class="discovery-keyword-chips-row" hidden> <span class="subtle-label">Quick keyword filter:</span>
@@ -370,7 +392,7 @@
 <span id="discoveryCountSummary" class="discovery-count-text">Showing 0 papers</span> <div class="discovery-status-bar-right">
 <span id="discoverySelectedCount" class="discovery-selected-pill">0 selected</span> </div> </div>
 <div id="discoveryPaperList" class="discovery-paper-list" role="list"></div> <div class="discovery-modal-footer"> <div class="discovery-footer-left">
-<span id="discoveryFooterNote" class="subtle-note">Select papers to incorporate into your research collection</span> </div>
+<span id="discoveryFooterNote" class="subtle-note">Mark relevance to improve your search benchmark.</span><button id="discoveryExportLabels" class="button xs" type="button">Export labels</button> </div>
 <div class="discovery-footer-right"> <button id="discoveryModalCancelBtn" class="button secondary" type="button">Close</button>
 <button id="discoveryAddSelectedLibraryBtn" class="button secondary" type="button">+ Add to Library</button>
 <button id="discoveryAddSelectedMapBtn" class="button primary" type="button">⭐ Add Selected to Map</button> </div> </div> </div> </div>
@@ -415,27 +437,30 @@
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your Mac until you import them. PDFs and full paper text are not uploaded.</small></p>
 <details id="mendeleyDeveloperSettings" hidden><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this Mac's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261008-10"></script>
-<script src="js/part_02.js?v=ui-20261008-10"></script>
-<script src="js/part_03.js?v=ui-20261008-10"></script>
-<script src="js/part_04.js?v=ui-20261008-10"></script>
-<script src="js/part_05.js?v=ui-20261008-10"></script>
-<script src="js/part_06.js?v=ui-20261008-10"></script>
-<script src="js/part_07.js?v=ui-20261008-10"></script>
-<script src="js/part_08.js?v=ui-20261008-10"></script>
-<script src="js/part_09.js?v=ui-20261008-10"></script>
-<script src="js/part_10.js?v=ui-20261008-10"></script>
-<script src="js/part_11.js?v=ui-20261008-10"></script>
-<script src="js/part_12.js?v=ui-20261008-10"></script>
-<script src="js/part_13.js?v=ui-20261008-10"></script>
-<script src="js/part_14.js?v=ui-20261008-10"></script>
-<script src="js/part_15.js?v=ui-20261008-10"></script>
-<script src="js/part_23.js?v=ui-20261008-10"></script>
-<script src="js/mendeley-sync.js?v=ui-20261008-10"></script>
-<script src="js/part_24.js?v=ui-20261008-10"></script>
-<script src="js/part_16.js?v=ui-20261008-10"></script>
-<script src="js/part_17.js?v=ui-20261008-10"></script>
-<script src="js/part_18.js?v=ui-20261008-10"></script>
-<script src="js/part_19.js?v=ui-20261008-10"></script>
-<script src="js/part_20.js?v=ui-20261008-10"></script>
-<script src="js/part_21.js?v=ui-20261008-10"></script> <script src="js/part_22.js?v=ui-20261008-10"></script> </body> </html>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261011-7"></script>
+<script src="js/part_02.js?v=ui-20261011-5"></script>
+<script src="js/part_03.js?v=ui-20261011-1"></script>
+<script src="js/part_04.js?v=ui-20261011-2"></script>
+<script src="js/part_05.js?v=ui-20261011-2"></script>
+<script src="js/part_06.js?v=ui-20261010-2"></script>
+<script src="js/part_07.js?v=ui-20261010-2"></script>
+<script src="js/part_08.js?v=ui-20261011-2"></script>
+<script src="js/part_09.js?v=ui-20261010-2"></script>
+<script src="js/part_10.js?v=ui-20261010-2"></script>
+<script src="js/part_11.js?v=ui-20261010-2"></script>
+<script src="js/part_12.js?v=ui-20261010-2"></script>
+<script src="js/part_13.js?v=ui-20261011-7"></script>
+<script src="js/part_14.js?v=ui-20261011-7"></script>
+<script src="js/part_15.js?v=ui-20261010-2"></script>
+<script src="js/part_23.js?v=ui-20261011-1"></script>
+<script src="js/mendeley-sync.js?v=ui-20261010-2"></script>
+<script src="js/part_24.js?v=ui-20261010-2"></script>
+<script src="js/discovery-controls.js?v=ui-20261011-6"></script>
+<script src="js/part_16.js?v=ui-20261011-2"></script>
+<script src="js/part_17.js?v=ui-20261011-5"></script>
+<script src="js/part_18.js?v=ui-20261011-5"></script>
+<script src="js/discovery-review.js?v=ui-20261011-5"></script>
+<script src="js/part_19.js?v=ui-20261011-5"></script>
+<script src="js/part_20.js?v=ui-20261010-2"></script>
+<script src="js/timeline.js?v=ui-20261011-7"></script>
+<script src="js/part_21.js?v=ui-20261011-7"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>

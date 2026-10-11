@@ -5,7 +5,9 @@ import urllib.parse
 import urllib.request
 from pulse_core.constants import ClientError
 from pulse_core.metadata_utils import clean_author_name, clean_crossref_text
-from pulse_performance import request_json
+from pulse_core.paper_identity import confident_candidate
+from pulse_core.search_limits import discovery_limit, SearchResults
+from pulse_performance import request_json, DiscoveryCancelled
 
 S2_CACHE = {}
 
@@ -39,6 +41,7 @@ def fetch_s2_json(url, api_key=None, timeout=14, cache=True):
         if error.code == 404:
             return None
         raise ClientError(error.code, f"Semantic Scholar error: {details[:400]}")
+    except DiscoveryCancelled: raise
     except Exception as error:
         raise ClientError(502, f"Semantic Scholar connection error: {error}")
 
@@ -56,6 +59,7 @@ def post_s2_json(url, payload, api_key=None, timeout=14):
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         raise ClientError(error.code, f"Semantic Scholar error: {details[:400]}")
+    except DiscoveryCancelled: raise
     except Exception as error:
         raise ClientError(502, f"Semantic Scholar connection error: {error}")
 
@@ -77,6 +81,8 @@ def s2_to_metadata(item):
         "journal": (item.get("venue") or (item.get("journal") or {}).get("name") or "").strip(),
         "doi": doi,
         "s2PaperId": item.get("paperId"),
+        "pmid": str(ext_ids.get("PubMed") or ""),
+        "documentType": "preprint" if any(str(value).lower()=="preprint" for value in item.get("publicationTypes") or []) else "",
         "abstract": (item.get("abstract") or "").strip(),
         "citationCount": item.get("citationCount"),
         "referenceCount": item.get("referenceCount"),
@@ -100,18 +106,17 @@ def s2_paper_id_for_paper(paper, api_key=None):
     if ident and not ident.startswith("DOI:") and not ident.startswith("PMID:"):
         return ident
     if ident:
-        data = fetch_s2_json(f"https://api.semanticscholar.org/graph/v1/paper/{ident}?fields=paperId", api_key=api_key)
-        if data and data.get("paperId"):
-            return data["paperId"]
+        data = fetch_s2_json(f"https://api.semanticscholar.org/graph/v1/paper/{urllib.parse.quote(ident, safe=':')}?fields=paperId,title,authors,year,venue,externalIds", api_key=api_key)
+        if data and confident_candidate(paper, [s2_to_metadata(data)]):
+            return data.get("paperId")
     title = (paper.get("title") or "").strip()
     if title:
-        search = s2_paper_search(title, api_key=api_key, limit=3)
-        for cand in search:
-            if cand.get("title") and cand.get("paperId"):
-                return cand["paperId"]
+        match = confident_candidate(paper, s2_paper_search(title, api_key=api_key, limit=5))
+        if match: return match.get('s2PaperId')
     return None
 
 def s2_fetch_references(identifier, api_key=None, limit=30):
+    limit = discovery_limit(limit)
     url = f"https://api.semanticscholar.org/graph/v1/paper/{identifier}/references?fields=citedPaper.title,citedPaper.authors,citedPaper.year,citedPaper.venue,citedPaper.externalIds,citedPaper.citationCount,citedPaper.abstract&limit={limit}"
     data = fetch_s2_json(url, api_key=api_key)
     res = []
@@ -122,6 +127,7 @@ def s2_fetch_references(identifier, api_key=None, limit=30):
     return res
 
 def s2_fetch_citations(identifier, api_key=None, limit=30):
+    limit = discovery_limit(limit)
     url = f"https://api.semanticscholar.org/graph/v1/paper/{identifier}/citations?fields=citingPaper.title,citingPaper.authors,citingPaper.year,citingPaper.venue,citingPaper.externalIds,citingPaper.citationCount,citingPaper.abstract&limit={limit}"
     data = fetch_s2_json(url, api_key=api_key)
     res = []
@@ -132,7 +138,8 @@ def s2_fetch_citations(identifier, api_key=None, limit=30):
     return res
 
 def s2_recommendations(positive_ids, negative_ids=None, api_key=None, limit=30):
-    url = f"https://api.semanticscholar.org/recommendations/v1/papers/?fields=title,authors,year,venue,externalIds,citationCount,abstract&limit={limit}"
+    limit = discovery_limit(limit)
+    url = f"https://api.semanticscholar.org/recommendations/v1/papers/?fields=title,authors,year,venue,externalIds,citationCount,abstract,publicationTypes&limit={limit}"
     payload = {"positivePaperIds": positive_ids, "negativePaperIds": negative_ids or []}
     data = post_s2_json(url, payload, api_key=api_key)
     res = []
@@ -143,12 +150,24 @@ def s2_recommendations(positive_ids, negative_ids=None, api_key=None, limit=30):
 
 def s2_paper_search(query, api_key=None, limit=30):
     enc = urllib.parse.quote(query)
-    url = f"https://api.semanticscholar.org/graph/v1/paper/search?query={enc}&fields=title,authors,year,venue,externalIds,citationCount,abstract&limit={limit}"
-    data = fetch_s2_json(url, api_key=api_key)
-    res = []
-    for item in (data or {}).get("data") or []:
-        if item.get("title"):
-            res.append(s2_to_metadata(item))
+    limit = discovery_limit(limit)
+    res = SearchResults()
+    offset = 0
+    while offset < limit:
+        page_size = min(100, limit - offset)
+        url = f"https://api.semanticscholar.org/graph/v1/paper/search?query={enc}&fields=title,authors,year,venue,externalIds,citationCount,abstract,publicationTypes&limit={page_size}&offset={offset}"
+        try:
+            data = fetch_s2_json(url, api_key=api_key) or {}
+        except ClientError as error:
+            return res.keep_partial(error)
+        rows = data.get("data") or []
+        for item in rows[:page_size]:
+            if item.get("title"):
+                res.append(s2_to_metadata(item))
+        next_offset = data.get("next")
+        if not isinstance(next_offset, int) or next_offset <= offset or len(rows) < page_size:
+            break
+        offset = next_offset
     return res
 
 def s2_recommendations_for_search(papers, search, limit, steer_terms=None):

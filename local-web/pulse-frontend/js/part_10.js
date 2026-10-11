@@ -146,6 +146,7 @@
       renderTableView();
       renderPapers();
       renderDetails();
+      if (els.timelineView && !els.timelineView.hidden) renderTimeline();
       renderLinkages();
       renderAreasPanel();
       updateMetrics();

@@ -136,14 +136,18 @@ function managerSelectedPapers() {
   if(scope==='bulk') return libraryBulkPapers();
   if(scope==='all') return state.papers;
   if(scope==='relations') return relationUi.items;
-  if(scope==='discoveries') return (state.discoveryResults || []).filter(p=>state.discoverySelectedKeys.has(discoveryPaperKey(p))).map(p=>p.paper || p);
+  if(scope==='discoveries') return selectedDiscoveryPapers().map(p=>p.paper || p);
   return state.papers.filter(p=>p.id===state.selectedId);
 }
 function updateManagers() {
   for(const provider of ['zotero','mendeley']) {
     const info=managerUi.status?.[provider];
     const label=provider==='zotero' ? 'Zotero' : 'Mendeley';
-    document.getElementById(provider+'PillStatus').textContent=info?.connected ? 'Connected' : provider==='mendeley' && !info?.configured ? 'Export citations' : info?.label || 'Check connection';
+    const pillStatus=info?.connected ? 'Connected' : provider==='mendeley' && !info?.configured ? 'Export citations' : info?.label || 'Check connection';
+    document.getElementById(provider+'PillStatus').textContent=pillStatus;
+    const pill=document.getElementById(provider+'Pill');
+    pill.title=`${label} · ${pillStatus}`;
+    pill.classList.toggle('is-connected',Boolean(info?.connected));
     document.getElementById(provider+'PillStatus').classList.toggle('is-connected',Boolean(info?.connected));
     document.getElementById(provider+'ConnectionNote').textContent=info?.connected ? label+' · '+info.destination : info?.message || (provider==='zotero' ? 'Open Zotero Desktop to connect locally.' : info?.pending ? 'Finish signing in with Mendeley, then return here.' : info?.configured ? 'Sign in to connect your Mendeley library.' : 'Direct sign-in is awaiting Pulse service activation. You can export citations for Mendeley now.');
     document.getElementById(provider+'Send').disabled=managerUi.busy || (provider==='zotero' && !info?.connected) || !managerSelectedPapers().length;
