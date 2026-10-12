@@ -15,7 +15,7 @@ const helpers=fs.readFileSync(path.join(frontend,'part_13.js'),'utf8');vm.runInC
 const pipeline=fs.readFileSync(path.join(frontend,'part_18.js'),'utf8');vm.runInContext(pipeline.slice(pipeline.indexOf('    async function runDiscoveryPipeline'),pipeline.indexOf('    function addSeminalPaperToMap')),context);
 context.initDiscoveryControls();assert.equal(summary.textContent,'All methods · 2-hop');
 assert(context.discoveryConfigurationKey().startsWith('dbef-seed-scale-v2::'),'Old ranking caches must be bypassed');
-assert.equal(ids.discoveryResultLimit.value,'500','New workspaces default to 500 results');
+assert.equal(ids.discoveryResultLimit.value,'200','New workspaces default to 200 results');
 ids.ribbonReferencesTab.click();assert.equal(ids.ribbonDiscoveryPanel.hidden,true);assert.equal(ids.ribbonReferencesPanel.hidden,false);assert.equal(ids.ribbonReferencesTab.attributes['aria-selected'],'true');assert.equal(requests.length,0,'Tabs only change the visible tools');
 ids.ribbonReferencesTab.click();assert.equal(ids.ribbonReferencesPanel.hidden,true,'Pressing the active tab again collapses its tools');assert.equal(ids.ribbonDiscoveryPanel.hidden,true);assert.equal(ids.ribbonReferencesTab.attributes['aria-selected'],'true');assert.equal(ids.ribbonReferencesTab.attributes['aria-expanded'],'false');assert(ids.workspaceRibbon.classList.contains('is-collapsed'));
 ids.ribbonReferencesTab.click();assert.equal(ids.ribbonReferencesPanel.hidden,false,'Pressing a collapsed tab reopens its tools');assert.equal(ids.ribbonReferencesTab.attributes['aria-expanded'],'true');assert(!ids.workspaceRibbon.classList.contains('is-collapsed'));

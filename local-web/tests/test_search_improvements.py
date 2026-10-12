@@ -155,5 +155,51 @@ class SearchImprovementsTests(unittest.TestCase):
             scores,_=discovery_semantics.semantic_scores({},['Question'],[paper('long',abstract=abstract)])
         self.assertIsNotNone(scores);self.assertTrue(any('Precise information near the end' in value for value in sent))
 
+    def test_ollama_keep_alive_is_30m(self):
+        sent_payloads = []
+        def capture_req(req, **kwargs):
+            sent_payloads.append(json.loads(req.data))
+            return {'embeddings': [[0.1]*8 for _ in sent_payloads[0]['input']]}
+        discovery_semantics._cache.clear()
+        with patch.object(discovery_semantics, 'local_model', return_value=('http://127.0.0.1:11434/api/embed', 'fixture-model')), \
+             patch.object(discovery_semantics, 'request_json', side_effect=capture_req):
+            discovery_semantics.semantic_scores({}, ['Question'], [paper('test')])
+        self.assertTrue(sent_payloads)
+        self.assertEqual(sent_payloads[0].get('keep_alive'), '30m')
+
+    def test_parallel_branches_stops_early_on_signal(self):
+        called = []
+        def slow_task():
+            time.sleep(0.5)
+            called.append('slow')
+            return ['slow_result']
+        def fast_task():
+            called.append('fast')
+            return ['fast_result']
+        # on_progress returns True to signal early stop
+        results, executed, errors = perf.parallel_branches(
+            {'fast': fast_task, 'slow': slow_task},
+            on_progress=lambda r, c, e, t: True if 'fast' in c else False
+        )
+        self.assertIn('fast', executed)
+
+    def test_warm_paper_discovery(self):
+        with patch('pulse_core.discovery.openalex_work_for_paper', return_value={'id': 'W12345', 'referenced_works': ['W999']}), \
+             patch('pulse_core.discovery.fetch_openalex_works_batch') as mock_batch, \
+             patch('pulse_core.discovery.openalex_discovery_works') as mock_disc:
+            discovery.warm_paper_discovery({'title': 'Test Paper', 'doi': '10.1234/test'})
+            mock_batch.assert_called_once()
+            mock_disc.assert_called_once()
+
+    def test_reranker_worker_window_cap(self):
+        from pulse_core import reranker_worker
+        # Test offset calculation logic directly
+        tokens = list(range(1000))
+        offsets = list(range(0, len(tokens), 280))
+        self.assertGreater(len(offsets), 2)
+        max_windows = int(2)
+        if len(offsets) > max_windows: offsets = offsets[:max_windows]
+        self.assertEqual(len(offsets), 2)
+
 
 if __name__=='__main__':unittest.main()

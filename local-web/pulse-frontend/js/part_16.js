@@ -106,6 +106,7 @@ function bindInspectorSections() {
         return;
       }
       updateInspectorNav(paper);
+      if (typeof warmDiscoveryForPaper === 'function' && paper) warmDiscoveryForPaper(paper);
 
       const tab = inspectorTab();
       const recommendationSeeds = selectedPapersForRecommendation();

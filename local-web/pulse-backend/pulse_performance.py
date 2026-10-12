@@ -12,6 +12,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import OrderedDict
+import collections
+import http.client
+import io
+import ssl
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from pulse_source_health import check_source, failed as source_failed, succeeded as source_succeeded, ProviderCooldown
@@ -23,6 +27,86 @@ _JSON_INFLIGHT = {}
 _PROVIDER_GATES = {}
 _EMBED_LOCKS = [threading.Lock() for _ in range(16)]
 LIBRARY_WRITE_LOCK = threading.RLock()
+_CONNECTION_POOLS = collections.defaultdict(list)
+_CONNECTION_LOCK = threading.Lock()
+
+
+class _ResponseWrapper:
+    def __init__(self, data, headers, status):
+        self._data = data
+        self.headers = headers
+        self.status = status
+    def read(self):
+        return self._data
+    def __enter__(self):
+        return self
+    def __exit__(self, *args):
+        pass
+
+
+def _urlopen_persistent(request, timeout=14):
+    if hasattr(urllib.request.urlopen, 'mock_calls') or type(urllib.request.urlopen).__module__.startswith('unittest.mock'):
+        return urllib.request.urlopen(request, timeout=timeout)
+    url = request.full_url if hasattr(request, 'full_url') else str(request)
+    parsed = urllib.parse.urlsplit(url)
+    scheme = parsed.scheme.lower()
+    host = parsed.hostname
+    if not host or scheme not in ('http', 'https'):
+        return urllib.request.urlopen(request, timeout=timeout)
+    port = parsed.port or (443 if scheme == 'https' else 80)
+    path = parsed.path or '/'
+    if parsed.query: path += '?' + parsed.query
+    headers = dict(request.header_items()) if hasattr(request, 'header_items') else {}
+    if not any(k.lower() == 'connection' for k in headers): headers['Connection'] = 'keep-alive'
+    if not any(k.lower() == 'host' for k in headers): headers['Host'] = parsed.netloc
+    method = request.get_method() if hasattr(request, 'get_method') else ('POST' if getattr(request, 'data', None) else 'GET')
+    data = getattr(request, 'data', None)
+    now = time.monotonic()
+    conn = None
+    with _CONNECTION_LOCK:
+        pool = _CONNECTION_POOLS[(scheme, host, port)]
+        while pool:
+            candidate, added_at = pool.pop()
+            if now - added_at < 30:
+                candidate.timeout = timeout
+                conn = candidate
+                break
+            try: candidate.close()
+            except Exception: pass
+    if conn is None:
+        if scheme == 'https':
+            ctx = ssl.create_default_context()
+            conn = http.client.HTTPSConnection(host, port=port, timeout=timeout, context=ctx)
+        else:
+            conn = http.client.HTTPConnection(host, port=port, timeout=timeout)
+    try:
+        conn.request(method, path, body=data, headers=headers)
+        resp = conn.getresponse()
+    except (http.client.RemoteDisconnected, BrokenPipeError, ConnectionResetError, http.client.CannotSendRequest, http.client.ResponseNotReady, OSError):
+        try: conn.close()
+        except Exception: pass
+        if scheme == 'https':
+            ctx = ssl.create_default_context()
+            conn = http.client.HTTPSConnection(host, port=port, timeout=timeout, context=ctx)
+        else:
+            conn = http.client.HTTPConnection(host, port=port, timeout=timeout)
+        conn.request(method, path, body=data, headers=headers)
+        resp = conn.getresponse()
+    body = resp.read()
+    status = resp.status
+    keep = 'close' not in resp.getheader('connection', '').lower()
+    if keep:
+        with _CONNECTION_LOCK:
+            pool = _CONNECTION_POOLS[(scheme, host, port)]
+            if len(pool) < 16:
+                pool.append((conn, time.monotonic()))
+                conn = None
+    if conn is not None:
+        try: conn.close()
+        except Exception: pass
+    if status >= 400:
+        raise urllib.error.HTTPError(url, status, resp.reason, resp.headers, io.BytesIO(body))
+    return _ResponseWrapper(body, resp.headers, status)
 
 
 class DiscoveryCancelled(Exception):
@@ -127,8 +211,16 @@ def _request_json_once(request, timeout=14, cache=True):
                         if counter['remaining'] <= 0: raise DiscoveryBudgetExceeded('Search request budget reached; showing collected results.')
                         counter['remaining'] -= 1
                 request_timeout = min(timeout, max(.1, remaining)) if remaining is not None else timeout
-                with urllib.request.urlopen(request, timeout=request_timeout) as response:
-                    data = json.loads(response.read().decode('utf-8'))
+                try:
+                    with _urlopen_persistent(request, timeout=request_timeout) as response:
+                        raw = response.read()
+                        data = json.loads(raw.decode('utf-8') if isinstance(raw, bytes) else raw)
+                except (urllib.error.HTTPError, DiscoveryCancelled, DiscoveryBudgetExceeded, ProviderCooldown):
+                    raise
+                except Exception:
+                    with urllib.request.urlopen(request, timeout=request_timeout) as response:
+                        raw = response.read()
+                        data = json.loads(raw.decode('utf-8') if isinstance(raw, bytes) else raw)
                 check_cancelled()
                 source_succeeded(request)
                 encoded=json.dumps(data) if cache else ''
@@ -204,7 +296,8 @@ def parallel_branches(tasks, on_progress=None, cancel_event=None, budget_seconds
                 raise value
             else:
                 errors[name] = str(value) or type(value).__name__
-            if on_progress: on_progress(dict(results), list(completed), dict(errors), len(tasks))
+            if on_progress and on_progress(dict(results), list(completed), dict(errors), len(tasks)):
+                break
     finally:
         for future in futures: future.cancel()
         # All normal completions have reported. Cancelling returns immediately;

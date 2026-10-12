@@ -84,6 +84,22 @@ def fetch_openalex_work_by_id(work_id):
     return fetch_json(f"https://api.openalex.org/works/{urllib.parse.quote(normalized, safe='')}")
 
 
+def warm_paper_discovery(paper):
+    """Quietly pre-warm OpenAlex work, top references and direct citations for a selected paper."""
+    if not paper or not isinstance(paper, dict): return
+    try:
+        work = openalex_work_for_paper(paper)
+        if not work: return
+        work_id_clean = openalex_work_id(work.get('id'))
+        refs = work.get('referenced_works') or []
+        if refs:
+            fetch_openalex_works_batch(refs[:50], select=OPENALEX_WORK_SELECT)
+        if work_id_clean:
+            openalex_discovery_works(f"cites:{work_id_clean}", 25, sort="cited_by_count:desc")
+    except Exception:
+        pass
+
+
 OPENALEX_WORK_SELECT = 'id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language'
 
 
@@ -522,6 +538,8 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_cand
                     providers.setdefault(name,set()).add(str(paper.get('doi') or paper.get('openalexId') or paper.get('title')))
         return {name:len(ids) for name,ids in providers.items()}
     last_progress_rank=[0,0]
+    last_top50_keys=[None]
+    settled_updates=[0]
     def source_errors(results, errors):
         return {**errors, **{name: records.warning for name, records in results.items() if getattr(records, "warning", "")}}
     def source_notices(results):
@@ -533,7 +551,17 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_cand
         now=time.monotonic()
         should_rank=last_progress_rank[0]==0 or now-last_progress_rank[0]>=3.0
         ranked=merge_and_rank_pipeline_candidates(ordered,seed_papers,dict(options,limit=min(limit,150))) if should_rank else None
-        if should_rank:last_progress_rank[:]=[now,len(completed)+len(errors)]
+        if should_rank:
+            last_progress_rank[:]=[now,len(completed)+len(errors)]
+            citation_branches = [name for name in tasks if name in ('citationGraph', 'citationNetwork', 'citationCoCitation')]
+            citation_finished = all(name in completed or name in errors for name in citation_branches)
+            if citation_branches and citation_finished and ranked:
+                top50_keys = tuple(str(p.get('doi') or p.get('openalexId') or p.get('paperId') or p.get('title') or '') for p in ranked[:50])
+                if top50_keys == last_top50_keys[0]:
+                    settled_updates[0] += 1
+                else:
+                    settled_updates[0] = 0
+                    last_top50_keys[0] = top50_keys
         if ranked is not None and embed_thread and embed_thread.is_alive():
             queue_embeddings(ranked[:SEMANTIC_SHORTLIST_LIMIT])
         if on_progress:
@@ -550,6 +578,10 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_cand
                 "completed": len(completed) + len(errors),
                 "total": total,
             })
+        citation_branches = [name for name in tasks if name in ('citationGraph', 'citationNetwork', 'citationCoCitation')]
+        citation_finished = all(name in completed or name in errors for name in citation_branches)
+        if citation_branches and citation_finished and settled_updates[0] >= 2 and len(tasks) > len(completed) + len(errors):
+            return True
     if on_progress:
         on_progress({"total": len(tasks), "stage":"collecting", "conceptSearch":concept_search})
     try:

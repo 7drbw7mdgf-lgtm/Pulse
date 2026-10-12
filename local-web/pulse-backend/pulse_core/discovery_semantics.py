@@ -125,7 +125,7 @@ def _resolve(identity, texts, cancel_event, deadline, stop_event=None):
                 else: still_missing.append(text)
             if not still_missing: continue
             request = urllib.request.Request(endpoint,
-                data=json.dumps({'model': model, 'input': still_missing, 'truncate': True, 'keep_alive': '5m'}).encode(),
+                data=json.dumps({'model': model, 'input': still_missing, 'truncate': True, 'keep_alive': '30m'}).encode(),
                 headers={'Content-Type': 'application/json'}, method='POST')
             previous_deadline = getattr(REQUEST_CONTEXT, 'deadline', None)
             previous_cancel = getattr(REQUEST_CONTEXT, 'cancel_event', None)

@@ -82,6 +82,7 @@
           added += 1;
         }
       }
+      if (papers.length && typeof warmDiscoveryForPaper === 'function') warmDiscoveryForPaper(papers[0]);
       return { added, merged };
     }
 

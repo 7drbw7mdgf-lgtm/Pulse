@@ -269,6 +269,22 @@
       };
     }
 
+    let _warmPaperTimer = null;
+    function warmDiscoveryForPaper(paper) {
+      if (!paper || state.discoveryLoading) return;
+      clearTimeout(_warmPaperTimer);
+      _warmPaperTimer = setTimeout(() => {
+        try {
+          if (typeof backendUrl !== 'function' || typeof apiHeaders !== 'function') return;
+          fetch(backendUrl('/api/discovery/warm'), {
+            method: 'POST',
+            headers: apiHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ paper: citationPaperPayload(paper) })
+          }).catch(() => {});
+        } catch (_) {}
+      }, 350);
+    }
+
     function applyCitationMetadata(paper, metadata = {}) {
       mergeDoiMetadata(paper, metadata);
       if (metadata.s2PaperId) paper.s2PaperId = metadata.s2PaperId;

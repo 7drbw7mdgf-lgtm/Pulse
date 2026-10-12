@@ -32,9 +32,8 @@ def run(payload):
             str(p.get('text') or '') for p in paper.get('matchedPassages') or []))[:16000]
         tokens = tokenizer.encode(abstract, add_special_tokens=False).ids
         offsets = list(range(0, len(tokens), 280))
-        if payload.get('maxWindows')==1:offsets=offsets[:1]
-        if len(offsets) > 4:
-            offsets = [offsets[0], offsets[len(offsets)//3], offsets[2*len(offsets)//3], offsets[-1]]
+        max_windows = int(payload.get('maxWindows') or 2)
+        if len(offsets) > max_windows: offsets = offsets[:max_windows]
         passages = [tokenizer.decode(tokens[offset:offset+320]) for offset in offsets] or ['']
         title = str(paper.get('title') or '')[:1600]
         for query in queries:

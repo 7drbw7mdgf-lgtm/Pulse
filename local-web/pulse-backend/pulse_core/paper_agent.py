@@ -87,7 +87,7 @@ def local_chat(model, prompt, cancel, max_tokens=650):
             "model": model, "messages": [{"role": "system", "content": SYSTEM},
                 {"role": "user", "content": prompt}], "stream": True,
             "options": {"temperature": 0.15, "num_ctx": 8192, "num_predict": max_tokens},
-            "keep_alive": "5m"}).encode())
+            "keep_alive": "30m"}).encode())
     parts = []
     deadline = time.monotonic() + 300
     try:

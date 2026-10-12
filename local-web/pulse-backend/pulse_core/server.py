@@ -34,6 +34,7 @@ from pulse_core.discovery import (
     citation_network_triangulation,
     iterative_citation_chase,
     run_discovery_pipeline,
+    warm_paper_discovery,
 )
 from pulse_core.concept_search import validate_discovery_request
 from pulse_core.metadata_scanner import (
@@ -204,6 +205,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/discovery/pipeline",
             "/api/discovery/start",
             "/api/discovery/cancel",
+            "/api/discovery/warm",
             "/api/papers/status",
             "/api/citations/chase",
             "/api/citations/network",
@@ -244,6 +246,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/citations/seminal": find_missing_seminal_papers,
                 "/api/citations/snowball": snowball_papers,
                 "/api/discovery/pipeline": run_discovery_pipeline,
+                "/api/discovery/warm": lambda p: (threading.Thread(target=warm_paper_discovery, args=(p.get("paper"),), daemon=True, name="pulse-warm").start() if isinstance(p, dict) and p.get("paper") else None, {"warmed": True})[1],
                 "/api/papers/status":publication_status,
                 "/api/citations/chase": iterative_citation_chase,
                 "/api/citations/network": citation_network_triangulation,

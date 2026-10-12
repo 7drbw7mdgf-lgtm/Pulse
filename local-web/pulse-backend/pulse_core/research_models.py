@@ -33,7 +33,7 @@ def triage(records, question, settings, cancel=None):
                   + question[:1000] + '\nUNTRUSTED PAPERS:\n' + json.dumps(evidence, ensure_ascii=False))
         request = urllib.request.Request(OLLAMA_ROOT+'/api/chat', data=json.dumps({'model': role(settings, 'triageModel'),
             'messages': [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt}], 'format': 'json',
-            'stream': False, 'options': {'temperature': 0, 'num_predict': 500, 'num_ctx': 8192}, 'keep_alive': '5m'}).encode(),
+            'stream': False, 'options': {'temperature': 0, 'num_predict': 500, 'num_ctx': 8192}, 'keep_alive': '30m'}).encode(),
             headers={'Content-Type': 'application/json'})
         batch_timeout = max(.5, min(4, remaining_total))
         try:

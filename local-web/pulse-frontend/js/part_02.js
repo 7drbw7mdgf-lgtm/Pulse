@@ -186,6 +186,12 @@ const discoveryBoundCheckboxes=new WeakSet();
         if (sortBy === 'title') {
           return (a.title || '').localeCompare(b.title || '');
         }
+        if (state.discoverySearching) {
+          const isDirect = item => item.branch === 'citationGraph' || item.subType === 'Backward Citation' || item.subType === 'Forward Citation';
+          const aDirect = isDirect(a);
+          const bDirect = isDirect(b);
+          if (aDirect !== bDirect) return aDirect ? -1 : 1;
+        }
         return a.rank&&b.rank?a.rank-b.rank:(b.score || 0) - (a.score || 0);
       });
     }
@@ -578,7 +584,7 @@ const discoveryBoundCheckboxes=new WeakSet();
               <strong>${job.stage === 'keywords' ? 'Preparing search keywords…' : job.stage === 'ranking' ? 'Ranking results…' : `Searching ${rows.length || ''} source${rows.length === 1 ? '' : 's'}…`}</strong>
               <span>${job.total ? `${job.completed || 0} of ${job.total} done · ` : ''}${totalItems.length} candidates so far · ${discoveryElapsed(searching.startedAt)} elapsed</span>
               <span class="dv-progress-bar"><span style="width:${percent}%"></span></span>
-              <button type="button" class="dv-btn" data-dv-action="stop-review">Stop and review</button>
+              <button type="button" class="dv-btn dv-btn-stop-review" data-dv-action="stop-review">Stop and review</button>
             </div>
             ${totalItems.length ? '' : `<div class="dv-progress-sources">${rows.map(row => `<div class="dv-source-card is-${row.status}"><i></i><span><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.detail)}</small></span>${row.canAddKey ? '<button type="button" class="dv-btn small" data-dv-action="open-settings">Add key</button>' : ''}</div>`).join('')}</div>`}`;
         }
