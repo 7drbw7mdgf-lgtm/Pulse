@@ -58,7 +58,7 @@ Automated checks exercise synthetic records and mocked providers. Browser checks
 
 ## Portable offline search ranker
 
-The Mac release uses a frozen CPU ONNX worker, independent of the system Python used by the main backend. On an Apple Silicon Mac, create a build venv with Python 3.9 and install `scripts/requirements-search-runtime.txt`, then run:
+The Mac release uses a frozen CPU ONNX worker, independent of the system Python used by the main backend. The 1.7.7 build uses the checksum-verified `cpython-3.11.17+20261009-aarch64-apple-darwin-install_only_stripped.tar.gz` from the official [python-build-standalone release](https://github.com/astral-sh/python-build-standalone/releases/tag/20261009). On an Apple Silicon Mac, create a build venv with that macOS 11-compatible interpreter and install `scripts/requirements-search-runtime.txt`, then run:
 
 ```sh
 /path/to/build-venv/bin/python scripts/build-search-runtime.py --output /tmp/pulse-search-runtime

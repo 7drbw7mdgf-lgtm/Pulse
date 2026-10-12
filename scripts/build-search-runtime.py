@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import subprocess
 import sys
 import tempfile
@@ -20,6 +21,27 @@ MODEL = 'cross-encoder/ms-marco-MiniLM-L6-v2'
 REVISION = '233902d25c440f23af6f7d6e94d2946bac0bee0a'
 FILES = {'onnx/model.onnx': 'model.onnx', 'tokenizer.json': 'tokenizer.json',
          'config.json': 'config.json', 'README.md': 'MODEL-README.md'}
+
+
+def verify_macos_dependencies(directory):
+    """Reject a builder interpreter or native wheel newer than advertised macOS."""
+    if sys.platform != 'darwin': return
+    magic = {b'\xcf\xfa\xed\xfe', b'\xfe\xed\xfa\xcf', b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca'}
+    for path in directory.rglob('*'):
+        if not path.is_file() or path.is_symlink(): continue
+        with path.open('rb') as file:
+            if file.read(4) not in magic: continue
+        info = subprocess.check_output(['otool', '-l', str(path)], text=True)
+        for command in info.split('Load command '):
+            field = 'minos' if 'cmd LC_BUILD_VERSION\n' in command else 'version' if 'cmd LC_VERSION_MIN_MACOSX\n' in command else None
+            version = re.search(r'\b' + field + r'\s+(\d+\.\d+)', command) if field else None
+            if version and tuple(map(int, version.group(1).split('.'))) > (11, 0):
+                raise ValueError('Bundled native dependency requires macOS newer than 11: ' + str(path))
+        links = subprocess.check_output(['otool', '-L', str(path)], text=True).splitlines()[1:]
+        for link in links:
+            name = link.strip().split(' (')[0]
+            if name.startswith('/') and not name.startswith(('/usr/lib/', '/System/Library/')):
+                raise ValueError('Bundled native dependency refers to an external build path: ' + name)
 
 
 def build(output):
@@ -48,6 +70,7 @@ def build(output):
                    '--exclude-module', 'transformers', '--exclude-module', 'sentence_transformers',
                    str(ROOT / 'local-web/pulse-backend/pulse_core/reranker_onnx_worker.py')]
         subprocess.run(command, check=True)
+    verify_macos_dependencies(output / 'bin')
     executable = 'bin/pulse-reranker/pulse-reranker' + ('.exe' if os.name == 'nt' else '')
     manifest = {'format': 'onnx-executable-v1', 'model': MODEL, 'revision': REVISION,
                 'modelDirectory': 'model', 'executable': executable,
