@@ -2,13 +2,13 @@
 
 ### A private, local-first workspace for scientific literature discovery and synthesis
 
-[![Release](https://img.shields.io/badge/release-v1.7.11-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.11)
+[![Release](https://img.shields.io/badge/release-v1.7.12-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.12)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases)
 
 ---
 
-**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.11/Pulse-1.7.11.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.11.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
+**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.12/Pulse-1.7.12.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.12.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
 
 ---
 
@@ -22,28 +22,31 @@
 
 ![Pulse Discovery Review Workspace — synthetic example](docs/images/pulse-1.7.11-discovery.png)
 
-## Concept search (source update)
+## What’s new in 1.7.12
 
-Type a concept, key phrases or a research question into **Find papers**, then press **Enter** or **Search papers**. No seed paper or existing library is required. Pulse uses the configured AI to extract focused keywords and close synonyms, searches the selected literature indexes, and ranks results against the original topic with the existing semantic and cross-encoder stages when available. The results show the search keywords and support filters, previews, relevance feedback and adding selected papers to the library or map.
+### Faster discovery
+- **Parallel shared-reference (DBEF) searches** with trimmed OpenAlex responses (`select=`), reusable HTTP connections, and background pre-warming of references and DBEF pivots when you select or add a paper.
+- **Early settling:** long-tail collection stops once the leading results are stable.
+- **Lighter neural ranking:** balanced shortlists of 96 embeddings and 48 single-excerpt cross-encoder scores, with score caching.
+- **Measured live:** on five seed papers (bacterial outer-membrane vesicles, 200 results, Apple Silicon Mac, one run each), a full search took **12.5–15.4 s**, down from 21.7–30.6 s in 1.7.11. Of 75 citation-derived must-find papers, 15 ranked in the top 50 (1.7.11: 13) and 43 in the top 200 (1.7.11: 51); early settling trims some long-tail results. This is a small, single-field check, not a general guarantee.
 
-The original phrase always remains a retrieval query. Keyword expansion has an eight-second request timeout; missing models, unavailable AI or invalid output fall back to phrase search with a clear notice. **Run again** and **Refine with feedback** retain the original topic even after another paper is selected. **Discover related** continues to use selected seed papers. This source update is not included in the published 1.7.11 installers linked above.
+### Map tabs
+- **Multiple maps per workspace:** ribbon tabs and **+ New map** create independent maps, including blank ones, that share one library.
+- Library cards, the library table and the bulk **Add to map…** action assign papers to a chosen map, all maps or none. Map membership persists across save, export, restore and recovery.
 
-## DBEF calibration and citation channels (source update)
+### Concept search
+Type a concept, key phrases or a research question into **Find papers** and press **Enter** or **Search papers**. No seed paper is required. Pulse uses the configured AI to extract focused keywords and close synonyms, searches the selected literature indexes, and ranks results against the original topic. The original phrase always remains a query; if AI is unavailable, Pulse falls back to phrase search with a clear notice.
 
-DBEF now uses a seed-derived saturation scale, records assessed overlap, assessed zero and unavailable graph evidence separately, and imputes missing graph support conservatively by default. Co-citation runs as its own eight-second branch beside direct citations and coupling. The velocity bonus is still counted once. Ranking caches are versioned to bypass older results.
+### Calibrated citation evidence
+- **DBEF calibration:** a seed-derived saturation scale replaces batch-max normalisation, so one weak shared reference can no longer score like a dense cluster.
+- **Missing data handled honestly:** assessed overlap, assessed zero and unavailable graph evidence are recorded separately; missing graph support is imputed conservatively.
+- **Co-citation restored** as its own eight-second search beside direct citations and bibliographic coupling. The citation-velocity bonus is still counted once.
 
-The frozen three-case and five-seed benchmarks include condensed nDCG, known-paper/landmark recall, per-channel assessment and every judged paper’s rank delta. Results are mixed; these eight cases cannot establish significance. See [the calibration guide](docs/search/DBEF-CALIBRATION.md) and [per-case benchmark reports](docs/search/RANKING-BENCHMARK.md). These changes are source updates, not a new published installer.
-
-## Research quality and speed (source update)
-
-- **Evidence-weighted DBEF:** incomplete bibliographies and weak shared-reference links contribute less, while direct citation evidence keeps its own weight.
-- **Better relevance feedback:** positive and negative examples teach question-specific preferred and rejected concepts, with optional embedding contrast for synonyms. Search details explain the profile.
-- **Stronger citation checks:** column-aware reference extraction and bundled local English OCR support scanned PDFs. DOI verification also checks supplied initials, journal, volume, issue, pages and precise dates; conflicts stay reviewable.
-- **Publication updates:** linked preprints and published versions are grouped. Selected verified papers show recorded corrections, concerns and retraction notices with DOI links.
-- **Faster ranking:** balanced shortlists of 96 embeddings and 48 single-excerpt cross-encoder scores, score caching and indexed version matching reduce repeated work while retaining the full result pool. The synthetic neural check on the test Mac dropped from 20.9 to 13.4 seconds; provider collection is excluded.
-- **Forty mixed-topic benchmark questions:** open the local review tool from Settings. Twenty biomedical questions use SciFact human evidence labels. General-topic and landmark proposals require human review; the runner excludes provisional judgments by default and refuses to fit DBEF without sufficient reviewed, seeded cases.
-
-See [the implementation and benchmark guide](docs/search/QUALITY-UPGRADE.md) for measured timings, source outages, review steps and limitations. These source changes are not included in the published installers linked above; no empirically fitted DBEF policy has been activated.
+### Research quality
+- **Better relevance feedback:** positive and negative examples teach question-specific preferred and rejected concepts.
+- **Stronger citation checks:** column-aware reference extraction and local English OCR for scanned PDFs. DOI verification also checks initials, journal, volume, issue, pages and dates; conflicts stay reviewable.
+- **Publication updates:** linked preprints and published versions are grouped, and verified papers show recorded corrections, concerns and retraction notices.
+- **Benchmarks:** frozen three-case and five-seed benchmarks report condensed nDCG, known-paper/landmark recall and every judged paper’s rank change. Results are mixed and too few to establish significance. See the [calibration guide](docs/search/DBEF-CALIBRATION.md), [ranking benchmark](docs/search/RANKING-BENCHMARK.md) and [quality guide](docs/search/QUALITY-UPGRADE.md).
 
 ## What’s new in 1.7.11
 
@@ -113,12 +116,12 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 ## Installation
 
 ### macOS (Apple Silicon, macOS 11+)
-1. Download **[Pulse-1.7.11.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.11/Pulse-1.7.11.dmg)**.
+1. Download **[Pulse-1.7.12.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.12/Pulse-1.7.12.dmg)**.
 2. Open the DMG and drag **Pulse.app** into your **Applications** folder.
 3. *Note:* Ensure you have Python 3.10+ installed (e.g. via Homebrew `brew install python`). Because Pulse is ad-hoc signed, if macOS blocks the first launch, right-click the app and choose **Open**, or run the `Allow-Pulse-Tauri.command` included in the DMG.
 
 ### Windows (Windows 10/11 x64)
-1. Download **[Pulse-1.7.4-Windows-x64-Setup.exe](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.4/Pulse-1.7.4-Windows-x64-Setup.exe)**.
+1. Download **[Pulse-1.7.6-Windows-x64-Setup.exe](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)**. This Windows installer is version 1.7.6; current Windows source builds in CI.
 2. Run the installer and follow the on-screen instructions. Python and PDF extraction engines are bundled directly inside the Windows setup.
 
 ---
