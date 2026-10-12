@@ -261,6 +261,7 @@ def fetch_dbef_branch(seed_papers, api_key=None, limit=200):
                                 for rank,record in enumerate(partial,1):
                                     record.update(branch='citationNetwork',subType='Bibliographic coupling',
                                         retrievalEvidence=[{'channel':'dbef','provider':'OpenAlex','rank':rank}])
+                                publish_partial(partial)
                         except DiscoveryBudgetExceeded: collection_limited = True
                         except DiscoveryCancelled: raise
                         except Exception as error: warnings.append(str(error))
