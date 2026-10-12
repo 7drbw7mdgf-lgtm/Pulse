@@ -92,11 +92,11 @@
         discoveryBranches: { ...state.discoveryBranches },
         discoverySearchSources: { ...state.discoverySearchSources },
         discoveryDepth: state.discoveryDepth || '1',
-        discoveryLimit: state.discoveryLimit || 500,
+        discoveryLimit: state.discoveryLimit || 200,
         discoveryResearchQuestion: state.discoveryResearchQuestion || '',
         discoveryStrictExclusions: state.discoveryStrictExclusions || [],
         discoveryDiversify: state.discoveryDiversify !== false,
-        discoveryBridgeMode: Boolean(state.discoveryBridgeMode), discoveryAiTriage: Boolean(state.discoveryAiTriage), discoveryFullTextSearch: Boolean(state.discoveryFullTextSearch),
+        discoveryBridgeMode: Boolean(state.discoveryBridgeMode), discoveryAiTriage: Boolean(state.discoveryAiTriage), discoveryFastEmbed: Boolean(state.discoveryFastEmbed), discoveryFullTextSearch: Boolean(state.discoveryFullTextSearch),
         discoveryJudgements: state.discoveryJudgements || [],
         recommendationRecencyTilt: state.recommendationRecencyTilt,
         recommendationImpactTilt: state.recommendationImpactTilt,
@@ -195,11 +195,11 @@
       state.discoveryBranches = Object.fromEntries(['citationGraph','citationNetwork','citationCoCitation','semanticSearch','lexicalSearch'].map(key => [key,data.discoveryBranches?.[key] !== false]));
       state.discoverySearchSources = Object.fromEntries(['semanticScholar','europePmc','core'].map(key => [key,data.discoverySearchSources?.[key] !== false]));
       state.discoveryDepth = ['1','2','3','iterative'].includes(String(data.discoveryDepth)) ? String(data.discoveryDepth) : '1';
-      state.discoveryLimit = [50,100,500,1000,2000].includes(Number(data.discoveryLimit)) ? Number(data.discoveryLimit) : 500;
+      state.discoveryLimit = [50,100,200,500,1000,2000].includes(Number(data.discoveryLimit)) ? Number(data.discoveryLimit) : 200;
       state.discoveryResearchQuestion = String(data.discoveryResearchQuestion || '').slice(0,1000);
       state.discoveryStrictExclusions = Array.isArray(data.discoveryStrictExclusions) ? data.discoveryStrictExclusions.slice(0,16) : [];
       state.discoveryDiversify = data.discoveryDiversify !== false;
-      state.discoveryBridgeMode = Boolean(data.discoveryBridgeMode);state.discoveryAiTriage = data.discoveryAiTriage !== undefined ? Boolean(data.discoveryAiTriage) : true;state.discoveryFullTextSearch = Boolean(data.discoveryFullTextSearch);
+      state.discoveryBridgeMode = Boolean(data.discoveryBridgeMode);state.discoveryAiTriage = data.discoveryAiTriage !== undefined ? Boolean(data.discoveryAiTriage) : false;state.discoveryFastEmbed = data.discoveryFastEmbed !== undefined ? Boolean(data.discoveryFastEmbed) : true;state.discoveryFullTextSearch = Boolean(data.discoveryFullTextSearch);
       state.discoveryJudgements = Array.isArray(data.discoveryJudgements) ? data.discoveryJudgements.slice(-1000) : [];
       state.recommendationRecencyTilt = Number(data.recommendationRecencyTilt || 0);
       state.recommendationImpactTilt = Number(data.recommendationImpactTilt || 0);

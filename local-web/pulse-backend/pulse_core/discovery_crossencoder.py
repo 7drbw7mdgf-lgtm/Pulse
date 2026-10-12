@@ -9,11 +9,45 @@ import subprocess
 import time
 import re
 import threading
+import sqlite3
+from pulse_core.platform_support import config_directory
 from pulse_performance import DiscoveryCancelled
 
 _score_cache=collections.OrderedDict()
 _cache_lock=threading.RLock()
 _inference_lock=threading.Lock()
+
+
+def _cached_crossencoder_disk(config_dir, keys, scores=None):
+    """Read/write cross-encoder scores in one transaction; keyed by SHA256 hashes."""
+    if not keys: return {}
+    connection = None
+    db_path = config_dir / 'crossencoder-cache.sqlite3'
+    try:
+        config_dir.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(str(db_path), timeout=2)
+        os.chmod(db_path, 0o600)
+        connection.execute('CREATE TABLE IF NOT EXISTS crossencoder_scores (key TEXT PRIMARY KEY, score REAL NOT NULL, used REAL NOT NULL)')
+        now = time.time()
+        if scores is not None:
+            connection.executemany('INSERT OR REPLACE INTO crossencoder_scores VALUES (?, ?, ?)',
+                                   [(k, float(s), now) for k, s in scores.items()])
+            connection.execute('DELETE FROM crossencoder_scores WHERE key IN (SELECT key FROM crossencoder_scores ORDER BY used DESC LIMIT -1 OFFSET 4000)')
+            connection.commit()
+            return scores
+        placeholders = ','.join('?' for _ in keys)
+        rows = dict(connection.execute('SELECT key, score FROM crossencoder_scores WHERE key IN ('+placeholders+')', list(keys)))
+        if rows:
+            connection.execute('UPDATE crossencoder_scores SET used=? WHERE key IN ('+placeholders+')', [now, *rows.keys()])
+            connection.commit()
+        return rows
+    except (OSError, sqlite3.Error, ValueError):
+        return {}
+    finally:
+        if connection:
+            try: connection.close()
+            except Exception: pass
+
 
 
 def ranking_excerpt(paper,queries):
@@ -101,8 +135,16 @@ def crossencoder_scores(settings, queries, records, cancel_event=None):
         if cancel_event and cancel_event.is_set():raise DiscoveryCancelled()
         if time.monotonic()-started>12:return None,'Pairwise ranking time budget reached; showing collected results.'
     try:
+        cfg_dir = config_directory()
         with _cache_lock:
             missing=list(dict.fromkeys(key for key in keys if key not in _score_cache))
+        if missing:
+            disk_hits = _cached_crossencoder_disk(cfg_dir, missing)
+            if disk_hits:
+                with _cache_lock:
+                    for k, s in disk_hits.items():
+                        _score_cache[k] = s
+                missing = [k for k in missing if k not in disk_hits]
         if not missing:
             with _cache_lock:return [_score_cache[key] for key in keys], 'Titles and abstracts assessed together with your research question.'
         positions={key:index for index,key in enumerate(keys)}
@@ -115,8 +157,26 @@ def crossencoder_scores(settings, queries, records, cancel_event=None):
                 _score_cache[key]=score;_score_cache.move_to_end(key)
             result=[_score_cache[key] for key in keys]
             while len(_score_cache)>4096:_score_cache.popitem(last=False)
+        _cached_crossencoder_disk(cfg_dir, missing, dict(zip(missing, scores)))
         return result,notice
     finally:_inference_lock.release()
+
+
+def pre_score_crossencoder(settings, queries, records, cancel_event=None, stop_event=None):
+    """Warm up and pre-score leading candidates in background during collection."""
+    if not records or (cancel_event and cancel_event.is_set()): return
+    if stop_event and stop_event.is_set(): return
+    python, model = _find_search_runtime(settings)
+    if not python or not model: return
+    if not _inference_lock.acquire(blocking=False): return
+    try:
+        if (cancel_event and cancel_event.is_set()) or (stop_event and stop_event.is_set()): return
+        crossencoder_scores(settings, queries, records[:24], cancel_event=cancel_event)
+    except Exception:
+        pass
+    finally:
+        _inference_lock.release()
+
 
 
 def _infer(python,worker,payload,count,cancel_event,timeout):

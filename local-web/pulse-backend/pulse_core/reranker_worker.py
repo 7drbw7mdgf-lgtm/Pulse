@@ -14,6 +14,18 @@ def run(payload):
     model = CrossEncoder(payload['model'], local_files_only=True, trust_remote_code=False,
                          device='cpu', max_length=512, activation_fn=torch.nn.Identity(),
                          model_kwargs={'use_safetensors': True})
+    try:
+        import torch.backends.quantized
+        if 'qnnpack' in torch.backends.quantized.supported_engines:
+            torch.backends.quantized.engine = 'qnnpack'
+        elif 'fbgemm' in torch.backends.quantized.supported_engines:
+            torch.backends.quantized.engine = 'fbgemm'
+        base_model = getattr(model.model, getattr(model.model, 'base_model_prefix', 'bert'), getattr(model.model, 'bert', None))
+        if base_model is not None and hasattr(torch.ao, 'quantization'):
+            quantized_base = torch.ao.quantization.quantize_dynamic(base_model, {torch.nn.Linear}, dtype=torch.qint8)
+            setattr(model.model, getattr(model.model, 'base_model_prefix', 'bert'), quantized_base)
+    except Exception:
+        pass
     tokenizer = model.tokenizer
     queries = [str(q) for q in payload['queries'][:2]]
     # Preserve the tail of abstracts with overlapping token windows. Title is

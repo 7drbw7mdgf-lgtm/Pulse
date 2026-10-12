@@ -7,7 +7,7 @@ function discoveryConfiguration() {
   const branches = Object.fromEntries(Object.values(discoveryMethodKeys).map(key => [key,state.discoveryBranches?.[key] !== false]));
   const depth = branches.citationGraph && ['1','2','3','iterative'].includes(String(state.discoveryDepth)) ? String(state.discoveryDepth) : '1';
   const searchSources=Object.fromEntries(['semanticScholar','europePmc','core'].map(key=>[key,state.discoverySearchSources?.[key] !== false]));
-  const limit=[50,100,500,1000,2000].includes(Number(state.discoveryLimit))?Number(state.discoveryLimit):500;
+  const limit=[50,100,200,500,1000,2000].includes(Number(state.discoveryLimit))?Number(state.discoveryLimit):200;
   return {branches,searchSources,depth,limit,bridgeMode:Boolean(state.discoveryBridgeMode),aiTriage:Boolean(state.discoveryAiTriage),fastEmbed:Boolean(state.discoveryFastEmbed),fullTextSearch:Boolean(state.discoveryFullTextSearch),researchQuestion:String(state.discoveryResearchQuestion||'').trim(),strictExcludeKeywords:[...(state.discoveryStrictExclusions||[])],diversify:state.discoveryDiversify!==false,includeIterativeChase:depth !== '1',
     steerKeywords:[...(state.recommendationSteerKeywords || [])],excludeKeywords:[...(state.recommendationExcludeKeywords || [])],
     recencyTilt:Number(state.recommendationRecencyTilt) || 0,impactTilt:Number(state.recommendationImpactTilt) || 0};

@@ -1,10 +1,10 @@
-"""One bounded shared-reference search replacing the legacy network searches."""
 import datetime
 import math
 import re
 import statistics
 import time
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import pulse_core as core
 from pulse_core.dbef_content import (SeedPaper, CandidatePaper, TfidfEmbedder,
     compute_seed_reference_weights, score_and_rank_candidates, saturate_score)
@@ -18,6 +18,8 @@ from pulse_performance import REQUEST_CONTEXT, DiscoveryBudgetExceeded, Discover
 COLLECTION_SECONDS = 12
 MAX_REFERENCE_METADATA = 400
 MAX_PIVOTS = 12
+OPENALEX_WORK_SELECT = 'id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language'
+OPENALEX_REF_SELECT = 'id,title,abstract_inverted_index,cited_by_count'
 
 
 def work_id(value):
@@ -132,7 +134,7 @@ def seed_reference_fallback(paper,api_key=None):
     found=[]
     for start in range(0,len(dois),100):
         check_cancelled()
-        query=urllib.parse.urlencode({'filter':'doi:'+'|'.join(dois[start:start+100]),'per-page':100})
+        query=urllib.parse.urlencode({'filter':'doi:'+'|'.join(dois[start:start+100]),'per-page':100,'select':'id,doi'})
         for work in core.fetch_json('https://api.openalex.org/works?'+query).get('results') or []:
             if normalize_doi(work.get('doi')).lower() in dois and work_id(work.get('id')):found.append(work_id(work['id']))
     return list(dict.fromkeys(found))
@@ -170,20 +172,36 @@ def fetch_dbef_branch(seed_papers, api_key=None, limit=200):
         ids = _balanced_reference_ids(seeds,MAX_REFERENCE_METADATA)
         # Batches carry texts and real citation counts for weighting; never one
         # HTTP lookup per reference, and no arbitrary first-four reference pivot.
-        for start in range(0,len(ids),100):
-            check_cancelled()
+        ref_batches = [ids[i:i+100] for i in range(0,len(ids),100)]
+        event = getattr(REQUEST_CONTEXT, 'cancel_event', None)
+        deadline = getattr(REQUEST_CONTEXT, 'deadline', None)
+        counter = getattr(REQUEST_CONTEXT, 'request_counter', None)
+        def fetch_ref_group(group):
+            REQUEST_CONTEXT.cancel_event = event
+            REQUEST_CONTEXT.deadline = deadline
+            REQUEST_CONTEXT.request_counter = counter
             try:
-                group = ids[start:start+100]
-                query = urllib.parse.urlencode({'filter':'openalex_id:'+'|'.join(group),'per-page':len(group)})
-                works = core.fetch_json('https://api.openalex.org/works?'+query).get('results') or []
-                for work in works:
-                    ident, meta = work_id(work.get('id')),openalex_to_metadata(work)
-                    if not ident: continue
-                    ref_texts[ident] = (meta.get('title') or '',meta.get('abstract') or '')
-                    count = citation_count(work.get('cited_by_count'))
-                    if count is not None: counts[ident] = count
-            except (DiscoveryCancelled,DiscoveryBudgetExceeded): raise
-            except Exception as error: warnings.append(str(error))
+                check_cancelled()
+                query = urllib.parse.urlencode({'filter':'openalex_id:'+'|'.join(group),'per-page':len(group),'select':OPENALEX_REF_SELECT})
+                return core.fetch_json('https://api.openalex.org/works?'+query).get('results') or []
+            finally:
+                REQUEST_CONTEXT.cancel_event = None
+                REQUEST_CONTEXT.deadline = None
+                REQUEST_CONTEXT.request_counter = None
+        if ref_batches:
+            with ThreadPoolExecutor(max_workers=min(4, len(ref_batches))) as executor:
+                futures = [executor.submit(fetch_ref_group, batch) for batch in ref_batches]
+                for fut in futures:
+                    try:
+                        works = fut.result()
+                        for work in works:
+                            ident, meta = work_id(work.get('id')),openalex_to_metadata(work)
+                            if not ident: continue
+                            ref_texts[ident] = (meta.get('title') or '',meta.get('abstract') or '')
+                            count = citation_count(work.get('cited_by_count'))
+                            if count is not None: counts[ident] = count
+                    except (DiscoveryCancelled,DiscoveryBudgetExceeded): raise
+                    except Exception as error: warnings.append(str(error))
         unknown_count = statistics.median(counts.values()) if counts else 1.0
         fields = list(dict.fromkeys(str(((work.get('primary_topic') or {}).get('field') or {}).get('id') or '') for work in seed_works))
         for field in fields[:3]:
@@ -208,28 +226,44 @@ def fetch_dbef_branch(seed_papers, api_key=None, limit=200):
             groups = [pivots[i:i+4] for i in range(0,len(pivots),4)]
             quota = max(25,min(200,math.ceil(limit*3/max(1,len(groups)*2))))
             seed_ids = {seed.paper_id for seed in seeds}
-            for group in groups:
-                query = 'cites:'+'|'.join(group)
-                for sort in ('publication_date:desc','cited_by_count:desc'):
+            pivot_tasks = [(group, sort) for group in groups for sort in ('publication_date:desc','cited_by_count:desc')]
+            def fetch_pivot_stream(task):
+                REQUEST_CONTEXT.cancel_event = event
+                REQUEST_CONTEXT.deadline = deadline
+                REQUEST_CONTEXT.request_counter = counter
+                try:
+                    group, sort = task
                     check_cancelled()
-                    try:
-                        rows = core.openalex_discovery_works(query,quota,sort=sort)
-                        if getattr(rows,'warning',''):
-                            if 'budget' in rows.warning.lower(): collection_limited = True
-                            else: warnings.append(rows.warning)
-                        for work in rows:
-                            ident = work_id(work.get('id'))
-                            if not ident or ident in seen or ident in seed_ids: continue
-                            seen.add(ident); raw.append(work)
-                        # Publish a useful partial pool without repeating content
-                        # ranking or querying the direct seed-citation neighborhood.
-                        partial = SearchResults(openalex_to_metadata(work) for work in raw)
-                        for rank,record in enumerate(partial,1):
-                            record.update(branch='citationNetwork',subType='Bibliographic coupling',
-                                retrievalEvidence=[{'channel':'dbef','provider':'OpenAlex','rank':rank}])
-                        publish_partial(partial)
-                    except (DiscoveryCancelled,DiscoveryBudgetExceeded): raise
-                    except Exception as error: warnings.append(str(error))
+                    query = 'cites:'+'|'.join(group)
+                    return core.openalex_discovery_works(query, quota, sort=sort)
+                finally:
+                    REQUEST_CONTEXT.cancel_event = None
+                    REQUEST_CONTEXT.deadline = None
+                    REQUEST_CONTEXT.request_counter = None
+            if pivot_tasks:
+                with ThreadPoolExecutor(max_workers=min(10, len(pivot_tasks))) as executor:
+                    futures = {executor.submit(fetch_pivot_stream, task): task for task in pivot_tasks}
+                    for fut in as_completed(futures):
+                        try:
+                            rows = fut.result()
+                            if getattr(rows,'warning',''):
+                                if 'budget' in rows.warning.lower(): collection_limited = True
+                                else: warnings.append(rows.warning)
+                            new_found = False
+                            for work in rows:
+                                ident = work_id(work.get('id'))
+                                if not ident or ident in seen or ident in seed_ids: continue
+                                seen.add(ident); raw.append(work); new_found = True
+                            if new_found:
+                                # Publish a useful partial pool without repeating content
+                                # ranking or querying the direct seed-citation neighborhood.
+                                partial = SearchResults(openalex_to_metadata(work) for work in raw)
+                                for rank,record in enumerate(partial,1):
+                                    record.update(branch='citationNetwork',subType='Bibliographic coupling',
+                                        retrievalEvidence=[{'channel':'dbef','provider':'OpenAlex','rank':rank}])
+                        except DiscoveryBudgetExceeded: collection_limited = True
+                        except DiscoveryCancelled: raise
+                        except Exception as error: warnings.append(str(error))
     except DiscoveryBudgetExceeded:
         collection_limited = True
     finally:

@@ -5,6 +5,7 @@ import copy
 import math
 import queue
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 import urllib.parse
 from pulse_core.constants import ClientError
@@ -12,7 +13,7 @@ from pulse_core.config_resolvers import resolve_semantic_scholar_api_key, resolv
 from pulse_core.discovery_queries import build_query_plan, search_query_plan
 from pulse_core.concept_search import validate_discovery_request, prepare_concept_search, concept_query_plan
 from pulse_core.discovery_semantics import semantic_scores, pre_embed_papers
-from pulse_core.discovery_crossencoder import crossencoder_scores
+from pulse_core.discovery_crossencoder import crossencoder_scores, pre_score_crossencoder
 from pulse_core.discovery_feedback import feedback_for_context
 from pulse_core.discovery_bridges import bridge_queries, distinct_seeds
 from pulse_core.research_models import triage
@@ -83,7 +84,10 @@ def fetch_openalex_work_by_id(work_id):
     return fetch_json(f"https://api.openalex.org/works/{urllib.parse.quote(normalized, safe='')}")
 
 
-def fetch_openalex_works_batch(work_ids):
+OPENALEX_WORK_SELECT = 'id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language'
+
+
+def fetch_openalex_works_batch(work_ids, select=OPENALEX_WORK_SELECT):
     clean_ids = [openalex_work_id(w) for w in work_ids if openalex_work_id(w)]
     if not clean_ids:
         return []
@@ -92,7 +96,9 @@ def fetch_openalex_works_batch(work_ids):
     for i in range(0, len(clean_ids), chunk_size):
         chunk = clean_ids[i:i + chunk_size]
         filter_arg = "openalex_id:" + "|".join(chunk)
-        params = urllib.parse.urlencode({"filter": filter_arg, "per-page": len(chunk)})
+        query_params = {"filter": filter_arg, "per-page": len(chunk)}
+        if select: query_params["select"] = select
+        params = urllib.parse.urlencode(query_params)
         try:
             data = fetch_json(f"https://api.openalex.org/works?{params}")
             results.extend(data.get("results") or [])
@@ -139,31 +145,48 @@ def openalex_citing_works(work_id, limit=12):
     seen, gathered, warnings = set(), SearchResults(), []
     streams = [('publication_date:desc', max(1, (limit+1)//2)),
                ('cited_by_count:desc', max(1, limit//2))]
-    for sort, size in streams:
+    event = getattr(REQUEST_CONTEXT, 'cancel_event', None)
+    deadline = getattr(REQUEST_CONTEXT, 'deadline', None)
+    counter = getattr(REQUEST_CONTEXT, 'request_counter', None)
+    def fetch_stream(sort, size):
+        REQUEST_CONTEXT.cancel_event = event
+        REQUEST_CONTEXT.deadline = deadline
+        REQUEST_CONTEXT.request_counter = counter
         try:
-            rows = openalex_discovery_works(f"cites:{normalized}", size, sort=sort)
-        except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-        except Exception as error:
-            warnings.append(f'OpenAlex {sort}: {error}')
-            continue
-        if getattr(rows, 'warning', ''): warnings.append(rows.warning)
-        for item in rows:
-            identity = item.get('id') or item.get('doi') or item.get('title')
-            if identity and identity in seen: continue
-            seen.add(identity)
-            if len(gathered) < limit: gathered.append(item)
+            return openalex_discovery_works(f"cites:{normalized}", size, sort=sort)
+        finally:
+            REQUEST_CONTEXT.cancel_event = None
+            REQUEST_CONTEXT.deadline = None
+            REQUEST_CONTEXT.request_counter = None
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(fetch_stream, sort, size) for sort, size in streams]
+        for future in futures:
+            try:
+                rows = future.result()
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+            except Exception as error:
+                warnings.append(f'OpenAlex citation stream: {error}')
+                continue
+            if getattr(rows, 'warning', ''): warnings.append(rows.warning)
+            for item in rows:
+                identity = item.get('id') or item.get('doi') or item.get('title')
+                if identity and identity in seen: continue
+                seen.add(identity)
+                if len(gathered) < limit: gathered.append(item)
     gathered.warning = ' · '.join(dict.fromkeys(warnings))
     return gathered
 
 
-def openalex_discovery_works(work_filter, limit, sort='cited_by_count:desc', max_page_size=None):
+def openalex_discovery_works(work_filter, limit, sort='cited_by_count:desc', max_page_size=None, select=OPENALEX_WORK_SELECT):
     limit = discovery_limit(limit)
     gathered = SearchResults()
     cap = max_page_size or (200 if work_filter.startswith('cited_by:') else 100)
     page_size = min(limit, cap)
     for page in range(1, (limit + page_size - 1) // page_size + 1):
-        params = urllib.parse.urlencode({"filter": work_filter, "sort": sort,
-                                       "per-page": page_size, "per_page": page_size, "page": page})
+        query_dict = {"filter": work_filter, "sort": sort,
+                      "per-page": page_size, "per_page": page_size, "page": page}
+        if select: query_dict["select"] = select
+        params = urllib.parse.urlencode(query_dict)
         try:
             data = fetch_json(f"https://api.openalex.org/works?{params}")
             rows = data.get("results") or []
@@ -219,40 +242,48 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
             if not work:
                 continue
             work_id = openalex_work_id(work.get("id"))
-            # Fetch citing papers first: downstream papers citing the seed arrive early
-            if need_citations:
-                try:
-                    citing_works = openalex_citing_works(work_id, limit=per_seed)
-                    if getattr(citing_works, "warning", ""):
-                        gathered.warning = ' · '.join(filter(None, [gathered.warning, citing_works.warning]))
-                    for rank, item in enumerate(citing_works, 1):
-                        record = recommendation_record(*openalex_recommendation_item(item), source="OpenAlex citing papers")
-                        record.update(branch="citationGraph", subType="Forward", hop=1,
-                                      retrievalEvidence=[{"channel":f"citations:{seed_index}:forward","rank":rank,"provider":"OpenAlex"}],
-                                      reason="Forward citation: downstream paper citing seed paper.")
-                        gathered.append(record)
-                        hop1_citations.append(record)
-                        if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
+            citing_works, ref_works = [], []
+            if need_citations and need_references:
+                with ThreadPoolExecutor(max_workers=2) as executor:
+                    cite_fut = executor.submit(openalex_citing_works, work_id, limit=per_seed)
+                    ref_fut = executor.submit(openalex_reference_works, work_id, limit=per_seed, referenced_works=work.get("referenced_works") or [])
+                    try: citing_works = cite_fut.result()
+                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                    except Exception as error: gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex citing papers: ' + str(error)]))
+                    try: ref_works = ref_fut.result()
+                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                    except Exception as error: gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex references: ' + str(error)]))
+            elif need_citations:
+                try: citing_works = openalex_citing_works(work_id, limit=per_seed)
                 except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                except Exception as error:
-                    gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex citing papers: ' + str(error)]))
-            # References fallback uses cited_by:{seed} sorted by citations first, with batch fallback
-            if need_references:
-                try:
-                    ref_works = openalex_reference_works(work_id, limit=per_seed, referenced_works=work.get("referenced_works") or [])
-                    if getattr(ref_works, "warning", ""):
-                        gathered.warning = ' · '.join(filter(None, [gathered.warning, ref_works.warning]))
-                    for rank, ref_work in enumerate(ref_works, 1):
-                        record = recommendation_record(*openalex_recommendation_item(ref_work), source="OpenAlex references")
-                        record.update(branch="citationGraph", subType="Backward", hop=1,
-                                      retrievalEvidence=[{"channel":f"citations:{seed_index}:backward","rank":rank,"provider":"OpenAlex"}],
-                                      reason="Backward citation: foundational reference cited by seed paper.")
-                        gathered.append(record)
-                        hop1_references.append(record)
-                        if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
+                except Exception as error: gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex citing papers: ' + str(error)]))
+            elif need_references:
+                try: ref_works = openalex_reference_works(work_id, limit=per_seed, referenced_works=work.get("referenced_works") or [])
                 except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                except Exception as error:
-                    gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex references: ' + str(error)]))
+                except Exception as error: gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex references: ' + str(error)]))
+
+            if citing_works:
+                if getattr(citing_works, "warning", ""):
+                    gathered.warning = ' · '.join(filter(None, [gathered.warning, citing_works.warning]))
+                for rank, item in enumerate(citing_works, 1):
+                    record = recommendation_record(*openalex_recommendation_item(item), source="OpenAlex citing papers")
+                    record.update(branch="citationGraph", subType="Forward", hop=1,
+                                  retrievalEvidence=[{"channel":f"citations:{seed_index}:forward","rank":rank,"provider":"OpenAlex"}],
+                                  reason="Forward citation: downstream paper citing seed paper.")
+                    gathered.append(record)
+                    hop1_citations.append(record)
+                    if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
+            if ref_works:
+                if getattr(ref_works, "warning", ""):
+                    gathered.warning = ' · '.join(filter(None, [gathered.warning, ref_works.warning]))
+                for rank, ref_work in enumerate(ref_works, 1):
+                    record = recommendation_record(*openalex_recommendation_item(ref_work), source="OpenAlex references")
+                    record.update(branch="citationGraph", subType="Backward", hop=1,
+                                  retrievalEvidence=[{"channel":f"citations:{seed_index}:backward","rank":rank,"provider":"OpenAlex"}],
+                                  reason="Backward citation: foundational reference cited by seed paper.")
+                    gathered.append(record)
+                    hop1_references.append(record)
+                    if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
 
     max_depth = 4 if str(depth) == "iterative" else max(1, min(int(depth or (2 if include_iterative_chase else 1)), 3))
     if max_depth == 1:
@@ -450,6 +481,9 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_cand
             pass
         embed_queue.put_nowait(records)
 
+    pairwise_enabled = bool(payload.get('pairwiseRerank', True))
+    pair_queries = [options['researchQuestion']] if options.get('researchQuestion') else [str(p.get('title') or '')+' '+' '.join(p.get('paperKeywords') or []) for p in seed_papers[:2]]
+
     def embed_collector_worker():
         while not embed_stop.is_set():
             if cancel_event and cancel_event.is_set():
@@ -464,9 +498,15 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_cand
                                      queries=embed_queries, stop_event=embed_stop)
                 except Exception:
                     pass
+            if pairwise_enabled and batch and not embed_stop.is_set():
+                try:
+                    pre_score_crossencoder(settings, pair_queries, batch[:24],
+                                           cancel_event=cancel_event, stop_event=embed_stop)
+                except Exception:
+                    pass
 
     embed_thread = None
-    if semantic_enabled:
+    if semantic_enabled or pairwise_enabled:
         embed_thread = threading.Thread(target=embed_collector_worker, name="pulse-embed-collector", daemon=True)
         embed_thread.start()
         queue_embeddings([])  # Warm the exact question and seed queries immediately.
@@ -491,7 +531,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_cand
             return
         ordered = {name: results.get(name, []) for name in tasks}
         now=time.monotonic()
-        should_rank=last_progress_rank[0]==0 or now-last_progress_rank[0]>=.6 or len(completed)+len(errors)!=last_progress_rank[1]
+        should_rank=last_progress_rank[0]==0 or now-last_progress_rank[0]>=3.0
         ranked=merge_and_rank_pipeline_candidates(ordered,seed_papers,dict(options,limit=min(limit,150))) if should_rank else None
         if should_rank:last_progress_rank[:]=[now,len(completed)+len(errors)]
         if ranked is not None and embed_thread and embed_thread.is_alive():
