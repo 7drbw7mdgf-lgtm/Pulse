@@ -8,7 +8,7 @@ from datetime import datetime
 
 from pulse_core.constants import APP_VERSION, ClientError
 from pulse_core.doi_utils import normalize_doi
-from pulse_performance import DiscoveryCancelled, request_json
+from pulse_performance import DiscoveryCancelled, DiscoveryBudgetExceeded, request_json
 
 __all__ = ["search_europe_pmc", "search_core", "europe_pmc_to_metadata", "core_to_metadata", "literature_query"]
 
@@ -157,7 +157,7 @@ def fetch_search(url, source, api_key=""):
         if not isinstance(data, dict):
             raise ClientError(502, source + " returned an invalid search response.")
         return data
-    except DiscoveryCancelled:
+    except (DiscoveryCancelled, DiscoveryBudgetExceeded):
         raise
     except urllib.error.HTTPError as error:
         status = error.code
@@ -198,7 +198,7 @@ def search_core(query, limit=30, api_key="", doi="", structured=False):
             data = fetch_search("https://api.core.ac.uk/v3/search/works/?" + params, "CORE", api_key)
             if not isinstance(data.get("results"), list):
                 raise ClientError(502, "CORE returned an invalid search response.")
-        except ClientError as error:
+        except (ClientError, DiscoveryBudgetExceeded) as error:
             return records.keep_partial(error)
         rows = data["results"]
         records.extend(core_to_metadata(item) for item in rows[:page_size] if isinstance(item, dict) and text(item.get("title")))

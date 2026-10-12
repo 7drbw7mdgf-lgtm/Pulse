@@ -219,6 +219,7 @@
       }
 
       const defaults = settings.defaults || {};
+      for(const key of ['triageModel','reportModel']){const input=document.getElementById(key+'Input');if(input)input.value=settings[key]||(key==='triageModel'?'llama3.2:3b':'qwen2.5:7b');}
       els.aiProviderInput.value = settings.aiProvider || defaults.aiProvider || 'local';
       els.cloudProviderInput.value = settings.cloudProvider || defaults.cloudProvider || 'not-configured';
       els.ollamaChatEndpointInput.value = settings.ollamaChatEndpoint || defaults.ollamaChatEndpoint || 'http://127.0.0.1:11434/api/chat';
@@ -283,7 +284,7 @@
         `Ollama embeddings endpoint: ${settings.ollamaEmbeddingsEndpoint || 'http://127.0.0.1:11434/api/embeddings'}`,
         `Bundled Ollama: ${bundled.available ? (bundled.processRunning ? 'running from app bundle' : 'available') : 'not bundled'}`,
         `Bundled runtime status: ${bundledBoot.reason || 'unknown'}`,
-        `Ollama model storage: ${bundled.modelsDir || '~/Library/Application Support/pulse/models'}`,
+        `Ollama model storage: ${bundled.modelsDir || 'Pulse model folder'}`,
         `PDF extraction: ${settings.workflow?.pdfExtraction || 'byte scan fallback'}`,
         `Section detection: ${settings.workflow?.sectionDetection || 'heading heuristics'}`,
         `Metadata extraction: local parser + local chat model`,

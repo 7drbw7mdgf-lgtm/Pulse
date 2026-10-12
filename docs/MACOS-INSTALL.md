@@ -1,8 +1,8 @@
-# Install Pulse 1.7.1
+# Install Pulse 1.7.3
 
-Quit Pulse, open **Pulse-1.7.1.dmg**, and drag **Pulse.app** into **Applications**.
+Quit Pulse, open **Pulse-1.7.3.dmg**, and drag **Pulse.app** into **Applications**.
 
-This build includes the discovery review workspace, tabbed paper inspector, private reading notes and stacked timeline.
+This build adds multi-seed bridge discovery, open-access PMC passages, local S2ORC passage search and configurable local AI roles. The discovery review workspace, paper inspector, reading notes and timeline remain available.
 
 Apple Silicon Mac, macOS 11 or later, and Python 3.10 or later are required. PDF extraction dependencies are included. Python, Ollama and model weights are installed separately. The app is ad hoc signed and has not been notarized by Apple.
 

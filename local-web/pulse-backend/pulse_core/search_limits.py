@@ -20,3 +20,11 @@ class SearchResults(list):
             raise error
         self.warning = f"Returned {len(self)} papers; additional results could not be loaded. {error}"
         return self
+
+
+MAX_CANDIDATE_POOL = 3000
+
+
+def candidate_limit(display_limit, branches=1):
+    """A retrieval budget independent of the final result count."""
+    return min(1500, max(300, discovery_limit(display_limit) * 3))

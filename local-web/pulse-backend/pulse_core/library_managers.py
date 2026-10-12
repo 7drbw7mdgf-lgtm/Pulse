@@ -14,6 +14,7 @@ from pathlib import Path
 from pulse_core.constants import CONFIG_DIR, ClientError
 from pulse_core.doi_utils import normalize_doi
 from pulse_core.security import encrypt_secret, decrypt_secret
+from pulse_core.platform_support import exclusive_file_lock
 
 _LOCK = threading.RLock()
 _TRANSFER_LOCK = threading.Lock()
@@ -25,12 +26,7 @@ MENDELEY = 'https://api.mendeley.com'
 def config_lock():
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     with _LOCK:
-        with (CONFIG_DIR / 'library-managers.lock').open('a') as lock:
-            try:
-                import fcntl
-                fcntl.flock(lock, fcntl.LOCK_EX)
-            except ImportError:
-                pass
+        with exclusive_file_lock(CONFIG_DIR / 'library-managers.lock'):
             yield
 
 def read_config():
@@ -226,7 +222,7 @@ def disconnect_mendeley(payload=None):
     if previous.get('brokerSession'):
         from pulse_core.mendeley_broker import request as broker_request
         try: broker_request(previous['brokerUrl'], '/disconnect', {}, previous['brokerSession'])
-        except ClientError: message = 'Disconnected on this Mac. The connection service could not confirm revocation; revoke Pulse access in Mendeley for immediate server revocation.'
+        except ClientError: message = 'Disconnected on this device. The connection service could not confirm revocation; revoke Pulse access in Mendeley for immediate server revocation.'
     return {'ok': True, 'message': message}
 
 def record_metadata(record):
@@ -309,11 +305,7 @@ def mendeley_document(record):
 @contextmanager
 def transfer_lock():
     CONFIG_DIR.mkdir(parents=True,exist_ok=True)
-    with _TRANSFER_LOCK, (CONFIG_DIR / 'manager-transfers.lock').open('a') as lock:
-        try:
-            import fcntl
-            fcntl.flock(lock,fcntl.LOCK_EX)
-        except ImportError: pass
+    with _TRANSFER_LOCK, exclusive_file_lock(CONFIG_DIR / 'manager-transfers.lock'):
         yield
 
 def same_connection(expected,current):

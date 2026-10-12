@@ -96,7 +96,8 @@ class ManagerTests(unittest.TestCase):
         raw=(Path(self.temp.name)/'library-managers.json').read_text()
         self.assertNotIn('test-private-secret',raw)
         self.assertNotIn('clientSecret',l.public_config())
-        self.assertEqual((Path(self.temp.name)/'library-managers.json').stat().st_mode&0o777,0o600)
+        if os.name != 'nt':
+            self.assertEqual((Path(self.temp.name)/'library-managers.json').stat().st_mode&0o777,0o600)
     def test_callback_must_be_loopback_and_fixed_path(self):
         for url in ['https://example.com/mendeley/callback','http://127.0.0.1:8765/other','http://user@127.0.0.1:8765/mendeley/callback']:
             with self.subTest(url=url),self.assertRaises(ClientError):l.validate_redirect(url)

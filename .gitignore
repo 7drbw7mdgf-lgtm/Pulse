@@ -13,3 +13,12 @@ desktop/frontend/
 desktop/src-tauri/resources/
 desktop/src-tauri/target/
 desktop/src-tauri/gen/
+
+# Optional local search model and dependency runtime
+.search-runtime
+
+benchmarks/data/
+
+# Windows installers and temporary packaging outputs
+outputs/
+*.exe

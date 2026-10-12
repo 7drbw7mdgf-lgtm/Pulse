@@ -15,6 +15,8 @@
       state.discoveryWhyKinds = new Set();
       state.discoveryHiddenStrengths = new Set();
       state.discoveryShowExplore = false;
+      state.discoveryMobilePane = 'results';
+      state.discoveryFiltersOpen = false;
       state.discoveryFocusKey = keepFocus;
       state.discoveryFilterText = '';
       state.discoveryFilterAuthor = '';
@@ -194,22 +196,24 @@
     // ─── Discovery review workspace (1.7.1) ───
     const DISCOVERY_SOURCE_LABELS = {
       citationGraph: 'Citation graph', citationNetwork: 'Citation network', semanticSearch: 'Semantic search',
-      lexicalConceptual: 'Semantic Scholar', europePmc: 'Europe PMC', core: 'CORE'
+      lexicalConceptual: 'Semantic Scholar', europePmc: 'Europe PMC', core: 'CORE', fullText: 'Full-text library'
     };
     const DISCOVERY_WHY_GROUPS = {
       authors: 'authors', 'cites-seed': 'citations', 'cited-by-seed': 'citations', 'two-steps': 'citations',
-      'co-cited': 'citations', 'shared-references': 'citations', topic: 'topic', question: 'topic', search: 'search'
+      'co-cited': 'citations', 'shared-references': 'citations', topic: 'topic', question: 'topic', search: 'search', bridge: 'bridge', fulltext: 'fulltext'
     };
-    const DISCOVERY_WHY_FILTERS = [['authors', 'Shares authors with your seed'], ['citations', 'Linked by citations'], ['topic', 'Matches your topic'], ['search', 'Found by search only']];
+    const DISCOVERY_WHY_FILTERS = [['authors', 'Shares authors with your seed'], ['citations', 'Linked by citations'], ['topic', 'Matches your topic'], ['search', 'Found by search only'], ['bridge', 'Connects selected seeds'], ['fulltext', 'Matched full-text passages']];
     const DISCOVERY_STRENGTHS = [['strong', 'Strong matches'], ['related', 'Related'], ['explore', 'Worth exploring']];
 
     function discoveryStrength(item) {
       const label = String(item.matchLabel || '').toLowerCase();
-      if (label.startsWith('strong')) return 'strong';
+      if (label === 'not relevant') return 'explore';
+      if (label === 'relevant') return item.strongMatchEligible === true ? 'strong' : 'related';
+      if (label.startsWith('strong')) return item.strongMatchEligible === true ? 'strong' : 'related';
       if (label.startsWith('related')) return 'related';
       if (label.startsWith('explore')) return 'explore';
       const score = Number(item.score);
-      return score >= 65 ? 'strong' : score >= 40 ? 'related' : 'explore';
+      return score >= 40 ? 'related' : 'explore';
     }
 
     function discoveryWhyGroup(kind) {
@@ -275,7 +279,7 @@
           const limited = /429|rate|too many/i.test(error);
           const canAddKey = ['citationGraph', 'citationNetwork', 'semanticSearch', 'lexicalConceptual', 'core'].includes(key);
           return { key, name, status: limited ? 'warn' : 'fail', canAddKey: limited && canAddKey,
-            detail: limited ? (canAddKey ? 'Rate limited — try later or configure an API key in Settings' : 'Rate limited — try again later') : String(error).replace(/^[^:]+:\s*/, '').slice(0, 120) };
+            detail: limited ? (canAddKey ? 'Request limit reached. Try later or add an API key in Settings.' : 'Request limit reached. Try again later.') : 'Search unavailable. Try again later.' };
         }
         if (done.has(key) || counts[key] !== undefined || !searching) return { key, name, status: 'ok', detail: counts[key] !== undefined ? `${counts[key]} papers` : 'Done' };
         return { key, name, status: 'run', detail: 'Searching…' };
@@ -284,6 +288,7 @@
 
     function discoveryPlannedSources(options) {
       const planned = [];
+      if(options.fullTextSearch)planned.push('fullText');
       for (const key of ['citationGraph', 'citationNetwork', 'semanticSearch']) if (options.branches?.[key]) planned.push(key);
       if (options.branches?.lexicalSearch) {
         if (options.searchSources?.semanticScholar !== false) planned.push('lexicalConceptual');
@@ -369,19 +374,28 @@
         const label = [version.year, (version.sourceList || []).join(', ') || version.documentType || 'Other version'].filter(Boolean).join(' · ');
         return link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>` : `<span>${escapeHtml(label)}</span>`;
       }).join('');
-      const meta = [discoveryAuthorLine(item, 6), item.year || item.date || '', item.journal || item.venue || '', item.doi ? `DOI ${item.doi}` : '', discoveryCitationText(item) !== '—' ? discoveryCitationText(item) : ''].filter(Boolean).join(' · ');
+      const publication = [item.year || item.date || '', item.journal || item.venue || ''].filter(Boolean).join(' · ');
+      const citationText = discoveryCitationText(item);
+      const doiHref = item.doi ? safeHref(`https://doi.org/${item.doi}`) : '';
       const strengthName = DISCOVERY_STRENGTHS.find(([id]) => id === strength)[1].replace(/es$/, '').replace(/s$/, '');
       return `
-        <div class="dv-preview-scroll">
-          <div class="dv-preview-badges"><span class="dv-strength is-${strength}">${escapeHtml(strength === 'strong' ? 'Strong match' : strengthName)}</span>${Number.isFinite(item.score) ? `<span class="dv-score" title="Scores are relative within this search, not probabilities">${Math.round(item.score)} / 100 relative</span>` : ''}</div>
+        <div class="dv-preview-heading"><span>Paper preview</span><button type="button" class="dv-link dv-preview-back" data-dv-action="show-results">Back to results</button></div>
+        <div class="dv-preview-scroll" tabindex="0" aria-label="Read paper abstract">
+          <div class="dv-preview-badges"><span class="dv-strength is-${strength}">${escapeHtml(item.matchLabel === 'Relevant' ? 'Relevant' : strength === 'strong' ? 'Strong match' : strengthName)}</span>${Number.isFinite(item.score) ? `<span class="dv-score" title="Scores are relative within this search, not probabilities">${Math.round(item.score)} / 100 relative</span>` : ''}</div>
           <h3 class="dv-preview-title">${escapeHtml(cleanDiscoveryTitle(item.title))}</h3>
-          <p class="dv-preview-meta">${escapeHtml(meta)}</p>
-          <section class="dv-why"><h4>Why Pulse suggested this</h4><ul>${discoveryWhy(item).map(reason => `<li>${escapeHtml(reason.detail || reason.label)}</li>`).join('')}${fullText ? `<li>Free full text available${item.sourceList?.length ? ` (${escapeHtml(item.sourceList.join(', '))})` : ''}</li>` : ''}</ul></section>
+          <div class="dv-preview-meta"><p>${escapeHtml(discoveryAuthorLine(item, 6))}</p>${publication ? `<p>${escapeHtml(publication)}</p>` : ''}</div>
+          <div class="dv-paper-facts">${doiHref ? `<a href="${escapeHtml(doiHref)}" target="_blank" rel="noreferrer" aria-label="DOI ${escapeHtml(item.doi)}">${escapeHtml(item.doi)}</a>` : ''}<span title="${escapeHtml(item.citationCountSource || '')}">${citationText === '—' ? 'Citation count unavailable' : escapeHtml(citationText)}</span></div>
+          <div class="dv-links">
+            ${href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">Open paper ↗</a>` : ''}
+            ${fullText ? `<a href="${escapeHtml(fullText)}" target="_blank" rel="noreferrer">Read full text ↗</a>` : ''}
+          </div>
+          ${item.isBridge ? `<section class="dv-bridge"><h4>Connections across seeds</h4><ul>${(item.bridgeEvidence||[]).map(row=>`<li><strong>${escapeHtml(row.seedTitle)}</strong><br>${escapeHtml(row.evidence)}</li>`).join('')}</ul></section>` : ''}
+          ${item.aiReview ? `<p class="dv-muted">AI review: ${escapeHtml(item.aiReview.decision.replace(/_/g,' '))} · ${escapeHtml(item.aiReview.reason)}</p>` : ''}
+          <section class="dv-passages"><button type="button" data-dv-action="read-passages" data-paper-key="${escapeHtml(key)}">Read source passages</button>${typeof discoveryPassageMarkup==='function'?discoveryPassageMarkup(item):''}</section>
           ${item.abstract ? `<section class="dv-abstract"><h4>Abstract</h4><p>${escapeHtml(item.abstract)}</p></section>` : '<p class="dv-muted">No abstract available from these sources.</p>'}
+          <details class="dv-why"><summary>Why this paper?</summary><ul>${discoveryWhy(item).map(reason => `<li>${escapeHtml(reason.detail || reason.label)}</li>`).join('')}${fullText ? `<li>Free full text available${item.sourceList?.length ? ` (${escapeHtml(item.sourceList.join(', '))})` : ''}</li>` : ''}</ul>${item.sourceList?.length ? `<p class="dv-muted">Found in ${escapeHtml(item.sourceList.join(', '))}</p>` : ''}</details>
           ${versions ? `<section class="dv-versions"><h4>Other versions</h4><div>${versions}</div></section>` : ''}
           <div class="dv-links">
-            ${href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">Open paper</a>` : ''}
-            ${fullText ? `<a href="${escapeHtml(fullText)}" target="_blank" rel="noreferrer">Full text</a>` : ''}
             ${searching ? '' : `<button type="button" data-dv-action="more-like" data-paper-key="${escapeHtml(key)}">More like this</button><button type="button" data-dv-action="less-like" data-paper-key="${escapeHtml(key)}">Fewer like this</button>`}
           </div>
         </div>
@@ -406,18 +420,29 @@
       const strengthCount = id => totalItems.filter(item => discoveryStrength(item) === id).length;
 
       const title = document.getElementById('discoveryModalTitle');
-      if (title) title.innerHTML = `${escapeHtml(seedTitle)}${seed?.year ? ` <span>· ${escapeHtml(String((seed.authors || [])[0] || '').split(/[ ,]/).filter(Boolean).pop() || '')} ${escapeHtml(seed.year)}</span>` : ''}`;
-      if (els.discoveryModalSubtitle) els.discoveryModalSubtitle.textContent = `${totalItems.length} related paper${totalItems.length === 1 ? '' : 's'} found for "${seedTitle.slice(0, 60)}${seedTitle.length > 60 ? '…' : ''}".`;
+      if (title) title.textContent = 'Literature discovery';
+      if (els.discoveryModalSubtitle) els.discoveryModalSubtitle.textContent = `Related to ${seedTitle}${seed?.year ? ` (${seed.year})` : ''}`;
+      if (els.discoveryModal.dataset) {
+        els.discoveryModal.dataset.pane = state.discoveryMobilePane || 'results';
+        els.discoveryModal.dataset.filtersOpen = String(Boolean(state.discoveryFiltersOpen));
+      }
+      document.getElementById('discoveryFiltersBtn')?.setAttribute('aria-expanded', String(Boolean(state.discoveryFiltersOpen)));
       if (els.discoveryCountSummary) {
         els.discoveryCountSummary.innerHTML = searching
           ? `<strong>${totalItems.length} candidates so far</strong>`
-          : `<strong>${totalItems.length} paper${totalItems.length === 1 ? '' : 's'}</strong> <span>· ${strengthCount('strong')} strong · ${strengthCount('related')} related · ${strengthCount('explore')} to explore</span>`;
+          : `<strong>${totalItems.length} paper${totalItems.length === 1 ? '' : 's'} found</strong> <span>· ${filtered.length} in this view</span>`;
       }
       const runInfo = discoveryRunInfoForModal();
+      const refine = document.getElementById('discoveryRefineFeedback');
+      if (refine) {
+        const feedback = typeof discoveryFeedbackPayload === 'function' ? discoveryFeedbackPayload(selectedPapersForRecommendation(),discoveryConfiguration()).relevanceFeedback : [];
+        refine.hidden = !feedback.length; refine.disabled = searching;
+        refine.textContent = 'Refine with feedback (' + feedback.length + ')';
+      }
       const rankingNotice = document.getElementById('discoveryRankingNotice');
       if (rankingNotice) rankingNotice.textContent = runInfo.rankingNotice || 'Ranked by research relevance · scores are relative, not probabilities';
       const details = document.getElementById('discoverySearchDetailsContent');
-      if (details) details.innerHTML = '<div>' + escapeHtml((runInfo.queryPlan || []).length + ' focused queries · ' + Object.entries(runInfo.sourceCounts || {}).map(([name, count]) => (DISCOVERY_SOURCE_LABELS[name] || name) + ': ' + count).join(' · ')) + '</div>' + (runInfo.queryPlan || []).slice(0, 8).map(query => `<div>${escapeHtml(query.label || query.kind || 'Query')}: ${escapeHtml(query.text || query.query || '')}</div>`).join('');
+      if (details) details.innerHTML = '<div>' + escapeHtml((runInfo.queryPlan || []).length + ' focused queries · ' + (runInfo.candidateCount || totalItems.length) + ' candidates assessed · ' + (runInfo.feedbackApplied || 0) + ' relevance labels used · ' + (runInfo.bridgeCount || 0) + ' bridges · ' + (runInfo.aiReviewedCount || 0) + ' AI-reviewed · ' + Object.entries(runInfo.sourceCounts || {}).map(([name, count]) => (DISCOVERY_SOURCE_LABELS[name] || name) + ': ' + count).join(' · ')) + '</div>' + (runInfo.queryPlan || []).slice(0, 8).map(query => `<div>${escapeHtml(query.label || query.kind || 'Query')}: ${escapeHtml(query.text || query.query || '')}</div>`).join('');
 
       const rows = discoverySourceRows();
       const sourceStatus = document.getElementById('discoverySourceStatus');
@@ -425,10 +450,9 @@
       const notice = document.getElementById('discoverySourceNotice');
       if (notice) {
         const problems = rows.filter(row => row.status === 'fail' || row.status === 'warn');
-        const stopped = runInfo.stoppedEarly ? ['Stopped early: results come only from the sources that had finished'] : [];
-        const messages = [...stopped, ...problems.map(row => `${row.name}: ${row.detail}`)];
-        notice.hidden = !messages.length || Boolean(searching);
-        notice.textContent = messages.length ? 'Partial results · ' + messages.join(' · ') : '';
+        const stopped = runInfo.stoppedEarly ? ['Stopped early: showing results collected before the search stopped'] : [];
+        notice.hidden = !(stopped.length || problems.length) || Boolean(searching);
+        notice.textContent = stopped.length ? 'Search stopped. You can review the results collected so far.' : problems.length ? `Partial results · ${problems.map(row => row.name).join(', ')} unavailable or limited. See search details.` : '';
       }
       const progress = document.getElementById('discoveryProgressPanel');
       if (progress) {
@@ -514,6 +538,8 @@
 
     function focusDiscoveryPaper(key, scroll = true) {
       state.discoveryFocusKey = key;
+      state.discoveryMobilePane = 'preview';
+      state.discoveryFiltersOpen = false;
       renderDiscoveryModal();
       if (scroll) els.discoveryPaperList?.querySelector(`[data-paper-key="${CSS.escape(key)}"]`)?.scrollIntoView({ block: 'nearest' });
     }
@@ -544,7 +570,7 @@
         const target = event.target.closest?.('[data-dv-focus],[data-dv-queue],[data-dv-grade],[data-dv-action],[data-dv-select-group]');
         if (!target) return;
         if (target.dataset.dvFocus) return focusDiscoveryPaper(target.dataset.dvFocus, false);
-        if (target.dataset.dvQueue) { state.discoveryQueue = target.dataset.dvQueue; state.discoveryFocusKey = null; return renderDiscoveryModal(); }
+        if (target.dataset.dvQueue) { state.discoveryQueue = target.dataset.dvQueue; state.discoveryFocusKey = null; state.discoveryFiltersOpen = false; state.discoveryMobilePane = 'results'; return renderDiscoveryModal(); }
         if (target.dataset.dvGrade) { state.discoveryFocusKey = target.dataset.paperKey; return gradeFocusedDiscovery(Number(target.dataset.dvGrade)); }
         if (target.dataset.dvSelectGroup) {
           getFilteredDiscoveryPapers().filter(item => discoveryStrength(item) === target.dataset.dvSelectGroup).forEach(item => state.discoverySelectedKeys.add(discoveryPaperKey(item)));
@@ -552,8 +578,11 @@
         }
         const action = target.dataset.dvAction;
         const item = (state.discoveryResults || []).find(result => discoveryPaperKey(result) === target.dataset.paperKey);
-        if (action === 'show-explore') { state.discoveryShowExplore = true; renderDiscoveryModal(); }
+        if (action === 'toggle-filters') { state.discoveryFiltersOpen = !state.discoveryFiltersOpen; renderDiscoveryModal(); }
+        else if (action === 'show-results') { state.discoveryMobilePane = 'results'; renderDiscoveryModal(); }
+        else if (action === 'show-explore') { state.discoveryShowExplore = true; renderDiscoveryModal(); }
         else if (action === 'add-focused' && item) addSelectedDiscoveredToMap({ items: [item], keepOpen: true });
+        else if (action === 'read-passages' && item) readDiscoveryPassages(item);
         else if (action === 'more-like' && item && typeof steerFromRecommendation === 'function') steerFromRecommendation((state.discoveryResults || []).indexOf(item), 'more');
         else if (action === 'less-like' && item && typeof steerFromRecommendation === 'function') steerFromRecommendation((state.discoveryResults || []).indexOf(item), 'less');
         else if (action === 'stop-review' && typeof cancelDiscoverySearch === 'function') { state.discoveryStopReview = true; cancelDiscoverySearch(); }

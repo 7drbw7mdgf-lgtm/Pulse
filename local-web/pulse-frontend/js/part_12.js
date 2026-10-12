@@ -345,6 +345,7 @@
     }
 
     function selectedPapersForRecommendation() {
+      if(state.discoveryBridgeMode && state.librarySelectedIds?.size>1)return state.papers.filter(p=>state.librarySelectedIds.has(p.id));
       const selectedLink = state.links.find(item => linkId(item) === state.selectedLinkId);
       if (selectedLink) {
         return [selectedLink.source, selectedLink.target]

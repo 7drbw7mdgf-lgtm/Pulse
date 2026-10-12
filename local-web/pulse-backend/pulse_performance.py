@@ -3,6 +3,7 @@ import hashlib
 from email.utils import parsedate_to_datetime
 import json
 import os
+import queue
 import sqlite3
 import threading
 import time
@@ -24,13 +25,34 @@ class DiscoveryCancelled(Exception):
     pass
 
 
+class DiscoveryBudgetExceeded(TimeoutError):
+    pass
+
+
+def publish_partial(records):
+    callback = getattr(REQUEST_CONTEXT, 'on_partial', None)
+    if callback: callback(records)
+
+
+def remaining_budget():
+    deadline = getattr(REQUEST_CONTEXT, 'deadline', None)
+    return max(0, deadline - time.monotonic()) if deadline else None
+
+
 def check_cancelled():
     event = getattr(REQUEST_CONTEXT, 'cancel_event', None)
     if event and event.is_set():
         raise DiscoveryCancelled()
+    remaining = remaining_budget()
+    if remaining is not None and remaining <= 0:
+        raise DiscoveryBudgetExceeded('Search time budget reached; showing collected results.')
 
 
 def _wait(seconds):
+    check_cancelled()
+    remaining = remaining_budget()
+    if remaining is not None and seconds > remaining:
+        raise DiscoveryBudgetExceeded('Search time budget reached; showing collected results.')
     event = getattr(REQUEST_CONTEXT, 'cancel_event', None)
     if event:
         if event.wait(seconds):
@@ -57,7 +79,14 @@ def request_json(request, timeout=14, cache=True):
         for attempt in range(3):
             check_cancelled()
             try:
-                with urllib.request.urlopen(request, timeout=timeout) as response:
+                remaining = remaining_budget()
+                counter = getattr(REQUEST_CONTEXT, 'request_counter', None)
+                if counter:
+                    with counter['lock']:
+                        if counter['remaining'] <= 0: raise DiscoveryBudgetExceeded('Search request budget reached; showing collected results.')
+                        counter['remaining'] -= 1
+                request_timeout = min(timeout, max(.1, remaining)) if remaining is not None else timeout
+                with urllib.request.urlopen(request, timeout=request_timeout) as response:
                     data = json.loads(response.read().decode('utf-8'))
                 check_cancelled()
                 encoded=json.dumps(data) if cache else ''
@@ -88,33 +117,47 @@ def request_json(request, timeout=14, cache=True):
         gate.release()
 
 
-def parallel_branches(tasks, on_progress=None, cancel_event=None):
-    """At most three branches run; per-provider requests are separately bounded."""
-    results, errors, completed = {}, {}, []
-    def run(fn):
+def parallel_branches(tasks, on_progress=None, cancel_event=None, budget_seconds=50, request_budget=24):
+    """Start independent sources together; publish query-level partial results.
+
+    Per-host gates still bound transport concurrency. Cooperative deadlines
+    include waits and retries, and partial results survive a branch deadline.
+    """
+    results, errors, completed, events = {}, {}, [], queue.Queue()
+    executor = ThreadPoolExecutor(max_workers=min(6, max(1, len(tasks))), thread_name_prefix='pulse-discovery')
+    def run(name, fn):
         REQUEST_CONTEXT.cancel_event = cancel_event
+        REQUEST_CONTEXT.deadline = time.monotonic() + budget_seconds
+        REQUEST_CONTEXT.request_counter = {'remaining': request_budget, 'lock': threading.Lock()}
+        REQUEST_CONTEXT.on_partial = lambda rows: events.put(('partial', name, rows))
         try:
             check_cancelled()
-            return fn()
+            value = fn()
+            events.put(('complete', name, value))
+        except Exception as error:
+            events.put(('error', name, error))
         finally:
-            REQUEST_CONTEXT.cancel_event = None
-    with ThreadPoolExecutor(max_workers=3, thread_name_prefix='pulse-discovery') as executor:
-        futures = {executor.submit(run, fn): name for name, fn in tasks.items()}
-        for future in as_completed(futures):
-            name = futures[future]
-            if cancel_event and cancel_event.is_set():
-                for pending in futures:
-                    pending.cancel()
-                raise DiscoveryCancelled()
-            try:
-                results[name] = future.result()
-                completed.append(name)
-            except DiscoveryCancelled:
-                raise
-            except Exception as error:
-                errors[name] = str(error) or type(error).__name__
-            if on_progress:
-                on_progress(dict(results), list(completed), dict(errors), len(tasks))
+            for key in ('cancel_event', 'deadline', 'request_counter', 'on_partial'):
+                setattr(REQUEST_CONTEXT, key, None)
+    futures = [executor.submit(run, name, fn) for name, fn in tasks.items()]
+    try:
+        while len(completed) + len(errors) < len(tasks):
+            if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
+            try: kind, name, value = events.get(timeout=.1)
+            except queue.Empty: continue
+            if kind in ('partial', 'complete'):
+                results[name] = value
+                if kind == 'complete': completed.append(name)
+            elif isinstance(value, DiscoveryCancelled):
+                raise value
+            else:
+                errors[name] = str(value) or type(value).__name__
+            if on_progress: on_progress(dict(results), list(completed), dict(errors), len(tasks))
+    finally:
+        for future in futures: future.cancel()
+        # All normal completions have reported. Cancelling returns immediately;
+        # network calls remain bounded by their deadline and socket timeout.
+        executor.shutdown(wait=False)
     return results, [name for name in tasks if name in completed], errors
 
 
@@ -219,16 +262,22 @@ def cached_embedding(config_dir, identity, text, compute):
 def parallel_lookup(fetcher, items):
     """Fetch small metadata batches in order, with shared provider gates and cancellation."""
     event = getattr(REQUEST_CONTEXT, 'cancel_event', None)
+    deadline = getattr(REQUEST_CONTEXT, 'deadline', None)
+    counter = getattr(REQUEST_CONTEXT, 'request_counter', None)
     def fetch(item):
         REQUEST_CONTEXT.cancel_event = event
+        REQUEST_CONTEXT.deadline = deadline
+        REQUEST_CONTEXT.request_counter = counter
         try:
             check_cancelled()
             return item, fetcher(item)
-        except DiscoveryCancelled:
+        except (DiscoveryCancelled, DiscoveryBudgetExceeded):
             raise
         except Exception:
             return item, None
         finally:
             REQUEST_CONTEXT.cancel_event = None
+            REQUEST_CONTEXT.deadline = None
+            REQUEST_CONTEXT.request_counter = None
     with ThreadPoolExecutor(max_workers=2, thread_name_prefix='pulse-metadata') as executor:
         return list(executor.map(fetch, items))

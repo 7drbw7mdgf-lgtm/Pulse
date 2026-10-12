@@ -5,6 +5,12 @@ Refactored into pulse_core module hierarchy (all files <= 400 lines).
 Exports all legacy symbols for 100% backward compatibility.
 """
 import sys
+import os
+from pathlib import Path
+
+if getattr(sys, 'frozen', False):
+    os.environ.setdefault('PULSE_WEB_ROOT', str(Path(sys.executable).parent))
+
 import pulse_core
 
 # Point sys.modules to pulse_core so patch.object(pulse_backend, ...)
@@ -13,7 +19,12 @@ sys.modules[__name__] = pulse_core
 
 if __name__ == "__main__":
     try:
-        pulse_core.main()
+        if sys.argv[1:] == ['--self-test']:
+            import json
+            from pulse_core.runtime_diagnostics import run
+            print(json.dumps(run()))
+        else:
+            pulse_core.main()
     except KeyboardInterrupt:
         pulse_core.cleanup_resources()
         sys.exit(0)

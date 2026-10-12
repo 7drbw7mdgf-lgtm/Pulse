@@ -2,17 +2,19 @@
 
 ## A connected workspace for scientific literature discovery
 
-**Capability white paper · Pulse 1.7.1 · 11 October 2026**
+**Capability white paper · Pulse 1.7.3 · 12 October 2026**
 
-> **Local-first literature discovery for unpublished work.** Your library, PDFs and AI analysis stay on your Mac. AI runs through local Ollama models by default, no account is needed, and your papers and manuscripts are never uploaded.
+> **Local-first literature discovery for unpublished work.** Your library, PDFs and AI analysis stay on your computer. AI runs through local Ollama models by default, no account is needed, and your papers and manuscripts are never uploaded.
 
-Pulse brings paper discovery, bibliography management, visual exploration and optional local AI reports into one Mac workspace. Begin with a DOI, a title, an imported PDF or a bibliography; confirm the paper's identity; explore related publications; and keep a collection that can be examined as a network, timeline or full-screen table.
+Pulse brings paper discovery, bibliography management, visual exploration and optional local AI reports into one desktop workspace. Begin with a DOI, a title, an imported PDF or a bibliography; confirm the paper's identity; explore related publications; and keep a collection that can be examined as a network, timeline or full-screen table.
 
-**[Download Pulse 1.7.1 for Mac](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.1/Pulse-1.7.1.dmg)** · [Run from source](local-web/README.md) · [1.7.1 release notes](docs/releases/1.7.1.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
+**[Mac installer (1.7.3)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.3/Pulse-1.7.3.dmg)** · [Windows installer (1.7.3)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.3/Pulse-1.7.3-Windows-x64-Setup.exe) · [Run from source](local-web/README.md) · [1.7.3 release notes](docs/releases/1.7.3.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
 
 ![Pulse 1.7.1 discovery review workspace with grouped matches, review queues, paper preview and two selected papers.](docs/images/pulse-1.7.1-discovery.png)
 
-*This document describes Pulse 1.7.1; the linked installer is built from the same source. The 1.7.1 screenshots use an isolated synthetic demonstration library, captured on 11 October 2026. Papers, source results and the rate-limit warning are simulated for interface verification; they contain no user's reading list. Unavailable citation counts appear as —. The older Mendeley screenshot is also a simulated account.*
+*This document describes Pulse 1.7.3 with bridge discovery, full-text passages and the citation fallback and ranking safeguards below. The 1.7.1 screenshots use an isolated synthetic demonstration library, captured on 11 October 2026. Papers, source results and the rate-limit warning are simulated for interface verification; they contain no user's reading list. Unavailable citation counts appear as —. The older Mendeley screenshot is also a simulated account.*
+
+Windows 10/11 (x64) packaging is available alongside the Mac app. The Windows setup bundles Python and the PDF reader, installs for the current user, and uses Microsoft WebView2. Ollama and model weights remain optional, separate installations. See [Windows installation and builds](docs/WINDOWS-INSTALL.md).
 
 ## Abstract
 
@@ -28,14 +30,14 @@ Pulse is built the other way round:
 
 | | Pulse | Typical cloud literature tools |
 | --- | --- | --- |
-| Where your library lives | On your Mac | On the provider's servers |
-| PDFs and extracted full text | Read and kept on your Mac; never uploaded | Often uploaded for processing |
+| Where your library lives | On your computer | On the provider's servers |
+| PDFs and extracted full text | Read and kept on your computer; never uploaded | Often uploaded for processing |
 | AI analysis | Local Ollama models by default; cloud AI only if you switch it on and add your own key | Cloud models |
 | Account required | No | Usually |
 | Works when a service shuts down or changes pricing | Yes; the library is a local file you own and can export | Depends on the provider |
 | Source code | Open (MIT) and auditable | Usually closed |
 
-**What does leave your Mac, and why.** Discovery needs the public scholarly indexes. To identify papers and find related work, Pulse sends identifiers, titles, author and journal metadata, and your search terms (including any research question you type) to the services listed in [Architecture and data flow](#6-architecture-and-data-flow): Crossref, OpenAlex, Semantic Scholar, PubMed, Europe PMC, CORE and, if configured, Dimensions. These are the same lookups a researcher makes in a browser. Pulse does not send PDF files, extracted full text, notes, tags, relevance labels or AI prompts and reports to those services. Mendeley receives metadata only when you choose to send papers there; Zotero transfers go to Zotero Desktop on the same Mac. If you enable the optional cloud AI provider, the text you ask it to analyse goes to that provider; leave it on local to keep analysis on the Mac.
+**What does leave your computer, and why.** Discovery needs the public scholarly indexes. To identify papers and find related work, Pulse sends identifiers, titles, author and journal metadata, and your search terms (including any research question you type) to the services listed in [Architecture and data flow](#6-architecture-and-data-flow): Crossref, OpenAlex, Semantic Scholar, PubMed, Europe PMC, CORE and, if configured, Dimensions. These are the same lookups a researcher makes in a browser. Pulse does not send PDF files, extracted full text, notes, tags, relevance labels or AI prompts and reports to those services. Mendeley receives metadata only when you choose to send papers there; Zotero transfers go to Zotero Desktop on the same computer. If you enable the optional cloud AI provider, the text you ask it to analyse goes to that provider; leave it on local to keep analysis on your computer.
 
 Avoid typing confidential wording into the research-question or search fields, because search terms are sent to the indexes. Everything you import, read and analyse stays local.
 
@@ -69,7 +71,7 @@ Readable source material matters. Image-only PDFs need OCR or manually supplied 
 
 Direct references reveal the work a seed paper cites. Incoming citations reveal work that cites it. Additional hops expand this neighborhood within configured limits. Co-citation connects papers cited together; bibliographic coupling connects papers that share references. Recommendations and concept searches can bring in publications outside an immediate citation path. Discovery options include a research question, preferred terms, soft avoids, strict phrase exclusions, depth and optional recency or impact preferences.
 
-Pulse creates focused title, abstract and keyword queries with bounded synonym/acronym expansion, and broadens sparse searches. It validates seed identities before following citations. Candidates retain their query ranks and are combined through reciprocal rank fusion, with one vote for mirrored results from the same query. BM25 title/abstract ranking and available local neural embeddings assess relevance; citation preference is off by default. Shared-reference similarity is normalised, while citation traversal includes recent and established work. Candidates are merged, deduplicated and ranked for review. Supported preprint/published pairs are grouped conservatively, and varied perspectives are included near the top. Relationship scores help navigation; they are not calibrated relevance probabilities or measures of scientific quality. A visible graph link does not establish that studies reach the same conclusion.
+Pulse creates focused title, abstract and keyword queries with bounded synonym/acronym expansion, and broadens sparse searches. It validates seed identities before following citations. Candidates retain their query ranks and are combined through reciprocal rank fusion, with one vote for mirrored results from the same query. Forward and backward citation fallbacks run independently, so Semantic Scholar reference results cannot suppress OpenAlex citing-paper lookup. Recent and highly cited OpenAlex streams also recover independently. BM25 title/abstract ranking and available local neural embeddings assess relevance; a default age-adjusted citation-velocity prior contributes at most 2.5 score points and is weighted by topic relevance. Unknown counts or dates receive no bonus, and the optional foundational-paper preference adds a separate stronger tilt. Shared-reference similarity is normalised, while citation traversal includes recent and established work. Candidates are merged, deduplicated and ranked for review. Supported preprint/published pairs are grouped conservatively, and varied perspectives are included near the top. Relationship scores help navigation; they are not calibrated relevance probabilities or measures of scientific quality. A visible graph link does not establish that studies reach the same conclusion.
 
 The **Discovery** and **Reference managers** ribbon tabs keep search and citation transfer separate. Choose up to **500 results** (200 by default), follow progress or cancel, filter by full text and inspect match reasons. Relevant / Not relevant labels stay in the local workspace and can be exported. A [20-case synthetic ranking benchmark](benchmarks/README.md) tracks Recall@50 and nDCG@10; it does not establish real-world retrieval accuracy.
 
@@ -99,9 +101,9 @@ The timeline uses the available canvas height for a native scrolling deck. Neigh
 
 ![Pulse 1.7.1 stacked timeline, compact ribbon and private notes in the paper inspector.](docs/images/pulse-1.7.1-timeline.png)
 
-Use **Undo** for the latest change or **Recovery** for saved removal and workspace recovery points. Recovery survives restarting Pulse. Removed papers merge into the current library. Restoring a cleared workspace recovers papers, tags, areas and map settings, while saving the current workspace first. Recovery is local to the Mac; JSON export makes a portable copy.
+Use **Undo** for the latest change or **Recovery** for saved removal and workspace recovery points. Recovery survives restarting Pulse. Removed papers merge into the current library. Restoring a cleared workspace recovers papers, tags, areas and map settings, while saving the current workspace first. Recovery is local to your computer; JSON export makes a portable copy.
 
-**The paper inspector (1.7).** Selecting a paper opens a panel with a fixed header: ‹ › steps through the library in its current order, a compact line gives authors, year, journal and pages, and chips show DOI status, the discovery seed and your reading status. Open paper and Discover related are always visible; maintenance actions, Copy citation and Send to Zotero or Mendeley sit in a ⋯ menu. Three tabs organise the rest. **Overview** puts the abstract first, then citation metrics, key findings and concepts. **Connections** shows the paper's links to your other papers, with their type, strength and shared concepts, and then citing papers, references and discovery. **Notes** holds your reading status, relevance, personal tags and private notes. These personal fields are stored with your library on the Mac, included in JSON exports, and your tags join the library filter.
+**The paper inspector (1.7).** Selecting a paper opens a panel with a fixed header: ‹ › steps through the library in its current order, a compact line gives authors, year, journal and pages, and chips show DOI status, the discovery seed and your reading status. Open paper and Discover related are always visible; maintenance actions, Copy citation and Send to Zotero or Mendeley sit in a ⋯ menu. Three tabs organise the rest. **Overview** puts the abstract first, then citation metrics, key findings and concepts. **Connections** shows the paper's links to your other papers, with their type, strength and shared concepts, and then citing papers, references and discovery. **Notes** holds your reading status, relevance, personal tags and private notes. These personal fields are stored with your library on your computer, included in JSON exports, and your tags join the library filter.
 
 ![Pulse 1.7.1 network and tabbed paper inspector with compact identity, abstract, citation metrics and reading status.](docs/images/pulse-1.7.1-inspector.png)
 
@@ -125,13 +127,13 @@ The included stdio MCP bridge exposes `pulse_papers`, `paper_metrics`, `paper_ci
 
 ## 6. Architecture and data flow
 
-The current Mac app uses a Tauri shell, the `local-web/pulse-frontend` workspace and a Python backend served on localhost. Libraries, settings and recovery points are stored on the Mac. Scholarly matching and discovery contact online services including Semantic Scholar, OpenAlex, Crossref, PubMed, Europe PMC and CORE. Local Ollama reports and semantic reranking, optional cloud analysis and manager transfers have separate destinations.
+The desktop app uses a Tauri shell, the `local-web/pulse-frontend` workspace and a Python backend served on localhost. Libraries, settings and recovery points are stored on your computer. Scholarly matching and discovery contact online services including Semantic Scholar, OpenAlex, Crossref, PubMed, Europe PMC and CORE. Local Ollama reports and semantic reranking, optional cloud analysis and manager transfers have separate destinations.
 
 | Operation | Data destination |
 | --- | --- |
 | Library, map and recovery | Local Pulse storage |
 | Metadata lookup and discovery | Scholarly services used for that operation |
-| Dedicated Ollama report and optional semantic reranking | Local Ollama on the Mac |
+| Dedicated Ollama report and optional semantic reranking | Local Ollama on your computer |
 | Optional cloud analysis | Configured cloud provider |
 | Direct reference-manager send | Chosen manager; metadata and abstract |
 | MCP reads | Requesting MCP client |
@@ -140,13 +142,29 @@ Session authentication, loopback checks, protected credential storage, bounded e
 
 ## 7. Availability, checks and getting started
 
-The **[Pulse 1.7.1 Mac installer](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.1)** contains the capabilities described here; the release page lists its SHA-256 checksum. To run from source instead, use the [source guide](local-web/README.md). The Mac app targets Apple Silicon on macOS 11 or later and requires Python 3.10 or later. PDF extraction dependencies are included in packaged builds; a Python interpreter, Ollama and model weights are installed separately. The installer is ad hoc signed and has not been notarized by Apple.
+The **[Pulse 1.7.3 release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.3)** includes Mac and Windows installers for these capabilities. To run from source instead, use the [source guide](local-web/README.md). The Mac app targets Apple Silicon on macOS 11 or later and requires Python 3.10 or later. PDF extraction dependencies are included in packaged builds; a Python interpreter, Ollama and model weights are installed separately. The installer is ad hoc signed and has not been notarized by Apple.
 
 Download the DMG, drag Pulse into Applications and launch it. Add a seed paper, inspect its record, open Discovery options and review related candidates before adding them. The [installation guide](docs/MACOS-INSTALL.md) documents setup; the [source guide](local-web/README.md) supports a separate local test library.
 
-For this release, **136 backend tests, 23 root Python tests and 16 current-workspace JavaScript suites passed**, alongside the loopback security checks, graph unit checks, syntax checks and isolated browser verification on 11 October 2026. Checks cover parsing, metadata matching, query planning, ranking, provider paging, selected-paper reports, selection, bulk scope, recovery, timeline navigation and ribbon collapse using synthetic fixtures and mocked services. The historical browser/performance suites and separate shared sign-in tests were not rerun locally; they also passed in [GitHub CI for the release commit](https://github.com/7drbw7mdgf-lgtm/Pulse/actions/runs/38151679300). The current discovery and inspector flows were verified in the browser with synthetic records. Live account transfers remain dependent on account setup and authorization. These checks do not establish real-world search recall, summary accuracy or performance for every library.
+The release checks cover parsing, provider fallbacks, search budgets, ranking, match-strength gates, selection, recovery and interface behavior using synthetic fixtures and mocked services. Native packaging checks verify app version, isolated library persistence, PDF extraction, full-text passage APIs, session authentication and shutdown. Live account transfers depend on service activation and authorization. These checks do not establish real-world search recall, summary accuracy or performance for every library.
 
-See [development notes](docs/DEVELOPMENT.md) for source layout, checks, MCP and reproducible packaging. Historical root workspace files and tests remain for compatibility; the current desktop build stages the `local-web` source. Apple notarization, cross-platform installers, OCR, real-world discovery evaluation and quantitative summary evaluation remain outside the capabilities established here.
+See [development notes](docs/DEVELOPMENT.md) for source layout, checks, MCP and reproducible packaging. Historical root workspace files and tests remain for compatibility; the current desktop build stages the `local-web` source. Apple notarization, OCR, real-world discovery evaluation and quantitative summary evaluation remain outside the capabilities established here.
+
+## Search quality
+
+Discovery preserves concept phrases and synonyms, balances a larger candidate pool across sources, streams partial results under provider budgets, and uses your Relevant / Not relevant judgements when you refine the same research question. Optional local pairwise ranking assesses the question and abstract together; a **Strong match** additionally needs a final rank in the top 10% of the deduplicated candidate pool and at least two independent retrieval channels. Query variants and mirrored indexes count as one concept-search channel. Absolute evidence thresholds still apply, and explicit user relevance labels remain separate.
+
+[Search evaluation and reproducible real-paper benchmarks](benchmarks/README.md) describe the ranking, local model setup, published SciFact evaluation and its limits. Feedback is saved in the workspace; recommendation APIs receive relevant/rejected paper identifiers when those examples are used in a search.
+
+## Bridge discovery and full-text evidence
+
+Select 2–8 rows in the Library table (or a graph link), open Discovery options and enable **Find bridge papers**. Pulse searches combined seed concepts, prioritises candidates with evidence for at least two seeds and explains each connection. Added bridge papers link to the supported seeds on the map. These are connections between selected research directions; Pulse does not infer disciplinary boundaries from a paper title.
+
+**Read source passages** retrieves open-access PMC article bodies through Europe PMC, or matches a locally imported S2ORC record by DOI, PMCID or Semantic Scholar identifier. Passages keep section names, source links, permission information and retrieval dates. **Search full-text library** includes indexed passage matches in discovery; body snippets remain distinct from abstracts. Missing text preserves the available abstract.
+
+Local AI uses `nomic-embed-text` for meaning search, `llama3.2:3b` for optional relevance review and `qwen2.5:7b` for selected-paper reports. Reports use only the selected paper; retrieved passage sets are labelled with coverage limits. AI review is a bounded shortlist, keeps uncertain results available and does not override explicit user relevance labels. Model roles are configurable in Settings. The diagram's latency and throughput figures are design targets, not measured guarantees.
+
+Import JSONL or JSONL.GZ S2ORC excerpts up to 20 MB in Settings → Full-text library. For larger local shards, use `python3 tools/import_s2orc.py /path/to/shard.jsonl.gz --profile /path/to/pulse-profile`; input is streamed and no corpus is downloaded automatically. Obtain the source dataset through the [official S2ORC distribution](https://github.com/allenai/s2orc) and retain attribution and applicable article rights. PMC coverage is limited to [available open-access article XML](https://europepmc.org/RestfulWebService).
 
 ## License
 

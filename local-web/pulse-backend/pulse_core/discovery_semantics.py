@@ -7,6 +7,7 @@ import time
 import urllib.request
 from pulse_core.config_resolvers import resolve_embedding_model, resolve_ollama_tags_endpoint
 from pulse_core.embeddings import cosine
+from pulse_core.discovery_queries import text_for_paper
 from pulse_performance import DiscoveryCancelled, request_json
 
 _cache = collections.OrderedDict()
@@ -34,16 +35,22 @@ def local_model(settings):
 def semantic_scores(settings, queries, records, cancel_event=None, focus_first=False):
     endpoint, model = local_model(settings)
     if not model: return None, 'Text and citation ranking · local semantic ranking unavailable'
-    texts = [str(q)[:2200] for q in queries] + [
-        (str(p.get('title') or '')+'\n'+str(p.get('abstract') or '')+'\n'+'; '.join(p.get('paperKeywords') or []))[:2200] for p in records]
+    texts = [str(q)[:12000] for q in queries] + [text_for_paper(p)[:16000] for p in records]
     identity=(endpoint,model)
     started = time.monotonic()
+    resolved = {}
     try:
         for offset in range(0, len(texts), 24):
             if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
             if time.monotonic()-started>35: raise TimeoutError('Local ranking time budget exceeded')
             batch = texts[offset:offset+24]
-            with _lock: missing = list(dict.fromkeys(t for t in batch if (identity,t) not in _cache))
+            with _lock:
+                missing = []
+                for text in dict.fromkeys(batch):
+                    key = (identity,text)
+                    if key in _cache:
+                        resolved[text] = _cache[key]; _cache.move_to_end(key)
+                    else: missing.append(text)
             if missing:
                 req = urllib.request.Request(endpoint, data=json.dumps({'model':model,'input':missing,'truncate':True,'keep_alive':'5m'}).encode(),
                     headers={'Content-Type':'application/json'}, method='POST')
@@ -55,9 +62,10 @@ def semantic_scores(settings, queries, records, cancel_event=None, focus_first=F
                     raise ValueError('Invalid embeddings')
                 with _lock:
                     for text, vector in zip(missing,vectors):
+                        resolved[text] = vector
                         _cache[(identity,text)] = vector
                     while len(_cache)>2000: _cache.popitem(last=False)
-        with _lock: vectors = [_cache[(identity,text)] for text in texts]
+        vectors = [resolved[text] for text in texts]
         query_vectors, candidate_vectors = vectors[:len(queries)], vectors[len(queries):]
         scores=[]
         for vector in candidate_vectors:

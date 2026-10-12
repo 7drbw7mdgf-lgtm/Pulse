@@ -250,7 +250,7 @@
         id: paper.id,
         title: paper.title || '',
         doi: paper.doi || '',
-        pmid: paper.pmid || '',
+        pmid: paper.pmid || '', pmcid: paper.pmcid || '', corpusId: paper.corpusId || '',
         authors: typeof paperAuthors==='function' ? paperAuthors(paper) : (Array.isArray(paper.authors)?paper.authors:[]),
         year: paper.year || '',
         journal: paper.journal || '',

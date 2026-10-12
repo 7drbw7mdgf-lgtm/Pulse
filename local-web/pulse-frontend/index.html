@@ -1,7 +1,7 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.7.1 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261011-171">
-<link rel="icon" type="image/png" href="favicon.png?v=1.7.1"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v1.7.3 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261012-bridges-passages">
+<link rel="icon" type="image/png" href="favicon.png?v=1.7.3"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
@@ -78,6 +78,9 @@
 <label for="discoveryGraphFocusInput">Map focus<input id="discoveryGraphFocusInput" placeholder="Keywords to highlight on the map" autocomplete="off"><small>Changes the map focus, not the search results.</small></label>
 </div></details>
 <label class="discovery-diversify"><input id="discoveryDiversify" type="checkbox" checked> Include varied perspectives <small>Reduce near-identical results at the top.</small></label>
+<label class="discovery-diversify"><input id="discoveryBridgeMode" type="checkbox"> Find bridge papers <small>Select 2–8 Library table rows or a graph link; prioritise papers connecting those seeds.</small></label>
+<label class="discovery-diversify"><input id="discoveryFullTextSearch" type="checkbox"> Search full-text library <small>Include passages from retrieved PMC articles and imported S2ORC records.</small></label>
+<label class="discovery-diversify"><input id="discoveryAiTriage" type="checkbox"> AI relevance review <small>Review a shortlist locally; uncertain results stay available.</small></label>
 <div class="discovery-popup-footer"><span>Applies when you select Discover related.</span><button id="discoveryOptionsDone" type="button">Done</button></div>
 </div></div>
 <label class="discovery-question" for="discoveryResearchQuestion"><span class="sr-only">Research question</span><input id="discoveryResearchQuestion" maxlength="1000" placeholder="What are you looking for? (optional)" autocomplete="off"></label>
@@ -268,11 +271,13 @@
 </div>
 </div>
 <div class="mac-form-row">
-<label class="mac-form-label" for="embeddingModelInput">Embeddings</label>
+<label class="mac-form-label" for="embeddingModelInput">Meaning search</label>
 <div class="mac-form-control">
 <input id="embeddingModelInput" class="mac-input" type="text" placeholder="nomic-embed-text">
 </div>
 </div>
+<div class="mac-form-row"><label class="mac-form-label" for="triageModelInput">Relevance review</label><div class="mac-form-control"><input id="triageModelInput" class="mac-input" value="llama3.2:3b"></div></div>
+<div class="mac-form-row"><label class="mac-form-label" for="reportModelInput">Paper reports</label><div class="mac-form-control"><input id="reportModelInput" class="mac-input" value="qwen2.5:7b"></div></div>
 <div class="mac-form-row">
 <label class="mac-form-label" for="ollamaChatEndpointInput">Endpoint</label>
 <div class="mac-form-control">
@@ -280,6 +285,7 @@
 </div>
 </div>
 </div>
+<div class="mac-group-card"><div class="mac-group-title">Full-text library</div><p>Import S2ORC JSONL or JSONL.GZ excerpts for passage lookup. PMC open-access text is retrieved automatically.</p><input id="s2orcFileInput" type="file" accept=".jsonl,.json,.gz"><p id="s2orcImportStatus" role="status"></p></div>
 <div id="cloudSettingsStep" class="mac-group-card" hidden>
 <div class="mac-group-title">Cloud Credentials</div>
 <div class="mac-form-row">
@@ -357,33 +363,37 @@
 <div class="discovery-modal-card dv-card" role="dialog" aria-modal="true" aria-labelledby="discoveryModalTitle" tabindex="-1">
 <header class="dv-head">
 <button id="discoveryModalCloseButton" class="dv-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Back to map</button>
-<div class="dv-title"><span class="dv-eyebrow">Related to your seed paper</span><h2 id="discoveryModalTitle">Related papers</h2><p id="discoveryModalSubtitle" class="sr-only"></p></div>
+<div class="dv-title"><h2 id="discoveryModalTitle">Literature discovery</h2><p id="discoveryModalSubtitle"></p></div>
 <div class="dv-head-actions"><button class="dv-btn" type="button" data-dv-action="open-options">Search options</button><button class="dv-btn soft" type="button" data-dv-action="run-again">Run again</button></div>
 </header>
 <div id="discoveryProgressPanel" class="dv-progress" role="status" aria-live="polite" hidden></div>
-<div class="dv-summary"><span id="discoveryCountSummary" class="dv-count"></span><span id="discoverySourceStatus" class="dv-sources"></span>
-<details id="discoverySearchDetails" class="dv-details"><summary>Search details</summary><div id="discoverySearchDetailsContent"></div><p id="discoveryRankingNotice"></p></details></div>
+<div class="dv-summary"><span id="discoveryCountSummary" class="dv-count"></span>
+<details id="discoverySearchDetails" class="dv-details"><summary>Search details</summary><span id="discoverySourceStatus" class="dv-sources"></span><div id="discoverySearchDetailsContent"></div><p id="discoveryRankingNotice"></p></details></div>
 <p id="discoverySourceNotice" class="dv-notice" role="status" hidden></p>
 <div class="dv-body">
-<nav class="dv-rail" aria-label="Filter results">
+<nav id="discoveryFilterRail" class="dv-rail" aria-label="Filter results">
+<h3 class="dv-rail-heading">Review</h3>
 <div id="discoveryQueues" class="dv-queues" role="group" aria-label="Review queues"></div>
+<details class="dv-filter-section"><summary>Refine results</summary><div class="dv-filter-content">
+<label class="dv-author"><span class="sr-only">Filter by author</span><input id="discoveryFilterAuthor" type="text" placeholder="Filter by author" autocomplete="off"></label>
 <fieldset id="discoveryWhyFilters" class="dv-facet"></fieldset>
 <fieldset id="discoveryStrengthFilters" class="dv-facet"></fieldset>
 <section class="dv-facet"><h3>Published</h3><div id="discoveryYearChart" role="img" aria-label="Results by publication year"></div>
 <label class="dv-select-label">From <select id="discoveryFilterYear" aria-label="Published from"><option value="all">Any year</option><option value="2026">2026</option><option value="2025">2025 or later</option><option value="2024">2024 or later</option><option value="2023">2023 or later</option><option value="2022">2022 or later</option><option value="2020">2020 or later</option><option value="2015">2015 or later</option><option value="older">Before 2015</option></select></label></section>
 <label class="dv-check"><input id="discoveryFullTextOnly" type="checkbox">Full text available<span id="discoveryFullTextCount"></span></label>
-<div class="dv-rail-links"><button id="discoveryResetFilters" class="dv-link" type="button">Reset filters</button><button id="discoveryExportLabels" class="dv-link" type="button">Export relevance labels</button></div>
+</div></details>
+<div class="dv-rail-links"><button id="discoveryResetFilters" class="dv-link" type="button">Reset filters</button><button id="discoveryRefineFeedback" class="dv-link" type="button" hidden>Refine with feedback</button><button id="discoveryExportLabels" class="dv-link" type="button">Export relevance labels</button></div>
 </nav>
 <section class="dv-results" aria-label="Results">
 <div class="dv-toolbar">
+<button id="discoveryFiltersBtn" class="dv-btn dv-filter-toggle" type="button" data-dv-action="toggle-filters" aria-controls="discoveryFilterRail" aria-expanded="false">Filters</button>
 <label class="dv-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span class="sr-only">Filter these results</span><input id="discoveryFilterText" type="text" placeholder="Filter by title, abstract or reason…" autocomplete="off"><button id="discoveryClearTextBtn" type="button" aria-label="Clear filter" hidden>×</button></label>
-<label class="dv-author"><span class="sr-only">Filter by author</span><input id="discoveryFilterAuthor" type="text" placeholder="Author" autocomplete="off"></label>
 <label class="dv-select-label">Sort <select id="discoverySortBy"><option value="score">Best match</option><option value="year-desc">Newest</option><option value="year-asc">Oldest</option><option value="citations">Most cited</option><option value="title">Title A–Z</option></select></label>
 <button id="discoverySelectAllBtn" class="dv-link" type="button">Select all shown</button>
 </div>
 <div id="discoveryPaperList" class="discovery-paper-list dv-list" role="list"></div>
 </section>
-<aside id="discoveryPreview" class="dv-preview" aria-label="Paper preview" aria-live="polite"></aside>
+<aside id="discoveryPreview" class="dv-preview" aria-label="Paper preview"></aside>
 </div>
 <div id="discoveryBulkBar" class="dv-bulk" role="region" aria-label="Selected papers" hidden>
 <strong id="discoverySelectedCount">0 selected</strong>
@@ -394,7 +404,7 @@
 <button class="dv-btn ghost" type="button" data-dv-action="bulk-export">Export RIS</button>
 <button id="discoveryDeselectAllBtn" class="dv-link light" type="button">Clear selection</button>
 </div>
-<footer id="discoveryHints" class="dv-hints"><span><kbd>J</kbd> <kbd>K</kbd> move</span><span><kbd>R</kbd> relevant</span><span><kbd>N</kbd> not relevant</span><span><kbd>A</kbd> add</span><span><kbd>Space</kbd> select</span><span id="discoveryFooterNote" class="dv-hint-note">Relevance labels stay on this Mac and help tune future searches.</span></footer>
+<footer id="discoveryHints" class="dv-hints"><span><kbd>J</kbd> <kbd>K</kbd> move</span><span><kbd>R</kbd> relevant</span><span><kbd>N</kbd> not relevant</span><span><kbd>A</kbd> add</span><span><kbd>Space</kbd> select</span><span id="discoveryFooterNote" class="dv-hint-note">Mark results, then refine or rerun this question to use your feedback.</span></footer>
 </div>
 </div>
 <!-- KEYWORD TAGS MODAL -->
@@ -433,13 +443,13 @@
 <dialog id="libraryManagersDialog" class="record-dialog" aria-labelledby="managerTitle">
 <header><div><h2 id="managerTitle">Library connections</h2><small>Send discovered papers to your reference manager.</small></div><button id="managerClose" type="button" aria-label="Close library connections">×</button></header>
 <div class="record-dialog-body"><div class="record-actions"><label>Papers to send <select id="managerScope"><option value="selected">Selected paper</option><option value="discoveries">Selected discovery results</option><option value="relations">Loaded citation / reference list</option><option value="bulk">Selected library rows</option><option value="all">Entire Pulse library</option></select></label><span id="managerSelectionCount" class="subtle"></span><button id="managerRefresh" class="button secondary" type="button">Refresh connections</button></div>
-<div class="manager-provider-grid"><section class="manager-provider-card"><h3>Zotero</h3><p id="zoteroConnectionNote"></p><small>Uses Zotero Desktop on this Mac. Records go to the library or collection selected in Zotero.</small><div class="record-actions"><button id="zoteroSend" class="button primary" type="button" disabled>Send to Zotero</button></div></section>
+<div class="manager-provider-grid"><section class="manager-provider-card"><h3>Zotero</h3><p id="zoteroConnectionNote"></p><small>Uses Zotero Desktop on this computer. Records go to the library or collection selected in Zotero.</small><div class="record-actions"><button id="zoteroSend" class="button primary" type="button" disabled>Send to Zotero</button></div></section>
 <section class="manager-provider-card"><h3>Mendeley</h3><p id="mendeleyConnectionNote"></p><small id="mendeleyHowTo">Export your chosen citations, then import the file into Mendeley.</small><div class="record-actions"><button id="mendeleyConnect" class="button secondary" type="button" disabled>Connect Mendeley</button><button id="mendeleyDisconnect" class="button secondary" type="button" hidden>Disconnect</button><button id="mendeleySend" class="button primary" type="button" disabled>Export for Mendeley</button></div><a id="mendeleyAuthorizeLink" target="_blank" rel="noreferrer" hidden>Authorize Mendeley</a><p id="mendeleyAuthorizationNote" class="record-feedback" role="status"></p><div id="mendeleySyncBox" class="mendeley-sync-box" hidden><label><input id="mendeleyAutomaticSync" type="checkbox" checked> Keep Mendeley library in sync</label><p><small>Imports new and updated citations while Pulse is open. Your edits stay here; removed papers stay removed. Sending to Mendeley uses the papers you choose.</small></p><button id="mendeleySyncNow" class="button secondary" type="button">Sync now</button><p id="mendeleySyncStatus" class="record-feedback" role="status"></p></div><p id="mendeleyImportHelp"><small>In Mendeley, drag in the downloaded RIS file, or choose Add New → Import Library → RIS. <a href="https://www.elsevier.support/mendeley/answer/how-can-i-add-new-references-to-my-library-in-mendeley-reference-manager" target="_blank" rel="noreferrer">Import guide</a></small></p></section></div>
-<p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your Mac until you import them. PDFs and full paper text are not uploaded.</small></p>
-<details id="mendeleyDeveloperSettings" hidden><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this Mac's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
+<p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your computer until you import them. PDFs and full paper text are not uploaded.</small></p>
+<details id="mendeleyDeveloperSettings" hidden><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this computer's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
 <div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261011-9"></script>
-<script src="js/part_02.js?v=ui-20261011-171"></script>
+<script src="js/part_02.js?v=ui-20261012-bridges-passages"></script>
 <script src="js/part_03.js?v=ui-20261011-171"></script>
 <script src="js/part_04.js?v=ui-20261011-2"></script>
 <script src="js/part_05.js?v=ui-20261011-2"></script>
@@ -460,7 +470,7 @@
 <script src="js/inspector.js?v=ui-20261011-11"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
 <script src="js/part_17.js?v=ui-20261011-5"></script>
 <script src="js/part_18.js?v=ui-20261011-171"></script>
-<script src="js/discovery-review.js?v=ui-20261011-171"></script>
+<script src="js/discovery-review.js?v=ui-20261012-bridges-passages"></script>
 <script src="js/part_19.js?v=ui-20261011-10"></script>
 <script src="js/part_20.js?v=ui-20261010-2"></script>
 <script src="js/timeline.js?v=ui-20261011-9"></script>

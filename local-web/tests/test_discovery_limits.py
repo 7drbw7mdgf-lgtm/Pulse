@@ -38,7 +38,7 @@ class DiscoveryLimitTests(unittest.TestCase):
         self.assertEqual(len(default['recommendations']), 200)
         self.assertEqual(len(expanded['recommendations']), 500)
         self.assertEqual(len(bounded['recommendations']), 500)
-        self.assertEqual([call.kwargs['limit'] for call in source.call_args_list], [200, 500, 500])
+        self.assertEqual([call.kwargs['limit'] for call in source.call_args_list], [300, 300, 500, 500, 500, 500])
 
     def test_semantic_scholar_search_pages_with_api_safe_limits(self):
         requests = []

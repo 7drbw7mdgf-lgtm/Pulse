@@ -51,4 +51,25 @@ assert.equal(sourceRows.find(row=>row.key==='europePmc').status,'warn','Complete
 assert.equal(sourceRows.find(row=>row.key==='europePmc').canAddKey,false,'Europe PMC has no API-key setting');
 assert.equal(sourceRows.find(row=>row.key==='core').canAddKey,true,'CORE supports a configured API key');
 assert(!sourceRows.find(row=>row.key==='europePmc').detail.includes('API key'));
+state.discoverySearchErrors.set('completed-run',{core:'HTTP 500: {"message":"raw upstream response"}'});
+assert.equal(context.discoverySourceRows().find(row=>row.key==='core').detail,'Search unavailable. Try again later.','Raw provider responses must not fill the reading interface');
+context.safeHref=value=>value.startsWith('https://')?value:'';
+const preview=context.discoveryPreviewMarkup({...results[0],doi:'10.1234/example',abstract:'Readable abstract',matchReasons:['Shared reference'],citationCount:12,citationCountSource:'OpenAlex'},false);
+assert(preview.indexOf('class="dv-abstract"')<preview.indexOf('class="dv-why"'),'Put the abstract before optional match explanations');
+assert(preview.includes('https://doi.org/10.1234/example')&&preview.includes('12 citations'));
+assert(preview.includes('data-dv-action="show-results"'),'A narrow reading pane must have a way back to the results');
+context.openDiscoveryModal(Array.from({length:500},(_,i)=>({title:`Large discovery ${i}`,score:70})),state.papers[0]);
+context.setDiscoveryPaperSelected(key(state.discoveryResults[499]),true);
+assert.equal(els.discoveryAddSelectedMapBtn.textContent,'Add 1 to library and map','A large result set must retain exact selection counts');
+context.focusDiscoveryPaper(key(state.discoveryResults[499]),false);
+assert.equal(state.discoveryMobilePane,'preview');
+assert.equal(state.discoveryFiltersOpen,false);
 console.log('PASS: explicit selection, live counts and zero-state buttons, filtered selections, stale/duplicate keys, and additions use the same chosen papers.');
+
+assert.equal(context.discoveryStrength({score:99,matchLabel:'Strong match',strongMatchEligible:false}),'related');
+assert.equal(context.discoveryStrength({score:99,matchLabel:'Strong match',strongMatchEligible:true}),'strong');
+assert.equal(context.discoveryStrength({score:99}),'related','Legacy scores cannot bypass the channel/pool requirements');
+assert.equal(context.discoveryStrength({matchLabel:'Relevant',strongMatchEligible:false}),'related','User judgement alone cannot become a strong match');
+const relevantPreview=context.discoveryPreviewMarkup({...results[0],matchLabel:'Relevant',strongMatchEligible:false},false);
+assert(relevantPreview.includes('>Relevant</span>')&&!relevantPreview.includes('>Strong match</span>'));
+console.log('PASS: strong labels require backend pool/channel eligibility; user relevance labels stay distinct.');
