@@ -2,12 +2,14 @@ import pulse_core as _core
 import re
 import copy
 import math
+import queue
+import threading
 import time
 import urllib.parse
 from pulse_core.constants import ClientError
 from pulse_core.config_resolvers import resolve_semantic_scholar_api_key, resolve_core_api_key
 from pulse_core.discovery_queries import build_query_plan, search_query_plan
-from pulse_core.discovery_semantics import semantic_scores
+from pulse_core.discovery_semantics import semantic_scores, pre_embed_papers
 from pulse_core.discovery_crossencoder import crossencoder_scores
 from pulse_core.discovery_feedback import feedback_for_context
 from pulse_core.discovery_bridges import bridge_queries, distinct_seeds
@@ -151,10 +153,11 @@ def openalex_citing_works(work_id, limit=12):
     return gathered
 
 
-def openalex_discovery_works(work_filter, limit, sort='cited_by_count:desc'):
+def openalex_discovery_works(work_filter, limit, sort='cited_by_count:desc', max_page_size=None):
     limit = discovery_limit(limit)
     gathered = SearchResults()
-    page_size = min(limit, 100)
+    cap = max_page_size or (200 if work_filter.startswith('cited_by:') else 100)
+    page_size = min(limit, cap)
     for page in range(1, (limit + page_size - 1) // page_size + 1):
         params = urllib.parse.urlencode({"filter": work_filter, "sort": sort,
                                        "per-page": page_size, "per_page": page_size, "page": page})
@@ -441,9 +444,53 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         "bridgeMode": bool(payload.get('bridgeMode')),
         "_originalSeeds": seed_papers,
     }
+    fast_mode = bool(payload.get('fastEmbed'))
+    semantic_enabled = bool(payload.get('semanticRerank', True))
+    embed_queue = queue.Queue()
+    queued_keys = set()
+    embed_stop = threading.Event()
+
+    def embed_collector_worker():
+        while not embed_stop.is_set():
+            if cancel_event and cancel_event.is_set():
+                break
+            batch = []
+            try:
+                item = embed_queue.get(timeout=0.2)
+                batch.append(item)
+                while len(batch) < 48:
+                    try:
+                        batch.append(embed_queue.get_nowait())
+                    except queue.Empty:
+                        break
+            except queue.Empty:
+                continue
+            if batch:
+                try:
+                    pre_embed_papers(settings, batch, cancel_event, fast_mode=fast_mode)
+                except Exception:
+                    pass
+
+    embed_thread = None
+    if semantic_enabled:
+        embed_thread = threading.Thread(target=embed_collector_worker, name="pulse-embed-collector", daemon=True)
+        embed_thread.start()
+        for seed in seed_papers:
+            pk = seed.get('doi') or seed.get('title')
+            if pk and pk not in queued_keys:
+                queued_keys.add(pk)
+                embed_queue.put(seed)
+
     def source_errors(results, errors):
         return {**errors, **{name: records.warning for name, records in results.items() if getattr(records, "warning", "")}}
     def progress(results, completed, errors, total):
+        if embed_thread and embed_thread.is_alive():
+            for branch_rows in results.values():
+                for p in branch_rows:
+                    pk = p.get('doi') or p.get('title')
+                    if pk and pk not in queued_keys:
+                        queued_keys.add(pk)
+                        embed_queue.put(p)
         if on_progress:
             ordered = {name: results.get(name, []) for name in tasks}
             on_progress({
@@ -455,7 +502,12 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
             })
     if on_progress:
         on_progress({"total": len(tasks)})
-    results, executed, errors = parallel_branches(tasks, progress, cancel_event)
+    try:
+        results, executed, errors = parallel_branches(tasks, progress, cancel_event)
+    finally:
+        if embed_thread:
+            embed_stop.set()
+            embed_thread.join(timeout=1.5)
     retrieval_seconds = time.monotonic()-started
     ordered = {name: results.get(name, []) for name in tasks}
     if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
@@ -463,7 +515,11 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     REQUEST_CONTEXT.cancel_event = cancel_event
     try:
         if payload.get('semanticRerank', True):
-            options['_semanticReranker'] = lambda queries,records: semantic_scores(settings,queries,records,cancel_event,focus_first=bool(options['researchQuestion']))
+            options['_semanticReranker'] = lambda queries,records: semantic_scores(
+                settings, queries, records, cancel_event,
+                focus_first=bool(options['researchQuestion']),
+                fast_mode=fast_mode
+            )
         if payload.get('pairwiseRerank', True):
             options['_pairwiseReranker'] = lambda queries,records: crossencoder_scores(settings,queries,records,cancel_event)
         if payload.get('aiTriage'):

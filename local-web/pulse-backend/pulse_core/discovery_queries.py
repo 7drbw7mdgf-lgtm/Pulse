@@ -142,6 +142,10 @@ def search_query_plan(plan, provider, searcher, limit, on_progress=None, **kwarg
             rows = searcher(provider_query(query, provider), limit=quota, **kwargs)
             executed.append(query['id'])
             count = collect(query, rows)
+            if getattr(rows, 'warning', ''):
+                warn_text = str(rows.warning).lower()
+                if any(k in warn_text for k in ('http 500', 'http 502', 'http 503', 'http 504', '500', '502', '503', '401', '403', '429', 'unavailable', 'limit reached', 'access unavailable')):
+                    break
             check_cancelled()
             # A focused query can be too strict. Loosen one concept immediately.
             if len(rows) < 5 and query.get('groups') and len(executed) < 26:
@@ -151,6 +155,10 @@ def search_query_plan(plan, provider, searcher, limit, on_progress=None, **kwarg
                     check_cancelled()
                     rows = searcher(broad_text, limit=quota, **kwargs)
                     executed.append(broader['id']); count = collect(broader, rows)
+                    if getattr(rows, 'warning', ''):
+                        warn_text = str(rows.warning).lower()
+                        if any(k in warn_text for k in ('http 500', 'http 502', 'http 503', 'http 504', '500', '502', '503', '401', '403', '429', 'unavailable', 'limit reached', 'access unavailable')):
+                            break
                     if len(rows) < 5 and len(executed) < 26:
                         loosest = dict(broader,id=query['id']+'c',kind='broadest')
                         loose_text = provider_query(loosest,provider)
@@ -158,13 +166,19 @@ def search_query_plan(plan, provider, searcher, limit, on_progress=None, **kwarg
                             check_cancelled()
                             rows = searcher(loose_text,limit=quota,**kwargs)
                             executed.append(loosest['id']); count = collect(loosest,rows)
+                            if getattr(rows, 'warning', ''):
+                                warn_text = str(rows.warning).lower()
+                                if any(k in warn_text for k in ('http 500', 'http 502', 'http 503', 'http 504', '500', '502', '503', '401', '403', '429', 'unavailable', 'limit reached', 'access unavailable')):
+                                    break
             if count >= limit: break
         except DiscoveryCancelled: raise
         except DiscoveryBudgetExceeded:
             warnings.append('Search time budget reached; showing collected results.'); break
         except Exception as error:
             warnings.append(str(error))
-            if 'limit reached' in str(error).lower() or getattr(error, 'status', 0) in {401,403,429}: break
+            status = getattr(error, 'status', getattr(error, 'code', 0))
+            err_str = str(error).lower()
+            if status in {401, 403, 429, 500, 502, 503, 504} or any(k in err_str for k in ('limit reached', 'unavailable', '500', '502', '503', 'access unavailable')): break
     if not records and warnings: raise RuntimeError(warnings[0])
     merged = SearchResults(merge_search_records(records)[:limit])
     merged.warning = ' · '.join(dict.fromkeys(warnings))

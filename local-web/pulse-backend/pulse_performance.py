@@ -72,7 +72,8 @@ def request_json(request, timeout=14, cache=True):
         if cache and entry and time.monotonic() - entry[0] < 600:
             _JSON_CACHE.move_to_end(key)
             return json.loads(entry[1])
-        gate = _PROVIDER_GATES.setdefault(host, threading.BoundedSemaphore(2))
+        limit = 10 if 'openalex.org' in host else 2
+        gate = _PROVIDER_GATES.setdefault(host, threading.BoundedSemaphore(limit))
     while not gate.acquire(timeout=.1):
         check_cancelled()
     try:

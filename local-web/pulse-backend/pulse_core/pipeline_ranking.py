@@ -277,7 +277,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
     semantic, pairwise = {}, {}
     options['_rankingNotice'] = 'Titles and abstracts ranked by text and citation evidence'
     if options.get('_semanticReranker'):
-        indices = balanced_indices(records, prelim, min(1200, max(600, discovery_limit(options.get('limit'))*2)))
+        indices = balanced_indices(records, prelim, min(250, len(records)))
         values, options['_rankingNotice'] = options['_semanticReranker'](queries, [records[i] for i in indices])
         if values is not None: semantic = dict(zip(indices, values))
     if options.get('_pairwiseReranker'):

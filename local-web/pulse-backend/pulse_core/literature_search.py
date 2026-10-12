@@ -166,7 +166,7 @@ def fetch_search(url, source, api_key=""):
         if source == "CORE" and status in {401, 403}:
             message = "Access unavailable. Try again later or add a CORE API key in Search sources settings."
         # Do not echo upstream bodies/URLs, which can contain credentials.
-        raise ClientError(502, source + ": " + message) from None
+        raise ClientError(status, source + ": " + message) from None
     except (urllib.error.URLError, TimeoutError, ValueError, OSError):
         raise ClientError(502, source + " could not be reached. Try again later.") from None
 

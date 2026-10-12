@@ -106,7 +106,8 @@
         if (queue !== 'all' && !state.discoverySearching && discoveryQueueOf(item) !== queue) return false;
         if (hiddenStrengths.has(discoveryStrength(item))) return false;
         if (whyKinds.size && !discoveryWhy(item).some(reason => whyKinds.has(discoveryWhyGroup(reason.kind)))) return false;
-        if(state.discoveryFullTextOnly&&!safeHref(item.fullTextUrl||''))return false;
+        if (state.discoveryFullTextOnly && !safeHref(item.fullTextUrl || '')) return false;
+        if (state.discoveryHideLibrary && discoveryQueueOf(item) === 'library') return false;
         if (quickTag) {
           const tags = [...(item.paperKeywords || []), ...(item.discoveryBadges || []), ...(item.matchedConcepts || [])].map(t => t.toLowerCase());
           const matchQuick = tags.some(t => t.includes(quickTag)) ||
@@ -121,6 +122,7 @@
             item.abstract || '',
             item.journal || '',
             item.doi || '',
+            ...(Array.isArray(item.authors) ? item.authors : [item.authors || '']),
             ...(item.paperKeywords || []),
             ...(item.discoveryBadges || []),
             ...(item.matchedConcepts || []),
@@ -195,8 +197,8 @@
 
     // ─── Discovery review workspace (1.7.1) ───
     const DISCOVERY_SOURCE_LABELS = {
-      citationGraph: 'Citation graph', citationNetwork: 'Citation network', semanticSearch: 'Semantic search',
-      lexicalConceptual: 'Semantic Scholar', europePmc: 'Europe PMC', core: 'CORE', fullText: 'Full-text library'
+      citationGraph: 'Citations', citationNetwork: 'Network', semanticSearch: 'Semantic',
+      lexicalConceptual: 'Semantic Scholar', europePmc: 'Europe PMC', core: 'CORE', fullText: 'Full-text'
     };
     const DISCOVERY_WHY_GROUPS = {
       authors: 'authors', 'cites-seed': 'citations', 'cited-by-seed': 'citations', 'two-steps': 'citations',
@@ -341,7 +343,17 @@
       const level = strength === 'strong' ? 3 : strength === 'related' ? 2 : 1;
       const queue = discoveryQueueOf(item);
       const tag = queue === 'relevant' ? '<span class="dv-triage is-yes">Relevant</span>' : queue === 'not' ? '<span class="dv-triage is-no">Not relevant</span>' : queue === 'library' ? '<span class="dv-triage">In library</span>' : '';
-      const reasons = discoveryWhy(item).slice(0, 3).map(reason => `<span class="dv-reason" title="${escapeHtml(reason.detail || reason.label)}">${escapeHtml(reason.label)}</span>`).join('')
+      const reasonsList = discoveryWhy(item).map(reason => ({ label: reason.label, detail: reason.detail || reason.label }));
+      const conceptsList = (item.matchedConcepts || item.paperKeywords || []).map(k => ({ label: k, detail: k }));
+      const seenLabels = new Set();
+      const allPills = [];
+      for (const p of [...reasonsList, ...conceptsList]) {
+        if (!seenLabels.has(p.label)) {
+          seenLabels.add(p.label);
+          allPills.push(p);
+        }
+      }
+      const reasons = allPills.slice(0, 4).map(p => `<span class="dv-reason" title="${escapeHtml(p.detail)}">${escapeHtml(p.label)}</span>`).join('')
         + (safeHref(item.fullTextUrl || '') ? '<span class="dv-reason is-fulltext">Full text available</span>' : '');
       const meta = [discoveryAuthorLine(item), item.year || item.date || '', item.journal || item.venue || ''].filter(Boolean).join(' · ');
       return `
@@ -380,27 +392,42 @@
       const citationText = discoveryCitationText(item);
       const doi = (typeof normalizeDoi === 'function' ? normalizeDoi(item.doi || '') : '') || (item.doi || '').trim();
       const doiHref = doi ? safeHref(`https://doi.org/${encodeURI(doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, ''))}`) : '';
-      const strengthName = DISCOVERY_STRENGTHS.find(([id]) => id === strength)[1].replace(/es$/, '').replace(/s$/, '');
+      const strengthLabel = item.matchLabel === 'Relevant' ? 'Relevant' : strength === 'strong' ? 'Strong' : strength === 'related' ? 'Related' : 'Explore';
+      const whyReasons = discoveryWhy(item);
       return `
         <div class="dv-preview-heading"><span>Paper preview</span><button type="button" class="dv-link dv-preview-back" data-dv-action="show-results">Back to results</button></div>
         <div class="dv-preview-scroll" tabindex="0" aria-label="Read paper abstract">
-          <div class="dv-preview-badges"><span class="dv-strength is-${strength}">${escapeHtml(item.matchLabel === 'Relevant' ? 'Relevant' : strength === 'strong' ? 'Strong match' : strengthName)}</span>${Number.isFinite(item.score) ? `<span class="dv-score" title="Scores are relative within this search, not probabilities">${Math.round(item.score)} / 100 relative</span>` : ''}</div>
+          <div class="dv-preview-badges">
+            <span class="dv-strength is-${strength}">${escapeHtml(strengthLabel)}</span>
+            ${Number.isFinite(item.score) ? `<span class="dv-score" title="Scores are relative within this search, not probabilities">${Math.round(item.score)} / 100 relative</span>` : ''}
+          </div>
           <h3 class="dv-preview-title">${escapeHtml(cleanDiscoveryTitle(item.title))}</h3>
-          <div class="dv-preview-meta"><p>${escapeHtml(discoveryAuthorLine(item, 6))}</p>${publication ? `<p>${escapeHtml(publication)}</p>` : ''}</div>
+          <div class="dv-preview-meta">
+            <p>${escapeHtml(discoveryAuthorLine(item, 6))}${publication ? ` · ${escapeHtml(publication)}` : ''}</p>
+          </div>
           <div class="dv-paper-facts">${doiHref ? `<a href="${escapeHtml(doiHref)}" target="_blank" rel="noreferrer" aria-label="DOI ${escapeHtml(item.doi)}">${escapeHtml(item.doi)}</a>` : ''}<span title="${escapeHtml(item.citationCountSource || '')}">${citationText === '—' ? 'Citation count unavailable' : escapeHtml(citationText)}</span></div>
+          <div class="dv-suggested-card">
+            <h4>WHY PULSE SUGGESTED THIS</h4>
+            <ul>
+              ${whyReasons.map(reason => `<li><span class="dv-check-icon">✓</span> <span>${escapeHtml(reason.detail || reason.label)}</span></li>`).join('')}
+              ${fullText ? `<li><span class="dv-check-icon">✓</span> <span>Free full text available</span></li>` : ''}
+            </ul>
+          </div>
+          ${item.abstract ? `
+            <section class="dv-abstract">
+              <h4>ABSTRACT</h4>
+              <p>${escapeHtml(item.abstract)}</p>
+            </section>` : '<p class="dv-muted">No abstract available from these sources.</p>'}
+          <div class="dv-why" style="display:none" hidden></div>
           <div class="dv-links">
-            ${href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">Open paper ↗</a>` : ''}
-            ${fullText ? `<a href="${escapeHtml(fullText)}" target="_blank" rel="noreferrer">Read full text ↗</a>` : ''}
+            ${href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">Open paper</a>` : ''}
+            ${fullText && fullText !== href ? `<a href="${escapeHtml(fullText)}" target="_blank" rel="noreferrer" class="dv-fulltext-link">Full text</a>` : ''}
+            ${searching ? '' : `<button type="button" data-dv-action="more-like" data-paper-key="${escapeHtml(key)}">More like this</button><button type="button" data-dv-action="less-like" data-paper-key="${escapeHtml(key)}">Fewer like this</button>`}
           </div>
           ${item.isBridge ? `<section class="dv-bridge"><h4>Connections across seeds</h4><ul>${(item.bridgeEvidence||[]).map(row=>`<li><strong>${escapeHtml(row.seedTitle)}</strong><br>${escapeHtml(row.evidence)}</li>`).join('')}</ul></section>` : ''}
           ${item.aiReview ? `<p class="dv-muted">AI review: ${escapeHtml(item.aiReview.decision.replace(/_/g,' '))} · ${escapeHtml(item.aiReview.reason)}</p>` : ''}
           <section class="dv-passages"><button type="button" data-dv-action="read-passages" data-paper-key="${escapeHtml(key)}">Read source passages</button>${typeof discoveryPassageMarkup==='function'?discoveryPassageMarkup(item):''}</section>
-          ${item.abstract ? `<section class="dv-abstract"><h4>Abstract</h4><p>${escapeHtml(item.abstract)}</p></section>` : '<p class="dv-muted">No abstract available from these sources.</p>'}
-          <details class="dv-why"><summary>Why this paper?</summary><ul>${discoveryWhy(item).map(reason => `<li>${escapeHtml(reason.detail || reason.label)}</li>`).join('')}${fullText ? `<li>Free full text available${item.sourceList?.length ? ` (${escapeHtml(item.sourceList.join(', '))})` : ''}</li>` : ''}</ul>${item.sourceList?.length ? `<p class="dv-muted">Found in ${escapeHtml(item.sourceList.join(', '))}</p>` : ''}</details>
           ${versions ? `<section class="dv-versions"><h4>Other versions</h4><div>${versions}</div></section>` : ''}
-          <div class="dv-links">
-            ${searching ? '' : `<button type="button" data-dv-action="more-like" data-paper-key="${escapeHtml(key)}">More like this</button><button type="button" data-dv-action="less-like" data-paper-key="${escapeHtml(key)}">Fewer like this</button>`}
-          </div>
         </div>
         ${searching ? '' : `<div class="dv-preview-actions">
           <div class="dv-pair" role="group" aria-label="Is this relevant to your review?">
@@ -424,7 +451,7 @@
 
       const title = document.getElementById('discoveryModalTitle');
       if (title) title.textContent = 'Literature discovery';
-      if (els.discoveryModalSubtitle) els.discoveryModalSubtitle.textContent = `Related to ${seedTitle}${seed?.year ? ` (${seed.year})` : ''}`;
+      if (els.discoveryModalSubtitle) els.discoveryModalSubtitle.textContent = seedTitle;
       if (els.discoveryModal.dataset) {
         els.discoveryModal.dataset.pane = state.discoveryMobilePane || 'results';
         els.discoveryModal.dataset.filtersOpen = String(Boolean(state.discoveryFiltersOpen));
@@ -433,7 +460,7 @@
       if (els.discoveryCountSummary) {
         els.discoveryCountSummary.innerHTML = searching
           ? `<strong>${totalItems.length} candidates so far</strong>`
-          : `<strong>${totalItems.length} paper${totalItems.length === 1 ? '' : 's'} found</strong> <span>· ${filtered.length} in this view</span>`;
+          : `<strong>${totalItems.length} papers</strong> · <span>${strengthCount('strong')} strong</span> · <span>${strengthCount('related')} related</span> · <span>${strengthCount('explore')} to explore</span>`;
       }
       const runInfo = discoveryRunInfoForModal();
       const refine = document.getElementById('discoveryRefineFeedback');
@@ -449,7 +476,13 @@
 
       const rows = discoverySourceRows();
       const sourceStatus = document.getElementById('discoverySourceStatus');
-      if (sourceStatus) sourceStatus.innerHTML = rows.map(row => `<span class="dv-source is-${row.status}" title="${escapeHtml(row.detail)}"><i></i>${escapeHtml(row.name)}${row.status === 'ok' && /papers/.test(row.detail) ? ` ${escapeHtml(row.detail.replace(' papers', ''))}` : row.status === 'fail' ? ' failed' : row.status === 'warn' ? ' limited' : ''}</span>`).join('');
+      if (sourceStatus) {
+        sourceStatus.innerHTML = rows.map(row => {
+          const countNum = row.status === 'ok' && /papers/.test(row.detail) ? ` ${row.detail.replace(' papers', '')}` : '';
+          const statusText = row.status === 'fail' ? ' failed' : row.status === 'warn' ? ' limited' : countNum;
+          return `<span class="dv-source is-${row.status}" title="${escapeHtml(row.detail)}"><span class="dv-dot"></span>${escapeHtml(row.name)}${statusText}</span>`;
+        }).join('');
+      }
       const notice = document.getElementById('discoverySourceNotice');
       if (notice) {
         const problems = rows.filter(row => row.status === 'fail' || row.status === 'warn');
@@ -478,31 +511,36 @@
       if (queues) {
         const count = id => totalItems.filter(item => discoveryQueueOf(item) === id).length;
         const active = state.discoveryQueue || 'review';
-        queues.innerHTML = [['review', 'To review'], ['relevant', 'Relevant'], ['not', 'Not relevant'], ['library', 'Already in library'], ['all', 'All results']]
-          .map(([id, label]) => `<button type="button" data-dv-queue="${id}" aria-pressed="${active === id}"><span>${label}</span><span>${id === 'all' ? totalItems.length : count(id)}</span></button>`).join('');
+        queues.innerHTML = [['review', 'To review'], ['relevant', 'Relevant'], ['not', 'Not relevant'], ['library', 'Already in library']]
+          .map(([id, label]) => `<button type="button" data-dv-queue="${id}" aria-pressed="${active === id}"><span>${label}</span><span>(${count(id)})</span></button>`).join('');
       }
       const why = document.getElementById('discoveryWhyFilters');
       if (why) {
         const chosen = state.discoveryWhyKinds || new Set();
         why.innerHTML = '<legend>Why it was found</legend>' + DISCOVERY_WHY_FILTERS.map(([id, label]) => {
           const n = totalItems.filter(item => discoveryWhy(item).some(reason => discoveryWhyGroup(reason.kind) === id)).length;
-          return n ? `<label><input type="checkbox" data-dv-why="${id}" ${chosen.has(id) ? 'checked' : ''}>${label}<span>${n}</span></label>` : '';
+          return n ? `<label><input type="checkbox" data-dv-why="${id}" ${chosen.has(id) ? 'checked' : ''}><span>${label}</span><span>(${n})</span></label>` : '';
         }).join('');
       }
       const strengths = document.getElementById('discoveryStrengthFilters');
       if (strengths) {
         const hidden = state.discoveryHiddenStrengths || new Set();
-        strengths.innerHTML = '<legend>Match strength</legend>' + DISCOVERY_STRENGTHS.map(([id, label]) => `<label><input type="checkbox" data-dv-strength="${id}" ${hidden.has(id) ? '' : 'checked'}>${label}<span>${strengthCount(id)}</span></label>`).join('');
+        strengths.innerHTML = '<legend>Match strength</legend>' + DISCOVERY_STRENGTHS.map(([id, label]) => {
+          const shortName = id === 'strong' ? 'Strong' : id === 'related' ? 'Related' : 'Worth exploring';
+          return `<label><input type="checkbox" data-dv-strength="${id}" ${hidden.has(id) ? '' : 'checked'}><span>${shortName}</span><span>(${strengthCount(id)})</span></label>`;
+        }).join('');
       }
       const chart = document.getElementById('discoveryYearChart');
       if (chart) {
         const buckets = discoveryYearBuckets(totalItems);
         const peak = Math.max(1, ...buckets.map(bucket => bucket.count));
         chart.setAttribute('aria-label', 'Results by publication year: ' + buckets.map(bucket => `${bucket.count} from ${bucket.start}${bucket.end !== bucket.start ? ' to ' + bucket.end : ''}`).join(', '));
-        chart.innerHTML = buckets.length ? `<div class="dv-bars">${buckets.map(bucket => `<span title="${bucket.start}${bucket.end !== bucket.start ? '–' + bucket.end : ''}: ${bucket.count}"><small>${bucket.count}</small><i style="height:${Math.max(3, Math.round(bucket.count / peak * 40))}px"></i></span>`).join('')}</div><div class="dv-bar-range"><span>${buckets[0].start}</span><span>${buckets[buckets.length - 1].end}</span></div>` : '';
+        chart.innerHTML = buckets.length ? `<div class="dv-bars">${buckets.map(bucket => `<span title="${bucket.start}${bucket.end !== bucket.start ? '–' + bucket.end : ''}: ${bucket.count}"><small>${bucket.count}</small><i style="height:${Math.max(6, Math.round(bucket.count / peak * 36))}px"></i></span>`).join('')}</div><div class="dv-bar-range"><span>${buckets[0].start}</span><span>${buckets[buckets.length - 1].end}</span></div>` : '';
       }
       const fullTextCount = document.getElementById('discoveryFullTextCount');
-      if (fullTextCount) fullTextCount.textContent = String(totalItems.filter(item => safeHref(item.fullTextUrl || '')).length);
+      if (fullTextCount) fullTextCount.textContent = `(${totalItems.filter(item => safeHref(item.fullTextUrl || '')).length})`;
+      const libraryCount = document.getElementById('discoveryLibraryCount');
+      if (libraryCount) libraryCount.textContent = `(${totalItems.filter(item => discoveryQueueOf(item) === 'library').length})`;
 
       updateDiscoverySelection();
       if (!els.discoveryPaperList) return;
@@ -524,10 +562,12 @@
         els.discoveryPaperList.innerHTML = DISCOVERY_STRENGTHS.map(([id, label]) => {
           const items = filtered.filter(item => discoveryStrength(item) === id);
           if (!items.length) return '';
-          const collapsed = id === 'explore' && !state.discoveryShowExplore && filtered.some(item => discoveryStrength(item) !== 'explore');
+          const groupTitle = id === 'strong' ? 'Strong matches' : id === 'related' ? 'Related' : 'Worth exploring';
+          const selectGroupLabel = id === 'strong' ? 'Select all strong' : id === 'related' ? 'Select all related' : 'Select all explore';
           return `<section class="dv-group" aria-label="${label}">
-            <div class="dv-group-head"><h3>${label} <span>· ${items.length}</span></h3>${searching ? '' : `<button type="button" data-dv-select-group="${id}">Select all</button>`}</div>
-            ${collapsed ? `<button type="button" class="dv-show-more" data-dv-action="show-explore">Show ${items.length} paper${items.length === 1 ? '' : 's'} worth exploring</button>` : items.map(item => discoveryRowMarkup(item, focusKey, Boolean(searching))).join('')}
+            <div class="dv-group-head"><h3>${groupTitle} <span>· ${items.length}</span></h3>${searching ? '' : `<button type="button" data-dv-select-group="${id}">${selectGroupLabel}</button>`}</div>
+            ${items.map(item => discoveryRowMarkup(item, focusKey, Boolean(searching))).join('')}
+            ${id === 'strong' ? '<div class="dv-group-footer"><button type="button" class="dv-all-shown-btn" disabled>All strong matches shown</button></div>' : ''}
           </section>`;
         }).join('');
       } else {
@@ -548,7 +588,7 @@
     }
 
     function stepDiscoveryFocus(offset) {
-      const items = getFilteredDiscoveryPapers().filter(item => (state.discoverySortBy || 'score') !== 'score' || discoveryStrength(item) !== 'explore' || state.discoveryShowExplore || getFilteredDiscoveryPapers().every(other => discoveryStrength(other) === 'explore'));
+      const items = getFilteredDiscoveryPapers();
       const index = items.findIndex(item => discoveryPaperKey(item) === state.discoveryFocusKey);
       const next = items[Math.max(0, Math.min(items.length - 1, index + offset))];
       if (next) focusDiscoveryPaper(discoveryPaperKey(next));
@@ -569,6 +609,26 @@
     function initDiscoveryWorkspace() {
       if (!els.discoveryModal?.dataset || typeof els.discoveryModal.addEventListener !== 'function' || els.discoveryModal.dataset.workspaceReady) return;
       els.discoveryModal.dataset.workspaceReady = '1';
+
+      const searchDetailsBtn = document.getElementById('discoverySearchDetailsBtn');
+      const searchDetailsDetails = document.getElementById('discoverySearchDetails');
+      if (searchDetailsBtn && searchDetailsDetails && !searchDetailsBtn.dataset.bound) {
+        searchDetailsBtn.dataset.bound = '1';
+        searchDetailsBtn.addEventListener('click', () => {
+          searchDetailsDetails.hidden = !searchDetailsDetails.hidden;
+          if (!searchDetailsDetails.hidden) searchDetailsDetails.open = true;
+        });
+      }
+
+      const hideLibInput = document.getElementById('discoveryHideLibrary');
+      if (hideLibInput && !hideLibInput.dataset.bound) {
+        hideLibInput.dataset.bound = '1';
+        hideLibInput.addEventListener('change', () => {
+          state.discoveryHideLibrary = hideLibInput.checked;
+          renderDiscoveryModal();
+        });
+      }
+
       els.discoveryModal.addEventListener('click', event => {
         const target = event.target.closest?.('[data-dv-focus],[data-dv-queue],[data-dv-grade],[data-dv-action],[data-dv-select-group]');
         if (!target) return;
@@ -594,6 +654,9 @@
           selectedDiscoveryPapers().forEach(result => labelDiscoveryPaper(result, action === 'bulk-relevant' ? 2 : 0));
           state.discoverySelectedKeys.clear();
           renderDiscoveryModal();
+        } else if (action === 'bulk-managers') {
+          if (typeof openManagers === 'function') openManagers();
+          else document.getElementById('libraryManagersDialog')?.showModal?.();
         } else if (action === 'bulk-export' && typeof recordRis === 'function') {
           const papers = selectedDiscoveryPapers().map(result => ({ ...result, title: cleanDiscoveryTitle(result.title), authors: Array.isArray(result.authors) ? result.authors : [] }));
           downloadRecordFile('pulse-discovery-selection.ris', recordRis(papers), 'application/x-research-info-systems');

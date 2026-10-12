@@ -438,5 +438,28 @@ const state = {
       if (/^https?:\/\//i.test(cleanedDirect)) {
         return cleanedDirect;
       }
+      if (paper.openAlexUrl && /^https?:\/\//i.test(paper.openAlexUrl)) {
+        return paper.openAlexUrl;
+      }
+      if (paper.openAlexId) {
+        const id = String(paper.openAlexId).replace(/^https?:\/\/openalex\.org\//i, '').trim();
+        if (id) return 'https://openalex.org/' + encodeURIComponent(id);
+      }
+      if (paper.s2PaperId) {
+        return 'https://www.semanticscholar.org/paper/' + encodeURIComponent(paper.s2PaperId);
+      }
+      if (paper.pmid) {
+        return 'https://pubmed.ncbi.nlm.nih.gov/' + encodeURIComponent(paper.pmid) + '/';
+      }
+      if (paper.pmcid) {
+        const pmc = String(paper.pmcid).replace(/^PMC/i, '');
+        return 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC' + encodeURIComponent(pmc) + '/';
+      }
+      if (paper.europePmcId) {
+        return 'https://europepmc.org/article/' + encodeURI(paper.europePmcId);
+      }
+      if (paper.arxivId) {
+        return 'https://arxiv.org/abs/' + encodeURIComponent(paper.arxivId);
+      }
       return '';
     }
