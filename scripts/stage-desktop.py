@@ -23,6 +23,16 @@ def stage(python_dependencies=None):
     if python_dependencies:
         shutil.copytree(python_dependencies, backend / 'python',
                         ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+    search_runtime = ROOT / '.search-runtime'
+    if search_runtime.is_dir() and (search_runtime / 'model').is_dir():
+        target_runtime = backend / '.search-runtime'
+        target_runtime.mkdir(parents=True, exist_ok=True)
+        target_model = target_runtime / 'model'
+        if not target_model.exists():
+            shutil.copytree(search_runtime / 'model', target_model)
+        manifest = search_runtime / 'manifest.json'
+        if manifest.is_file():
+            shutil.copy2(manifest, target_runtime / 'manifest.json')
     print('Staged Pulse frontend, backend and PDF dependencies')
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)

@@ -383,6 +383,16 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         apply_bridges(records,seed_papers,options)
     if options.get('_aiTriage'):
         options['_aiReviewedCount'] = options['_aiTriage'](sorted(records,key=lambda p:-p['score']))
+        for record in records:
+            if record.get('aiReview'):
+                decision = record['aiReview'].get('decision')
+                if decision in ('relevant', 'not_relevant'):
+                    if 'scoreBreakdown' in record:
+                        record['scoreBreakdown']['aiReview'] = 16 if decision == 'relevant' else -28
+                    if decision == 'relevant' and 'AI review: confirmed relevant' not in record.get('matchReasons', []):
+                        record.setdefault('matchReasons', []).insert(0, 'AI review: confirmed relevant to your question')
+                    elif decision == 'not_relevant' and 'AI review: deemed not relevant' not in record.get('matchReasons', []):
+                        record.setdefault('matchReasons', []).append('AI review: deemed not relevant to your question')
     for record in records:
         if record.get('relatedVersions'):
             # Folded copies may add evidence (another citation path, another index).

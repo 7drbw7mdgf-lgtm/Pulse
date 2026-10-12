@@ -193,7 +193,7 @@
       state.discoveryResearchQuestion = String(data.discoveryResearchQuestion || '').slice(0,1000);
       state.discoveryStrictExclusions = Array.isArray(data.discoveryStrictExclusions) ? data.discoveryStrictExclusions.slice(0,16) : [];
       state.discoveryDiversify = data.discoveryDiversify !== false;
-      state.discoveryBridgeMode = Boolean(data.discoveryBridgeMode);state.discoveryAiTriage = Boolean(data.discoveryAiTriage);state.discoveryFullTextSearch = Boolean(data.discoveryFullTextSearch);
+      state.discoveryBridgeMode = Boolean(data.discoveryBridgeMode);state.discoveryAiTriage = data.discoveryAiTriage !== undefined ? Boolean(data.discoveryAiTriage) : true;state.discoveryFullTextSearch = Boolean(data.discoveryFullTextSearch);
       state.discoveryJudgements = Array.isArray(data.discoveryJudgements) ? data.discoveryJudgements.slice(-1000) : [];
       state.recommendationRecencyTilt = Number(data.recommendationRecencyTilt || 0);
       state.recommendationImpactTilt = Number(data.recommendationImpactTilt || 0);
