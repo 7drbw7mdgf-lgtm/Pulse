@@ -334,7 +334,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         if len(cohort)<3: cohort = [value for value in impacts if value is not None]
         impact = sum(value<impacts[i] for value in cohort)/len(cohort) if impacts[i] is not None and len(cohort)>=3 else 0
         topic_support = max(relevance[i], sem or 0)
-        velocity_prior = .025*impact*topic_support if options.get('citationVelocityPrior', True) and grade != 0 else 0
+        velocity_prior = .09*impact*topic_support if options.get('citationVelocityPrior', True) and grade != 0 else 0
         score += velocity_prior
         score += .06*min(2,float(options.get('impactTilt') or 0))*impact*topic_support
         score += .05*min(2,float(options.get('recencyTilt') or 0))*recency*max(relevance[i],sem or 0)
@@ -362,7 +362,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         if profile.get('version') != 'evidence-v1' or profile.get('mode') != mode: profile = None
         record['matchMode'] = mode
         record['matchLabel'] = match_label(evidence, profile, grade)
-        record['matchStrengthVersion'] = 'evidence-v2'
+        record['matchStrengthVersion'] = 'evidence-v3'
         if grade is not None:
             record['relevanceGrade'] = grade
             record['matchReasons'].insert(0, 'Marked relevant for this question' if grade > 0 else 'Marked not relevant for this question')

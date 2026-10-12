@@ -4,6 +4,8 @@
 
 **Capability white paper · Pulse 1.7.3 · 12 October 2026**
 
+**Current source update (unreleased):** citation velocity now contributes up to **9 relevance-scaled score points**, and **Related** uses the top **40%** of the final candidate pool. Strong-match safeguards remain in place. See [unreleased changes](docs/UNRELEASED.md). The capability white paper below describes the published 1.7.3 release.
+
 > **Local-first literature discovery for unpublished work.** Your library, PDFs and AI analysis stay on your computer. AI runs through local Ollama models by default, no account is needed, and your papers and manuscripts are never uploaded.
 
 Pulse brings paper discovery, bibliography management, visual exploration and optional local AI reports into one desktop workspace. Begin with a DOI, a title, an imported PDF or a bibliography; confirm the paper's identity; explore related publications; and keep a collection that can be examined as a network, timeline or full-screen table.

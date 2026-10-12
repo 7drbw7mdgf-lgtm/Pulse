@@ -47,6 +47,12 @@ def match_label(evidence, calibration=None, grade=None, *, pool_rank=None, pool_
     except (ValueError, TypeError): strong, related = .72, .35
     top_decile = bool(pool_rank and pool_size and 1 <= pool_rank <= max(1, math.ceil(pool_size / 10)))
     if evidence >= strong and top_decile and channel_count >= 2: return 'Strong match'
+    if pool_rank and pool_size:
+        # Related is a relative review band, rather than an absolute evidence
+        # threshold. Use the full deduplicated pool, not the visible page.
+        top_forty_percent = 1 <= pool_rank <= math.ceil(.4 * pool_size)
+        return 'Related' if top_forty_percent else 'Explore'
+    # Preserve the evidence-based fallback for callers without pool context.
     return 'Related' if evidence >= related else 'Explore'
 
 

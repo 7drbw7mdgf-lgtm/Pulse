@@ -136,7 +136,7 @@ class SearchImprovementsTests(unittest.TestCase):
 
     def test_weak_best_hit_does_not_become_strong_relative_to_pool(self):
         found=rank({'one':[paper(1,abstract='Bicycles in a historical catalogue')]},[SEED],{'researchQuestion':'Do bicycles reduce intersection injuries through protected lanes in cities?'})
-        self.assertEqual(found[0]['matchLabel'],'Explore');self.assertLess(found[0]['queryCoverage'],.35)
+        self.assertEqual(found[0]['matchLabel'],'Related');self.assertFalse(found[0]['strongMatchEligible']);self.assertLess(found[0]['queryCoverage'],.35)
         other=rank({'one':[paper(2,abstract='Completely unrelated'),paper(1,abstract='Bicycles in a historical catalogue')]},[SEED],{'researchQuestion':'Do bicycles reduce intersection injuries through protected lanes in cities?'})
         self.assertEqual(next(p for p in other if p['doi'].endswith('article-1'))['matchLabel'],found[0]['matchLabel'])
 
