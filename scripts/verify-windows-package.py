@@ -7,6 +7,7 @@ from ctypes import wintypes
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -77,13 +78,16 @@ def main():
         assert backend.is_file(), list(install.rglob('pulse_backend.exe'))
         environment = dict(os.environ, PULSE_CONFIG_DIR=str(root / 'profile'),
                            PULSE_PORT_FILE=str(root / 'port.txt'), PULSE_DISABLE_BUNDLED_OLLAMA='1',
-                           PULSE_PYTHON=str(root / 'python-must-not-be-needed.exe'))
+                           PULSE_PYTHON=str(root / 'python-must-not-be-needed.exe'),
+                           WEBVIEW2_USER_DATA_FOLDER=str(root / 'webview'),
+                           WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS='--disable-gpu')
         diagnostic = subprocess.run([str(backend), '--self-test'], env=environment,
                                     capture_output=True, text=True, timeout=90)
         assert diagnostic.returncode == 0, diagnostic.stdout + diagnostic.stderr
         report['bundledBackend'] = json.loads(diagnostic.stdout.strip().splitlines()[-1])
         assert report['bundledBackend']['ok']
-        application = subprocess.Popen([str(native)], env=environment)
+        native_log = (root / 'native.log').open('w')
+        application = subprocess.Popen([str(native)], env=environment, stdout=native_log, stderr=native_log)
         backend_pid = None
         try:
             deadline = time.monotonic() + 90
@@ -108,7 +112,11 @@ def main():
             running_backend = executable_path(backend_pid)
             assert running_backend and os.path.samefile(running_backend, backend), running_backend
             while not has_window(application.pid):
-                assert application.poll() is None and time.monotonic() < deadline, 'Pulse window did not open'
+                if application.poll() is not None or time.monotonic() >= deadline:
+                    native_log.flush()
+                    details = (root / 'native.log').read_text(errors='replace')
+                    details = re.sub(r'(token=)[^&\s]+', r'\1<redacted>', details)
+                    raise AssertionError(f'Pulse window did not open; exit={application.poll()}; startup: {details}')
                 time.sleep(.25)
             report['nativeWindow'] = True
             try:
@@ -134,6 +142,7 @@ def main():
         finally:
             application.terminate()
             application.wait(timeout=20)
+            native_log.close()
             if backend_pid:
                 deadline = time.monotonic() + 15
                 while executable_path(backend_pid) and time.monotonic() < deadline:
