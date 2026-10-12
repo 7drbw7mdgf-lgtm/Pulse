@@ -7,8 +7,11 @@ import time
 import urllib.parse
 import pulse_core as core
 from pulse_core.dbef_content import (SeedPaper, CandidatePaper, TfidfEmbedder,
-    compute_seed_reference_weights, score_and_rank_candidates)
+    compute_seed_reference_weights, score_and_rank_candidates, saturate_score)
+from pulse_core.doi_utils import normalize_doi
+from pulse_core.ranking_evidence import network_keys
 from pulse_core.metadata_utils import openalex_to_metadata, citation_count
+from pulse_core.ranking_evidence import reference_coverage
 from pulse_core.search_limits import SearchResults, discovery_limit
 from pulse_performance import REQUEST_CONTEXT, DiscoveryBudgetExceeded, DiscoveryCancelled, check_cancelled, publish_partial
 
@@ -61,7 +64,7 @@ def _select_pivots(seeds, weights):
     return result
 
 
-def _rank(raw, seeds, ref_texts, counts, corpus_size, limit, unknown_count):
+def _rank(raw, seeds, ref_texts, counts, corpus_size, limit, unknown_count, seed_coverages=None):
     candidates, by_id = [], {}
     for work in raw:
         ident = work_id(work.get('id'))
@@ -72,18 +75,23 @@ def _rank(raw, seeds, ref_texts, counts, corpus_size, limit, unknown_count):
         candidates.append(CandidatePaper(ident,meta.get('title') or '',meta.get('abstract') or '',refs,
             recent_velocity(work),citation_count(work.get('referenced_works_count'))))
     top, diagnostics = score_and_rank_candidates(candidates,seeds,counts,ref_texts,top_k=limit,
-        stage1_k=max(1000,limit),n_corpus=corpus_size,unknown_count=unknown_count,check=check_cancelled)
-    maximum = max((row.score for row in top),default=0) or 1
+        stage1_k=max(1000,limit),n_corpus=corpus_size,unknown_count=unknown_count,check=check_cancelled,
+        stable_seed_calibration=True)
     records = SearchResults()
-    for rank,row in enumerate(top,1):
+    assessments={}
+    top_ids={row.paper.paper_id for row in top}
+    for rank,row in enumerate(diagnostics['scored_rows'],1):
         work, meta = by_id[row.paper.paper_id]
         seed_matches = [{'seedIndex':seed.original_index,'seedId':seed.paper_id,'shared':len(set(seed.references)&set(row.shared_refs))}
                         for seed in seeds if set(seed.references)&set(row.shared_refs)]
         detail = f'Shares {len(row.shared_refs)} references with your seeds, weighted by reference specificity and content relevance.'
-        normalized = row.score/maximum
+        normalized = saturate_score(row.score,diagnostics['scale'])
+        coverages=[(seed_coverages or {}).get(match['seedIndex']) for match in seed_matches]
+        seed_coverage=sum(value for value in coverages if value is not None)/sum(value is not None for value in coverages) if any(value is not None for value in coverages) else None
+        metadata_coverage=sum(.5*bool((ref_texts.get(ident) or ('',''))[0])+.5*(ident in counts) for ident in row.shared_refs)/max(1,len(row.shared_refs))
         meta.update(branch='citationNetwork',subType='Bibliographic coupling',rankingMethod='DBEF-content',
             recommendationSource='DBEF shared-reference discovery',discoveryBadges=['DBEF','Shared references'],
-            sharedReferencesCount=len(row.shared_refs),networkSimilarity=normalized,reason=detail,
+            sharedReferencesCount=len(row.shared_refs),networkSimilarity=normalized,networkStatus='assessed_overlap',reason=detail,
             retrievalEvidence=[{'channel':'dbef','provider':'OpenAlex','rank':rank,'subType':'Bibliographic coupling',
                                 'detail':detail,'seedIndices':[match['seedIndex'] for match in seed_matches]}],
             dbef={'score':round(row.score,6),'normalizedScore':round(normalized,6),
@@ -91,19 +99,50 @@ def _rank(raw, seeds, ref_texts, counts, corpus_size, limit, unknown_count):
                   'velocityFactor':round(row.velocity_factor,6),'recentVelocity':row.paper.recent_velocity,
                   'contentSimilarity':round(row.content_sim,6) if math.isfinite(row.content_sim) else None,
                   'contentFactor':round(row.content_factor,6),'sharedReferenceIds':row.shared_refs,
-                  'seedMatches':seed_matches,'referenceCount':max(len(row.paper.references),row.paper.reference_count or 0)})
-        records.append(meta)
+                  'seedMatches':seed_matches,'referenceCount':max(len(row.paper.references),row.paper.reference_count or 0),
+                  'candidateReferenceCoverage':reference_coverage(len(row.paper.references),row.paper.reference_count),
+                  'seedReferenceCoverage':seed_coverage,'referenceMetadataCoverage':round(metadata_coverage,4)})
+        for key in network_keys(meta):assessments[key]={key:meta[key] for key in ('networkStatus','networkSimilarity','dbef')}
+        if row.paper.paper_id in top_ids:records.append(meta)
+    for status in ('assessed_zero','unassessed'):
+        for ident in diagnostics['network_status_ids'][status]:
+            for key in network_keys(by_id[ident][1]):assessments[key]={'networkStatus':status,'networkSimilarity':0. if status=='assessed_zero' else None}
+    records.network_assessments=assessments
     return records, {'method':'DBEF-content','candidateCount':len(candidates),'rankedCount':len(top),
         'referenceCount':len(diagnostics['weights']),'unknownReferenceCounts':sum(r not in counts for r in diagnostics['weights']),
         'corpusSize':corpus_size,'unknownCountWeightFallback':unknown_count,
         'stage1Count':len(diagnostics['pool_ids']),'stage1BoundCertified':diagnostics['exact'],
-        'contentCalibrationScope':'Stage-one shortlist'}
+        'contentCalibrationScope':'Seed references only','calibration':diagnostics['scale'],
+        'S0':diagnostics['scale']['S0'],'s1':diagnostics['scale']['s1'],'scaleInputs':diagnostics['scale']['inputs'],
+        'networkStatusCounts':{state:len(ids) for state,ids in diagnostics['network_status_ids'].items()}}
+
+
+def seed_reference_fallback(paper,api_key=None):
+    """One S2 references call, then batch-map DOIs into the OpenAlex graph."""
+    from pulse_core.s2_client import s2_request_headers,s2_paper_identifier
+    from pulse_source_health import check_source,ProviderCooldown
+    import urllib.request
+    ident=s2_paper_identifier(paper)
+    if not ident:return []
+    url='https://api.semanticscholar.org/graph/v1/paper/'+urllib.parse.quote(ident,safe=':')+'/references'
+    try:check_source(urllib.request.Request(url,headers=s2_request_headers(api_key)))
+    except ProviderCooldown:return []
+    rows=core.s2_fetch_references(urllib.parse.quote(ident,safe=':'),api_key=api_key,limit=100)
+    dois=sorted({normalize_doi(row.get('doi')).lower() for row in rows if normalize_doi(row.get('doi'))})
+    found=[]
+    for start in range(0,len(dois),100):
+        check_cancelled()
+        query=urllib.parse.urlencode({'filter':'doi:'+'|'.join(dois[start:start+100]),'per-page':100})
+        for work in core.fetch_json('https://api.openalex.org/works?'+query).get('results') or []:
+            if normalize_doi(work.get('doi')).lower() in dois and work_id(work.get('id')):found.append(work_id(work['id']))
+    return list(dict.fromkeys(found))
 
 
 def fetch_dbef_branch(seed_papers, api_key=None, limit=200):
     limit = discovery_limit(limit)
     seeds, seed_works, ref_texts, counts, raw, seen, warnings = [], [], {}, {}, [], set(), []
     field_sizes = {}
+    seed_coverages = {}
     corpus_size = 1e7
     corpus_source = 'Assumed field size'
     unknown_count = 1.0
@@ -117,10 +156,17 @@ def fetch_dbef_branch(seed_papers, api_key=None, limit=200):
             except (DiscoveryCancelled,DiscoveryBudgetExceeded): raise
             except Exception as error: warnings.append(str(error)); continue
             if not work: continue
+            refs=references(work)
+            if not refs:
+                try:refs=seed_reference_fallback(paper,api_key)
+                except (DiscoveryCancelled,DiscoveryBudgetExceeded):raise
+                except Exception as error:warnings.append(str(error))
             meta = openalex_to_metadata(work)
             seeds.append(SeedPaper(work_id(work.get('id')),meta.get('title') or paper.get('title') or '',
-                                   meta.get('abstract') or paper.get('abstract') or '',references(work),seed_index))
+                                   meta.get('abstract') or paper.get('abstract') or '',refs,seed_index,
+                                   citation_count(work.get('referenced_works_count'))))
             seed_works.append(work)
+            seed_coverages[seed_index]=reference_coverage(len(refs),work.get('referenced_works_count'))
         ids = _balanced_reference_ids(seeds,MAX_REFERENCE_METADATA)
         # Batches carry texts and real citation counts for weighting; never one
         # HTTP lookup per reference, and no arbitrary first-four reference pivot.
@@ -154,7 +200,7 @@ def fetch_dbef_branch(seed_papers, api_key=None, limit=200):
             corpus_size = sum(field_sizes.values())
             corpus_source = 'OpenAlex field totals'
         if seeds and ids:
-            embedder = TfidfEmbedder(check=check_cancelled)
+            embedder = TfidfEmbedder(max_df=1,check=check_cancelled)
             embedder.fit([(seed.title,seed.abstract) for seed in seeds]+list(ref_texts.values()))
             weights, _ = compute_seed_reference_weights(seeds,ref_texts,counts,embedder,
                 n_corpus=corpus_size,unknown_count=unknown_count)
@@ -189,7 +235,7 @@ def fetch_dbef_branch(seed_papers, api_key=None, limit=200):
     finally:
         REQUEST_CONTEXT.deadline = previous_deadline
     check_cancelled()
-    records, summary = _rank(raw,seeds,ref_texts,counts,corpus_size,limit,unknown_count)
+    records, summary = _rank(raw,seeds,ref_texts,counts,corpus_size,limit,unknown_count,seed_coverages)
     records.warning = ' · '.join(dict.fromkeys(warnings))
     summary['corpusSizeSource'] = corpus_source
     summary['resolvedSeedCount'] = len(seeds)

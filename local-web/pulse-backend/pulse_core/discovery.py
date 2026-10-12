@@ -10,6 +10,7 @@ import urllib.parse
 from pulse_core.constants import ClientError
 from pulse_core.config_resolvers import resolve_semantic_scholar_api_key, resolve_core_api_key
 from pulse_core.discovery_queries import build_query_plan, search_query_plan
+from pulse_core.concept_search import validate_discovery_request, prepare_concept_search, concept_query_plan
 from pulse_core.discovery_semantics import semantic_scores, pre_embed_papers
 from pulse_core.discovery_crossencoder import crossencoder_scores
 from pulse_core.discovery_feedback import feedback_for_context
@@ -342,19 +343,31 @@ def fetch_conceptual_search_branch(seed_papers, api_key=None, steer_keywords=Non
     return records
 
 
-def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
-    seed_papers = payload.get("seedPapers") or payload.get("papers") or []
-    if not seed_papers:
-        raise ClientError(400, "Select at least one seed paper to run the literature discovery pipeline.")
+def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_candidates=None):
+    seed_papers, concept_query = validate_discovery_request(payload)
+    if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
+    if concept_query:
+        # Topic searches have no synthetic seed, citation links or seed exclusions.
+        payload = dict(payload, researchQuestion=concept_query, bridgeMode=False)
+        if not any((payload.get('searchSources') or {}).get(name, True) for name in ('semanticScholar','europePmc','core')) and not payload.get('fullTextSearch'):
+            raise ClientError(400, 'Choose at least one source for concept search.')
     if payload.get('bridgeMode') and len(distinct_seeds(seed_papers)) < 2:
         raise ClientError(400, 'Select at least two different seed papers to find bridge papers.')
     if payload.get('bridgeMode') and len(distinct_seeds(seed_papers)) > 8:
         raise ClientError(400, 'Use up to eight different seed papers for one bridge search.')
     started = time.monotonic()
     settings = _core.load_settings()
+    concept_search = None
+    if concept_query:
+        if on_progress: on_progress({'stage':'keywords', 'searchMode':'concept', 'searchQuery':concept_query})
+        concept_search = prepare_concept_search(concept_query, settings, cancel_event)
     api_key = resolve_semantic_scholar_api_key(settings)
     branches = payload.get("branches") or {}
+    if concept_query:
+        branches = {'citationGraph':False, 'citationNetwork':False, 'citationCoCitation':False, 'semanticSearch':False, 'lexicalSearch':True}
     steer_keywords = steering_terms(payload.get("steerKeywords") or payload.get("keywords") or [])
+    if concept_search:
+        steer_keywords = steering_terms(concept_search['keywords'] + steer_keywords)
     exclude_keywords = steering_terms(payload.get("excludeKeywords") or [])
     limit = discovery_limit(payload.get("limit"))
     include_iterative = bool(payload.get("includeIterativeChase", False))
@@ -369,11 +382,14 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         tasks["citationGraph"] = lambda: _core.fetch_citation_graph_branch(seed_papers, api_key=api_key, include_iterative_chase=include_iterative, limit=limit, depth=payload.get("depth"))
     if branches.get("citationNetwork", True):
         tasks["citationNetwork"] = lambda: fetch_citation_network_branch(seed_papers, api_key=api_key, limit=limit)
+    if branches.get('citationCoCitation',branches.get('citationNetwork',True)):
+        from pulse_core.cocitation_discovery import fetch_cocitation_branch
+        tasks['citationCoCitation']=lambda:fetch_cocitation_branch(seed_papers,api_key=api_key,limit=limit)
     if branches.get("semanticSearch", True):
         tasks["semanticSearch"] = lambda: fetch_semantic_search_branch(seed_papers, api_key=api_key, limit=limit, feedback=feedback)
     if branches.get("lexicalSearch", branches.get("lexicalConceptual", True)):
         sources = payload.get("searchSources") or {}
-        query_plan = build_query_plan(seed_papers,steer_keywords,str(payload.get('researchQuestion') or '')[:1000],feedback)
+        query_plan = concept_query_plan(concept_search, payload.get('steerKeywords'), feedback) if concept_search else build_query_plan(seed_papers,steer_keywords,str(payload.get('researchQuestion') or '')[:1000],feedback)
         if payload.get('bridgeMode'):
             focused = bridge_queries(seed_papers)
             query_plan = focused + query_plan
@@ -408,11 +424,14 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         "impactTilt": payload.get("impactTilt") or 0,
         "citationVelocityPrior": payload.get("citationVelocityPrior", True),
         "foundationalPrior": payload.get("foundationalPrior", True),
+        "impute_missing_graph":payload.get('impute_missing_graph','median'),
+        "graph_imputation_shrink":payload.get('graph_imputation_shrink',.5),
         "limit": limit,
         "relevanceFeedback": feedback,
         "_matchCalibration": settings.get('searchMatchCalibration'),
         "bridgeMode": bool(payload.get('bridgeMode')),
         "_originalSeeds": seed_papers,
+        "_feedbackSemantic": {},
     }
     fast_mode = bool(payload.get('fastEmbed'))
     semantic_enabled = bool(payload.get('semanticRerank', True))
@@ -492,7 +511,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
                 "total": total,
             })
     if on_progress:
-        on_progress({"total": len(tasks)})
+        on_progress({"total": len(tasks), "stage":"collecting", "conceptSearch":concept_search})
     try:
         results, executed, errors = parallel_branches(tasks, progress, cancel_event)
     finally:
@@ -503,6 +522,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
             embed_thread.join(timeout=.05)
     retrieval_seconds = time.monotonic()-started
     ordered = {name: results.get(name, []) for name in tasks}
+    if on_candidates:on_candidates(ordered,seed_papers,options)
     if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
     if on_progress: on_progress({'stage':'ranking','completed':len(executed)+len(errors),'total':len(tasks)})
     REQUEST_CONTEXT.cancel_event = cancel_event
@@ -511,7 +531,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
             options['_semanticReranker'] = lambda queries,records: semantic_scores(
                 settings, queries, records, cancel_event,
                 focus_first=bool(options['researchQuestion']),
-                fast_mode=fast_mode
+                fast_mode=fast_mode,feedback=feedback,feedback_scores=options['_feedbackSemantic']
             )
         if payload.get('pairwiseRerank', True):
             options['_pairwiseReranker'] = lambda queries,records: crossencoder_scores(settings,queries,records,cancel_event)
@@ -525,12 +545,16 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     return {
         "ok": True,
         "provider": "Pulse literature discovery",
+        "searchMode": "concept" if concept_query else "related",
+        "searchQuery": concept_query,
+        "conceptSearch": concept_search,
         "stage":"complete",
         "rankingNotice": options.get('_rankingNotice'),
         "queryPlan": query_plan,
         "candidateCount": options.get('_candidateCount', len(ranked)),
         "retrievalLimitPerSource": retrieval_limit,
         "feedbackApplied": len(feedback),
+        "feedbackConcepts":options.get('_feedbackConcepts'),
         "bridgeCount": sum(p.get('isBridge', False) for p in ranked),
         "bridgeMode": bool(payload.get('bridgeMode')),
         "aiReviewedCount": options.get('_aiReviewedCount', 0),
@@ -545,6 +569,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         "providerContributions": contributions(results),
         "queriesExecuted": {name:getattr(rows,"queries_executed",[]) for name,rows in results.items()},
         "dbef": getattr(results.get("citationNetwork"), "dbef_summary", {}),
+        "networkEvidence":options.get('_networkEvidence'),
         "seedCount": len(seed_papers),
         "branchesExecuted": executed,
         "recommendations": ranked,

@@ -9,12 +9,27 @@ from pulse_core.platform_support import config_directory
 from pulse_core.config_resolvers import resolve_embedding_model, resolve_ollama_tags_endpoint
 from pulse_core.embeddings import cosine
 from pulse_core.discovery_queries import text_for_paper
+from pulse_core.discovery_feedback import paper_key
 from pulse_performance import DiscoveryCancelled, REQUEST_CONTEXT, request_json, cached_embeddings
 
 _cache = collections.OrderedDict()
 _models = {}
 _lock = threading.RLock()
 _inference_lock = threading.Lock()
+
+
+def embedding_text(paper):
+    keywords=paper.get('paperKeywords') or paper.get('keywords') or []
+    if isinstance(keywords,str):keywords=[keywords]
+    abstract=str(paper.get('abstract') or '')
+    if len(abstract)>3000:abstract=abstract[:2100]+'\n'+abstract[-900:]
+    passages=' '.join(str(p.get('text') or '')[:500] for p in (paper.get('matchedPassages') or [])[:2])
+    return '\n'.join([str(paper.get('title') or '')[:1000],abstract,'; '.join(map(str,keywords[:16]))[:500],passages])
+
+
+def query_text(value):
+    value=str(value)
+    return value if len(value)<=4000 else value[:3000]+'\n'+value[-1000:]
 
 
 def local_model(settings, fast_mode=False):
@@ -143,25 +158,36 @@ def pre_embed_papers(settings, records, cancel_event=None, fast_mode=False, quer
         _check(cancel_event, stop_event, float('inf'))
         endpoint, model = local_model(settings, fast_mode=fast_mode)
         if not model: return
-        texts = [str(q)[:12000] for q in queries or []] + [text_for_paper(p)[:16000] for p in records]
+        texts = [query_text(q) for q in queries or []] + [embedding_text(p) for p in records]
         _resolve((endpoint, model), texts, cancel_event, time.monotonic()+4, stop_event)
     except Exception:
         # Warmup is optional. Completed batches remain in the shared cache.
         pass
 
 
-def semantic_scores(settings, queries, records, cancel_event=None, focus_first=False, fast_mode=False):
+def semantic_scores(settings, queries, records, cancel_event=None, focus_first=False, fast_mode=False, feedback=None, feedback_scores=None):
     _check(cancel_event, None, float('inf'))
     endpoint, model = local_model(settings, fast_mode=fast_mode)
     if not model: return None, 'Text and citation ranking · local semantic ranking unavailable'
-    texts = [str(q)[:12000] for q in queries] + [text_for_paper(p)[:16000] for p in records]
+    labels=feedback or []
+    positive=[row for row in labels if row['grade']>0][-6:]
+    negative=[row for row in labels if row['grade']==0][-6:]
+    labels=positive+negative if positive and negative else []
+    texts = [query_text(q) for q in queries] + [embedding_text(p) for p in records]
+    label_texts=[embedding_text(row['paper']) for row in labels]
     try:
-        resolved = _resolve((endpoint, model), texts, cancel_event, time.monotonic()+12)
+        resolved = _resolve((endpoint, model), texts+label_texts, cancel_event, time.monotonic()+10)
         query_vectors = [resolved[text] for text in texts[:len(queries)]]
         scores = []
         for text in texts[len(queries):]:
             similarities = [max(0, cosine(query, resolved[text])) for query in query_vectors]
             scores.append(.75*similarities[0]+.25*max(similarities[1:], default=0) if focus_first else max(similarities, default=0))
+        if labels and feedback_scores is not None:
+            positive_vectors=[resolved[text] for row,text in zip(labels,label_texts) if row['grade']>0]
+            negative_vectors=[resolved[text] for row,text in zip(labels,label_texts) if row['grade']==0]
+            for paper,text in zip(records,texts[len(queries):]):
+                vector=resolved[text]
+                feedback_scores[paper_key(paper)]=sum(cosine(vector,v) for v in positive_vectors)/len(positive_vectors)-sum(cosine(vector,v) for v in negative_vectors)/len(negative_vectors)
         return scores, 'Titles and abstracts ranked by meaning, text and citation evidence'
     except DiscoveryCancelled:
         raise

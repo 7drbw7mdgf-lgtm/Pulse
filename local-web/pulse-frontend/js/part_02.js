@@ -192,7 +192,7 @@ const discoveryBoundCheckboxes=new WeakSet();
 
     // ─── Discovery review workspace (1.7.1) ───
     const DISCOVERY_SOURCE_LABELS = {
-      citationGraph: 'Citations', citationNetwork: 'DBEF', semanticSearch: 'Semantic',
+      citationGraph: 'Citations', citationCoCitation: 'Co-citation', citationNetwork: 'DBEF', semanticSearch: 'Semantic',
       lexicalConceptual: 'Semantic Scholar', europePmc: 'Europe PMC', core: 'CORE', fullText: 'Full-text'
     };
     const DISCOVERY_WHY_GROUPS = {
@@ -307,7 +307,7 @@ const discoveryBoundCheckboxes=new WeakSet();
     function discoveryPlannedSources(options) {
       const planned = [];
       if(options.fullTextSearch)planned.push('fullText');
-      for (const key of ['citationGraph', 'citationNetwork', 'semanticSearch']) if (options.branches?.[key]) planned.push(key);
+      for (const key of ['citationGraph', 'citationNetwork', 'citationCoCitation', 'semanticSearch']) if (options.branches?.[key]) planned.push(key);
       if (options.branches?.lexicalSearch) {
         if (options.searchSources?.semanticScholar !== false) planned.push('lexicalConceptual');
         if (options.searchSources?.europePmc) planned.push('europePmc');
@@ -427,6 +427,7 @@ const discoveryBoundCheckboxes=new WeakSet();
             ${Number.isFinite(item.score) ? `<span class="dv-score" title="Scores are relative within this search, not probabilities">${Math.round(item.score)} / 100 relative</span>` : ''}
           </div>
           <h3 class="dv-preview-title">${escapeHtml(cleanDiscoveryTitle(item.title))}</h3>
+          ${typeof publicationMarkup==='function'?publicationMarkup(item):''}
           <div class="dv-preview-meta">
             <p>${escapeHtml(discoveryAuthorLine(item, 6))}${publication ? ` · ${escapeHtml(publication)}` : ''}</p>
           </div>
@@ -506,10 +507,12 @@ const discoveryBoundCheckboxes=new WeakSet();
       const oldPreviewKey=state.discoveryFocusKey;
       const seed = searching?.seed || state.discoverySeed;
       const seedTitle = cleanDiscoveryTitle(seed?.title || 'Selected seed paper');
+      const conceptMode=Boolean(seed?.isConceptQuery);
       const strengthCount = id => totalItems.filter(item => discoveryStrength(item) === id).length;
 
       const title = document.getElementById('discoveryModalTitle');
-      if (title) title.textContent = 'Literature discovery';
+      if (title) title.textContent = conceptMode?'Concept search':'Literature discovery';
+      const eyebrow=document.getElementById('discoveryModalEyebrow');if(eyebrow)eyebrow.textContent=conceptMode?'Papers matching your concept':'Related to your seed paper';
       if (els.discoveryModalSubtitle) els.discoveryModalSubtitle.textContent = seedTitle;
       if (els.discoveryModal.dataset) {
         els.discoveryModal.dataset.pane = state.discoveryMobilePane || 'results';
@@ -522,9 +525,16 @@ const discoveryBoundCheckboxes=new WeakSet();
           : `<strong>${totalItems.length} papers</strong> · <span>${strengthCount('strong')} strong</span> · <span>${strengthCount('related')} related</span> · <span>${strengthCount('explore')} to explore</span>`;
       }
       const runInfo = discoveryRunInfoForModal();
+      const conceptSummary=document.getElementById('discoveryConceptSummary');
+      if(conceptSummary){
+        const intent=searching?.job?.conceptSearch||runInfo.conceptSearch;
+        conceptSummary.hidden=!conceptMode||!intent;
+        conceptSummary.innerHTML=conceptMode&&intent?'<strong>'+(intent.aiAssisted?'AI search keywords':'Search keywords')+'</strong>'+intent.keywords.map(term=>`<span class="dv-keyword">${escapeHtml(term)}</span>`).join('')+(intent.aiAssisted?'':`<small>${escapeHtml(intent.notice)}</small>`):'';
+      }
       const refine = document.getElementById('discoveryRefineFeedback');
       if (refine) {
-        const feedback = typeof discoveryFeedbackPayload === 'function' ? discoveryFeedbackPayload(selectedPapersForRecommendation(),discoveryConfiguration()).relevanceFeedback : [];
+        const context=state.discoveryRunContext;
+        const feedback = typeof discoveryFeedbackPayload === 'function' ? discoveryFeedbackPayload(context?.seedPapers||selectedPapersForRecommendation(),{...discoveryConfiguration(),researchQuestion:context?.researchQuestion||discoveryConfiguration().researchQuestion}).relevanceFeedback : [];
         refine.hidden = !feedback.length; refine.disabled = searching;
         refine.textContent = 'Refine with feedback (' + feedback.length + ')';
       }
@@ -543,6 +553,11 @@ const discoveryBoundCheckboxes=new WeakSet();
         }).join('');
       }
       if (details && runInfo.dbef?.method) details.innerHTML += '<div>DBEF: '+escapeHtml(runInfo.dbef.candidateCount+' candidates · '+runInfo.dbef.referenceCount+' seed references · '+runInfo.dbef.corpusSizeSource)+'</div>';
+      if (details && runInfo.feedbackConcepts) {
+        const concepts=runInfo.feedbackConcepts;
+        if(concepts.prefer?.length)details.innerHTML += '<div>'+escapeHtml('Feedback favors: '+concepts.prefer.join(', '))+'</div>';
+        if(concepts.avoid?.length)details.innerHTML += '<div>'+escapeHtml('Feedback lowers: '+concepts.avoid.join(', '))+'</div>';
+      }
       if (details) details.innerHTML += rows.map(row => `<div>${escapeHtml(row.name)}: ${escapeHtml(row.detail)}</div>`).join('');
       const notice = document.getElementById('discoverySourceNotice');
       if (notice) {
@@ -560,7 +575,7 @@ const discoveryBoundCheckboxes=new WeakSet();
           const percent = job.stage === 'ranking' ? 95 : Math.round(85 * (job.completed || 0) / Math.max(1, job.total || rows.length || 1));
           progress.innerHTML = `
             <div class="dv-progress-head">
-              <strong>${job.stage === 'ranking' ? 'Ranking results…' : `Searching ${rows.length || ''} source${rows.length === 1 ? '' : 's'}…`}</strong>
+              <strong>${job.stage === 'keywords' ? 'Preparing search keywords…' : job.stage === 'ranking' ? 'Ranking results…' : `Searching ${rows.length || ''} source${rows.length === 1 ? '' : 's'}…`}</strong>
               <span>${job.total ? `${job.completed || 0} of ${job.total} done · ` : ''}${totalItems.length} candidates so far · ${discoveryElapsed(searching.startedAt)} elapsed</span>
               <span class="dv-progress-bar"><span style="width:${percent}%"></span></span>
               <button type="button" class="dv-btn" data-dv-action="stop-review">Stop and review</button>
@@ -746,7 +761,7 @@ const discoveryBoundCheckboxes=new WeakSet();
           downloadRecordFile('pulse-discovery-selection.ris', recordRis(papers), 'application/x-research-info-systems');
           showToast(`Exported ${papers.length} citation${papers.length === 1 ? '' : 's'}.`);
         } else if (action === 'open-options' && typeof setDiscoveryOptionsOpen === 'function') { closeDiscoveryModal(); setDiscoveryOptionsOpen(true); }
-        else if (action === 'run-again' && typeof runDiscoveryPipeline === 'function') runDiscoveryPipeline();
+        else if (action === 'run-again' && typeof repeatDiscoverySearch === 'function') repeatDiscoverySearch();
       });
       els.discoveryModal.addEventListener('change', event => {
         const input = event.target;

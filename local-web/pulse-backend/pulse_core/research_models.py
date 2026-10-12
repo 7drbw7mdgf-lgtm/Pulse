@@ -18,8 +18,8 @@ def triage(records, question, settings, cancel=None):
     """Only a shortlist is reviewed. Unknowns and failed batches keep their rank."""
     reviewed = 0
     started = time.monotonic()
-    total_budget = 60
-    for offset in range(0, min(30, len(records)), 5):
+    total_budget = 8
+    for offset in range(0, min(10, len(records)), 5):
         if cancel and cancel.is_set(): raise DiscoveryCancelled()
         remaining_total = total_budget - (time.monotonic() - started)
         if remaining_total <= 1.0: break
@@ -35,7 +35,7 @@ def triage(records, question, settings, cancel=None):
             'messages': [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt}], 'format': 'json',
             'stream': False, 'options': {'temperature': 0, 'num_predict': 500, 'num_ctx': 8192}, 'keep_alive': '5m'}).encode(),
             headers={'Content-Type': 'application/json'})
-        batch_timeout = max(.5, min(20, remaining_total))
+        batch_timeout = max(.5, min(4, remaining_total))
         try:
             with LOCAL_HTTP.open(request, timeout=batch_timeout) as response:
                 data = json.load(response)

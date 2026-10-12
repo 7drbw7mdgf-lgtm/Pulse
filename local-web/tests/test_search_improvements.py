@@ -122,7 +122,7 @@ class SearchImprovementsTests(unittest.TestCase):
         options={'limit':500,'_pairwiseReranker':neural,'diversify':False}
         found=rank({'major':records,'independent':[novel]},[SEED],options)
         self.assertEqual(len(found),500);self.assertEqual(options['_candidateCount'],801)
-        self.assertIn(novel['doi'],[p['doi'] for p in captured]);self.assertEqual(len(captured),75)
+        self.assertIn(novel['doi'],[p['doi'] for p in captured]);self.assertEqual(len(captured),48)
         self.assertEqual(found[0]['doi'],novel['doi'])
 
     def test_missing_model_keeps_all_candidates(self):

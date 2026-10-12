@@ -22,6 +22,29 @@
 
 ![Pulse Discovery Review Workspace — synthetic example](docs/images/pulse-1.7.11-discovery.png)
 
+## Concept search (source update)
+
+Type a concept, key phrases or a research question into **Find papers**, then press **Enter** or **Search papers**. No seed paper or existing library is required. Pulse uses the configured AI to extract focused keywords and close synonyms, searches the selected literature indexes, and ranks results against the original topic with the existing semantic and cross-encoder stages when available. The results show the search keywords and support filters, previews, relevance feedback and adding selected papers to the library or map.
+
+The original phrase always remains a retrieval query. Keyword expansion has an eight-second request timeout; missing models, unavailable AI or invalid output fall back to phrase search with a clear notice. **Run again** and **Refine with feedback** retain the original topic even after another paper is selected. **Discover related** continues to use selected seed papers. This source update is not included in the published 1.7.11 installers linked above.
+
+## DBEF calibration and citation channels (source update)
+
+DBEF now uses a seed-derived saturation scale, records assessed overlap, assessed zero and unavailable graph evidence separately, and imputes missing graph support conservatively by default. Co-citation runs as its own eight-second branch beside direct citations and coupling. The velocity bonus is still counted once. Ranking caches are versioned to bypass older results.
+
+The frozen three-case and five-seed benchmarks include condensed nDCG, known-paper/landmark recall, per-channel assessment and every judged paper’s rank delta. Results are mixed; these eight cases cannot establish significance. See [the calibration guide](docs/search/DBEF-CALIBRATION.md) and [per-case benchmark reports](docs/search/RANKING-BENCHMARK.md). These changes are source updates, not a new published installer.
+
+## Research quality and speed (source update)
+
+- **Evidence-weighted DBEF:** incomplete bibliographies and weak shared-reference links contribute less, while direct citation evidence keeps its own weight.
+- **Better relevance feedback:** positive and negative examples teach question-specific preferred and rejected concepts, with optional embedding contrast for synonyms. Search details explain the profile.
+- **Stronger citation checks:** column-aware reference extraction and bundled local English OCR support scanned PDFs. DOI verification also checks supplied initials, journal, volume, issue, pages and precise dates; conflicts stay reviewable.
+- **Publication updates:** linked preprints and published versions are grouped. Selected verified papers show recorded corrections, concerns and retraction notices with DOI links.
+- **Faster ranking:** balanced shortlists of 96 embeddings and 48 single-excerpt cross-encoder scores, score caching and indexed version matching reduce repeated work while retaining the full result pool. The synthetic neural check on the test Mac dropped from 20.9 to 13.4 seconds; provider collection is excluded.
+- **Forty mixed-topic benchmark questions:** open the local review tool from Settings. Twenty biomedical questions use SciFact human evidence labels. General-topic and landmark proposals require human review; the runner excludes provisional judgments by default and refuses to fit DBEF without sufficient reviewed, seeded cases.
+
+See [the implementation and benchmark guide](docs/search/QUALITY-UPGRADE.md) for measured timings, source outages, review steps and limitations. These source changes are not included in the published installers linked above; no empirically fitted DBEF policy has been activated.
+
 ## What’s new in 1.7.11
 
 - **Bibliography-first lookup:** author–year citations use the selected paper’s full reference list before online search, including explicit `2026a`/`2026b` suffixes. Bibliography tails survive long PDF imports and workspace recovery.
@@ -63,6 +86,7 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 | **Your Library & Notes** | On your computer only (`~/Library/Application Support/pulse` on macOS, `%LOCALAPPDATA%\Pulse` on Windows). |
 | **PDFs & Extracted Text** | Read, indexed, and stored entirely on your computer. Never uploaded. |
 | **AI Summaries & Analysis** | Processed by local Ollama models on your GPU/CPU. |
+| **Concept Search Keywords** | Extracted by the configured AI, locally by default. If you configure cloud AI, your typed topic is sent to that provider. Extracted phrases and the original topic are sent to the selected scholarly indexes. |
 | **Accounts & Tracking** | None. No account required, no telemetry, no tracking cookies. |
 | **Scholarly Lookups** | Pulse sends public paper identifiers (DOIs, titles, search keywords) to open scholarly APIs (Crossref, OpenAlex, Europe PMC, Semantic Scholar, CORE) just like a web browser lookup. |
 

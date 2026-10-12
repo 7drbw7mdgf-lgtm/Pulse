@@ -3,7 +3,7 @@ import re
 from .doi_utils import normalize_doi, ranked_doi_candidates
 from .metadata_resolution import extract_text_metadata
 
-HEADING = re.compile(r'^\s*(?:\d+[.\s]+)?(?:references(?: and notes)?|bibliography|literature cited|works cited|reference list)\s*:?\s*$', re.I | re.M)
+HEADING = re.compile(r'^\s*(?:\d+[.\s]+)?(?:references(?: and notes)?|bibliography|literature cited|works cited|reference list|références|bibliografía|referências|literaturverzeichnis)\s*:?\s*$', re.I | re.M)
 YEAR = re.compile(r'\b((?:18|19|20)\d{2})([a-z]?)\b', re.I)
 
 
@@ -19,6 +19,7 @@ def split_references(text):
         line = line.strip()
         if not line or re.fullmatch(r'\d{1,4}', line):
             continue
+        if HEADING.fullmatch(line):continue
         numbered = bool(re.match(r'^(?:\[\d{1,4}\]|\d{1,4}[.)])\s+', line))
         dated_author = bool(re.match(r"^[^\W\d_][\w\s,.'’&\-‐‑–]{2,220}\s*\((?:18|19|20)\d{2}[a-z]?\)", line))
         author_initials = bool(re.match(r"^[^\W\d_][\w\s'’\-‐‑–]{1,70},\s*(?:[A-Z]\.[\s-]*)+", line))
@@ -34,18 +35,25 @@ def reference_metadata(reference):
     # The author's date is before the article title in author–year references.
     dated = re.search(r'\(((?:18|19|20)\d{2})([a-z]?)\)', raw[:500], re.I)
     metadata = extract_text_metadata(raw)
+    original_authors=list(metadata.get('authors') or [])
     if dated:
         prefix = raw[:dated.start()].strip(' ,')
         families = re.findall(r"(?:^|[,;&]\s*|\band\s+)([^\W\d_][\w\s'’\-‐‑–]{1,70}?),\s*(?:[A-Z]\.[\s-]*)+", prefix)
+        details=[{'family':match[1].strip(' ,&'),'given':match[2]} for match in re.finditer(r"(?:^|[,;&]\s*|\band\s+)([^\W\d_][\w\s'’\-‐‑–]{1,70}?),\s*((?:[A-Z]\.[\s-]*)+)",prefix)]
+        if details:metadata['referenceAuthorDetails']=details
         if not families:
             families = [name.strip(' .,') for name in re.split(r';|\s+and\s+|\s*&\s*', re.sub(r'\s+et\s+al\.?$', '', prefix, flags=re.I))]
         metadata['authors'] = families
         metadata['year'] = dated[1]
         metadata['referenceYearSuffix'] = dated[2].lower()
+        if not metadata.get('title'):
+            short=raw[dated.end():].strip(' .').split('. ',1)[0]
+            if 2<=len(short)<=300 and not short.lower().startswith(('http','doi')):metadata['title']=short
     else:
         # Numbered/Vancouver records already yield author strings, title and date.
         families = [re.sub(r'\s+[A-Z]{1,4}$', '', name).strip() for name in metadata.get('authors') or []]
         metadata['authors'] = families
+        metadata['referenceAuthorDetails']=original_authors
         year = YEAR.search(raw)
         metadata['referenceYearSuffix'] = year[2].lower() if year else ''
     doi = next(iter(ranked_doi_candidates(raw)), '')

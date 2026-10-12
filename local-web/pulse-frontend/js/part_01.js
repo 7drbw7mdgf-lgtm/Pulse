@@ -31,6 +31,7 @@ const state = {
       discoveryBranches: {
         citationGraph: true,
         citationNetwork: true,
+        citationCoCitation: true,
         semanticSearch: true,
         lexicalSearch: true,
       },

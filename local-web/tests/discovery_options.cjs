@@ -4,7 +4,7 @@ function node(id,dataset={}){const classes=new Set();return{id,dataset,hidden:fa
 const ids={};for(const id of ['discoveryOptionsPopup','discoveryOptionsButton','discoveryOptionsSummary','inspectorDiscoveryOptions','discoveryOptionsClose','discoveryOptionsDone','discoveryKeywordOptions','discoverySteerInput','discoveryExcludeInput','discoveryGraphFocusInput','discoveryResultLimit','ribbonDiscoverButton','ribbonDiscoveryTab','ribbonReferencesTab','ribbonDiscoveryPanel','ribbonReferencesPanel','discoveryResearchQuestion','discoveryStrictExcludeInput','discoveryDiversify','discoveryRunProgress','discoveryProgressText','discoveryProgressBar','discoveryCancelSearch','discoveryViewResults'])ids[id]=node(id);
 ids.discoveryOptionsPopup.hidden=true;
 ids.workspaceRibbon=node('workspaceRibbon');
-const methods=['citations','network','semantic','concepts'].map(method=>node('',{method})),depths=['1','2','3','iterative'].map(depth=>node('',{depth})),specials=['seminal','recent'].map(special=>node('',{special})),summary=node('summary');
+const methods=['citations','network','cocitation','semantic','concepts'].map(method=>node('',{method})),depths=['1','2','3','iterative'].map(depth=>node('',{depth})),specials=['seminal','recent'].map(special=>node('',{special})),summary=node('summary');
 const sources=['semanticScholar','europePmc','core'].map(searchSource=>node('',{searchSource}));
 ids.discoveryOptionsPopup.querySelectorAll=s=>s==='[data-method]'?methods:s==='[data-depth]'?depths:s==='[data-special]'?specials:s==='[data-search-source]'?sources:[];ids.discoveryOptionsPopup.querySelector=()=>methods[0];
 const state={discoveryBranches:{citationGraph:true,citationNetwork:true,semanticSearch:true,lexicalSearch:true},discoveryDepth:'2',recommendationSteerKeywords:[],recommendationExcludeKeywords:[],recommendationAuthors:[],recommendationJournals:[],graphSteerKeywords:[],recommendationRecencyTilt:0,recommendationImpactTilt:0,recommendations:new Map(),discoveryResults:[]};
@@ -14,6 +14,7 @@ vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(frontend,'di
 const helpers=fs.readFileSync(path.join(frontend,'part_13.js'),'utf8');vm.runInContext(helpers.slice(0,helpers.indexOf('    function setRecommendationSteerOpen')),context);
 const pipeline=fs.readFileSync(path.join(frontend,'part_18.js'),'utf8');vm.runInContext(pipeline.slice(pipeline.indexOf('    async function runDiscoveryPipeline'),pipeline.indexOf('    function addSeminalPaperToMap')),context);
 context.initDiscoveryControls();assert.equal(summary.textContent,'All methods · 2-hop');
+assert(context.discoveryConfigurationKey().startsWith('dbef-seed-scale-v2::'),'Old ranking caches must be bypassed');
 assert.equal(ids.discoveryResultLimit.value,'500','New workspaces default to 500 results');
 ids.ribbonReferencesTab.click();assert.equal(ids.ribbonDiscoveryPanel.hidden,true);assert.equal(ids.ribbonReferencesPanel.hidden,false);assert.equal(ids.ribbonReferencesTab.attributes['aria-selected'],'true');assert.equal(requests.length,0,'Tabs only change the visible tools');
 ids.ribbonReferencesTab.click();assert.equal(ids.ribbonReferencesPanel.hidden,true,'Pressing the active tab again collapses its tools');assert.equal(ids.ribbonDiscoveryPanel.hidden,true);assert.equal(ids.ribbonReferencesTab.attributes['aria-selected'],'true');assert.equal(ids.ribbonReferencesTab.attributes['aria-expanded'],'false');assert(ids.workspaceRibbon.classList.contains('is-collapsed'));
@@ -38,14 +39,14 @@ context.setDiscoveryOptionsOpen(true,false,'inspectorDiscoveryOptions');assert.e
  const sourceKey=context.recommendationKey(seeds);sources[0].click();assert.notEqual(context.recommendationKey(seeds),sourceKey);assert.equal(requests.length,1,'Changing sources must not execute a search');
  depths[0].click();await context.runDiscoveryPipeline();assert.equal(requests[1].depth,'1');assert.equal(requests[1].includeIterativeChase,false);
  assert.equal(requests[1].searchSources.semanticScholar,false);assert.equal(requests[1].searchSources.europePmc,true);assert.equal(requests[1].searchSources.core,true);
- for(const method of methods)if(state.discoveryBranches[({citations:'citationGraph',network:'citationNetwork',semantic:'semanticSearch',concepts:'lexicalSearch'})[method.dataset.method]])method.click();
+ for(const method of methods)if(state.discoveryBranches[({citations:'citationGraph',network:'citationNetwork',cocitation:'citationCoCitation',semantic:'semanticSearch',concepts:'lexicalSearch'})[method.dataset.method]])method.click();
  await context.runDiscoveryPipeline();assert.equal(requests.length,2,'No methods must not silently run all methods');
  methods[0].click();let finish;
  context.fetch=(url,options)=>{requests.push(JSON.parse(options.body));return new Promise(resolve=>{finish=()=>resolve({ok:true,json:async()=>({recommendations:[{title:'Delayed fixture'}]})});});};
  const pending=context.runDiscoveryPipeline();await context.runDiscoveryPipeline();assert.equal(requests.length,3,'Concurrent discovery must not duplicate requests');
  seeds=[{id:'two',title:'Different synthetic paper'}];finish();await pending;assert.equal(opened.length,2,'A delayed result must not open over a different selected paper');assert.equal(state.discoveryLoading,false);
  const key=context.recommendationKey(seeds);depths[3].click();assert.notEqual(context.recommendationKey(seeds),key);assert.equal(summary.textContent,ids.discoveryOptionsSummary.textContent);
- assert(sources.every(source=>source.disabled),'Source controls require the Concepts method');
+ assert(sources.every(source=>!source.disabled),'Standalone concept search sources remain configurable when the seed Concepts method is off');
  ids.discoveryResearchQuestion.value='How does abstract retrieval improve ranking?';ids.discoveryResearchQuestion.events.input({currentTarget:ids.discoveryResearchQuestion});
  ids.discoveryStrictExcludeInput.value='unrelated topic';ids.discoveryStrictExcludeInput.events.change({currentTarget:ids.discoveryStrictExcludeInput});
  ids.discoveryDiversify.checked=false;ids.discoveryDiversify.events.change({currentTarget:ids.discoveryDiversify});

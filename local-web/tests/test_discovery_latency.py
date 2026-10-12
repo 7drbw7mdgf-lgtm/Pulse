@@ -29,7 +29,7 @@ class ShortlistTests(unittest.TestCase):
         captured = {}
         def scorer(name):
             def run(queries, rows):
-                captured[name] = rows
+                captured.setdefault(name,[]).extend(rows)
                 return [1 if p['doi'].endswith('rare') else .5 for p in rows], 'fixture'
             return run
         records = [paper(i) for i in range(800)]
@@ -38,11 +38,11 @@ class ShortlistTests(unittest.TestCase):
         found = rank({'major': records, 'independent': [rare]}, [SEED], options)
         self.assertEqual(len(found), 500)
         self.assertEqual(options['_candidateCount'], 801)
-        self.assertEqual(len(captured['meaning']), 150)
-        self.assertEqual(len(captured['pairwise']), 75)
+        self.assertEqual(len(captured['meaning']), 96)
+        self.assertEqual(len(captured['pairwise']), 48)
         for rows in captured.values(): self.assertIn(rare['doi'], [p['doi'] for p in rows])
-        self.assertEqual(options['_semanticCount'], 150)
-        self.assertEqual(options['_pairwiseCount'], 75)
+        self.assertEqual(options['_semanticCount'], 96)
+        self.assertEqual(options['_pairwiseCount'], 48)
         self.assertTrue(all(value >= 0 for value in options['_rankingTimings'].values()))
 
 

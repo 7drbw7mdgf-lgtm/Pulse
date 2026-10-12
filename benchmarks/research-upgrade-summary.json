@@ -1,0 +1,84 @@
+{
+  "formatVersion": 1,
+  "date": "2026-10-12",
+  "scope": "Development-source checks on the test Mac; neither a published installer nor a complete human-judged relevance evaluation.",
+  "latency": {
+    "before": {
+      "scope": "Synthetic latency workloads on this device; excludes provider collection and relevance-quality evaluation.",
+      "cpu": {
+        "inputCount": 2000,
+        "returnedCount": 500,
+        "seconds": 2.9658
+      },
+      "neural": {
+        "seconds": 20.851,
+        "embeddingSeconds": 12.089,
+        "pairwiseSeconds": 8.62,
+        "rankingSeconds": 20.851,
+        "embeddingRecords": 150,
+        "pairwiseRecords": 75,
+        "semanticCount": 0,
+        "pairwiseCount": 75,
+        "notice": "Titles and abstracts assessed together with your research question."
+      },
+      "repeat": {
+        "seconds": 10.126,
+        "embeddingSeconds": 2.57,
+        "pairwiseSeconds": 7.409,
+        "rankingSeconds": 10.126
+      }
+    },
+    "after": {
+      "scope": "Synthetic latency workloads on this device; excludes provider collection and relevance-quality evaluation.",
+      "cpu": {
+        "inputCount": 2000,
+        "returnedCount": 500,
+        "seconds": 0.6242
+      },
+      "neural": {
+        "seconds": 13.363,
+        "embeddingSeconds": 7.049,
+        "pairwiseSeconds": 6.202,
+        "rankingSeconds": 13.363,
+        "embeddingRecords": 96,
+        "pairwiseRecords": 48,
+        "semanticCount": 96,
+        "pairwiseCount": 48,
+        "notice": "Titles and abstracts assessed together with your research question."
+      },
+      "repeat": {
+        "seconds": 0.126,
+        "embeddingSeconds": 0.005,
+        "pairwiseSeconds": 0.006,
+        "rankingSeconds": 0.125
+      }
+    },
+    "cacheConditions": "Fresh per-run embedding storage; already installed local models. Identical synthetic workloads; provider collection excluded. Baseline embeddings hit the time budget, while updated embeddings succeeded."
+  },
+  "liveBenchmark": {
+    "questionCount": 40,
+    "domains": {
+      "biomedical": 20,
+      "general research": 20
+    },
+    "means": {
+      "nDCG@10": 0.1885,
+      "KnownPrecision@10": 0.025,
+      "KnownRecall": 0.225,
+      "Hole@10": 0.9625
+    },
+    "casesWithResults": 39,
+    "medianSeconds": 17.729999999999997,
+    "medianTimeToFirstResults": 4.412,
+    "providerLimitations": "Semantic Scholar lexical and CORE searches failed in all 40 runs. Europe PMC supplied results. These runs cannot establish full-source recall or compare algorithm versions fairly.",
+    "judgmentLimitations": "20 biomedical questions use SciFact human evidence annotations. General-topic, distractor and landmark proposals require human review. Unknown results are unjudged, not negative. All default cases are seed-free and contain no DBEF evidence."
+  },
+  "dbefTuning": {
+    "adopted": false,
+    "reason": "At least three reviewed DBEF-supported cases per split are required; no policy was learned from missing or unjudged evidence.",
+    "eligibleCases": 0,
+    "train": 0,
+    "validation": 0,
+    "test": 0
+  }
+}

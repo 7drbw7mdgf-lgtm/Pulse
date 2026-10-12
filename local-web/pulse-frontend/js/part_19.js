@@ -111,6 +111,8 @@
           bibliographyText: paper.bibliographyText || extractBibliographyText(paper.text || ""),
           referenceText: String(paper.referenceText || '').slice(0,12000), citationMatch: paper.citationMatch || null, bibliographyParent: paper.bibliographyParent || null,
           metadataVerification: paper.metadataVerification || null, publicationDates: paper.publicationDates || {},
+          publicationStatus:paper.publicationStatus||null,publicationRelations:paper.publicationRelations||[],publicationNotices:paper.publicationNotices||[],publicationRole:paper.publicationRole||'',isRetracted:paper.isRetracted===true,
+          authorDetails:paper.authorDetails || [],referenceAuthorDetails:paper.referenceAuthorDetails || [], referenceEntries:paper.referenceEntries || [], bibliographyProvenance:paper.bibliographyProvenance || null,
           authors: paper.authors || [],
           date: paper.date || '',
           year: paper.year || '',
@@ -190,7 +192,7 @@
       state.recommendationAuthors = parseSteerList(listText(data.recommendationAuthors), 10);
       state.recommendationJournals = parseSteerList(listText(data.recommendationJournals), 10);
       state.graphSteerKeywords = parseSteerList(listText(data.graphSteerKeywords), 12);
-      state.discoveryBranches = Object.fromEntries(['citationGraph','citationNetwork','semanticSearch','lexicalSearch'].map(key => [key,data.discoveryBranches?.[key] !== false]));
+      state.discoveryBranches = Object.fromEntries(['citationGraph','citationNetwork','citationCoCitation','semanticSearch','lexicalSearch'].map(key => [key,data.discoveryBranches?.[key] !== false]));
       state.discoverySearchSources = Object.fromEntries(['semanticScholar','europePmc','core'].map(key => [key,data.discoverySearchSources?.[key] !== false]));
       state.discoveryDepth = ['1','2','3','iterative'].includes(String(data.discoveryDepth)) ? String(data.discoveryDepth) : '1';
       state.discoveryLimit = [50,100,500,1000,2000].includes(Number(data.discoveryLimit)) ? Number(data.discoveryLimit) : 500;

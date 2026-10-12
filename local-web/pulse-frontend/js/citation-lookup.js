@@ -26,6 +26,8 @@ function renderCitationCandidates() {
   const container=document.getElementById('citationLookupResults');
   container.innerHTML=citationLookup.groups.map((group,i)=>`<section class="citation-lookup-group">
     <h3>${escapeHtml(group.citation)}</h3>${group.lookupStrategy==='bibliography'?'<p class="subtle">Matched to the selected paper’s full reference list.</p>':''}
+    ${group.lookupStrategy==='bibliography'&&citationLookup.parent?.bibliographyProvenance?.ocrPages?.length?'<p class="subtle">References were read with local OCR. Check the chosen reference against the PDF.</p>':''}
+    ${group.lookupStrategy==='bibliography'&&citationLookup.parent?.bibliographyProvenance?.warnings?.length?'<p class="subtle">Some pages could not be fully read. Check the reference list before choosing a match.</p>':''}
     ${group.suffix&&group.lookupStrategy!=='bibliography'?'<p class="subtle">The year suffix identifies an entry in the original bibliography. Choose its title below.</p>':''}
     ${group.partial?'<p class="record-feedback">One source is unavailable. These matches are from the responding source.</p>':''}
     ${group.candidates.length?`<ul>${group.candidates.map((paper,j)=>`<li><label><input type="radio" name="citation-group-${i}" data-citation-group="${i}" data-citation-index="${j}"><span><strong>${escapeHtml(paper.title)}</strong><small>${escapeHtml((paper.authors||[]).join(', '))} · ${escapeHtml(paper.year||'')} ${paper.journal?' · '+escapeHtml(paper.journal):''}</small><small>${escapeHtml(paper.doi?'DOI: '+paper.doi:'No DOI indexed')} · ${escapeHtml((paper.lookupSources||[paper.metadataSource]).filter(Boolean).join(' + '))}</small></span></label>${paper.doi?`<a href="https://doi.org/${escapeHtml(normalizeDoi(paper.doi))}" target="_blank" rel="noreferrer">Open paper ↗</a>`:''}</li>`).join('')}</ul>`:
@@ -59,7 +61,7 @@ async function searchInTextCitations(text,context='') {
 }
 async function addInTextCitations(text) {
   const paper=state.papers.find(p=>p.id===state.selectedId);
-  citationLookup.parent=paper?{id:paper.id,title:paper.title,bibliographyText:paper.bibliographyText||extractBibliographyText(paper.text||''),text:paper.text||''}:null;
+  citationLookup.parent=paper?{id:paper.id,title:paper.title,bibliographyText:paper.bibliographyText||extractBibliographyText(paper.text||''),text:paper.text||'',referenceEntries:paper.referenceEntries||[],bibliographyProvenance:paper.bibliographyProvenance||null}:null;
   const input=document.getElementById('citationUseBibliography');input.checked=Boolean(citationLookup.parent?.bibliographyText);input.disabled=!citationLookup.parent?.bibliographyText;
   document.getElementById('citationBibliographyLabel').textContent=citationLookup.parent?.bibliographyText?'Use bibliography from '+paper.title:paper?'No bibliography text available for the selected paper':'Select a paper to use its bibliography';
   document.getElementById('citationLookupContext').value='';

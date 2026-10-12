@@ -197,6 +197,7 @@ def _scan_file_for_metadata_local(payload):
     return {"ok": True, "doi": candidates[0] if candidates else "", "candidates": candidates[:4],
             "title": parsed.get("title") or "", "text": text, "bibliographyText": bibliography, "metadata": parsed,
             "extractionSource": document.get("extractionSource"),
+            "bibliographyProvenance":document.get('bibliographyProvenance'),
             "textAvailable": bool(text), "pageCount": document.get("pageCount")}
 
 

@@ -15,7 +15,9 @@ os.environ.setdefault('PULSE_CONFIG_DIR',tempfile.mkdtemp(prefix='pulse-dbef-tes
 import pulse_core as core
 from pulse_core import dbef_content as scoring, dbef_discovery as retrieval, discovery
 from pulse_core.discovery_queries import search_query_plan
-from pulse_core.pipeline_ranking import merge_and_rank_pipeline_candidates as hybrid
+from pulse_core.pipeline_ranking import merge_and_rank_pipeline_candidates as hybrid,foundational_support
+from pulse_core.cocitation_discovery import fetch_cocitation_branch
+from pulse_source_health import ProviderCooldown
 from pulse_core.discovery_matches import independent_channel_count
 from pulse_core.discovery_bridges import apply_bridges
 from pulse_performance import REQUEST_CONTEXT, DiscoveryCancelled, DiscoveryBudgetExceeded, request_json
@@ -134,7 +136,7 @@ class DBEFRetrievalTests(unittest.TestCase):
 
     def test_pipeline_returns_dbef_scores_and_summary_with_no_legacy_search(self):
         payload={'seedPapers':[{'title':self.seed['title']}], 'semanticRerank':False,'pairwiseRerank':False,
-                 'branches':{'citationGraph':False,'citationNetwork':True,'semanticSearch':False,'lexicalSearch':False}}
+                 'branches':{'citationGraph':False,'citationNetwork':True,'citationCoCitation':False,'semanticSearch':False,'lexicalSearch':False}}
         with patch.object(core,'load_settings',return_value={}), \
              patch.object(core,'openalex_work_for_paper',return_value=self.seed), \
              patch.object(core,'fetch_json',side_effect=self.metadata), \
@@ -164,6 +166,145 @@ class DBEFRetrievalTests(unittest.TestCase):
         ranked=hybrid({'citationNetwork':[record]},[{'title':'Bicycle lane safety'}],{'diversify':False})
         self.assertEqual(ranked[0]['scoreBreakdown']['citationVelocityPrior'],0)
         self.assertEqual(ranked[0]['scoreBreakdown']['dbef']['velocityFactor'],2)
+
+
+class DBEFScalingAndMissingTests(unittest.TestCase):
+    def test_three_states_are_reported_without_adding_zero_overlap_to_top_k(self):
+        seed=scoring.SeedPaper('S','Retrieval methods','',['R'])
+        candidates=[scoring.CandidatePaper('yes','Methods','',['R'],None),
+                    scoring.CandidatePaper('zero','Other','',['X'],None),
+                    scoring.CandidatePaper('count-known','Other','',[],None,20),
+                    scoring.CandidatePaper('unknown','Other','',[],None)]
+        ranked,diag=scoring.score_and_rank_candidates(candidates,[seed],{}, {})
+        self.assertEqual([r.paper.paper_id for r in ranked],['yes'])
+        self.assertEqual(diag['network_status_ids'],{'assessed_overlap':['yes'],'assessed_zero':['zero','count-known'],'unassessed':['unknown']})
+
+    def test_seed_anchor_weak_saturation_and_high_specificity_overlap(self):
+        seed=scoring.SeedPaper('S','Retrieval','',[str(i) for i in range(40)])
+        scale=scoring.seed_scale([seed],{str(i):10 for i in range(40)})
+        self.assertAlmostEqual(scoring.saturate_score(scale['s1'],scale),.15)
+        self.assertLessEqual(scoring.saturate_score(scale['s1'],scale),.20)
+        self.assertGreaterEqual(scoring.saturate_score(8*10/math.sqrt(40+15),scale),.6)
+        self.assertEqual(scale['inputs']['velocityFactor'],1)
+
+    def test_actual_weak_and_eight_specific_reference_scores_use_the_seed_scale(self):
+        seed=scoring.SeedPaper('S','Scientific search relevance','Document retrieval',[str(i) for i in range(16)],reference_count=40)
+        texts={str(i):('Scientific search relevance','Document retrieval') for i in range(16)}
+        counts={str(i):10 for i in range(16)};counts['0']=1000000
+        weak=scoring.CandidatePaper('weak','Generic geological materials','Unrelated',['0'],None,40)
+        strong=scoring.CandidatePaper('strong',seed.title,seed.abstract,[str(i) for i in range(1,9)],None,40)
+        found,diag=scoring.score_and_rank_candidates([weak,strong],[seed],counts,texts,stable_seed_calibration=True)
+        scores={row.paper.paper_id:scoring.saturate_score(row.score,diag['scale']) for row in found}
+        self.assertLessEqual(scores['weak'],.20);self.assertGreaterEqual(scores['strong'],.6)
+
+    def test_adding_a_weak_candidate_cannot_recalibrate_existing_scores(self):
+        seed=scoring.SeedPaper('S','Scientific document retrieval','Semantic indexing',['R','Q'],reference_count=40)
+        texts={'R':('Scientific retrieval','Semantic indexing'),'Q':('Document search','Research')}
+        a=scoring.CandidatePaper('A','Scientific document retrieval','Semantic indexing',['R','Q'],None,40)
+        weak=scoring.CandidatePaper('B','Ocean sediment','Mineral chemistry',['R'],None,100)
+        first,d1=scoring.score_and_rank_candidates([a],[seed],{'R':20,'Q':50},texts,stable_seed_calibration=True)
+        second,d2=scoring.score_and_rank_candidates([a,weak],[seed],{'R':20,'Q':50},texts,stable_seed_calibration=True)
+        other=next(row for row in second if row.paper.paper_id=='A')
+        self.assertEqual(d1['scale'],d2['scale']);self.assertEqual(first[0].score,other.score)
+        self.assertEqual(scoring.saturate_score(first[0].score,d1['scale']),scoring.saturate_score(other.score,d2['scale']))
+
+    def test_default_median_imputation_differs_from_assessed_zero(self):
+        rows=[{'title':'Search paper A','doi':'10.1234/paper-a','networkSimilarity':.4},
+              {'title':'Search paper B','doi':'10.1234/paper-b','networkSimilarity':0.},
+              {'title':'Search paper C','doi':'10.1234/paper-c'}]
+        options={'researchQuestion':'Search paper','diversify':False,'foundationalPrior':False,'citationVelocityPrior':False}
+        ranked=hybrid({'concepts':rows},[],options);by={p['doi']:p for p in ranked}
+        self.assertEqual(options['_networkEvidence']['imputedValue'],.1)
+        self.assertTrue(by['10.1234/paper-c']['scoreBreakdown']['graphImputed'])
+        self.assertEqual(by['10.1234/paper-c']['scoreBreakdown']['citationEvidence'],.1)
+        self.assertEqual(by['10.1234/paper-b']['networkStatus'],'assessed_zero')
+        self.assertEqual(by['10.1234/paper-b']['scoreBreakdown']['citationEvidence'],0)
+        self.assertIsNone(by['10.1234/paper-c']['networkSimilarity'])
+
+    def test_renormalize_option_divides_only_missing_graph_hybrid_by_point_88(self):
+        row={'title':'Search paper','doi':'10.1234/paper-a'}
+        options={'researchQuestion':'Search paper','diversify':False,'foundationalPrior':False,'citationVelocityPrior':False}
+        zero=hybrid({'concepts':[row]},[],dict(options,impute_missing_graph='zero'))[0]
+        renorm=hybrid({'concepts':[row]},[],dict(options,impute_missing_graph='renormalize'))[0]
+        self.assertEqual(zero['score'],88);self.assertEqual(renorm['score'],100)
+        self.assertAlmostEqual(renorm['scoreBreakdown']['preliminaryScore'],zero['scoreBreakdown']['preliminaryScore']/.88,places=5)
+        self.assertTrue(renorm['scoreBreakdown']['graphRenormalized'])
+        self.assertFalse(hybrid({'concepts':[{**row,'networkSimilarity':0}]},[],dict(options,impute_missing_graph='renormalize'))[0]['scoreBreakdown']['graphRenormalized'])
+
+    def test_direct_citation_graph_is_real_and_never_imputed(self):
+        row={'title':'Search paper','hop':2}
+        ranked=hybrid({'citationGraph':[row]},[],{'researchQuestion':'Search paper','impute_missing_graph':'renormalize'})[0]
+        self.assertEqual(ranked['scoreBreakdown']['citationEvidence'],.5)
+        self.assertFalse(ranked['scoreBreakdown']['graphImputed']);self.assertFalse(ranked['scoreBreakdown']['graphRenormalized'])
+        self.assertEqual(ranked['matchStrengthVersion'],'evidence-v5-dbef-seed-scale')
+
+    def test_assessed_zero_information_survives_a_different_retrieval_channel(self):
+        from pulse_core.search_limits import SearchResults
+        dbef=SearchResults();dbef.network_assessments={'10.1234/paper-a':{'networkStatus':'assessed_zero','networkSimilarity':0.}}
+        found=hybrid({'citationNetwork':dbef,'concepts':[{'doi':'10.1234/paper-a','title':'Search paper'}]},[],{})[0]
+        self.assertEqual(found['networkStatus'],'assessed_zero');self.assertEqual(found['networkSimilarity'],0)
+
+    def test_seed_reference_fallback_is_batched_once_and_skips_cooldown(self):
+        paper={'doi':'10.1234/seed','title':'Search paper'}
+        with patch.object(core,'s2_fetch_references',return_value=[{'doi':'10.1234/ref'}]) as refs, \
+             patch.object(core,'fetch_json',return_value={'results':[work('W200',doi='https://doi.org/10.1234/ref')]}) as fetch:
+            self.assertEqual(retrieval.seed_reference_fallback(paper),['W200']);self.assertEqual(refs.call_count,1)
+            self.assertIn('doi%3A',fetch.call_args.args[0])
+        with patch('pulse_source_health.check_source',side_effect=ProviderCooldown('Semantic Scholar',60)),patch.object(core,'s2_fetch_references') as refs:
+            self.assertEqual(retrieval.seed_reference_fallback(paper),[]);refs.assert_not_called()
+
+    def test_three_citation_channels_execute_in_parallel(self):
+        gate=threading.Barrier(3)
+        def branch(*args,**kwargs):gate.wait(timeout=2);return []
+        payload={'seedPapers':[{'title':'Scientific search'}],'semanticRerank':False,'pairwiseRerank':False,
+                 'branches':{'citationGraph':True,'citationNetwork':True,'citationCoCitation':True,'semanticSearch':False,'lexicalSearch':False}}
+        with patch.object(core,'load_settings',return_value={}),patch.object(core,'fetch_citation_graph_branch',side_effect=branch), \
+             patch.object(discovery,'fetch_citation_network_branch',side_effect=branch), \
+             patch('pulse_core.cocitation_discovery.fetch_cocitation_branch',side_effect=branch):
+            result=discovery.run_discovery_pipeline(payload)
+        self.assertEqual(result['errors'],{});self.assertEqual(set(result['branchesExecuted']),{'citationGraph','citationNetwork','citationCoCitation'})
+
+    def test_cocitation_keeps_early_results_when_a_later_seed_hits_its_budget(self):
+        seed=work('W100');citer=work('W500',refs=['W100','W200'])
+        with patch.object(core,'openalex_work_for_paper',side_effect=[seed,DiscoveryBudgetExceeded()]), \
+             patch.object(core,'openalex_citing_works',return_value=[citer]), \
+             patch.object(core,'fetch_json',return_value={'results':[work('W200')]}):
+            result=fetch_cocitation_branch([{'title':'First'},{'title':'Second'}])
+        self.assertEqual(len(result),1);self.assertEqual(result.notices[0]['code'],'cocitation-limit')
+
+    def test_cocitation_deduplicates_the_same_citing_paper_across_seeds(self):
+        citer=work('W500',refs=['W100','W101','W200'])
+        with patch.object(core,'openalex_work_for_paper',side_effect=[work('W100'),work('W101')]), \
+             patch.object(core,'openalex_citing_works',return_value=[citer,citer]), \
+             patch.object(core,'fetch_json',return_value={'results':[work('W200')]}):
+            result=fetch_cocitation_branch([{'title':'First'},{'title':'Second'}])
+        self.assertEqual(result[0]['coCitationCount'],1)
+        self.assertEqual(result[0]['retrievalEvidence'][0]['seedIndices'],[0,1])
+
+    def test_graph_configuration_validates_and_custom_shrink_changes_only_imputation(self):
+        from pulse_core.concept_search import validate_discovery_request
+        with self.assertRaises(core.ClientError):validate_discovery_request({'searchMode':'concept','query':'Search','impute_missing_graph':'unsupported'})
+        with self.assertRaises(core.ClientError):validate_discovery_request({'searchMode':'concept','query':'Search','graph_imputation_shrink':2})
+        options={'researchQuestion':'Search','graph_imputation_shrink':.25}
+        hybrid({'concepts':[{'title':'Search A','doi':'10.1234/known','networkSimilarity':.8},{'title':'Search B','doi':'10.1234/unknown'}]},[],options)
+        self.assertEqual(options['_networkEvidence']['imputedValue'],.2)
+
+    def test_cocitation_has_its_own_budget_batches_and_foundational_evidence(self):
+        seed=work('W100',refs=['W1']);citing=work('W500',refs=['W100','W200'])
+        REQUEST_CONTEXT.deadline=50
+        def lookup(url,**kwargs):
+            self.assertLessEqual(REQUEST_CONTEXT.deadline,time.monotonic()+8)
+            self.assertIn('openalex_id%3AW200',url)
+            return {'results':[work('W200',cited_by_count=500)]}
+        try:
+            with patch.object(core,'openalex_work_for_paper',return_value=seed),patch.object(core,'openalex_citing_works',return_value=[citing]),patch.object(core,'fetch_json',side_effect=lookup):
+                # Use a future parent deadline; the branch restores it exactly.
+                REQUEST_CONTEXT.deadline=time.monotonic()+50;prior=REQUEST_CONTEXT.deadline
+                found=fetch_cocitation_branch([{'title':'Search paper'}])
+                self.assertEqual(REQUEST_CONTEXT.deadline,prior)
+            self.assertEqual(found[0]['subType'],'Co-citation');self.assertGreater(foundational_support(found[0],.8),0)
+            self.assertEqual(found[0]['retrievalEvidence'][0]['channel'],'citationCoCitation')
+        finally:REQUEST_CONTEXT.deadline=None
 
 
 class RedundantRequestTests(unittest.TestCase):

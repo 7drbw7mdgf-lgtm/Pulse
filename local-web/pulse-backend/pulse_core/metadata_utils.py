@@ -84,6 +84,7 @@ def openalex_pages(item):
     return first + ('-' + last if first and last and last != first else '')
 
 def crossref_to_metadata(item):
+    from .publication_records import crossref_publication_data
     if not isinstance(item, dict):
         return {}
     title = clean_crossref_text(first_list_value(item.get("title") or ""))
@@ -104,6 +105,7 @@ def crossref_to_metadata(item):
         "title": title,
         "primaryTitle": clean_crossref_text(first_list_value(item.get("title") or "")), "subtitle": subtitle,
         "authors": authors,
+        "authorDetails": [{key:author[key] for key in ('given','family','ORCID','name') if author.get(key)} for author in item.get('author') or [] if isinstance(author,dict)],
         "year": year,
         "journal": journal,
         "doi": doi,
@@ -119,6 +121,7 @@ def crossref_to_metadata(item):
         "url": str(item.get("URL") or ''), "articleNumber": str(item.get("article-number") or ''),
         "isbn": "; ".join(item.get("ISBN") or []), "language": str(item.get("language") or ''),
         "publicationType": str(item.get("type") or ''),
+        **crossref_publication_data(item),
         "keywords": "; ".join(item.get("subject") or []),
     }
 
@@ -162,6 +165,7 @@ def openalex_to_metadata(item):
         "citationCountsByYear": item.get('counts_by_year') if isinstance(item.get('counts_by_year'),list) else [],
         "field": ((item.get("primary_topic") or {}).get("field") or {}).get("display_name") or "",
         "metadataSource": "OpenAlex",
+        "isRetracted":item.get('is_retracted') is True,
         "volume": str((item.get("biblio") or {}).get("volume") or ""),
         "issue": str((item.get("biblio") or {}).get("issue") or ""),
         "pages": openalex_pages(item), "date": str(item.get("publication_date") or ''),
@@ -176,6 +180,19 @@ def merge_metadata(base, incoming):
     res = dict(base or {})
     for k, v in (incoming or {}).items():
         if k in {"citationCount", "citedByCount", "citationCountSource", "citationCountsBySource"}:
+            continue
+        if k in {'publicationRelations', 'publicationNotices'} and isinstance(v, list):
+            combined = list(res.get(k) or [])
+            for row in v:
+                if isinstance(row, dict) and row not in combined:
+                    combined.append(dict(row))
+            res[k] = combined
+            continue
+        if k == 'publicationDates' and isinstance(v, dict):
+            res[k] = {**v, **(res.get(k) or {})}
+            continue
+        if k == 'isRetracted':
+            res[k] = res.get(k) is True or v is True
             continue
         if v and not res.get(k):
             res[k] = v

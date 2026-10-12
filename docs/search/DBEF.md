@@ -1,6 +1,6 @@
 # DBEF shared-reference discovery
 
-Pulse’s DBEF method replaces the separate legacy co-citation search and first-four-reference bibliographic search. Direct citations, Semantic Scholar recommendations, concept searches across selected indexes and optional local full-text retrieval remain complementary ways to find papers without a shared indexed bibliography.
+Pulse’s DBEF method replaces the legacy first-four-reference bibliographic search. The development source restores co-citation as a separate bounded channel alongside DBEF. Direct citations, Semantic Scholar recommendations, concept searches across selected indexes and optional local full-text retrieval remain complementary ways to find papers without a shared indexed bibliography.
 
 ## How it works
 
@@ -18,7 +18,7 @@ The corpus size is the sum of available primary-field totals when all selected f
 
 ## Limits and interpretation
 
-Collection shares a 12-second deadline, preserves shorter parent deadlines and keeps collected results when the cap is reached. Reference metadata is batched and bounded to 400 references; up to 12 weighted pivots are balanced across seeds. Candidate retrieval and scoring remain a bounded sample of the index, not an exhaustive literature review. Content calibration is relative to the stage-one shortlist. The bound diagnostic describes that scoring stage; it is not a guarantee of globally best papers or complete indexed coverage.
+Collection shares a 12-second deadline, preserves shorter parent deadlines and keeps collected results when the cap is reached. Reference metadata is batched and bounded to 400 references; up to 12 weighted pivots are balanced across seeds. Candidate retrieval and scoring remain a bounded sample of the index, not an exhaustive literature review. The development source uses seed/reference-only content calibration and a fixed seed-derived saturation scale; see [calibration and missing-evidence handling](DBEF-CALIBRATION.md). The bound diagnostic describes that scoring stage; it is not a guarantee of globally best papers or complete indexed coverage.
 
 DBEF contributes one retrieval channel even when several pivots or seeds find the same paper. Its rank and graph score feed Pulse’s hybrid ranking and neural shortlists. Strong-match labels still require the existing relevance, top-decile and independent-channel checks. DBEF reference matches also provide explicit evidence for multi-seed bridges. The previous source/workspace key `citationNetwork` remains compatible and is labelled **DBEF** in the interface.
 

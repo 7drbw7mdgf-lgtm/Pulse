@@ -1,14 +1,322 @@
 {
+  "formatVersion": 2,
   "cases": [
     {
       "name": "Neural and lexical retrieval",
       "candidateCount": 122,
       "collectionSeconds": 0.801,
       "missingMetadata": [],
+      "networkStatusCounts": {
+        "assessed_overlap": 30,
+        "assessed_zero": 58,
+        "unassessed": 34
+      },
+      "dbefScale": {
+        "S0": 0.9362221060956966,
+        "s1": 0.1652156657815935,
+        "inputs": {
+          "medianSeedReferenceWeight": 1.9357615755797846,
+          "typicalSeedReferenceCount": 43,
+          "kappa": 15,
+          "lambda": 0.3,
+          "velocityFactor": 1,
+          "midContentFactor": 0.6499999999999999,
+          "available": true
+        }
+      },
+      "tags": {
+        "10.18653/v1/2020.emnlp-main.550": "contemporary",
+        "10.1145/3397271.3401075": "contemporary",
+        "10.1145/3404835.3463098": "contemporary",
+        "10.18653/v1/2023.eacl-main.148": "contemporary",
+        "10.1561/1500000019": "ancestor"
+      },
+      "before": {
+        "off": {
+          "nDCG@10": 0.1449,
+          "condensedNDCG@10": 0.7487,
+          "nDCG@20": 0.1449,
+          "condensedNDCG@20": 0.7487,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.1429,
+          "KnownRelevantRecall@50": 0.2857,
+          "LandmarkRecall@50": 0.0,
+          "KnownRelevantHits@20": 1,
+          "LandmarkHits@50": 0,
+          "missedLandmarks": [
+            "10.1145/3397271.3401075",
+            "10.1561/1500000019"
+          ],
+          "missedKnownPapers": [
+            "10.1145/3397271.3401075",
+            "10.1145/3404835.3463098",
+            "10.1561/1500000019",
+            "10.18653/v1/2023.eacl-main.148",
+            "10.48550/arxiv.1904.08375"
+          ],
+          "ranks": {
+            "10.1145/3397271.3401075": 81,
+            "10.1145/3404835.3463098": 105,
+            "10.1561/1500000019": 109,
+            "10.18653/v1/2020.emnlp-main.550": 1,
+            "10.18653/v1/2023.eacl-main.148": 65,
+            "10.48550/arxiv.1904.08375": 98,
+            "10.48550/arxiv.2104.08663": 42
+          },
+          "top20": [
+            "10.18653/v1/2020.emnlp-main.550",
+            "10.22541/au.175934564.40505248/v1",
+            "10.18653/v1/2022.findings-emnlp.39",
+            "10.1007/978-3-540-75148-9_11",
+            "10.18653/v1/2025.findings-acl.543",
+            "10.18653/v1/2025.emnlp-main.1345",
+            "10.1145/3572405",
+            "10.18653/v1/2021.emnlp-main.224",
+            "10.1145/3477495.3531685",
+            "10.1002/9781394336128.ch6",
+            "10.18653/v1/2023.findings-emnlp.480",
+            "10.21236/ada477634",
+            "10.1007/978-3-030-22948-1_25",
+            "10.2139/ssrn.6013934",
+            "10.32743/unitech.2026.145.4.22584",
+            "10.14778/3565816.3565819",
+            "10.3233/jifs-231328",
+            "10.18653/v1/2021.findings-acl.191",
+            "10.36244/icj.2025.4.1",
+            "10.1609/aaai.v37i4.25598"
+          ],
+          "unjudged@20": 19,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 0.0,
+            "contemporary": 0.25
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.2857,
+            "dbef": 0.0
+          },
+          "dbefScoredCandidates": 0
+        },
+        "on": {
+          "nDCG@10": 0.1449,
+          "condensedNDCG@10": 0.7487,
+          "nDCG@20": 0.1785,
+          "condensedNDCG@20": 0.7487,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.2857,
+          "KnownRelevantRecall@50": 0.2857,
+          "LandmarkRecall@50": 0.0,
+          "KnownRelevantHits@20": 2,
+          "LandmarkHits@50": 0,
+          "missedLandmarks": [
+            "10.1145/3397271.3401075",
+            "10.1561/1500000019"
+          ],
+          "missedKnownPapers": [
+            "10.1145/3397271.3401075",
+            "10.1145/3404835.3463098",
+            "10.1561/1500000019",
+            "10.48550/arxiv.1904.08375",
+            "10.48550/arxiv.2104.08663"
+          ],
+          "ranks": {
+            "10.1145/3397271.3401075": 66,
+            "10.1145/3404835.3463098": 90,
+            "10.1561/1500000019": 108,
+            "10.18653/v1/2020.emnlp-main.550": 1,
+            "10.18653/v1/2023.eacl-main.148": 19,
+            "10.48550/arxiv.1904.08375": 92,
+            "10.48550/arxiv.2104.08663": 52
+          },
+          "top20": [
+            "10.18653/v1/2020.emnlp-main.550",
+            "10.22541/au.175934564.40505248/v1",
+            "10.1007/978-3-540-75148-9_11",
+            "10.18653/v1/2025.findings-acl.543",
+            "10.18653/v1/2025.emnlp-main.1345",
+            "10.1145/3572405",
+            "10.18653/v1/2021.emnlp-main.224",
+            "10.1145/3477495.3531685",
+            "10.18653/v1/2022.findings-emnlp.39",
+            "10.1002/9781394336128.ch6",
+            "10.21236/ada477634",
+            "10.1007/978-3-030-22948-1_25",
+            "10.2139/ssrn.6013934",
+            "10.32743/unitech.2026.145.4.22584",
+            "10.14778/3565816.3565819",
+            "10.18653/v1/2021.findings-acl.191",
+            "10.36244/icj.2025.4.1",
+            "10.18653/v1/2024.findings-emnlp.791",
+            "10.18653/v1/2023.eacl-main.148",
+            "10.52436/1.jutif.2026.7.3.5776"
+          ],
+          "unjudged@20": 18,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 0.0,
+            "contemporary": 0.5
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.0,
+            "dbef": 0.2857
+          },
+          "dbefScoredCandidates": 30
+        }
+      },
+      "after": {
+        "off": {
+          "nDCG@10": 0.1449,
+          "condensedNDCG@10": 0.7487,
+          "nDCG@20": 0.1449,
+          "condensedNDCG@20": 0.7487,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.1429,
+          "KnownRelevantRecall@50": 0.2857,
+          "LandmarkRecall@50": 0.0,
+          "KnownRelevantHits@20": 1,
+          "LandmarkHits@50": 0,
+          "missedLandmarks": [
+            "10.1145/3397271.3401075",
+            "10.1561/1500000019"
+          ],
+          "missedKnownPapers": [
+            "10.1145/3397271.3401075",
+            "10.1145/3404835.3463098",
+            "10.1561/1500000019",
+            "10.18653/v1/2023.eacl-main.148",
+            "10.48550/arxiv.1904.08375"
+          ],
+          "ranks": {
+            "10.1145/3397271.3401075": 81,
+            "10.1145/3404835.3463098": 105,
+            "10.1561/1500000019": 109,
+            "10.18653/v1/2020.emnlp-main.550": 1,
+            "10.18653/v1/2023.eacl-main.148": 65,
+            "10.48550/arxiv.1904.08375": 98,
+            "10.48550/arxiv.2104.08663": 42
+          },
+          "top20": [
+            "10.18653/v1/2020.emnlp-main.550",
+            "10.22541/au.175934564.40505248/v1",
+            "10.18653/v1/2022.findings-emnlp.39",
+            "10.1007/978-3-540-75148-9_11",
+            "10.18653/v1/2025.findings-acl.543",
+            "10.18653/v1/2025.emnlp-main.1345",
+            "10.1145/3572405",
+            "10.18653/v1/2021.emnlp-main.224",
+            "10.1145/3477495.3531685",
+            "10.1002/9781394336128.ch6",
+            "10.18653/v1/2023.findings-emnlp.480",
+            "10.21236/ada477634",
+            "10.1007/978-3-030-22948-1_25",
+            "10.2139/ssrn.6013934",
+            "10.32743/unitech.2026.145.4.22584",
+            "10.14778/3565816.3565819",
+            "10.3233/jifs-231328",
+            "10.18653/v1/2021.findings-acl.191",
+            "10.36244/icj.2025.4.1",
+            "10.1609/aaai.v37i4.25598"
+          ],
+          "unjudged@20": 19,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 0.0,
+            "contemporary": 0.25
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.2857,
+            "dbef": 0.0
+          },
+          "dbefScoredCandidates": 0
+        },
+        "on": {
+          "nDCG@10": 0.1449,
+          "condensedNDCG@10": 0.7487,
+          "nDCG@20": 0.183,
+          "condensedNDCG@20": 0.7487,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.2857,
+          "KnownRelevantRecall@50": 0.2857,
+          "LandmarkRecall@50": 0.0,
+          "KnownRelevantHits@20": 2,
+          "LandmarkHits@50": 0,
+          "missedLandmarks": [
+            "10.1145/3397271.3401075",
+            "10.1561/1500000019"
+          ],
+          "missedKnownPapers": [
+            "10.1145/3397271.3401075",
+            "10.1145/3404835.3463098",
+            "10.1561/1500000019",
+            "10.48550/arxiv.1904.08375",
+            "10.48550/arxiv.2104.08663"
+          ],
+          "ranks": {
+            "10.1145/3397271.3401075": 67,
+            "10.1145/3404835.3463098": 92,
+            "10.1561/1500000019": 109,
+            "10.18653/v1/2020.emnlp-main.550": 1,
+            "10.18653/v1/2023.eacl-main.148": 13,
+            "10.48550/arxiv.1904.08375": 84,
+            "10.48550/arxiv.2104.08663": 52
+          },
+          "top20": [
+            "10.18653/v1/2020.emnlp-main.550",
+            "10.22541/au.175934564.40505248/v1",
+            "10.1007/978-3-540-75148-9_11",
+            "10.18653/v1/2022.findings-emnlp.39",
+            "10.18653/v1/2025.findings-acl.543",
+            "10.18653/v1/2025.emnlp-main.1345",
+            "10.18653/v1/2021.emnlp-main.224",
+            "10.1145/3572405",
+            "10.1145/3477495.3531685",
+            "10.1002/9781394336128.ch6",
+            "10.21236/ada477634",
+            "10.1007/978-3-030-22948-1_25",
+            "10.18653/v1/2023.eacl-main.148",
+            "10.2139/ssrn.6013934",
+            "10.32743/unitech.2026.145.4.22584",
+            "10.14778/3565816.3565819",
+            "10.18653/v1/2021.findings-acl.191",
+            "10.36244/icj.2025.4.1",
+            "10.18653/v1/2024.findings-emnlp.791",
+            "10.18653/v1/2022.acl-long.203"
+          ],
+          "unjudged@20": 18,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 0.0,
+            "contemporary": 0.5
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.0,
+            "dbef": 0.2857
+          },
+          "dbefScoredCandidates": 30
+        }
+      },
       "off": {
-        "nDCG@10": 0.0,
-        "KnownRelevantRecall@50": 0.1429,
-        "KnownRelevantHits@20": 0,
+        "nDCG@10": 0.1449,
+        "condensedNDCG@10": 0.7487,
+        "nDCG@20": 0.1449,
+        "condensedNDCG@20": 0.7487,
+        "bpref": null,
+        "KnownRelevantRecall@20": 0.1429,
+        "KnownRelevantRecall@50": 0.2857,
+        "LandmarkRecall@50": 0.0,
+        "KnownRelevantHits@20": 1,
         "LandmarkHits@50": 0,
         "missedLandmarks": [
           "10.1145/3397271.3401075",
@@ -18,48 +326,65 @@
           "10.1145/3397271.3401075",
           "10.1145/3404835.3463098",
           "10.1561/1500000019",
-          "10.18653/v1/2020.emnlp-main.550",
           "10.18653/v1/2023.eacl-main.148",
           "10.48550/arxiv.1904.08375"
         ],
         "ranks": {
-          "10.1145/3397271.3401075": 99,
-          "10.1145/3404835.3463098": 93,
-          "10.1561/1500000019": 105,
-          "10.18653/v1/2020.emnlp-main.550": 80,
-          "10.18653/v1/2023.eacl-main.148": 106,
-          "10.48550/arxiv.1904.08375": 97,
-          "10.48550/arxiv.2104.08663": 22
+          "10.1145/3397271.3401075": 81,
+          "10.1145/3404835.3463098": 105,
+          "10.1561/1500000019": 109,
+          "10.18653/v1/2020.emnlp-main.550": 1,
+          "10.18653/v1/2023.eacl-main.148": 65,
+          "10.48550/arxiv.1904.08375": 98,
+          "10.48550/arxiv.2104.08663": 42
         },
         "top20": [
-          "10.1007/978-3-540-75148-9_11",
-          "10.1007/978-3-030-22948-1_25",
-          "10.1145/3477495.3531685",
-          "10.1007/s00521-023-08562-5",
-          "10.21236/ada477634",
-          "10.18653/v1/2025.findings-acl.543",
-          "10.32743/unitech.2026.145.4.22584",
-          "10.18653/v1/2022.findings-emnlp.39",
+          "10.18653/v1/2020.emnlp-main.550",
           "10.22541/au.175934564.40505248/v1",
-          "10.14778/3565816.3565819",
-          "10.1016/j.array.2021.100101",
+          "10.18653/v1/2022.findings-emnlp.39",
+          "10.1007/978-3-540-75148-9_11",
+          "10.18653/v1/2025.findings-acl.543",
           "10.18653/v1/2025.emnlp-main.1345",
-          "10.63317/364iqsayfxvs",
-          "10.1109/imsa70415.2026.11700246",
-          "10.1162/tacl_a_00369",
-          "10.52436/1.jutif.2026.7.3.5776",
-          "10.2139/ssrn.7087840",
-          "10.1016/j.measurement.2026.122375",
-          "10.1609/aaai.v37i4.25598",
-          "10.1093/nsr/nwaa159"
+          "10.1145/3572405",
+          "10.18653/v1/2021.emnlp-main.224",
+          "10.1145/3477495.3531685",
+          "10.1002/9781394336128.ch6",
+          "10.18653/v1/2023.findings-emnlp.480",
+          "10.21236/ada477634",
+          "10.1007/978-3-030-22948-1_25",
+          "10.2139/ssrn.6013934",
+          "10.32743/unitech.2026.145.4.22584",
+          "10.14778/3565816.3565819",
+          "10.3233/jifs-231328",
+          "10.18653/v1/2021.findings-acl.191",
+          "10.36244/icj.2025.4.1",
+          "10.1609/aaai.v37i4.25598"
         ],
-        "rankingSeconds": 0.068,
+        "unjudged@20": 19,
+        "judgedRelevant": 7,
+        "judgedNonRelevant": 0,
+        "recallByTag@50": {
+          "ancestor": 0.0,
+          "contemporary": 0.25
+        },
+        "recallByChannel@50": {
+          "citationCoCitation": 0.0,
+          "citationGraph": 0.0,
+          "controlledPool": 0.2857,
+          "dbef": 0.0
+        },
         "dbefScoredCandidates": 0
       },
       "on": {
-        "nDCG@10": 0.0,
-        "KnownRelevantRecall@50": 0.1429,
-        "KnownRelevantHits@20": 0,
+        "nDCG@10": 0.1449,
+        "condensedNDCG@10": 0.7487,
+        "nDCG@20": 0.183,
+        "condensedNDCG@20": 0.7487,
+        "bpref": null,
+        "KnownRelevantRecall@20": 0.2857,
+        "KnownRelevantRecall@50": 0.2857,
+        "LandmarkRecall@50": 0.0,
+        "KnownRelevantHits@20": 2,
         "LandmarkHits@50": 0,
         "missedLandmarks": [
           "10.1145/3397271.3401075",
@@ -69,43 +394,158 @@
           "10.1145/3397271.3401075",
           "10.1145/3404835.3463098",
           "10.1561/1500000019",
-          "10.18653/v1/2020.emnlp-main.550",
-          "10.18653/v1/2023.eacl-main.148",
-          "10.48550/arxiv.1904.08375"
+          "10.48550/arxiv.1904.08375",
+          "10.48550/arxiv.2104.08663"
         ],
         "ranks": {
-          "10.1145/3397271.3401075": 99,
-          "10.1145/3404835.3463098": 93,
-          "10.1561/1500000019": 105,
-          "10.18653/v1/2020.emnlp-main.550": 80,
-          "10.18653/v1/2023.eacl-main.148": 106,
-          "10.48550/arxiv.1904.08375": 97,
-          "10.48550/arxiv.2104.08663": 22
+          "10.1145/3397271.3401075": 67,
+          "10.1145/3404835.3463098": 92,
+          "10.1561/1500000019": 109,
+          "10.18653/v1/2020.emnlp-main.550": 1,
+          "10.18653/v1/2023.eacl-main.148": 13,
+          "10.48550/arxiv.1904.08375": 84,
+          "10.48550/arxiv.2104.08663": 52
         },
         "top20": [
-          "10.1007/978-3-540-75148-9_11",
-          "10.1007/978-3-030-22948-1_25",
-          "10.1145/3477495.3531685",
-          "10.1007/s00521-023-08562-5",
-          "10.21236/ada477634",
-          "10.18653/v1/2025.findings-acl.543",
-          "10.32743/unitech.2026.145.4.22584",
-          "10.18653/v1/2022.findings-emnlp.39",
+          "10.18653/v1/2020.emnlp-main.550",
           "10.22541/au.175934564.40505248/v1",
-          "10.14778/3565816.3565819",
-          "10.1016/j.array.2021.100101",
+          "10.1007/978-3-540-75148-9_11",
+          "10.18653/v1/2022.findings-emnlp.39",
+          "10.18653/v1/2025.findings-acl.543",
           "10.18653/v1/2025.emnlp-main.1345",
-          "10.63317/364iqsayfxvs",
-          "10.1109/imsa70415.2026.11700246",
-          "10.1162/tacl_a_00369",
-          "10.52436/1.jutif.2026.7.3.5776",
-          "10.2139/ssrn.7087840",
-          "10.1016/j.measurement.2026.122375",
-          "10.1609/aaai.v37i4.25598",
-          "10.1093/nsr/nwaa159"
+          "10.18653/v1/2021.emnlp-main.224",
+          "10.1145/3572405",
+          "10.1145/3477495.3531685",
+          "10.1002/9781394336128.ch6",
+          "10.21236/ada477634",
+          "10.1007/978-3-030-22948-1_25",
+          "10.18653/v1/2023.eacl-main.148",
+          "10.2139/ssrn.6013934",
+          "10.32743/unitech.2026.145.4.22584",
+          "10.14778/3565816.3565819",
+          "10.18653/v1/2021.findings-acl.191",
+          "10.36244/icj.2025.4.1",
+          "10.18653/v1/2024.findings-emnlp.791",
+          "10.18653/v1/2022.acl-long.203"
         ],
-        "rankingSeconds": 0.082,
-        "dbefScoredCandidates": 0
+        "unjudged@20": 18,
+        "judgedRelevant": 7,
+        "judgedNonRelevant": 0,
+        "recallByTag@50": {
+          "ancestor": 0.0,
+          "contemporary": 0.5
+        },
+        "recallByChannel@50": {
+          "citationCoCitation": 0.0,
+          "citationGraph": 0.0,
+          "controlledPool": 0.0,
+          "dbef": 0.2857
+        },
+        "dbefScoredCandidates": 30
+      },
+      "rankDeltas": {
+        "dbefOffToOn": [
+          {
+            "paper": "10.1145/3397271.3401075",
+            "before": 81,
+            "after": 67,
+            "delta": 14,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1145/3404835.3463098",
+            "before": 105,
+            "after": 92,
+            "delta": 13,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1561/1500000019",
+            "before": 109,
+            "after": 109,
+            "delta": 0,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.18653/v1/2020.emnlp-main.550",
+            "before": 1,
+            "after": 1,
+            "delta": 0,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.18653/v1/2023.eacl-main.148",
+            "before": 65,
+            "after": 13,
+            "delta": 52,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.48550/arxiv.1904.08375",
+            "before": 98,
+            "after": 84,
+            "delta": 14,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.48550/arxiv.2104.08663",
+            "before": 42,
+            "after": 52,
+            "delta": -10,
+            "status": "ranked"
+          }
+        ],
+        "beforeToAfter": [
+          {
+            "paper": "10.1145/3397271.3401075",
+            "before": 66,
+            "after": 67,
+            "delta": -1,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1145/3404835.3463098",
+            "before": 90,
+            "after": 92,
+            "delta": -2,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1561/1500000019",
+            "before": 108,
+            "after": 109,
+            "delta": -1,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.18653/v1/2020.emnlp-main.550",
+            "before": 1,
+            "after": 1,
+            "delta": 0,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.18653/v1/2023.eacl-main.148",
+            "before": 19,
+            "after": 13,
+            "delta": 6,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.48550/arxiv.1904.08375",
+            "before": 92,
+            "after": 84,
+            "delta": 8,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.48550/arxiv.2104.08663",
+            "before": 52,
+            "after": 52,
+            "delta": 0,
+            "status": "ranked"
+          }
+        ]
       }
     },
     {
@@ -113,9 +553,300 @@
       "candidateCount": 121,
       "collectionSeconds": 1.24,
       "missingMetadata": [],
-      "on": {
-        "nDCG@10": 0.2096,
+      "networkStatusCounts": {
+        "assessed_overlap": 27,
+        "assessed_zero": 59,
+        "unassessed": 35
+      },
+      "dbefScale": {
+        "S0": 5.925746143337975,
+        "s1": 1.0457199076478778,
+        "inputs": {
+          "medianSeedReferenceWeight": 8.359569279380118,
+          "typicalSeedReferenceCount": 12,
+          "kappa": 15,
+          "lambda": 0.3,
+          "velocityFactor": 1,
+          "midContentFactor": 0.6499999999999999,
+          "available": true
+        }
+      },
+      "tags": {
+        "10.1002/asi.5090140103": "ancestor",
+        "10.1126/science.149.3683.510": "ancestor",
+        "10.1126/science.122.3159.108": "ancestor",
+        "10.1073/pnas.98.2.404": "contemporary",
+        "10.1038/s41598-019-41695-z": "contemporary"
+      },
+      "before": {
+        "off": {
+          "nDCG@10": 0.2273,
+          "condensedNDCG@10": 0.8068,
+          "nDCG@20": 0.2603,
+          "condensedNDCG@20": 0.8068,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.4286,
+          "KnownRelevantRecall@50": 0.5714,
+          "LandmarkRecall@50": 0.5,
+          "KnownRelevantHits@20": 3,
+          "LandmarkHits@50": 1,
+          "missedLandmarks": [
+            "10.1126/science.122.3159.108"
+          ],
+          "missedKnownPapers": [
+            "10.1038/s41598-019-41695-z",
+            "10.1088/1742-5468/2008/10/p10008",
+            "10.1126/science.122.3159.108"
+          ],
+          "ranks": {
+            "10.1002/asi.5090140103": 6,
+            "10.1038/s41598-019-41695-z": 52,
+            "10.1073/pnas.98.2.404": 3,
+            "10.1088/1742-5468/2008/10/p10008": 57,
+            "10.1103/physreve.69.026113": 33,
+            "10.1126/science.122.3159.108": 102,
+            "10.1126/science.149.3683.510": 20
+          },
+          "top20": [
+            "10.1002/pra2.2016.14505301131",
+            "10.1177/0165551520962775",
+            "10.1073/pnas.98.2.404",
+            "10.5958/0975-8089.2020.00008.1",
+            "10.1002/asi.21419",
+            "10.1002/asi.5090140103",
+            "10.1371/journal.pone.0251493",
+            "10.1108/oir-12-2020-0540",
+            "10.1002/meet.2008.1450450292",
+            "10.1023/a:1020458612014",
+            "10.2478/jdis-2024-0028",
+            "10.52352/jbh.v15i1.2459",
+            "10.1177/26314541221078909",
+            "10.3115/1599081.1599168",
+            "10.1007/s41109-019-0126-3",
+            "10.3233/kes-200025",
+            "10.1108/oir-12-2020-0540/v3/review1",
+            "10.1002/asi.22680",
+            "10.1177/01655515251322483",
+            "10.1126/science.149.3683.510"
+          ],
+          "unjudged@20": 17,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 0.6667,
+            "contemporary": 0.5
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.5714,
+            "dbef": 0.0
+          },
+          "dbefScoredCandidates": 0
+        },
+        "on": {
+          "nDCG@10": 0.2596,
+          "condensedNDCG@10": 0.8068,
+          "nDCG@20": 0.2959,
+          "condensedNDCG@20": 0.8068,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.4286,
+          "KnownRelevantRecall@50": 0.8571,
+          "LandmarkRecall@50": 0.5,
+          "KnownRelevantHits@20": 3,
+          "LandmarkHits@50": 1,
+          "missedLandmarks": [
+            "10.1126/science.122.3159.108"
+          ],
+          "missedKnownPapers": [
+            "10.1126/science.122.3159.108"
+          ],
+          "ranks": {
+            "10.1002/asi.5090140103": 5,
+            "10.1038/s41598-019-41695-z": 44,
+            "10.1073/pnas.98.2.404": 2,
+            "10.1088/1742-5468/2008/10/p10008": 49,
+            "10.1103/physreve.69.026113": 27,
+            "10.1126/science.122.3159.108": 90,
+            "10.1126/science.149.3683.510": 15
+          },
+          "top20": [
+            "10.1002/pra2.2016.14505301131",
+            "10.1073/pnas.98.2.404",
+            "10.1177/0165551520962775",
+            "10.5958/0975-8089.2020.00008.1",
+            "10.1002/asi.5090140103",
+            "10.1371/journal.pone.0251493",
+            "10.52352/jbh.v15i1.2459",
+            "10.1177/26314541221078909",
+            "10.1007/s41109-019-0126-3",
+            "10.3115/1599081.1599168",
+            "10.1108/oir-12-2020-0540/v3/review1",
+            "10.1002/9781118915370.ch04",
+            "10.2478/jdis-2024-0028",
+            "10.1002/meet.2008.1450450292",
+            "10.1126/science.149.3683.510",
+            "10.20913/2618-7515-2025-4-22-33",
+            "10.1108/jrme-11-2017-0049",
+            "10.3233/kes-200025",
+            "10.2139/ssrn.4142755",
+            "10.3743/kosim.2010.27.3.283"
+          ],
+          "unjudged@20": 17,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 0.6667,
+            "contemporary": 1.0
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.8571,
+            "dbef": 0.0
+          },
+          "dbefScoredCandidates": 27
+        }
+      },
+      "after": {
+        "off": {
+          "nDCG@10": 0.2273,
+          "condensedNDCG@10": 0.8068,
+          "nDCG@20": 0.2603,
+          "condensedNDCG@20": 0.8068,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.4286,
+          "KnownRelevantRecall@50": 0.5714,
+          "LandmarkRecall@50": 0.5,
+          "KnownRelevantHits@20": 3,
+          "LandmarkHits@50": 1,
+          "missedLandmarks": [
+            "10.1126/science.122.3159.108"
+          ],
+          "missedKnownPapers": [
+            "10.1038/s41598-019-41695-z",
+            "10.1088/1742-5468/2008/10/p10008",
+            "10.1126/science.122.3159.108"
+          ],
+          "ranks": {
+            "10.1002/asi.5090140103": 6,
+            "10.1038/s41598-019-41695-z": 52,
+            "10.1073/pnas.98.2.404": 3,
+            "10.1088/1742-5468/2008/10/p10008": 57,
+            "10.1103/physreve.69.026113": 33,
+            "10.1126/science.122.3159.108": 102,
+            "10.1126/science.149.3683.510": 20
+          },
+          "top20": [
+            "10.1002/pra2.2016.14505301131",
+            "10.1177/0165551520962775",
+            "10.1073/pnas.98.2.404",
+            "10.5958/0975-8089.2020.00008.1",
+            "10.1002/asi.21419",
+            "10.1002/asi.5090140103",
+            "10.1371/journal.pone.0251493",
+            "10.1108/oir-12-2020-0540",
+            "10.1002/meet.2008.1450450292",
+            "10.1023/a:1020458612014",
+            "10.2478/jdis-2024-0028",
+            "10.52352/jbh.v15i1.2459",
+            "10.1177/26314541221078909",
+            "10.3115/1599081.1599168",
+            "10.1007/s41109-019-0126-3",
+            "10.3233/kes-200025",
+            "10.1108/oir-12-2020-0540/v3/review1",
+            "10.1002/asi.22680",
+            "10.1177/01655515251322483",
+            "10.1126/science.149.3683.510"
+          ],
+          "unjudged@20": 17,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 0.6667,
+            "contemporary": 0.5
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.5714,
+            "dbef": 0.0
+          },
+          "dbefScoredCandidates": 0
+        },
+        "on": {
+          "nDCG@10": 0.2787,
+          "condensedNDCG@10": 0.8068,
+          "nDCG@20": 0.3168,
+          "condensedNDCG@20": 0.8068,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.4286,
+          "KnownRelevantRecall@50": 0.8571,
+          "LandmarkRecall@50": 0.5,
+          "KnownRelevantHits@20": 3,
+          "LandmarkHits@50": 1,
+          "missedLandmarks": [
+            "10.1126/science.122.3159.108"
+          ],
+          "missedKnownPapers": [
+            "10.1126/science.122.3159.108"
+          ],
+          "ranks": {
+            "10.1002/asi.5090140103": 4,
+            "10.1038/s41598-019-41695-z": 44,
+            "10.1073/pnas.98.2.404": 2,
+            "10.1088/1742-5468/2008/10/p10008": 49,
+            "10.1103/physreve.69.026113": 27,
+            "10.1126/science.122.3159.108": 89,
+            "10.1126/science.149.3683.510": 13
+          },
+          "top20": [
+            "10.1002/pra2.2016.14505301131",
+            "10.1073/pnas.98.2.404",
+            "10.5958/0975-8089.2020.00008.1",
+            "10.1002/asi.5090140103",
+            "10.1177/0165551520962775",
+            "10.1371/journal.pone.0251493",
+            "10.52352/jbh.v15i1.2459",
+            "10.1177/26314541221078909",
+            "10.1007/s41109-019-0126-3",
+            "10.3115/1599081.1599168",
+            "10.1108/oir-12-2020-0540/v3/review1",
+            "10.1002/9781118915370.ch04",
+            "10.1126/science.149.3683.510",
+            "10.20913/2618-7515-2025-4-22-33",
+            "10.1108/jrme-11-2017-0049",
+            "10.3233/kes-200025",
+            "10.2139/ssrn.4142755",
+            "10.3743/kosim.2010.27.3.283",
+            "10.1002/meet.2008.1450450292",
+            "10.11922/sciencedb.00256"
+          ],
+          "unjudged@20": 17,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 0.6667,
+            "contemporary": 1.0
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.8571,
+            "dbef": 0.0
+          },
+          "dbefScoredCandidates": 27
+        }
+      },
+      "off": {
+        "nDCG@10": 0.2273,
+        "condensedNDCG@10": 0.8068,
+        "nDCG@20": 0.2603,
+        "condensedNDCG@20": 0.8068,
+        "bpref": null,
+        "KnownRelevantRecall@20": 0.4286,
         "KnownRelevantRecall@50": 0.5714,
+        "LandmarkRecall@50": 0.5,
         "KnownRelevantHits@20": 3,
         "LandmarkHits@50": 1,
         "missedLandmarks": [
@@ -127,85 +858,217 @@
           "10.1126/science.122.3159.108"
         ],
         "ranks": {
-          "10.1002/asi.5090140103": 8,
-          "10.1038/s41598-019-41695-z": 55,
+          "10.1002/asi.5090140103": 6,
+          "10.1038/s41598-019-41695-z": 52,
           "10.1073/pnas.98.2.404": 3,
-          "10.1088/1742-5468/2008/10/p10008": 59,
-          "10.1103/physreve.69.026113": 30,
-          "10.1126/science.122.3159.108": 103,
+          "10.1088/1742-5468/2008/10/p10008": 57,
+          "10.1103/physreve.69.026113": 33,
+          "10.1126/science.122.3159.108": 102,
           "10.1126/science.149.3683.510": 20
         },
         "top20": [
           "10.1002/pra2.2016.14505301131",
           "10.1177/0165551520962775",
           "10.1073/pnas.98.2.404",
-          "10.1002/meet.2008.1450450292",
-          "10.2478/jdis-2024-0028",
-          "10.1002/asi.21419",
           "10.5958/0975-8089.2020.00008.1",
+          "10.1002/asi.21419",
           "10.1002/asi.5090140103",
-          "10.1016/j.joi.2022.101321",
-          "10.1108/oir-12-2020-0540",
           "10.1371/journal.pone.0251493",
+          "10.1108/oir-12-2020-0540",
+          "10.1002/meet.2008.1450450292",
           "10.1023/a:1020458612014",
-          "10.1002/asi.22680",
-          "10.1177/01655515251322483",
-          "10.1007/s41109-019-0126-3",
+          "10.2478/jdis-2024-0028",
           "10.52352/jbh.v15i1.2459",
           "10.1177/26314541221078909",
-          "10.1016/j.acalib.2021.102351",
+          "10.3115/1599081.1599168",
+          "10.1007/s41109-019-0126-3",
           "10.3233/kes-200025",
+          "10.1108/oir-12-2020-0540/v3/review1",
+          "10.1002/asi.22680",
+          "10.1177/01655515251322483",
           "10.1126/science.149.3683.510"
         ],
-        "rankingSeconds": 0.1016,
-        "dbefScoredCandidates": 26
+        "unjudged@20": 17,
+        "judgedRelevant": 7,
+        "judgedNonRelevant": 0,
+        "recallByTag@50": {
+          "ancestor": 0.6667,
+          "contemporary": 0.5
+        },
+        "recallByChannel@50": {
+          "citationCoCitation": 0.0,
+          "citationGraph": 0.0,
+          "controlledPool": 0.5714,
+          "dbef": 0.0
+        },
+        "dbefScoredCandidates": 0
       },
-      "off": {
-        "nDCG@10": 0.2407,
-        "KnownRelevantRecall@50": 0.5714,
+      "on": {
+        "nDCG@10": 0.2787,
+        "condensedNDCG@10": 0.8068,
+        "nDCG@20": 0.3168,
+        "condensedNDCG@20": 0.8068,
+        "bpref": null,
+        "KnownRelevantRecall@20": 0.4286,
+        "KnownRelevantRecall@50": 0.8571,
+        "LandmarkRecall@50": 0.5,
         "KnownRelevantHits@20": 3,
         "LandmarkHits@50": 1,
         "missedLandmarks": [
           "10.1126/science.122.3159.108"
         ],
         "missedKnownPapers": [
-          "10.1038/s41598-019-41695-z",
-          "10.1088/1742-5468/2008/10/p10008",
           "10.1126/science.122.3159.108"
         ],
         "ranks": {
-          "10.1002/asi.5090140103": 5,
-          "10.1038/s41598-019-41695-z": 51,
-          "10.1073/pnas.98.2.404": 3,
-          "10.1088/1742-5468/2008/10/p10008": 55,
-          "10.1103/physreve.69.026113": 28,
-          "10.1126/science.122.3159.108": 102,
-          "10.1126/science.149.3683.510": 15
+          "10.1002/asi.5090140103": 4,
+          "10.1038/s41598-019-41695-z": 44,
+          "10.1073/pnas.98.2.404": 2,
+          "10.1088/1742-5468/2008/10/p10008": 49,
+          "10.1103/physreve.69.026113": 27,
+          "10.1126/science.122.3159.108": 89,
+          "10.1126/science.149.3683.510": 13
         },
         "top20": [
           "10.1002/pra2.2016.14505301131",
-          "10.1177/0165551520962775",
           "10.1073/pnas.98.2.404",
           "10.5958/0975-8089.2020.00008.1",
           "10.1002/asi.5090140103",
-          "10.1002/asi.21419",
+          "10.1177/0165551520962775",
           "10.1371/journal.pone.0251493",
-          "10.1108/oir-12-2020-0540",
-          "10.1023/a:1020458612014",
-          "10.1002/meet.2008.1450450292",
-          "10.2478/jdis-2024-0028",
-          "10.1007/s41109-019-0126-3",
           "10.52352/jbh.v15i1.2459",
           "10.1177/26314541221078909",
-          "10.1126/science.149.3683.510",
-          "10.3233/kes-200025",
+          "10.1007/s41109-019-0126-3",
+          "10.3115/1599081.1599168",
           "10.1108/oir-12-2020-0540/v3/review1",
-          "10.1002/asi.22680",
-          "10.1177/01655515251322483",
-          "10.1016/j.joi.2022.101321"
+          "10.1002/9781118915370.ch04",
+          "10.1126/science.149.3683.510",
+          "10.20913/2618-7515-2025-4-22-33",
+          "10.1108/jrme-11-2017-0049",
+          "10.3233/kes-200025",
+          "10.2139/ssrn.4142755",
+          "10.3743/kosim.2010.27.3.283",
+          "10.1002/meet.2008.1450450292",
+          "10.11922/sciencedb.00256"
         ],
-        "rankingSeconds": 0.0862,
-        "dbefScoredCandidates": 0
+        "unjudged@20": 17,
+        "judgedRelevant": 7,
+        "judgedNonRelevant": 0,
+        "recallByTag@50": {
+          "ancestor": 0.6667,
+          "contemporary": 1.0
+        },
+        "recallByChannel@50": {
+          "citationCoCitation": 0.0,
+          "citationGraph": 0.0,
+          "controlledPool": 0.8571,
+          "dbef": 0.0
+        },
+        "dbefScoredCandidates": 27
+      },
+      "rankDeltas": {
+        "dbefOffToOn": [
+          {
+            "paper": "10.1002/asi.5090140103",
+            "before": 6,
+            "after": 4,
+            "delta": 2,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1038/s41598-019-41695-z",
+            "before": 52,
+            "after": 44,
+            "delta": 8,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1073/pnas.98.2.404",
+            "before": 3,
+            "after": 2,
+            "delta": 1,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1088/1742-5468/2008/10/p10008",
+            "before": 57,
+            "after": 49,
+            "delta": 8,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1103/physreve.69.026113",
+            "before": 33,
+            "after": 27,
+            "delta": 6,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1126/science.122.3159.108",
+            "before": 102,
+            "after": 89,
+            "delta": 13,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1126/science.149.3683.510",
+            "before": 20,
+            "after": 13,
+            "delta": 7,
+            "status": "ranked"
+          }
+        ],
+        "beforeToAfter": [
+          {
+            "paper": "10.1002/asi.5090140103",
+            "before": 5,
+            "after": 4,
+            "delta": 1,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1038/s41598-019-41695-z",
+            "before": 44,
+            "after": 44,
+            "delta": 0,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1073/pnas.98.2.404",
+            "before": 2,
+            "after": 2,
+            "delta": 0,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1088/1742-5468/2008/10/p10008",
+            "before": 49,
+            "after": 49,
+            "delta": 0,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1103/physreve.69.026113",
+            "before": 27,
+            "after": 27,
+            "delta": 0,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1126/science.122.3159.108",
+            "before": 90,
+            "after": 89,
+            "delta": 1,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1126/science.149.3683.510",
+            "before": 15,
+            "after": 13,
+            "delta": 2,
+            "status": "ranked"
+          }
+        ]
       }
     },
     {
@@ -215,9 +1078,299 @@
       "missingMetadata": [
         "10.1045/june2004-harnad"
       ],
+      "networkStatusCounts": {
+        "assessed_overlap": 13,
+        "assessed_zero": 23,
+        "unassessed": 85
+      },
+      "dbefScale": {
+        "S0": 2.383687143275432,
+        "s1": 0.4206506723427233,
+        "inputs": {
+          "medianSeedReferenceWeight": 5.297190995154646,
+          "typicalSeedReferenceCount": 52,
+          "kappa": 15,
+          "lambda": 0.3,
+          "velocityFactor": 1,
+          "midContentFactor": 0.6499999999999999,
+          "available": true
+        }
+      },
+      "tags": {
+        "10.1186/1741-7015-10-124": "ancestor",
+        "10.1371/journal.pone.0020961": "ancestor",
+        "10.1371/journal.pone.0011273": "ancestor",
+        "10.1371/journal.pbio.0040157": "ancestor"
+      },
+      "before": {
+        "off": {
+          "nDCG@10": 0.1449,
+          "condensedNDCG@10": 0.5822,
+          "nDCG@20": 0.1854,
+          "condensedNDCG@20": 0.5822,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.2857,
+          "KnownRelevantRecall@50": 0.8571,
+          "LandmarkRecall@50": 0.5,
+          "KnownRelevantHits@20": 2,
+          "LandmarkHits@50": 1,
+          "missedLandmarks": [
+            "10.1045/june2004-harnad"
+          ],
+          "missedKnownPapers": [
+            "10.1045/june2004-harnad"
+          ],
+          "ranks": {
+            "10.1045/june2004-harnad": null,
+            "10.1186/1741-7015-10-124": 46,
+            "10.1371/journal.pbio.0040157": 29,
+            "10.1371/journal.pone.0011273": 32,
+            "10.1371/journal.pone.0020961": 24,
+            "10.48550/arxiv.cs/0701137": 11,
+            "10.7554/elife.32822": 1
+          },
+          "top20": [
+            "10.7554/elife.32822",
+            "10.2174/1874372200802010069",
+            "10.14293/s2199-ssp-am24-01017",
+            "10.1353/scp.0.0060",
+            "10.2139/ssrn.1777090",
+            "10.3390/publications13020020",
+            "10.63485/zx37t-h2674",
+            "10.14293/s2199-1006.1.sor-edu.clpdpzb.v1",
+            "10.1108/14684521211206953",
+            "10.1007/s11192-025-05297-z",
+            "10.48550/arxiv.cs/0701137",
+            "10.5937/bioac-68",
+            "10.1177/0165551510389358",
+            "10.2139/ssrn.2391692",
+            "10.1371/journal.pone.0253129",
+            "10.31235/osf.io/7k8cp_v1",
+            "10.29173/istl2512",
+            "10.1038/d41586-024-00405-0",
+            "10.1007/s11192-017-2554-0",
+            "10.63485/g9t98-n2h08"
+          ],
+          "unjudged@20": 18,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 1.0,
+            "contemporary": null
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.8571,
+            "dbef": 0.0
+          },
+          "dbefScoredCandidates": 0
+        },
+        "on": {
+          "nDCG@10": 0.1932,
+          "condensedNDCG@10": 0.5822,
+          "nDCG@20": 0.1932,
+          "condensedNDCG@20": 0.5822,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.2857,
+          "KnownRelevantRecall@50": 0.7143,
+          "LandmarkRecall@50": 0.0,
+          "KnownRelevantHits@20": 2,
+          "LandmarkHits@50": 0,
+          "missedLandmarks": [
+            "10.1045/june2004-harnad",
+            "10.1186/1741-7015-10-124"
+          ],
+          "missedKnownPapers": [
+            "10.1045/june2004-harnad",
+            "10.1186/1741-7015-10-124"
+          ],
+          "ranks": {
+            "10.1045/june2004-harnad": null,
+            "10.1186/1741-7015-10-124": 52,
+            "10.1371/journal.pbio.0040157": 29,
+            "10.1371/journal.pone.0011273": 42,
+            "10.1371/journal.pone.0020961": 21,
+            "10.48550/arxiv.cs/0701137": 7,
+            "10.7554/elife.32822": 1
+          },
+          "top20": [
+            "10.7554/elife.32822",
+            "10.14293/s2199-ssp-am24-01017",
+            "10.1353/scp.0.0060",
+            "10.2139/ssrn.1777090",
+            "10.63485/zx37t-h2674",
+            "10.14293/s2199-1006.1.sor-edu.clpdpzb.v1",
+            "10.48550/arxiv.cs/0701137",
+            "10.1108/14684521211206953",
+            "10.31235/osf.io/7k8cp_v1",
+            "10.5937/bioac-68",
+            "10.29173/istl2512",
+            "10.1038/d41586-024-00405-0",
+            "10.2174/1874372200802010069",
+            "10.3390/publications13020020",
+            "10.1007/s11192-017-2554-0",
+            "10.1371/journal.pone.0253129",
+            "10.63485/g9t98-n2h08",
+            "10.63485/38pe1-1g260",
+            "10.1177/0165551510389358",
+            "10.59350/34mvg-4hn90"
+          ],
+          "unjudged@20": 18,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 0.75,
+            "contemporary": null
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.4286,
+            "dbef": 0.2857
+          },
+          "dbefScoredCandidates": 13
+        }
+      },
+      "after": {
+        "off": {
+          "nDCG@10": 0.1449,
+          "condensedNDCG@10": 0.5822,
+          "nDCG@20": 0.1854,
+          "condensedNDCG@20": 0.5822,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.2857,
+          "KnownRelevantRecall@50": 0.8571,
+          "LandmarkRecall@50": 0.5,
+          "KnownRelevantHits@20": 2,
+          "LandmarkHits@50": 1,
+          "missedLandmarks": [
+            "10.1045/june2004-harnad"
+          ],
+          "missedKnownPapers": [
+            "10.1045/june2004-harnad"
+          ],
+          "ranks": {
+            "10.1045/june2004-harnad": null,
+            "10.1186/1741-7015-10-124": 46,
+            "10.1371/journal.pbio.0040157": 29,
+            "10.1371/journal.pone.0011273": 32,
+            "10.1371/journal.pone.0020961": 24,
+            "10.48550/arxiv.cs/0701137": 11,
+            "10.7554/elife.32822": 1
+          },
+          "top20": [
+            "10.7554/elife.32822",
+            "10.2174/1874372200802010069",
+            "10.14293/s2199-ssp-am24-01017",
+            "10.1353/scp.0.0060",
+            "10.2139/ssrn.1777090",
+            "10.3390/publications13020020",
+            "10.63485/zx37t-h2674",
+            "10.14293/s2199-1006.1.sor-edu.clpdpzb.v1",
+            "10.1108/14684521211206953",
+            "10.1007/s11192-025-05297-z",
+            "10.48550/arxiv.cs/0701137",
+            "10.5937/bioac-68",
+            "10.1177/0165551510389358",
+            "10.2139/ssrn.2391692",
+            "10.1371/journal.pone.0253129",
+            "10.31235/osf.io/7k8cp_v1",
+            "10.29173/istl2512",
+            "10.1038/d41586-024-00405-0",
+            "10.1007/s11192-017-2554-0",
+            "10.63485/g9t98-n2h08"
+          ],
+          "unjudged@20": 18,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 1.0,
+            "contemporary": null
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.8571,
+            "dbef": 0.0
+          },
+          "dbefScoredCandidates": 0
+        },
+        "on": {
+          "nDCG@10": 0.1932,
+          "condensedNDCG@10": 0.5822,
+          "nDCG@20": 0.1932,
+          "condensedNDCG@20": 0.5822,
+          "bpref": null,
+          "KnownRelevantRecall@20": 0.2857,
+          "KnownRelevantRecall@50": 0.7143,
+          "LandmarkRecall@50": 0.0,
+          "KnownRelevantHits@20": 2,
+          "LandmarkHits@50": 0,
+          "missedLandmarks": [
+            "10.1045/june2004-harnad",
+            "10.1186/1741-7015-10-124"
+          ],
+          "missedKnownPapers": [
+            "10.1045/june2004-harnad",
+            "10.1186/1741-7015-10-124"
+          ],
+          "ranks": {
+            "10.1045/june2004-harnad": null,
+            "10.1186/1741-7015-10-124": 51,
+            "10.1371/journal.pbio.0040157": 29,
+            "10.1371/journal.pone.0011273": 43,
+            "10.1371/journal.pone.0020961": 22,
+            "10.48550/arxiv.cs/0701137": 7,
+            "10.7554/elife.32822": 1
+          },
+          "top20": [
+            "10.7554/elife.32822",
+            "10.14293/s2199-ssp-am24-01017",
+            "10.1353/scp.0.0060",
+            "10.2139/ssrn.1777090",
+            "10.63485/zx37t-h2674",
+            "10.14293/s2199-1006.1.sor-edu.clpdpzb.v1",
+            "10.48550/arxiv.cs/0701137",
+            "10.1108/14684521211206953",
+            "10.31235/osf.io/7k8cp_v1",
+            "10.5937/bioac-68",
+            "10.29173/istl2512",
+            "10.1371/journal.pone.0253129",
+            "10.1038/d41586-024-00405-0",
+            "10.2174/1874372200802010069",
+            "10.3390/publications13020020",
+            "10.1007/s11192-017-2554-0",
+            "10.1177/0165551510389358",
+            "10.63485/g9t98-n2h08",
+            "10.63485/38pe1-1g260",
+            "10.59350/34mvg-4hn90"
+          ],
+          "unjudged@20": 18,
+          "judgedRelevant": 7,
+          "judgedNonRelevant": 0,
+          "recallByTag@50": {
+            "ancestor": 0.75,
+            "contemporary": null
+          },
+          "recallByChannel@50": {
+            "citationCoCitation": 0.0,
+            "citationGraph": 0.0,
+            "controlledPool": 0.4286,
+            "dbef": 0.2857
+          },
+          "dbefScoredCandidates": 13
+        }
+      },
       "off": {
         "nDCG@10": 0.1449,
+        "condensedNDCG@10": 0.5822,
+        "nDCG@20": 0.1854,
+        "condensedNDCG@20": 0.5822,
+        "bpref": null,
+        "KnownRelevantRecall@20": 0.2857,
         "KnownRelevantRecall@50": 0.8571,
+        "LandmarkRecall@50": 0.5,
         "KnownRelevantHits@20": 2,
         "LandmarkHits@50": 1,
         "missedLandmarks": [
@@ -228,99 +1381,311 @@
         ],
         "ranks": {
           "10.1045/june2004-harnad": null,
-          "10.1186/1741-7015-10-124": 45,
-          "10.1371/journal.pbio.0040157": 34,
-          "10.1371/journal.pone.0011273": 29,
-          "10.1371/journal.pone.0020961": 21,
-          "10.48550/arxiv.cs/0701137": 13,
+          "10.1186/1741-7015-10-124": 46,
+          "10.1371/journal.pbio.0040157": 29,
+          "10.1371/journal.pone.0011273": 32,
+          "10.1371/journal.pone.0020961": 24,
+          "10.48550/arxiv.cs/0701137": 11,
           "10.7554/elife.32822": 1
         },
         "top20": [
           "10.7554/elife.32822",
           "10.2174/1874372200802010069",
+          "10.14293/s2199-ssp-am24-01017",
+          "10.1353/scp.0.0060",
           "10.2139/ssrn.1777090",
           "10.3390/publications13020020",
           "10.63485/zx37t-h2674",
-          "10.3138/jsp.40.4.343",
+          "10.14293/s2199-1006.1.sor-edu.clpdpzb.v1",
           "10.1108/14684521211206953",
           "10.1007/s11192-025-05297-z",
+          "10.48550/arxiv.cs/0701137",
           "10.5937/bioac-68",
           "10.1177/0165551510389358",
           "10.2139/ssrn.2391692",
           "10.1371/journal.pone.0253129",
-          "10.48550/arxiv.cs/0701137",
           "10.31235/osf.io/7k8cp_v1",
           "10.29173/istl2512",
           "10.1038/d41586-024-00405-0",
           "10.1007/s11192-017-2554-0",
-          "10.63485/g9t98-n2h08",
-          "10.63485/38pe1-1g260",
-          "10.1007/s11192-018-2663-4"
+          "10.63485/g9t98-n2h08"
         ],
-        "rankingSeconds": 0.0881,
+        "unjudged@20": 18,
+        "judgedRelevant": 7,
+        "judgedNonRelevant": 0,
+        "recallByTag@50": {
+          "ancestor": 1.0,
+          "contemporary": null
+        },
+        "recallByChannel@50": {
+          "citationCoCitation": 0.0,
+          "citationGraph": 0.0,
+          "controlledPool": 0.8571,
+          "dbef": 0.0
+        },
         "dbefScoredCandidates": 0
       },
       "on": {
-        "nDCG@10": 0.1449,
-        "KnownRelevantRecall@50": 0.8571,
-        "KnownRelevantHits@20": 4,
-        "LandmarkHits@50": 1,
+        "nDCG@10": 0.1932,
+        "condensedNDCG@10": 0.5822,
+        "nDCG@20": 0.1932,
+        "condensedNDCG@20": 0.5822,
+        "bpref": null,
+        "KnownRelevantRecall@20": 0.2857,
+        "KnownRelevantRecall@50": 0.7143,
+        "LandmarkRecall@50": 0.0,
+        "KnownRelevantHits@20": 2,
+        "LandmarkHits@50": 0,
         "missedLandmarks": [
-          "10.1045/june2004-harnad"
+          "10.1045/june2004-harnad",
+          "10.1186/1741-7015-10-124"
         ],
         "missedKnownPapers": [
-          "10.1045/june2004-harnad"
+          "10.1045/june2004-harnad",
+          "10.1186/1741-7015-10-124"
         ],
         "ranks": {
           "10.1045/june2004-harnad": null,
-          "10.1186/1741-7015-10-124": 18,
-          "10.1371/journal.pbio.0040157": 36,
-          "10.1371/journal.pone.0011273": 14,
-          "10.1371/journal.pone.0020961": 27,
-          "10.48550/arxiv.cs/0701137": 15,
+          "10.1186/1741-7015-10-124": 51,
+          "10.1371/journal.pbio.0040157": 29,
+          "10.1371/journal.pone.0011273": 43,
+          "10.1371/journal.pone.0020961": 22,
+          "10.48550/arxiv.cs/0701137": 7,
           "10.7554/elife.32822": 1
         },
         "top20": [
           "10.7554/elife.32822",
-          "10.5937/bioac-68",
+          "10.14293/s2199-ssp-am24-01017",
+          "10.1353/scp.0.0060",
+          "10.2139/ssrn.1777090",
+          "10.63485/zx37t-h2674",
+          "10.14293/s2199-1006.1.sor-edu.clpdpzb.v1",
+          "10.48550/arxiv.cs/0701137",
           "10.1108/14684521211206953",
+          "10.31235/osf.io/7k8cp_v1",
+          "10.5937/bioac-68",
+          "10.29173/istl2512",
+          "10.1371/journal.pone.0253129",
+          "10.1038/d41586-024-00405-0",
           "10.2174/1874372200802010069",
           "10.3390/publications13020020",
+          "10.1007/s11192-017-2554-0",
           "10.1177/0165551510389358",
-          "10.2139/ssrn.1777090",
-          "10.1371/journal.pone.0253129",
-          "10.1007/s11192-018-2663-4",
-          "10.63485/zx37t-h2674",
-          "10.3138/jsp.40.4.343",
-          "10.1007/s11192-025-05297-z",
-          "10.2139/ssrn.2391692",
-          "10.1371/journal.pone.0011273",
-          "10.48550/arxiv.cs/0701137",
-          "10.31235/osf.io/7k8cp_v1",
-          "10.29173/istl2512",
-          "10.1186/1741-7015-10-124",
-          "10.1038/d41586-024-00405-0",
-          "10.1007/s11192-017-2554-0"
+          "10.63485/g9t98-n2h08",
+          "10.63485/38pe1-1g260",
+          "10.59350/34mvg-4hn90"
         ],
-        "rankingSeconds": 0.1049,
-        "dbefScoredCandidates": 12
+        "unjudged@20": 18,
+        "judgedRelevant": 7,
+        "judgedNonRelevant": 0,
+        "recallByTag@50": {
+          "ancestor": 0.75,
+          "contemporary": null
+        },
+        "recallByChannel@50": {
+          "citationCoCitation": 0.0,
+          "citationGraph": 0.0,
+          "controlledPool": 0.4286,
+          "dbef": 0.2857
+        },
+        "dbefScoredCandidates": 13
+      },
+      "rankDeltas": {
+        "dbefOffToOn": [
+          {
+            "paper": "10.1045/june2004-harnad",
+            "before": null,
+            "after": null,
+            "delta": null,
+            "status": "missing"
+          },
+          {
+            "paper": "10.1186/1741-7015-10-124",
+            "before": 46,
+            "after": 51,
+            "delta": -5,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1371/journal.pbio.0040157",
+            "before": 29,
+            "after": 29,
+            "delta": 0,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1371/journal.pone.0011273",
+            "before": 32,
+            "after": 43,
+            "delta": -11,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1371/journal.pone.0020961",
+            "before": 24,
+            "after": 22,
+            "delta": 2,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.48550/arxiv.cs/0701137",
+            "before": 11,
+            "after": 7,
+            "delta": 4,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.7554/elife.32822",
+            "before": 1,
+            "after": 1,
+            "delta": 0,
+            "status": "ranked"
+          }
+        ],
+        "beforeToAfter": [
+          {
+            "paper": "10.1045/june2004-harnad",
+            "before": null,
+            "after": null,
+            "delta": null,
+            "status": "missing"
+          },
+          {
+            "paper": "10.1186/1741-7015-10-124",
+            "before": 52,
+            "after": 51,
+            "delta": 1,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1371/journal.pbio.0040157",
+            "before": 29,
+            "after": 29,
+            "delta": 0,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1371/journal.pone.0011273",
+            "before": 42,
+            "after": 43,
+            "delta": -1,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.1371/journal.pone.0020961",
+            "before": 21,
+            "after": 22,
+            "delta": -1,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.48550/arxiv.cs/0701137",
+            "before": 7,
+            "after": 7,
+            "delta": 0,
+            "status": "ranked"
+          },
+          {
+            "paper": "10.7554/elife.32822",
+            "before": 1,
+            "after": 1,
+            "delta": 0,
+            "status": "ranked"
+          }
+        ]
       }
     }
   ],
   "summary": {
     "off": {
-      "nDCG@10": 0.1285,
-      "KnownRelevantRecall@50": 0.5238,
-      "KnownRelevantHits@20": 1.6667,
+      "nDCG@10": 0.1724,
+      "nDCG@20": 0.1969,
+      "condensedNDCG@10": 0.7126,
+      "condensedNDCG@20": 0.7126,
+      "bpref": null,
+      "KnownRelevantRecall@20": 0.2857,
+      "KnownRelevantRecall@50": 0.5714,
+      "LandmarkRecall@50": 0.3333,
+      "KnownRelevantHits@20": 2,
       "LandmarkHits@50": 0.6667,
-      "rankingSeconds": 0.0808
+      "recallByTag@50": {
+        "ancestor": 0.5556,
+        "contemporary": 0.375
+      },
+      "recallByChannel@50": {
+        "citationCoCitation": 0.0,
+        "citationGraph": 0.0,
+        "controlledPool": 0.5714,
+        "dbef": 0.0
+      }
     },
     "on": {
-      "nDCG@10": 0.1182,
-      "KnownRelevantRecall@50": 0.5238,
+      "nDCG@10": 0.2056,
+      "nDCG@20": 0.231,
+      "condensedNDCG@10": 0.7126,
+      "condensedNDCG@20": 0.7126,
+      "bpref": null,
+      "KnownRelevantRecall@20": 0.3333,
+      "KnownRelevantRecall@50": 0.619,
+      "LandmarkRecall@50": 0.1667,
       "KnownRelevantHits@20": 2.3333,
+      "LandmarkHits@50": 0.3333,
+      "recallByTag@50": {
+        "ancestor": 0.4722,
+        "contemporary": 0.75
+      },
+      "recallByChannel@50": {
+        "citationCoCitation": 0.0,
+        "citationGraph": 0.0,
+        "controlledPool": 0.4286,
+        "dbef": 0.1905
+      }
+    }
+  },
+  "beforeSummary": {
+    "off": {
+      "nDCG@10": 0.1724,
+      "nDCG@20": 0.1969,
+      "condensedNDCG@10": 0.7126,
+      "condensedNDCG@20": 0.7126,
+      "bpref": null,
+      "KnownRelevantRecall@20": 0.2857,
+      "KnownRelevantRecall@50": 0.5714,
+      "LandmarkRecall@50": 0.3333,
+      "KnownRelevantHits@20": 2,
       "LandmarkHits@50": 0.6667,
-      "rankingSeconds": 0.0962
+      "recallByTag@50": {
+        "ancestor": 0.5556,
+        "contemporary": 0.375
+      },
+      "recallByChannel@50": {
+        "citationCoCitation": 0.0,
+        "citationGraph": 0.0,
+        "controlledPool": 0.5714,
+        "dbef": 0.0
+      }
+    },
+    "on": {
+      "nDCG@10": 0.1992,
+      "nDCG@20": 0.2225,
+      "condensedNDCG@10": 0.7126,
+      "condensedNDCG@20": 0.7126,
+      "bpref": null,
+      "KnownRelevantRecall@20": 0.3333,
+      "KnownRelevantRecall@50": 0.619,
+      "LandmarkRecall@50": 0.1667,
+      "KnownRelevantHits@20": 2.3333,
+      "LandmarkHits@50": 0.3333,
+      "recallByTag@50": {
+        "ancestor": 0.4722,
+        "contemporary": 0.75
+      },
+      "recallByChannel@50": {
+        "citationCoCitation": 0.0,
+        "citationGraph": 0.0,
+        "controlledPool": 0.4286,
+        "dbef": 0.1905
+      }
     }
   },
   "provenance": {
@@ -337,8 +1702,18 @@
     "neuralModels": false,
     "corpusSizeAssumption": 10000000,
     "limitations": "Many abstracts and reference DOIs are missing; annual citation velocity is neutral. Only supplied bibliography DOIs form shared-reference evidence.",
-    "abstractRepresentation": "Unordered unigram features; raw abstract narrative omitted"
+    "abstractRepresentation": "Unordered unigram features; raw abstract narrative omitted",
+    "referenceFallbackIssues": []
   },
-  "note": "Controlled, incomplete manual judgments on frozen public metadata; curated positives are included. Unknown papers are not labelled irrelevant. No live retrieval-recall or full-search latency claim; collection and ranking time are separate. Neural reranking is disabled to isolate DBEF.",
-  "datasetSha256": "62d5dbd05238e8621107f621b81850cb677662b0d4a34d036ccc35c3f5b021d3"
+  "baseline": {
+    "scope": "Source immediately before DBEF scaling/missing-data/co-citation task; includes the earlier research-quality source update.",
+    "head": "d30f17f3c7ad30d278da616a1eb8790e39b8f63e",
+    "sha256": {
+      "pipeline_ranking.py": "a6990258cdc3209140d19c0fc6d36e7e3782e96fb327fd540f4ab550c4a72fb0",
+      "dbef_content.py": "3c7570b7390f882d1be16222e81c759ef1bcb270d64514088eb46fa383a92966"
+    }
+  },
+  "note": "Incomplete judgments on fixed pools. Conventional nDCG treats unjudged gains as zero; condensed nDCG drops unjudged documents. bpref is null without judged negatives. Recall is known-paper coverage, not exhaustive relevance. Retrieval-channel coverage uses the global top 50. These 3 + 5 cases cannot establish statistical significance. No gold labels determine scores. Neural reranking is disabled; no live latency claim.",
+  "deterministic": true,
+  "datasetSha256": "a8c3cd65837d2a898fc11ffa784b97c56b90d566ad692f8115689258dcd2e730"
 }

@@ -197,3 +197,14 @@
 .dv-passages details p { white-space: pre-wrap; }
 
 .dv-page-more {display:flex;align-items:center;justify-content:center;gap:12px;padding:24px;color:var(--muted);font-size:12px}
+/* Visible keyword intent without exposing model configuration. */
+.dv-concept-summary { display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:9px 20px; border-bottom:1px solid var(--line); color:var(--muted); font-size:11px; }
+.dv-concept-summary[hidden] { display:none; }
+.dv-concept-summary strong { color:var(--ink); font-weight:600; margin-right:3px; }
+.dv-concept-summary .dv-keyword { padding:3px 7px; border:1px solid var(--line); border-radius:5px; background:var(--surface-2); color:var(--ink); }
+.dv-concept-summary small { flex-basis:100%; font-size:11px; }
+.publication-notices { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin:10px 0; padding:9px; border:1px solid var(--line); border-radius:7px; background:var(--surface-2); font-size:11px; }
+.publication-notices.is-warning { border-color:#eaa6a6; background:#fff1f1; color:#991b1b; }
+.publication-notices small { flex-basis:100%; color:var(--muted); }
+.publication-notices a { color:var(--accent); }
+html[data-theme="dark"] .publication-notices.is-warning { background:#381b24; color:#ffcaca; }

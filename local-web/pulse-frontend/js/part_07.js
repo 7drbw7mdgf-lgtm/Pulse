@@ -56,6 +56,7 @@
     function mergePaperIntoExisting(existing, incoming) {
       mergeDoiMetadata(existing, incoming);
       if(incoming.bibliographyText)existing.bibliographyText=incoming.bibliographyText;
+      if(incoming.bibliographyProvenance)existing.bibliographyProvenance=incoming.bibliographyProvenance;
       if(incoming.metadataVerification?.verified)existing.metadataVerification=incoming.metadataVerification;
       if (!existing.name && incoming.name) existing.name = incoming.name;
       if (!existing.size && incoming.size) existing.size = incoming.size;
@@ -201,6 +202,7 @@
         ...metadata,
         text: usableText.slice(0, 120000),
         bibliographyText: scanned?.bibliographyText || extractBibliographyText(safeRaw),
+        bibliographyProvenance: scanned?.bibliographyProvenance || null,
         size: file.size,
         x: 0,
         y: 0

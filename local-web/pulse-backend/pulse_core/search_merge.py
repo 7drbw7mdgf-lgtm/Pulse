@@ -92,12 +92,13 @@ def merge_search_records(records):
             for key, value in record.items():
                 if key not in {"branches", "sourceList", "fullTextLinks", "discoveryBadges", "sourceIdentifiers", "citationCountsBySource", "retrievalEvidence", "citationCount", "citedByCount", "citationCountSource"} and value not in (None, "", [], {}) and base.get(key) in (None, "", [], {}):
                     base[key] = value
-            for key in ("branches", "sourceList", "fullTextLinks", "discoveryBadges", "retrievalEvidence"):
+            for key in ("branches", "sourceList", "fullTextLinks", "discoveryBadges", "retrievalEvidence", "publicationRelations", "publicationNotices"):
                 if key in base or key in record:
                     base[key] = list(base.get(key) or [])
                     for value in record.get(key) or []:
                         if value not in base[key]:
                             base[key].append(value)
+            if record.get('isRetracted') is True:base['isRetracted']=True
             # Several indexes may report citations; keep the highest known count.
             incoming = known_count(record)
             if incoming is not None and (known_count(base) is None or incoming > known_count(base)):

@@ -5,6 +5,7 @@ from .doi_utils import normalize_doi
 from .metadata_resolution import resolve_metadata, title_similarity
 from .metadata_scanner import lookup_doi_metadata
 from .metadata_utils import merge_metadata
+from .citation_fields import extra_identity_checks
 from pulse_performance import parallel_branches
 
 
@@ -48,15 +49,19 @@ def verify_candidate(paper):
         author_ok = author_ok and all(any(surname_matches(name, author) for author in actual[1:]) for name in named[1:])
     expected_year = str(citation.get('year') or candidate.get('year') or '')[:4]
     year_ok = not expected_year or expected_year in publication_years(metadata)
-    if title_score < .85 or not author_ok or not year_ok:
-        return {'verified':False, 'reason':'The DOI record disagrees with the selected title, authors or publication year. Check the full reference.',
-                'checks':{'titleAgreement':round(title_score,3),'authors':author_ok,'publicationYear':year_ok}}
+    extra_checks=extra_identity_checks(candidate,metadata)
+    conflicts=[key for key,value in extra_checks.items() if value is False]
+    if title_score < .85 or not author_ok or not year_ok or conflicts:
+        field_names={'authorInitials':'author initials','orcid':'author identifiers','publicationDate':'publication date'}
+        detail=', '.join(field_names.get(field,field) for field in conflicts)
+        return {'verified':False, 'reason':('The DOI record disagrees on '+detail+'. Check the full reference.') if conflicts else 'The DOI record disagrees with the selected title, authors or publication year. Check the full reference.',
+                'conflicts':conflicts,'checks':{'titleAgreement':round(title_score,3),'authors':author_ok,'publicationYear':year_ok,**extra_checks}}
     # Registry fields lead. Keep only missing fields from the actual selected
     # reference; do not overwrite complete records with search placeholders.
     metadata = merge_metadata(metadata, {key:value for key,value in candidate.items() if key not in {'doiVerified','metadataSource','metadataMatch','metadataCheckedAt'}})
     metadata.update(doi=doi, doiVerified=True, metadataSource=found.get('source') or metadata.get('metadataSource'))
     verification = {'verified':True, 'doi':doi, 'checkedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                    'sources':found.get('source') or 'DOI registry', 'checks':{'titleAgreement':round(title_score,3),'authors':author_ok,'publicationYear':year_ok},
+                    'sources':found.get('source') or 'DOI registry', 'checks':{'titleAgreement':round(title_score,3),'authors':author_ok,'publicationYear':year_ok,**extra_checks},
                     'missingFields':[key for key in ('authors','year','journal','volume','issue','pages') if not metadata.get(key)]}
     metadata['metadataVerification'] = verification
     return {'verified':True, 'metadata':metadata, 'verification':verification}

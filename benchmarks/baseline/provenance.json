@@ -1,0 +1,8 @@
+{
+  "scope": "Source immediately before DBEF scaling/missing-data/co-citation task; includes the earlier research-quality source update.",
+  "head": "d30f17f3c7ad30d278da616a1eb8790e39b8f63e",
+  "sha256": {
+    "pipeline_ranking.py": "a6990258cdc3209140d19c0fc6d36e7e3782e96fb327fd540f4ab550c4a72fb0",
+    "dbef_content.py": "3c7570b7390f882d1be16222e81c759ef1bcb270d64514088eb46fa383a92966"
+  }
+}

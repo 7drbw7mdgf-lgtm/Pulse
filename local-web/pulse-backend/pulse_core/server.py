@@ -35,6 +35,7 @@ from pulse_core.discovery import (
     iterative_citation_chase,
     run_discovery_pipeline,
 )
+from pulse_core.concept_search import validate_discovery_request
 from pulse_core.metadata_scanner import (
     lookup_doi_metadata,
     lookup_pmid_metadata,
@@ -43,6 +44,7 @@ from pulse_core.metadata_scanner import (
 from pulse_core.metadata_resolution import resolve_metadata
 from pulse_core.citation_lookup import lookup_in_text_citations
 from pulse_core.citation_identity import verify_citation_selection
+from pulse_core.publication_status import publication_status
 from pulse_core.paper_metrics import paper_metrics, paper_relations
 from pulse_core.library_managers import manager_status, configure_mendeley, public_config, disconnect_mendeley, save_manager_records, search_manager
 from pulse_core.mendeley_oauth import start_oauth
@@ -202,6 +204,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/discovery/pipeline",
             "/api/discovery/start",
             "/api/discovery/cancel",
+            "/api/papers/status",
             "/api/citations/chase",
             "/api/citations/network",
         }
@@ -241,13 +244,13 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/citations/seminal": find_missing_seminal_papers,
                 "/api/citations/snowball": snowball_papers,
                 "/api/discovery/pipeline": run_discovery_pipeline,
+                "/api/papers/status":publication_status,
                 "/api/citations/chase": iterative_citation_chase,
                 "/api/citations/network": citation_network_triangulation,
                 "/api/test": lambda _: test_gemma_settings(),
             }
             if path == "/api/discovery/start":
-                if not payload.get("seedPapers"):
-                    raise ClientError(400, "Select a seed paper first.")
+                validate_discovery_request(payload)
                 try:
                     self.write_json(202, DISCOVERY_JOBS.start(payload, run_discovery_pipeline))
                 except ValueError as error:

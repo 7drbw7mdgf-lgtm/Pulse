@@ -128,6 +128,7 @@ function bindInspectorSections() {
         <div class="insp-head">
           <h2 class="insp-title">${escapeHtml(paper.title || 'Untitled paper')}</h2>
           <p class="insp-meta">${meta}</p>
+          ${typeof publicationMarkup==='function'?publicationMarkup(paper):''}
           <div class="insp-status">
             ${paper.doi
               ? `<a class="insp-chip ${paper.doiVerified ? 'is-ok' : ''}" href="${escapeHtml(doiHref || '#')}" target="_blank" rel="noreferrer" title="${escapeHtml(`${paper.doi} — ${provenance}`)}">${paper.doiVerified ? inspectorIcon('check') + 'DOI verified' : 'DOI unconfirmed'}</a>`
@@ -177,6 +178,7 @@ function bindInspectorSections() {
       bindInspector(paper, recommendations);
       syncDiscoveryControls();
       refreshPaperMetrics(paper);
+      if(typeof checkSelectedPublication==='function')checkSelectedPublication(paper);
     }
 
     function inspectorOverviewMarkup(paper) {

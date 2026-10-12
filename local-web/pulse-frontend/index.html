@@ -1,6 +1,6 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.7.11 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261012-reliability">
+<title>Pulse v1.7.11 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261012-dbef-scale">
 <link rel="icon" type="image/png" href="favicon.png?v=1.7.11"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
@@ -43,7 +43,7 @@
 <span class="ai-agent-label">AI agent</span><span id="aiAgentFabCount" class="agent-fab-count" hidden></span>
 </button></div>
 <div id="ribbonDiscoveryPanel" class="pulse-ribbon-panel" role="tabpanel" aria-labelledby="ribbonDiscoveryTab">
-<div class="discovery-heading"><h1>Find papers</h1><span>Explore related research</span></div>
+<div class="discovery-heading"><h1>Find papers</h1><span>Concepts or related research</span></div>
 <div class="discovery-dropdown-wrap">
 <button id="discoveryOptionsButton" class="discovery-options-button" type="button" aria-expanded="false" aria-controls="discoveryOptionsPopup" aria-haspopup="dialog"><span id="discoveryOptionsSummary">All methods · 1-hop</span><span aria-hidden="true">⌄</span></button>
 <div id="discoveryOptionsPopup" class="discovery-options-popup" role="dialog" aria-labelledby="discoveryOptionsTitle" hidden>
@@ -52,14 +52,15 @@
 <div class="ribbon-cards">
 <button class="ribbon-card" data-method="citations" type="button" title="Backward references and forward citations"> <span class="ribbon-svg-icon" data-feather="share-2"></span> <div class="ribbon-card-text"><strong>Citations</strong><small>Direct &amp; citing</small></div> </button>
 <button class="ribbon-card" data-method="network" type="button" title="Content-aware DBEF discovery from shared references"> <span class="ribbon-svg-icon" data-feather="compass"></span> <div class="ribbon-card-text"><strong>DBEF</strong><small>Shared references</small></div> </button>
+<button class="ribbon-card" data-method="cocitation" type="button" title="Papers cited alongside your seed"><span class="ribbon-svg-icon" data-feather="git-merge"></span><div class="ribbon-card-text"><strong>Co-citation</strong><small>Cited together</small></div></button>
 <button class="ribbon-card active" data-method="semantic" type="button" title="Related papers from scientific recommendations"> <span class="ribbon-svg-icon" data-feather="cpu"></span> <div class="ribbon-card-text"><strong>Semantic</strong><small>Related meaning</small></div> </button>
 <button class="ribbon-card" data-method="concepts" type="button" title="Keywords, MeSH terms, and entities"> <span class="ribbon-svg-icon" data-feather="tag"></span> <div class="ribbon-card-text"><strong>Concepts</strong><small>MeSH &amp; terms</small></div> </button>
 </div> </div>
-<div class="ribbon-group discovery-search-sources"><span class="ribbon-label">Concept search sources</span><div class="ribbon-pills">
+<div class="ribbon-group discovery-search-sources"><span class="ribbon-label">Topic search sources</span><div class="ribbon-pills">
 <button class="pill-btn-sm" data-search-source="semanticScholar" type="button">Semantic Scholar</button>
 <button class="pill-btn-sm" data-search-source="europePmc" type="button">Europe PMC</button>
 <button class="pill-btn-sm" data-search-source="core" type="button">CORE</button>
-</div><small class="subtle">Search titles and keywords across the selected sources. Available full-text links appear with results.</small></div>
+</div><small class="subtle">Used by Search papers and the Concepts method. Available full-text links appear with results.</small></div>
 <span class="ribbon-v-divider" aria-hidden="true"></span> <div class="ribbon-group">
 <span class="ribbon-label">Citation depth</span> <div class="ribbon-pills">
 <button class="pill-btn-sm active" data-depth="1" type="button">Direct <small>1-hop</small></button>
@@ -82,11 +83,12 @@
 <label class="discovery-diversify"><input id="discoveryFullTextSearch" type="checkbox"> Search full-text library <small>Include passages from retrieved PMC articles and imported S2ORC records.</small></label>
 <label class="discovery-diversify"><input id="discoveryAiTriage" type="checkbox" checked> AI relevance review <small>Review a shortlist locally; uncertain results stay available.</small></label>
 <label class="discovery-diversify"><input id="discoveryFastEmbed" type="checkbox"> Fast embedding (all-minilm) <small>Uses all-minilm for faster embedding; slightly less accurate.</small></label>
-<div class="discovery-popup-footer"><span>Applies when you select Discover related.</span><button id="discoveryOptionsDone" type="button">Done</button></div>
+<div class="discovery-popup-footer"><span>Sources, filters and ranking preferences also apply to Search papers.</span><button id="discoveryOptionsDone" type="button">Done</button></div>
 </div></div>
-<label class="discovery-question" for="discoveryResearchQuestion"><span class="sr-only">Research question</span><input id="discoveryResearchQuestion" maxlength="1000" placeholder="What are you looking for? (optional)" autocomplete="off"></label>
+<label class="discovery-question" for="discoveryResearchQuestion"><span class="sr-only">Concept, key phrases or research question</span><input id="discoveryResearchQuestion" type="search" maxlength="1000" placeholder="Search a concept, key phrases or question…" autocomplete="off" title="Search papers with AI-assisted keywords, or use this phrase to focus Discover related."></label>
 <label class="ribbon-result-limit" for="discoveryResultLimit"><span>Results</span><select id="discoveryResultLimit" aria-label="Discovery result limit"><option value="50">Up to 50</option><option value="100">Up to 100</option><option value="500" selected>Up to 500</option><option value="1000">Up to 1,000</option><option value="2000">Up to 2,000</option></select></label>
-<button id="ribbonDiscoverButton" class="ribbon-discover-button" type="button">Discover related</button>
+<button id="ribbonConceptSearchButton" class="ribbon-discover-button" type="button" title="Search your concept with AI-assisted keywords. No seed paper needed." disabled>Search papers</button>
+<button id="ribbonDiscoverButton" class="ribbon-discover-button secondary" type="button" title="Discover papers related to your selected paper">Discover related</button>
 <button id="discoveryViewResults" class="ribbon-review-button" type="button" hidden>Review results</button>
 <div id="discoveryRunProgress" class="discovery-run-progress" role="status" aria-live="polite" hidden><progress id="discoveryProgressBar" max="100" value="0" aria-label="Discovery progress"></progress><span id="discoveryProgressText">Searching…</span><button id="discoveryCancelSearch" type="button">Cancel</button></div>
 </div>
@@ -335,6 +337,7 @@
 </div>
 </section>
 <section data-settings-pane="search" class="settings-pane mac-pane" hidden>
+<div class="mac-group-card"><div class="mac-group-title">Search quality benchmark</div><p class="subtle">Review 40 research questions, relevant papers and landmark labels. Provisional judgments stay separate from reviewed evidence.</p><a class="mac-btn" href="benchmark-review.html" target="_blank" rel="noreferrer">Review benchmark questions ↗</a></div>
 <div class="mac-group-card"><div class="mac-group-title">Europe PMC &amp; CORE</div>
 <p class="subtle">Public search works without account setup. Choose your sources in Discovery options. A CORE API key is optional and can provide a higher search allowance.</p>
 <div class="mac-form-row"><label class="mac-form-label" for="coreKeyInput">CORE API key</label><div class="mac-form-control"><input id="coreKeyInput" class="mac-input" type="password" autocomplete="off" placeholder="Optional"><small id="coreSearchStatus" class="subtle">Public search</small></div></div>
@@ -366,13 +369,14 @@
 <header class="dv-head">
 <button id="discoveryModalCloseButton" class="dv-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Back to map</button>
 <div class="dv-title">
-<span class="dv-eyebrow">Related to your seed paper</span>
+<span id="discoveryModalEyebrow" class="dv-eyebrow">Related to your seed paper</span>
 <h2 id="discoveryModalSubtitle" class="dv-seed-title"></h2>
 <h3 id="discoveryModalTitle" class="sr-only">Literature discovery</h3>
 </div>
 <div class="dv-head-actions"><button class="dv-btn" type="button" data-dv-action="open-options">Search options</button><button class="dv-btn run-again-btn" type="button" data-dv-action="run-again">Run again</button></div>
 </header>
 <div id="discoveryProgressPanel" class="dv-progress" role="status" aria-live="polite" hidden></div>
+<div id="discoveryConceptSummary" class="dv-concept-summary" hidden></div>
 <div class="dv-summary">
 <div class="dv-summary-left">
 <span id="discoveryCountSummary" class="dv-count"></span>
@@ -470,15 +474,15 @@
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your computer until you import them. PDFs and full paper text are not uploaded.</small></p>
 <details id="mendeleyDeveloperSettings" hidden><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this computer's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261012-reliability"></script>
-<script src="js/paper-links.js?v=ui-20261012-reliability"></script>
-<script src="js/part_02.js?v=ui-20261012-reliability"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/paper-links.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/part_02.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_03.js?v=ui-20261011-171"></script>
 <script src="js/part_04.js?v=ui-20261011-2"></script>
 <script src="js/part_05.js?v=ui-20261011-2"></script>
-<script src="js/part_06.js?v=ui-20261012-reliability"></script>
-<script src="js/part_07.js?v=ui-20261012-reliability"></script>
-<script src="js/part_08.js?v=ui-20261012-reliability"></script>
+<script src="js/part_06.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/part_07.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/part_08.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_09.js?v=ui-20261010-2"></script>
 <script src="js/part_10.js?v=ui-20261010-2"></script>
 <script src="js/part_11.js?v=ui-20261010-2"></script>
@@ -489,13 +493,14 @@
 <script src="js/part_23.js?v=ui-20261011-1"></script>
 <script src="js/mendeley-sync.js?v=ui-20261010-2"></script>
 <script src="js/part_24.js?v=ui-20261010-2"></script>
-<script src="js/discovery-controls.js?v=ui-20261012-reliability"></script>
+<script src="js/discovery-controls.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/publication-status.js?v=ui-20261012-evidence"></script>
 <script src="js/inspector.js?v=ui-20261011-11"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
 <script src="js/part_17.js?v=ui-20261011-5"></script>
 <script src="js/part_18.js?v=ui-20261011-171"></script>
 <script src="js/discovery-review.js?v=ui-20261012-bridges-passages"></script>
-<script src="js/part_19.js?v=ui-20261012-reliability"></script>
-<script src="js/citation-lookup.js?v=ui-20261012-reliability"></script>
-<script src="js/part_20.js?v=ui-20261012-reliability"></script>
+<script src="js/part_19.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/citation-lookup.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/part_20.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/timeline.js?v=ui-20261011-9"></script>
-<script src="js/part_21.js?v=ui-20261012-reliability"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>
+<script src="js/part_21.js?v=ui-20261012-dbef-scale"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>

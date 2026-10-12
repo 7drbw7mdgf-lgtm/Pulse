@@ -1,0 +1,1562 @@
+{
+  "formatVersion": 1,
+  "name": "Pulse mixed research benchmark",
+  "cases": [
+    {
+      "id": "b01",
+      "domain": "biomedical",
+      "group": "scifact:14717500",
+      "question": "Which research supports or challenges this dataset claim: 1,000 genomes project enables mapping of genetic sequence variation consisting of rare variants with larger penetrance effects than common variants.",
+      "sourceClaimId": 3,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b02",
+      "domain": "biomedical",
+      "group": "scifact:18174210",
+      "question": "Which research supports or challenges this dataset claim: A high microerythrocyte count raises vulnerability to severe anemia in homozygous alpha (+)- thalassemia trait subjects.",
+      "sourceClaimId": 42,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:18174210",
+            "title": "Increased Microerythrocyte Count in Homozygous α+-Thalassaemia Contributes to Protection against Severe Malarial Anaemia"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "CONTRADICT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b03",
+      "domain": "biomedical",
+      "group": "scifact:5953485",
+      "question": "Which research supports or challenges this dataset claim: ADAR1 binds to Dicer to cleave pre-miRNA.",
+      "sourceClaimId": 49,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:5953485",
+            "title": "ADAR1 Forms a Complex with Dicer to Promote MicroRNA Processing and RNA-Induced Gene Silencing"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b04",
+      "domain": "biomedical",
+      "group": "scifact:45638119",
+      "question": "Which research supports or challenges this dataset claim: ALDH1 expression is associated with better breast cancer outcomes.",
+      "sourceClaimId": 51,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:45638119",
+            "title": "ALDH1 is a marker of normal and malignant human mammary stem cells and a predictor of poor clinical outcome."
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "CONTRADICT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "validation"
+    },
+    {
+      "id": "b05",
+      "domain": "biomedical",
+      "group": "scifact:49556906",
+      "question": "Which research supports or challenges this dataset claim: AMP-activated protein kinase (AMPK) activation increases inflammation-related fibrosis in the lungs.",
+      "sourceClaimId": 54,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:49556906",
+            "title": "Metformin reverses established lung fibrosis in a bleomycin model"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "CONTRADICT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "test"
+    },
+    {
+      "id": "b06",
+      "domain": "biomedical",
+      "group": "scifact:4709641",
+      "question": "Which research supports or challenges this dataset claim: APOE4 expression in iPSC-derived neurons increases AlphaBeta production and tau phosphorylation causing GABA neuron degeneration.",
+      "sourceClaimId": 56,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:4709641",
+            "title": "Gain of toxic Apolipoprotein E4 effects in Human iPSC-Derived Neurons Is Ameliorated by a Small-Molecule Structure Corrector"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b07",
+      "domain": "biomedical",
+      "group": "scifact:4381486",
+      "question": "Which research supports or challenges this dataset claim: All hematopoietic stem cells segregate their chromosomes randomly.",
+      "sourceClaimId": 100,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:4381486",
+            "title": "Haematopoietic stem cells do not asymmetrically segregate chromosomes or retain BrdU"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b08",
+      "domain": "biomedical",
+      "group": "scifact:6157837",
+      "question": "Which research supports or challenges this dataset claim: Angiotensin converting enzyme inhibitors are associated with increased risk for functional renal insufficiency.",
+      "sourceClaimId": 113,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:6157837",
+            "title": "Renal considerations in angiotensin converting enzyme inhibitor therapy: a statement for healthcare professionals from the Council on the Kidney in Cardiovascular Disease and the Council for High Blood Pressure Research of the American Heart Association."
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b09",
+      "domain": "biomedical",
+      "group": "scifact:27768226",
+      "question": "Which research supports or challenges this dataset claim: Articles published in open access format are less likely to be cited than traditional journals.",
+      "sourceClaimId": 129,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:27768226",
+            "title": "Open Access Increases Citation Rate"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "CONTRADICT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "validation"
+    },
+    {
+      "id": "b10",
+      "domain": "biomedical",
+      "group": "scifact:10582939",
+      "question": "Which research supports or challenges this dataset claim: Autologous transplantation of mesenchymal stem cells causes a higher rate of opportunistic infections than induction therapy with anti-interleukin-2 receptor antibodies.",
+      "sourceClaimId": 142,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:10582939",
+            "title": "Induction therapy with autologous mesenchymal stem cells in living-related kidney transplants: a randomized controlled trial."
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "CONTRADICT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "test"
+    },
+    {
+      "id": "b11",
+      "domain": "biomedical",
+      "group": "scifact:16322674,17450673,23557241,27123743",
+      "question": "Which research supports or challenges this dataset claim: Birth-weight is positively associated with breast cancer.",
+      "sourceClaimId": 179,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:16322674",
+            "title": "Birth Size and Breast Cancer Risk: Re-analysis of Individual Participant Data from 32 Studies"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:17450673",
+            "title": "Intrauterine environments and breast cancer risk: meta-analysis and systematic review"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:23557241",
+            "title": "Intrauterine factors and risk of breast cancer: a systematic review and meta-analysis of current evidence."
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:27123743",
+            "title": "Role of birthweight in the etiology of breast cancer."
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b12",
+      "domain": "biomedical",
+      "group": "scifact:16966326",
+      "question": "Which research supports or challenges this dataset claim: Blocking the interaction between TDP-43 and respiratory complex I proteins ND3 and ND6 leads to increased TDP-43-induced neuronal loss.",
+      "sourceClaimId": 180,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:16966326",
+            "title": "The Inhibition of TDP-43 Mitochondrial Localization Blocks Its Neuronal Toxicity"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "CONTRADICT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b13",
+      "domain": "biomedical",
+      "group": "scifact:18340282",
+      "question": "Which research supports or challenges this dataset claim: Breast cancer development is determined exclusively by genetic factors.",
+      "sourceClaimId": 185,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:18340282",
+            "title": "Gene–environment interactions in 7610 women with breast cancer: prospective evidence from the Million Women Study"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "CONTRADICT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b14",
+      "domain": "biomedical",
+      "group": "scifact:13519661",
+      "question": "Which research supports or challenges this dataset claim: CHEK2 is not associated with breast cancer.",
+      "sourceClaimId": 208,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:13519661",
+            "title": "Linkage Disequilibrium Mapping of       CHEK2: Common Variation and Breast Cancer Risk     "
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "validation"
+    },
+    {
+      "id": "b15",
+      "domain": "biomedical",
+      "group": "scifact:14376683",
+      "question": "Which research supports or challenges this dataset claim: Commelina yellow mottle virus' (ComYMV) genome consists of 7489 baise pairs.",
+      "sourceClaimId": 279,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:14376683",
+            "title": "Properties of Commelina yellow mottle virus's complete DNA sequence, genomic discontinuities and transcript suggest that it is a pararetrovirus."
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "test"
+    },
+    {
+      "id": "b16",
+      "domain": "biomedical",
+      "group": "scifact:4347374",
+      "question": "Which research supports or challenges this dataset claim: Deamination of cytidine to uridine on the minus strand of viral DNA results in catastrophic G-to-A mutations in the viral genome.",
+      "sourceClaimId": 314,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:4347374",
+            "title": "Broad antiretroviral defence by human APOBEC3G through lethal editing of nascent reverse transcripts"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b17",
+      "domain": "biomedical",
+      "group": "scifact:5884524",
+      "question": "Which research supports or challenges this dataset claim: Diabetic patients with acute coronary syndrome experience increased short-term and long-term risk for bleeding events.",
+      "sourceClaimId": 343,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:5884524",
+            "title": "Impact of diabetes on long-term prognosis in patients with unstable angina and non-Q-wave myocardial infarction: results of the OASIS (Organization to Assess Strategies for Ischemic Syndromes) Registry."
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b18",
+      "domain": "biomedical",
+      "group": "scifact:9955779",
+      "question": "Which research supports or challenges this dataset claim: Epigenetic modulating agents (EMAs) modulate antitumor immune response in a cancer model system.",
+      "sourceClaimId": 385,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:9955779",
+            "title": "Epigenetic Therapy Ties MYC Depletion to Reversing Immune Evasion and Treating Lung Cancer"
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "train"
+    },
+    {
+      "id": "b19",
+      "domain": "biomedical",
+      "group": "scifact:28937856",
+      "question": "Which research supports or challenges this dataset claim: FoxO3a activation in neuronal death is mediated by reactive oxygen species (ROS).",
+      "sourceClaimId": 431,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:28937856",
+            "title": "Stress-dependent regulation of FOXO transcription factors by the SIRT1 deacetylase."
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "validation"
+    },
+    {
+      "id": "b20",
+      "domain": "biomedical",
+      "group": "scifact:10165258",
+      "question": "Which research supports or challenges this dataset claim: GATA-3 is important for hematopoietic stem cell (HSC) function.",
+      "sourceClaimId": 443,
+      "targets": [
+        {
+          "paper": {
+            "benchmarkId": "scifact:10165258",
+            "title": "GATA-3 regulates hematopoietic stem cell maintenance and cell-cycle entry."
+          },
+          "grade": 1,
+          "judgmentSource": "SciFact human evidence annotations",
+          "reviewState": "human-annotated",
+          "landmark": false,
+          "landmarkReviewState": "unreviewed",
+          "evidenceLabels": [
+            "SUPPORT"
+          ]
+        },
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "seeds": [],
+      "split": "test"
+    },
+    {
+      "id": "g01",
+      "domain": "general research",
+      "group": "attention",
+      "question": "How do attention-based models represent long-range dependencies in sequences?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "Attention Is All You Need",
+            "doi": "10.48550/arxiv.1706.03762",
+            "year": "2017",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g02",
+      "domain": "general research",
+      "group": "language",
+      "question": "How does bidirectional pretraining improve language representation for downstream tasks?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+            "doi": "10.18653/v1/n19-1423",
+            "authors": [
+              "Jacob Devlin",
+              "Ming-Wei Chang",
+              "Kenton Lee",
+              "Kristina Toutanova"
+            ],
+            "year": "2019",
+            "journal": "Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long and Short Papers)",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g03",
+      "domain": "general research",
+      "group": "embeddings",
+      "question": "How can distributed word representations capture semantic relationships?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "Efficient Estimation of Word Representations in Vector Space",
+            "doi": "10.48550/arxiv.1301.3781",
+            "year": "2013",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g04",
+      "domain": "general research",
+      "group": "ensembles",
+      "question": "How do randomized decision-tree ensembles improve classification?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "Random Forests",
+            "doi": "10.1023/a:1010933404324",
+            "authors": [
+              "Leo Breiman"
+            ],
+            "year": "2001",
+            "journal": "Machine Learning",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "validation"
+    },
+    {
+      "id": "g05",
+      "domain": "general research",
+      "group": "classification",
+      "question": "How do support-vector methods classify data with nonlinear decision boundaries?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "Support-vector networks",
+            "doi": "10.1007/bf00994018",
+            "authors": [
+              "Corinna Cortes",
+              "Vladimir Vapnik"
+            ],
+            "year": "1995",
+            "journal": "Machine Learning",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "test"
+    },
+    {
+      "id": "g06",
+      "domain": "general research",
+      "group": "uncertainty",
+      "question": "How does Bayesian model averaging account for model uncertainty?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "Bayesian model averaging: a tutorial (with comments by M. Clyde, David Draper and E. I. George, and a rejoinder by the authors",
+            "doi": "10.1214/ss/1009212519",
+            "authors": [
+              "Jennifer A. Hoeting",
+              "David Madigan",
+              "Adrian E. Raftery",
+              "Chris T. Volinsky"
+            ],
+            "year": "1999",
+            "journal": "Statistical Science",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g07",
+      "domain": "general research",
+      "group": "social-networks",
+      "question": "How do weak social ties affect information flow between communities?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "The Strength of Weak Ties",
+            "doi": "10.1086/225469",
+            "authors": [
+              "Mark S. Granovetter"
+            ],
+            "year": "1973",
+            "journal": "American Journal of Sociology",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g08",
+      "domain": "general research",
+      "group": "network-topology",
+      "question": "How can networks combine short path lengths with high local clustering?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "Collective dynamics of ‘small-world’ networks",
+            "doi": "10.1038/30918",
+            "authors": [
+              "Duncan J. Watts",
+              "Steven H. Strogatz"
+            ],
+            "year": "1998",
+            "journal": "Nature",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g09",
+      "domain": "general research",
+      "group": "community-detection",
+      "question": "How can communities be detected in complex networks?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "Community structure in social and biological networks",
+            "doi": "10.1073/pnas.122653799",
+            "authors": [
+              "M. Girvan",
+              "M. E. J. Newman"
+            ],
+            "year": "2002",
+            "journal": "Proceedings of the National Academy of Sciences",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "validation"
+    },
+    {
+      "id": "g10",
+      "domain": "general research",
+      "group": "information",
+      "question": "How does information theory quantify communication and uncertainty?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "A Mathematical Theory of Communication",
+            "doi": "10.1002/j.1538-7305.1948.tb01338.x",
+            "authors": [
+              "C. E. Shannon"
+            ],
+            "year": "1948",
+            "journal": "Bell System Technical Journal",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "test"
+    },
+    {
+      "id": "g11",
+      "domain": "general research",
+      "group": "sequence-models",
+      "question": "How do hidden Markov models represent sequential observations?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "A tutorial on hidden Markov models and selected applications in speech recognition",
+            "doi": "10.1109/5.18626",
+            "authors": [
+              "L.R. Rabiner"
+            ],
+            "year": "1989",
+            "journal": "Proceedings of the IEEE",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g12",
+      "domain": "general research",
+      "group": "discriminant-analysis",
+      "question": "How can multiple measurements distinguish groups in classification?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "THE USE OF MULTIPLE MEASUREMENTS IN TAXONOMIC PROBLEMS",
+            "doi": "10.1111/j.1469-1809.1936.tb02137.x",
+            "authors": [
+              "R. A. FISHER"
+            ],
+            "year": "1936",
+            "journal": "Annals of Eugenics",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g13",
+      "domain": "general research",
+      "group": "causal-inference",
+      "question": "How do propensity scores address confounding in observational comparisons?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "The central role of the propensity score in observational studies for causal effects",
+            "doi": "10.1093/biomet/70.1.41",
+            "authors": [
+              "PAUL R. ROSENBAUM",
+              "DONALD B. RUBIN"
+            ],
+            "year": "1983",
+            "journal": "Biometrika",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g14",
+      "domain": "general research",
+      "group": "multiple-testing",
+      "question": "How can false discovery rate be controlled across multiple statistical tests?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing",
+            "doi": "10.1111/j.2517-6161.1995.tb02031.x",
+            "authors": [
+              "Yoav Benjamini",
+              "Yosef Hochberg"
+            ],
+            "year": "1995",
+            "journal": "Journal of the Royal Statistical Society Series B: Statistical Methodology",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "validation"
+    },
+    {
+      "id": "g15",
+      "domain": "general research",
+      "group": "resampling",
+      "question": "How does bootstrap resampling estimate statistical uncertainty?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "Bootstrap Methods: Another Look at the Jackknife",
+            "doi": "10.1214/aos/1176344552",
+            "authors": [
+              "B. Efron"
+            ],
+            "year": "1979",
+            "journal": "The Annals of Statistics",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "test"
+    },
+    {
+      "id": "g16",
+      "domain": "general research",
+      "group": "evaluation",
+      "question": "How should receiver operating characteristic curves be used to assess classifiers?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "An introduction to ROC analysis",
+            "doi": "10.1016/j.patrec.2005.10.010",
+            "authors": [
+              "Tom Fawcett"
+            ],
+            "year": "2006",
+            "journal": "Pattern Recognition Letters",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g17",
+      "domain": "general research",
+      "group": "deep-learning",
+      "question": "How do multilayer neural models learn representations from data?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "Deep learning",
+            "doi": "10.1038/nature14539",
+            "authors": [
+              "Yann LeCun",
+              "Yoshua Bengio",
+              "Geoffrey Hinton"
+            ],
+            "year": "2015",
+            "journal": "Nature",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g18",
+      "domain": "general research",
+      "group": "optimization",
+      "question": "How does adaptive moment estimation optimize stochastic objectives?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "Adam: A Method for Stochastic Optimization",
+            "doi": "10.48550/arxiv.1412.6980",
+            "year": "2014",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "id": "g19",
+      "domain": "general research",
+      "group": "network-science",
+      "question": "Which structural properties explain the behavior of complex networks?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "The Structure and Function of Complex Networks",
+            "doi": "10.1137/s003614450342480",
+            "authors": [
+              "M. E. J. Newman"
+            ],
+            "year": "2003",
+            "journal": "SIAM Review",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "validation"
+    },
+    {
+      "id": "g20",
+      "domain": "general research",
+      "group": "retrieval",
+      "question": "How do term weighting and probabilistic retrieval models rank documents?",
+      "seeds": [],
+      "targets": [
+        {
+          "paper": {
+            "title": "The Probabilistic Relevance Framework: BM25 and Beyond",
+            "doi": "10.1561/1500000019",
+            "authors": [
+              "Stephen Robertson",
+              "Hugo Zaragoza"
+            ],
+            "year": "2009",
+            "journal": "Foundations and Trends® in Information Retrieval",
+            "registryVerified": true
+          },
+          "grade": 2,
+          "judgmentSource": "Assistant manual curation from the named paper and research question",
+          "reviewState": "provisional",
+          "landmark": true,
+          "landmarkReviewState": "provisional",
+          "rationale": "Proposed foundational paper addressing the named method; expert review is required."
+        },
+        {
+          "paper": {
+            "benchmarkId": "scifact:14717500",
+            "title": "Rare Variants Create Synthetic Genome-Wide Associations"
+          },
+          "grade": 0,
+          "landmark": false,
+          "reviewState": "provisional",
+          "judgmentSource": "Assistant proposed cross-domain distractor",
+          "rationale": "Review whether this paper answers this particular question."
+        }
+      ],
+      "split": "test"
+    }
+  ],
+  "provenance": {
+    "biomedical": "https://github.com/allenai/scifact",
+    "archiveSha256": "11c621288d41ac144d29b13b0f8503b3820b7d6e8b1f6ff24dff335c196d76be",
+    "claimsLicense": "CC BY 4.0",
+    "abstractsLicense": "ODC-By 1.0",
+    "sourceArchive": "https://scifact.s3-us-west-2.amazonaws.com/release/latest/data.tar.gz",
+    "general": "Assistant-curated question/paper pairs; provisional until reviewed",
+    "selection": "First 20 distinct annotated SciFact evidence groups in clinical/genetic topics, ordered by claim id; 20 declared general-method questions",
+    "negativeJudgments": "Proposed distractors require review; unjudged retrieved papers are never silently labelled irrelevant",
+    "landmarks": "Provisional general-method anchors; clinical landmark labels require review"
+  },
+  "registryDiagnostics": []
+}

@@ -55,11 +55,12 @@ def concept_groups(value, keywords=None, definitions=''):
     return groups[:3]
 
 
-def build_query_plan(seeds, preferred=None, question='', feedback=None):
+def build_query_plan(seeds, preferred=None, question='', feedback=None, allow_single=False):
     queries, seen = [], set()
     def add(text, kind, index=None, keywords=None, definitions=''):
         clean = phrase(text)
-        if len(terms(clean)) < 2 or clean.casefold() in seen: return
+        meaningful = bool(re.search(r'[^\W_]', clean, re.UNICODE)) if allow_single else len(terms(clean)) >= 2
+        if not meaningful or clean.casefold() in seen: return
         seen.add(clean.casefold())
         queries.append({'id': f'q{len(queries)+1}', 'text': clean, 'kind': kind, 'seedIndex': index,
                         'groups': concept_groups(text, keywords, definitions)})

@@ -256,6 +256,7 @@
         authors: typeof paperAuthors==='function' ? paperAuthors(paper) : (Array.isArray(paper.authors)?paper.authors:[]),
         year: paper.year || '',
         journal: paper.journal || '',
+        date:paper.date || '',volume:paper.volume || '',issue:paper.issue || '',pages:paper.pages || '',issn:paper.issn || '',authorDetails:paper.authorDetails || [],referenceAuthorDetails:paper.referenceAuthorDetails || [],
         abstract: String(paper.abstract || '').slice(0,6000),
         s2PaperId: paper.s2PaperId || '',
         openAlexId: paper.openAlexId || '',

@@ -93,25 +93,42 @@
       }
     }
 
-    async function runDiscoveryPipeline() {
-      const seeds = selectedPapersForRecommendation();
-      if (!seeds.length) {
+    function runConceptSearch(query) {
+      return runDiscoveryPipeline({searchMode:'concept',query:typeof query==='string'?query:state.discoveryResearchQuestion});
+    }
+
+    function repeatDiscoverySearch() {
+      const context=state.discoveryRunInfo?.get(state.discoveryResultKey)?.runContext||state.discoveryRunContext;
+      return context?.searchMode==='concept'?runConceptSearch(context.researchQuestion):runDiscoveryPipeline();
+    }
+
+    async function runDiscoveryPipeline(request={}) {
+      if (state.discoveryLoading) return;
+      const conceptMode=request.searchMode==='concept';
+      const query=String(request.query||'').trim();
+      const seeds = conceptMode?[]:selectedPapersForRecommendation();
+      if (conceptMode&&!query) {showToast('Enter a concept or key phrase to search.');document.getElementById('discoveryResearchQuestion')?.focus();return;}
+      if (!conceptMode&&!seeds.length) {
         showToast('Select a paper first to run literature discovery.');
         return;
       }
-      if (state.discoveryLoading) return;
       const options = discoveryConfiguration();
+      if(conceptMode)Object.assign(options,{researchQuestion:query,searchMode:'concept',query,bridgeMode:false,depth:'1',includeIterativeChase:false,
+        branches:{citationGraph:false,citationNetwork:false,citationCoCitation:false,semanticSearch:false,lexicalSearch:true}});
       if(options.bridgeMode && seeds.length>8){showToast('Select up to eight seed papers for one bridge search.');return;}
       if(options.bridgeMode && new Set(seeds.map(discoveryPaperKey)).size<2){showToast('Select at least two different seed papers to find bridges.');return;}
       if (!Object.values(options.branches).some(Boolean) && !options.fullTextSearch) { showToast('Choose at least one discovery method.'); return; }
-      if (options.branches.lexicalSearch && !Object.values(options.searchSources).some(Boolean) && !['citationGraph','citationNetwork','semanticSearch'].some(method=>options.branches[method])) { showToast('Choose at least one search source.'); return; }
-      const key = recommendationKey(seeds);
+      if (options.branches.lexicalSearch && !Object.values(options.searchSources).some(Boolean) && !options.fullTextSearch && !['citationGraph','citationNetwork','citationCoCitation','semanticSearch'].some(method=>options.branches[method])) { showToast('Choose at least one search source.'); return; }
+      const key = conceptMode?'concept::'+JSON.stringify(options):recommendationKey(seeds);
+      const displaySeed=conceptMode?{title:query,isConceptQuery:true}:seeds[0];
+      const runContext={researchQuestion:options.researchQuestion,seedPapers:seeds.map(citationPaperPayload),searchMode:conceptMode?'concept':'related'};
       state.discoveryLoading = true;
       state.recommendationLoadingKey = key;
-      state.discoveryJobId=null;state.discoveryCancelRequested=false;state.discoveryStopReview=false;state.discoveryProgressText='Searching your selected sources…';state.discoveryProgressPercent=0;
+      state.discoveryJobId=null;state.discoveryCancelRequested=false;state.discoveryStopReview=false;state.discoveryProgressText=conceptMode?'Preparing search keywords…':'Searching your selected sources…';state.discoveryProgressPercent=0;
+      state.discoveryRunContext=runContext;
       renderDetails();syncDiscoveryControls();
       // Show progress (and the first results) while the slower sources are still searching.
-      if(typeof openDiscoverySearching==='function')openDiscoverySearching(seeds[0],key,options);
+      if(typeof openDiscoverySearching==='function')openDiscoverySearching(displaySeed,key,options);
       let partial=null;
       try {
         const response = await fetch(backendUrl('/api/discovery/start'), {
@@ -128,7 +145,7 @@
         state.discoveryJobId=data.id||null;
         if(state.discoveryCancelRequested&&data.id)await cancelDiscoverySearch();
         while(data.id&&data.status==='running'){
-          state.discoveryProgressText=data.stage==='ranking'?'Assessing titles and abstracts…':!data.total?'Preparing searches…':`${data.completed||0} of ${data.total} searches complete · ${(data.recommendations||[]).length} candidates`;
+          state.discoveryProgressText=data.stage==='keywords'?'Preparing search keywords…':data.stage==='ranking'?'Assessing titles and abstracts…':!data.total?'Preparing searches…':`${data.completed||0} of ${data.total} searches complete · ${(data.recommendations||[]).length} candidates`;
           state.discoveryProgressPercent=data.stage==='ranking'?95:Math.min(85,85*(data.completed||0)/Math.max(1,data.total||1));syncDiscoveryControls();
           if((data.recommendations||[]).length)partial=data;
           if(typeof updateDiscoverySearching==='function')updateDiscoverySearching(data);
@@ -147,18 +164,18 @@
         state.discoverySearchErrors ||= new Map();
         state.discoverySearchErrors.set(key,data.errors || {});
         state.recommendations.set(key, recs);
-        state.discoveryRunInfo ||= new Map();state.discoveryRunInfo.set(key,{...data,runContext:{researchQuestion:options.researchQuestion,seedPapers:seeds.map(citationPaperPayload)}});
-        state.discoveryLastRun={key,recommendations:recs,seed:seeds[0]};
-        if (recommendationKey(selectedPapersForRecommendation()) === key) {
-          state.discoveryResultKey=key;state.discoveryRunContext={researchQuestion:options.researchQuestion,seedPapers:seeds.map(citationPaperPayload)};
-          openDiscoveryModal(recs, seeds[0],key);
+        state.discoveryRunInfo ||= new Map();state.discoveryRunInfo.set(key,{...data,runContext});
+        state.discoveryLastRun={key,recommendations:recs,seed:displaySeed};
+        if (conceptMode||recommendationKey(selectedPapersForRecommendation()) === key) {
+          state.discoveryResultKey=key;state.discoveryRunContext=runContext;
+          openDiscoveryModal(recs, displaySeed,key);
         } else if (state.discoverySearching?.key === key) {
           // The selection changed during the search; results stay under "Review results".
           state.discoverySearching = null;
           if (els.discoveryModal && !els.discoveryModal.hidden) closeDiscoveryModal();
         }
         const unavailable=Object.keys(data.errors || {}).length;
-        showToast(`Found ${recs.length} related paper${recs.length === 1 ? '' : 's'}${unavailable ? ` · ${unavailable} search source${unavailable===1?'':'s'} reported a problem` : ` for "${compactTitle(seeds[0].title)}"`}.`);
+        showToast(`Found ${recs.length} ${conceptMode?'matching':'related'} paper${recs.length === 1 ? '' : 's'}${unavailable ? ` · ${unavailable} search source${unavailable===1?'':'s'} reported a problem` : ` for "${compactTitle(displaySeed.title)}"`}.`);
       } catch (error) {
         showToast(error.message);
         if(state.discoverySearching){state.discoverySearching=null;if(els.discoveryModal&&!els.discoveryModal.hidden)closeDiscoveryModal();}

@@ -1,7 +1,7 @@
 """DBEF content ranking adapted from the user-supplied dbef_content.py.
 
-The supplied equations, tokenizer, TF-IDF defaults and bounded two-stage scorer
-are retained. Sparse Python vectors replace numpy/scikit-learn to keep the
+The supplied equations, tokenizer and legacy defaults are retained. The calibrated
+path fits TF-IDF and similarity anchors on seed/reference texts only. Sparse Python vectors replace numpy/scikit-learn to keep the
 packaged backend compatible with its existing Python 3.10+ requirement.
 """
 from __future__ import annotations
@@ -10,6 +10,7 @@ import heapq
 import itertools
 import math
 import re
+import statistics
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -22,6 +23,7 @@ class SeedPaper:
     abstract: str
     references: List[str]
     original_index: int = 0
+    reference_count: Optional[int] = None
 
 @dataclass
 class CandidatePaper:
@@ -182,6 +184,24 @@ def calibrate(values, mode='pool', lo_pct=5, hi_pct=95):
     return [scaled(value) if math.isfinite(value) else median for value in values]
 
 
+def seed_scale(seeds, weights, kappa=15, lam=.3):
+    """Fixed saturation anchor: one median seed reference maps to 0.15."""
+    known=[value for value in weights.values() if math.isfinite(value) and value>0]
+    lengths=[max(len(set(seed.references)),seed.reference_count or 0) for seed in seeds]
+    lengths=[length for length in lengths if length>0]
+    w_med=statistics.median(known) if known else 1.
+    length=statistics.median(lengths) if lengths else 40
+    content=lam+(1-lam)*.5
+    s1=w_med/math.sqrt(length+kappa)*content
+    return {'S0':s1*(1/.15-1),'s1':s1,'inputs':{'medianSeedReferenceWeight':w_med,
+            'typicalSeedReferenceCount':length,'kappa':kappa,'lambda':lam,
+            'velocityFactor':1,'midContentFactor':content,'available':bool(known)}}
+
+
+def saturate_score(score, scale):
+    return max(0,score)/(max(0,score)+scale['S0'])
+
+
 def compute_seed_reference_weights(seeds, ref_texts, citation_counts, embedder, *, n_corpus=1e7,
                                    unknown_count=1, rho=.2, agg='max', calibration='pool'):
     ref_ids = list(dict.fromkeys(r for seed in seeds for r in seed.references))
@@ -195,32 +215,40 @@ def compute_seed_reference_weights(seeds, ref_texts, citation_counts, embedder, 
 
 def score_and_rank_candidates(candidates, seeds, citation_counts, ref_texts, embedder=None, *, top_k=200,
                               stage1_k=1000, kappa=15, beta=.5, lam=.3, rho=.2, n_corpus=1e7,
-                              unknown_count=1, agg='max', calibration='pool', fit_corpus=None, check=None):
+                              unknown_count=1, agg='max', calibration='pool', fit_corpus=None, check=None,
+                              stable_seed_calibration=False):
     if top_k < 1 or kappa <= 0 or beta < 0 or n_corpus <= 0 or not 0 <= lam <= 1 or not 0 <= rho <= 1:
         raise ValueError('Invalid DBEF parameters')
-    embedder = embedder or TfidfEmbedder(check=check)
+    # A seed-only corpus intentionally shares topic words. Filtering those as
+    # ubiquitous would erase the very topic whose overlap is being assessed.
+    embedder = embedder or TfidfEmbedder(max_df=1 if stable_seed_calibration else .9,check=check)
     seed_ids = {s.paper_id for s in seeds}
     seed_texts = [(s.title,s.abstract) for s in seeds]
-    corpus = fit_corpus if fit_corpus is not None else [*seed_texts,*ref_texts.values(),*((c.title,c.abstract) for c in candidates)]
+    seed_refs=sorted({ref for seed in seeds for ref in seed.references})
+    corpus = fit_corpus if fit_corpus is not None else ([*seed_texts,*(ref_texts.get(ref,('','')) for ref in seed_refs)]
+              if stable_seed_calibration else [*seed_texts,*ref_texts.values(),*((c.title,c.abstract) for c in candidates)])
     if not any(_has_text(t) for t in corpus): corpus = [('neutral','')]
     embedder.fit(corpus)
     weights, ref_diag = compute_seed_reference_weights(seeds,ref_texts,citation_counts,embedder,
         n_corpus=n_corpus,unknown_count=unknown_count,rho=rho,agg=agg,calibration=calibration)
     prefix = [0,*itertools.accumulate(sorted(weights.values(),reverse=True))]
     stage1_k, heap, tie, pruned, eligible = max(stage1_k,top_k), [], itertools.count(), 0, 0
+    statuses={'assessed_overlap':[],'assessed_zero':[],'unassessed':[]}
     for index,candidate in enumerate(candidates):
         if check and index % 32 == 0: check()
         if candidate.paper_id in seed_ids: continue
         refs = set(candidate.references)
         length = max(len(refs),candidate.reference_count or 0)
+        shared = sorted(refs.intersection(weights))
+        status='unassessed' if not weights or not length else 'assessed_overlap' if shared else 'assessed_zero'
+        statuses[status].append(candidate.paper_id)
+        if not shared:continue
         saturation = 1/math.sqrt(length+kappa)
         velocity = candidate.recent_velocity
         velocity = 0 if velocity is None or not math.isfinite(velocity) else max(0,velocity)
         factor = 1+beta*math.log1p(velocity)
         if len(heap) >= stage1_k and prefix[min(length,len(weights))]*saturation*factor <= heap[0][0]:
             pruned += 1; continue
-        shared = sorted(refs.intersection(weights))
-        if not shared: continue
         eligible += 1
         overlap = sum(weights[r] for r in shared)
         payload = (candidate,overlap,saturation,factor,shared)
@@ -232,7 +260,13 @@ def score_and_rank_candidates(candidates, seeds, citation_counts, ref_texts, emb
     pool = [row[2] for row in sorted(heap,reverse=True)]
     matrix = cosine_matrix(embedder,[(row[0].title,row[0].abstract) for row in pool],seed_texts)
     sigma = reduce_rows(matrix,agg)
-    adjusted = calibrate(sigma,calibration)
+    if stable_seed_calibration and calibration=='pool':
+        anchors=[value for value in ref_diag['tau'] if math.isfinite(value)]
+        lo,hi=(percentile(anchors,5),percentile(anchors,95)) if anchors else (0.,1.)
+        # Seed-side anchors, including the vocabulary fit, are independent of
+        # the candidate batch. A degenerate anchor uses absolute cosine.
+        adjusted=[.5 if not math.isfinite(value) else max(0,min(1,value if hi-lo<1e-12 else (value-lo)/(hi-lo))) for value in sigma]
+    else:adjusted = calibrate(sigma,calibration)
     results = []
     for (candidate,overlap,saturation,velocity,shared),sim,content in zip(pool,sigma,adjusted):
         content_factor = lam+(1-lam)*content
@@ -243,4 +277,5 @@ def score_and_rank_candidates(candidates, seeds, citation_counts, ref_texts, emb
     exact = (not full or (not pruned and eligible == len(pool))
              or bool(len(top) == top_k and top[-1].score >= cutoff))
     return top, {**ref_diag,'weights':weights,'pool_ids':[row[0].paper_id for row in pool],
-        'B':matrix,'sigma':sigma,'sigma_hat':adjusted,'n_pruned':pruned,'stage1_cutoff':cutoff,'exact':exact}
+        'B':matrix,'sigma':sigma,'sigma_hat':adjusted,'n_pruned':pruned,'stage1_cutoff':cutoff,'exact':exact,
+        'network_status_ids':statuses,'scored_rows':results,'scale':seed_scale(seeds,weights,kappa,lam)}

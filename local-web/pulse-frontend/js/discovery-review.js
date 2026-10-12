@@ -68,7 +68,7 @@ function initDiscoveryReview(){
     for(const id of ['discoveryFilterText','discoveryFilterAuthor'])document.getElementById(id).value='';
     document.getElementById('discoveryFilterYear').value='all';document.getElementById('discoveryFullTextOnly').checked=false;renderDiscoveryModal();
   });
-  document.getElementById('discoveryRefineFeedback')?.addEventListener('click',()=>{closeDiscoveryModal();runDiscoveryPipeline();});
+  document.getElementById('discoveryRefineFeedback')?.addEventListener('click',()=>{closeDiscoveryModal();repeatDiscoverySearch();});
   document.getElementById('discoveryExportLabels')?.addEventListener('click',exportDiscoveryBenchmark);
   els.discoveryPaperList?.addEventListener('click',event=>{
     const button=event.target.closest('[data-relevance-grade]');if(!button)return;

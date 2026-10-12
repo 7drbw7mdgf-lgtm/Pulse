@@ -241,6 +241,8 @@ html[data-theme="dark"] .theme-switch .theme-moon { display:block; }
 .ribbon-result-limit select { color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:7px; padding:8px 9px; font:inherit; font-size:12px; cursor:pointer; }
 .ribbon-discover-button { padding:9px 12px; border:1px solid var(--accent); border-radius:7px; background:var(--accent); color:var(--accent-ink); font:inherit; font-size:12px; font-weight:600; white-space:nowrap; }
 .ribbon-discover-button:hover:not(:disabled) { filter:brightness(1.08); }
+.ribbon-discover-button.secondary { background:var(--surface); color:var(--ink); border-color:var(--line); }
+.ribbon-discover-button:disabled { opacity:.5; cursor:default; }
 .ribbon-library-connections.library-connection-pill { margin:0; padding:0; gap:10px; border:0; border-radius:0; background:transparent; box-shadow:none; }
 .ribbon-library-connections.library-connection-pill button { min-width:180px; min-height:44px; padding:7px 11px; gap:9px; border:1px solid var(--line); border-radius:7px; text-align:left; }
 .ribbon-library-connections.library-connection-pill button strong { display:block; color:var(--ink); font-size:12px; font-weight:600; }

@@ -31,7 +31,7 @@ def nearest_chunk_context(papers, prompt, limit=10):
             chunks.append(f"[{p.get('title', 'Unknown')}]: {c}")
     return "\n\n".join(chunks[:limit])
 
-def call_gemini(settings, prompt, temperature=0.2, max_tokens=1800, json_mode=False):
+def call_gemini(settings, prompt, temperature=0.2, max_tokens=1800, json_mode=False, timeout=None):
     api_key = resolve_gemini_api_key(settings)
     if not api_key:
         raise ClientError(400, "Gemini API key is missing. Please enter your Google AI Studio API key in Settings.")
@@ -56,7 +56,7 @@ def call_gemini(settings, prompt, temperature=0.2, max_tokens=1800, json_mode=Fa
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=25) as response:
+        with urllib.request.urlopen(req, timeout=timeout if timeout is not None else 25) as response:
             res = json.loads(response.read().decode("utf-8"))
             candidates = res.get("candidates") or []
             if candidates:
@@ -67,7 +67,7 @@ def call_gemini(settings, prompt, temperature=0.2, max_tokens=1800, json_mode=Fa
     except Exception as err:
         raise ClientError(502, f"Gemini generation error: {err}")
 
-def call_gemma(settings, prompt, temperature=0.2, max_tokens=1200, json_mode=False):
+def call_gemma(settings, prompt, temperature=0.2, max_tokens=1200, json_mode=False, timeout=None):
     model = resolve_gemma_model(settings)
     endpoint = resolve_ollama_chat_endpoint(settings)
     payload = {
@@ -88,17 +88,17 @@ def call_gemma(settings, prompt, temperature=0.2, max_tokens=1200, json_mode=Fal
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=timeout if timeout is not None else 30) as response:
             data = json.loads(response.read().decode("utf-8"))
             return (data.get("message") or {}).get("content", "")
     except Exception as err:
         raise ClientError(502, f"Ollama generation error: {err}")
 
-def call_ai(settings, prompt, temperature=0.2, max_tokens=1800, json_mode=False):
+def call_ai(settings, prompt, temperature=0.2, max_tokens=1800, json_mode=False, timeout=None):
     prov = resolve_ai_provider(settings)
     if prov == "cloud":
-        return call_gemini(settings, prompt, temperature=temperature, max_tokens=max_tokens, json_mode=json_mode)
-    return call_gemma(settings, prompt, temperature=temperature, max_tokens=max_tokens, json_mode=json_mode)
+        return call_gemini(settings, prompt, temperature=temperature, max_tokens=max_tokens, json_mode=json_mode, timeout=timeout)
+    return call_gemma(settings, prompt, temperature=temperature, max_tokens=max_tokens, json_mode=json_mode, timeout=timeout)
 
 def analyze_with_gemma(payload):
     from pulse_core.storage import load_settings

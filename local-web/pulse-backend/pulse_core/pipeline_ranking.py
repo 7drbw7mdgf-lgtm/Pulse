@@ -1,5 +1,6 @@
 """Transparent hybrid retrieval, neural reranking and diversity selection."""
 import collections
+import bisect
 import copy
 import datetime
 import math
@@ -10,11 +11,13 @@ from pulse_core.discovery_queries import terms, text_for_paper
 from pulse_core.metadata_resolution import similarity
 from pulse_core.search_merge import merge_search_records, title_key, known_count
 from pulse_core.search_limits import discovery_limit, MAX_CANDIDATE_POOL
-from pulse_core.discovery_feedback import paper_key
+from pulse_core.discovery_feedback import paper_key, contrastive_profile, feedback_adjustment
+from pulse_core.ranking_evidence import dbef_quality, apply_network_assessments, graph_evidence
+from pulse_core.publication_records import fold_explicit_versions
 from pulse_core.discovery_matches import query_coverage, match_evidence, match_label, fit_calibration, independent_channel_count
 
-SEMANTIC_SHORTLIST_LIMIT = 150
-PAIRWISE_SHORTLIST_LIMIT = 75
+SEMANTIC_SHORTLIST_LIMIT = 96
+PAIRWISE_SHORTLIST_LIMIT = 48
 
 
 def contains_phrase(text, phrase):
@@ -162,6 +165,7 @@ REPOSITORY_DOI_PREFIXES = ('10.5281/', '10.6084/', '10.17863/', '10.25418/', '10
 
 
 def _versions(records):
+    records=fold_explicit_versions(records)
     groups = []
     def family(name):
         # "Surname, Given", "Given Surname" and "Surname AB" all yield the surname;
@@ -176,6 +180,8 @@ def _versions(records):
         doi = str(p.get('doi') or '').lower()
         return preprint(p) or not doi or doi.startswith(REPOSITORY_DOI_PREFIXES)
     gram_index, descriptions = collections.defaultdict(set), []
+    author_index,title_index=collections.defaultdict(set),collections.defaultdict(set)
+    unknown_authors,copy_indices=set(),set()
     def describe(record):
         key = title_key(record.get('title'))
         grams = {key[i:i+3] for i in range(max(1,len(key)-2))}
@@ -186,10 +192,20 @@ def _versions(records):
         key, grams, authors_a, year_a, is_copy = describe(record)
         # Near-identical titles share character trigrams. Block expensive fuzzy
         # comparisons by overlap; adding unrelated papers no longer costs O(n²).
-        counts = collections.Counter(i for gram in grams for i in gram_index.get(gram, ()))
-        possible = [i for i,count in counts.items() if count >= .65*min(len(grams),len(descriptions[i][1]))]
+        eligible=set().union(*(author_index[author] for author in authors_a))|unknown_authors if authors_a else set(range(len(groups)))
+        fuzzy=eligible if is_copy else eligible&copy_indices
+        # Published/published matching requires an exact title. Fuzzy matching
+        # needs compatible authors and a copy; common title trigrams never scan
+        # the entire candidate pool when those identities already disagree.
+        possible=set(title_index.get(key,()))
+        if fuzzy:
+            rare=sorted(grams,key=lambda gram:len(gram_index.get(gram,())))[:8]
+            nominated=set().union(*(gram_index.get(gram,set())&fuzzy for gram in rare))
+            counts={index:len(grams&descriptions[index][1]) for index in nominated}
+            possible.update(index for index,count in counts.items() if count>=.65*min(len(grams),len(descriptions[index][1])))
         for index in sorted(possible):
             candidate = groups[index]
+            if record.get('publicationRole')=='notice' or candidate.get('publicationRole')=='notice':continue
             key_b, _, authors_b, year_b, candidate_copy = descriptions[index]
             both_listed = bool(authors_a and authors_b)
             same_authors = both_listed and len(authors_a & authors_b)/min(len(authors_a),len(authors_b))>=.75
@@ -208,6 +224,10 @@ def _versions(records):
             index = len(groups)
             groups.append(record); descriptions.append((key,grams,authors_a,year_a,is_copy))
             for gram in grams: gram_index[gram].add(index)
+            for author in authors_a:author_index[author].add(index)
+            title_index[key].add(index)
+            if not authors_a:unknown_authors.add(index)
+            if is_copy:copy_indices.add(index)
             continue
         rank = lambda p: (not copy_record(p), bool(p.get('doi')), int(p.get('citationCount') or p.get('citedByCount') or 0))
         published = record if rank(record) > rank(group) else group
@@ -227,6 +247,10 @@ def _versions(records):
         groups[index] = published
         descriptions[index] = describe(published)
         for gram in descriptions[index][1]: gram_index[gram].add(index)
+        for author in descriptions[index][2]:author_index[author].add(index)
+        title_index[descriptions[index][0]].add(index)
+        if descriptions[index][4]:copy_indices.add(index)
+        else:copy_indices.discard(index)
     return groups
 
 
@@ -270,7 +294,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
             doi, title = normalize_doi(item.get('doi')).lower(), title_key(item.get('title'))
             if not (doi or title) or doi in excluded_dois or title in excluded_titles: continue
             if any(contains_phrase(text_for_paper(item),term) for term in options.get('strictExcludeKeywords') or []): continue
-            record = copy.deepcopy(item)
+            record = dict(item)  # merge_search_records owns the deep copy.
             record['branches'] = [branch]
             record['sourceList'] = record.get('sourceList') or [record.get('source') or record.get('metadataSource') or branch]
             record.setdefault('retrievalEvidence',[{'channel':branch, 'provider':record['sourceList'][0], 'rank':rank}])
@@ -283,27 +307,32 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
             candidates.append(record)
     records = merge_search_records(candidates)
     if not records: return []
+    apply_network_assessments(records,candidates_by_branch)
     queries = ([options['researchQuestion']] if options.get('researchQuestion') else []) + [text_for_paper(p) for p in seed_papers]
     if options.get('steerKeywords'): queries.append(' '.join(options['steerKeywords']))
     relevance = bm25_scores(records,queries,focus_first=bool(options.get('researchQuestion')))
     # RRF votes belong to distinct retrieval channels, not to duplicated indexes.
-    raw_rrf = []
+    raw_rrf, base_rrf = [], []
+    qualities=[dbef_quality(record,options.get('dbefPolicy')) for record in records]
+    graphs,options['_networkEvidence']=graph_evidence(records,qualities,options)
     for record in records:
         channels = {}
         for evidence in record.get('retrievalEvidence') or []:
             rank = max(1,int(evidence.get('rank') or 1))
             channel = evidence.get('channel') or 'concepts'
             channels[channel] = min(rank,channels.get(channel,rank))
-        raw_rrf.append(sum(1/(60+rank) for rank in channels.values()))
-    peak_rrf = max(raw_rrf) or 1
+        base_rrf.append(sum(1/(60+rank) for rank in channels.values()))
+        raw_rrf.append(sum((qualities[len(raw_rrf)] if channel=='dbef' or channel.startswith('dbef:') else 1)/(60+rank) for channel,rank in channels.items()))
+    peak_rrf = max(base_rrf) or 1
     rejected = {paper_key(row['paper']) for row in options.get('relevanceFeedback') or [] if row['grade'] == 0}
-    prelim = [.7*relevance[i]+.3*raw_rrf[i]/peak_rrf +
-              (.12*float((records[i].get("dbef") or {}).get("normalizedScore") or 0)) +
+    prelim = [(.7*relevance[i]+.3*raw_rrf[i]/peak_rrf)/(.88 if graphs[i]['renormalize'] else 1) +
+              (.12*graphs[i]['prelim']) +
               (.06*foundational_support(records[i], relevance[i])
                if options.get('foundationalPrior', True) and paper_key(records[i]) not in rejected else 0)
               for i in range(len(records))]
     indices = balanced_indices(records, prelim, MAX_CANDIDATE_POOL)
-    records, relevance, raw_rrf, prelim = ([records[i] for i in indices], [relevance[i] for i in indices], [raw_rrf[i] for i in indices], [prelim[i] for i in indices])
+    records, relevance, raw_rrf, prelim, qualities = ([records[i] for i in indices], [relevance[i] for i in indices], [raw_rrf[i] for i in indices], [prelim[i] for i in indices], [qualities[i] for i in indices])
+    graphs=[graphs[i] for i in indices]
     options['_candidateCount'] = len(records)
     semantic, pairwise = {}, {}
     options['_rankingNotice'] = 'Titles and abstracts ranked by text and citation evidence'
@@ -316,8 +345,6 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         if values is not None: semantic = dict(zip(indices, values))
     if options.get('_pairwiseReranker'):
         indices = balanced_indices(records, [.7*prelim[i]+.3*semantic.get(i,0) for i in range(len(records))], PAIRWISE_SHORTLIST_LIMIT)
-        # Research question first; without one use focused titles/keywords, not
-        # a concatenation of many complete abstracts as one question.
         pair_queries = [options['researchQuestion']] if options.get('researchQuestion') else [str(p.get('title') or '')+' '+' '.join(p.get('paperKeywords') or []) for p in seed_papers[:2]]
         started = time.monotonic()
         values, notice = options['_pairwiseReranker'](pair_queries, [records[i] for i in indices])
@@ -326,11 +353,11 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         options['_pairwiseNotice'] = notice
         if values is not None:
             pairwise = dict(zip(indices, values)); options['_rankingNotice'] = notice
-        else:
-            options['_rankingNotice'] = notice
+        else: options['_rankingNotice'] = notice
     feedback = options.get('relevanceFeedback') or []
     grades = {paper_key(row['paper']): row['grade'] for row in feedback}
-    feedback_terms = [(row['grade'], set(terms(row['paper'].get('title'))+terms(row['paper'].get('abstract')))) for row in feedback]
+    feedback_profile=contrastive_profile(feedback)
+    options['_feedbackConcepts']={key:feedback_profile[key] for key in ('prefer','avoid','paired')}
 
     today = datetime.date.today().year
     impacts = []
@@ -339,27 +366,27 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         year = str(record.get('year') or '')[:4]
         age = max(1,today-int(year)+1) if year.isdigit() and int(year) <= today else None
         impacts.append(math.log1p(max(0,count)/age) if count is not None and age else None)
+    all_impacts=sorted(value for value in impacts if value is not None)
+    field_impacts=collections.defaultdict(list)
+    for record,value in zip(records,impacts):
+        if value is not None and record.get('field'):field_impacts[record['field']].append(value)
+    for values in field_impacts.values():values.sort()
     for i,record in enumerate(records):
         text = text_for_paper(record)
-        graph = max(float(record.get('networkSimilarity') or 0), 1/max(1,int(record.get('hop') or 1)) if 'citationGraph' in record['branches'] else 0)
-        graph = min(1,graph)
+        graph = graphs[i]['value']
         fusion = raw_rrf[i]/peak_rrf
         sem, pair = semantic.get(i), pairwise.get(i)
         # A bounded neural bonus is comparable with unscored candidates. The
         # candidate pool is retained even when a local model fails or times out.
         score = .62*relevance[i]+.26*fusion+.12*graph
+        if graphs[i]['renormalize']:score/=.88
         if sem is not None: score = .8*score+.2*sem
         if pair is not None: score = .45*score+.55*pair
         grade = grades.get(paper_key(record))
         adjustment = .18 if grade is not None and grade > 0 else -.55 if grade == 0 else 0
         if grade is None:
-            tokens = set(terms(record.get('title'))+terms(record.get('abstract')))
-            positive, negative = 0.0, 0.0
-            for judgement, judged in feedback_terms:
-                overlap = len(tokens & judged)/max(1, len(tokens | judged))
-                if judgement > 0: positive = max(positive, overlap)
-                else: negative = max(negative, overlap)
-            adjustment = .08*positive-.15*negative
+            adjustment,evidence=feedback_adjustment(record,feedback_profile,(options.get('_feedbackSemantic') or {}).get(paper_key(record))) if feedback else (0,None)
+            if evidence:record['feedbackEvidence']=evidence
         score += adjustment
         preferred = sum(contains_phrase(text,term) for term in options.get('steerKeywords') or [])
         avoided = sum(contains_phrase(text,term) for term in options.get('excludeKeywords') or [])
@@ -369,9 +396,9 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         # Age-adjusted velocity is a within-pool percentile of citations/year. Only
         # compare the same field when enough records expose an actual field.
         field = record.get('field')
-        cohort = [value for p,value in zip(records,impacts) if value is not None and (not field or p.get('field')==field)]
-        if len(cohort)<3: cohort = [value for value in impacts if value is not None]
-        impact = sum(value<impacts[i] for value in cohort)/len(cohort) if impacts[i] is not None and len(cohort)>=3 else 0
+        cohort=field_impacts.get(field,all_impacts) if field else all_impacts
+        if len(cohort)<3:cohort=all_impacts
+        impact = bisect.bisect_left(cohort,impacts[i])/len(cohort) if impacts[i] is not None and len(cohort)>=3 else 0
         topic_support = max(relevance[i], sem or 0)
         velocity_prior = .09*impact*topic_support if options.get('citationVelocityPrior', True) and grade != 0 and not record.get('dbef') else 0
         score += velocity_prior
@@ -381,14 +408,22 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         score += .05*min(2,float(options.get('recencyTilt') or 0))*recency*max(relevance[i],sem or 0)
         record['score'] = round(100*max(0,min(1,score)),3)
         record['scoreBreakdown'] = {'text':round(relevance[i],3),'fusion':round(fusion,3),'semantic':round(sem,3) if sem is not None else None,
-            'dbef':record.get('dbef'),'citationEvidence':round(graph,3),'optionalImpact':round(impact,3),'citationVelocityPrior':round(velocity_prior,4),'foundationalPrior':round(foundation_prior,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
+            'dbef':record.get('dbef'),'dbefEvidenceQuality':qualities[i] if record.get('dbef') else None,'citationEvidence':round(graph,3),
+            'networkStatus':record['networkStatus'],'graphImputed':graphs[i]['imputed'],'graphRenormalized':graphs[i]['renormalize'],
+            'preliminaryScore':round(prelim[i],6),
+            'optionalImpact':round(impact,3),'citationVelocityPrior':round(velocity_prior,4),'foundationalPrior':round(foundation_prior,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
         record['branchHits'] = {b:True for b in record['branches']}
         if any(b in record['branches'] for b in ('core','europePmc','fullText')): record['branchHits']['lexicalConceptual']=True
         explanations = []
         if sem is not None and sem>=.4: explanations.append('Related meaning in title and abstract')
         if relevance[i]>=.35: explanations.append('Matches your research question or seed topics')
-        if graph: explanations.append('Connected through citations' if 'citationGraph' in record['branches'] else 'Normalised shared-reference evidence')
+        if graph and not graphs[i]['imputed']: explanations.append('Connected through citations' if 'citationGraph' in record['branches'] else 'Normalised shared-reference evidence')
         record['whyFound'] = why_found(record, seed_papers, options, relevance[i])
+        if grade is None and adjustment and record.get('feedbackEvidence'):
+            direction='preferred' if adjustment>0 else 'rejected'
+            concepts=record['feedbackEvidence']['positiveConcepts' if adjustment>0 else 'negativeConcepts']
+            record['whyFound'].insert(0,{'kind':'feedback','label':'Your relevance feedback',
+                'detail':f'Matches concepts from papers you {direction} for this question'+(': '+', '.join(concepts[:2]) if concepts else '')})
         if record.get('matchedPassages'):
             record['whyFound'].insert(0, {'kind':'fulltext','label':'Full-text passage','detail':'Matched '+record['matchedPassages'][0].get('section','article text')+' in '+str(record.get('source') or 'the local full-text library')})
         if record['whyFound']: explanations = [item['detail'] for item in record['whyFound']]
@@ -403,7 +438,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         if profile.get('version') != 'evidence-v1' or profile.get('mode') != mode: profile = None
         record['matchMode'] = mode
         record['matchLabel'] = match_label(evidence, profile, grade)
-        record['matchStrengthVersion'] = 'evidence-v4'
+        record['matchStrengthVersion'] = 'evidence-v5-dbef-seed-scale'
         if grade is not None:
             record['relevanceGrade'] = grade
             record['matchReasons'].insert(0, 'Marked relevant for this question' if grade > 0 else 'Marked not relevant for this question')

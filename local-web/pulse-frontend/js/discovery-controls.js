@@ -1,5 +1,5 @@
 // One configuration shared by the toolbar, inspector and discovery request.
-const discoveryMethodKeys = {citations:'citationGraph',network:'citationNetwork',semantic:'semanticSearch',concepts:'lexicalSearch'};
+const discoveryMethodKeys = {citations:'citationGraph',network:'citationNetwork',cocitation:'citationCoCitation',semantic:'semanticSearch',concepts:'lexicalSearch'};
 let discoveryOptionsReturnFocusId = 'discoveryOptionsButton';
 let activeRibbonTab = 'discovery';
 let ribbonCollapsed = false;
@@ -14,12 +14,12 @@ function discoveryConfiguration() {
 }
 function discoveryConfigurationKey() {
   const options=discoveryConfiguration();
-  return 'dbef-reliability-1711::'+Object.values(options.branches).map(Boolean).join('_')+'::'+options.depth+'::'+options.limit+'::'+Object.values(options.searchSources).map(Boolean).join('_')+'::'+JSON.stringify([options.researchQuestion,options.strictExcludeKeywords,options.diversify,options.bridgeMode,options.aiTriage,options.fastEmbed,options.fullTextSearch]);
+  return 'dbef-seed-scale-v2::'+Object.values(options.branches).map(Boolean).join('_')+'::'+options.depth+'::'+options.limit+'::'+Object.values(options.searchSources).map(Boolean).join('_')+'::'+JSON.stringify([options.researchQuestion,options.strictExcludeKeywords,options.diversify,options.bridgeMode,options.aiTriage,options.fastEmbed,options.fullTextSearch]);
 }
 function discoveryOptionsLabel() {
   const options=discoveryConfiguration(),enabled=Object.keys(discoveryMethodKeys).filter(method=>options.branches[discoveryMethodKeys[method]]);
-  const names={citations:'Citations',network:'DBEF',semantic:'Semantic',concepts:'Concepts'};
-  const methods=enabled.length===4?'All methods':enabled.length===0?'No methods':enabled.length===1?names[enabled[0]]:`${enabled.length} methods`;
+  const names={citations:'Citations',network:'DBEF',cocitation:'Co-citation',semantic:'Semantic',concepts:'Concepts'};
+  const methods=enabled.length===5?'All methods':enabled.length===0?'No methods':enabled.length===1?names[enabled[0]]:`${enabled.length} methods`;
   const parts=[methods];
   if(options.branches.citationGraph)parts.push(options.depth==='iterative'?'Iterative':options.depth+'-hop');
   if(options.impactTilt>0)parts.push('Foundational');
@@ -39,6 +39,7 @@ function syncDiscoveryControls() {
   const progressText=document.getElementById('discoveryProgressText');if(progressText)progressText.textContent=state.discoveryProgressText||'Searching your selected sources…';
   const progressBar=document.getElementById('discoveryProgressBar');if(progressBar)progressBar.value=state.discoveryProgressPercent||0;
   const discoverButton=document.getElementById('ribbonDiscoverButton');if(discoverButton){discoverButton.disabled=Boolean(state.discoveryLoading);discoverButton.textContent=state.discoveryLoading?'Searching…':'Discover related';}
+  const conceptButton=document.getElementById('ribbonConceptSearchButton');if(conceptButton){conceptButton.disabled=Boolean(state.discoveryLoading)||!options.researchQuestion;conceptButton.textContent=state.discoveryLoading?'Searching…':'Search papers';}
   popup.querySelectorAll('[data-method]').forEach(button=>{
     const active=options.branches[discoveryMethodKeys[button.dataset.method]];
     button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));
@@ -49,7 +50,7 @@ function syncDiscoveryControls() {
   });
   popup.querySelectorAll('[data-search-source]').forEach(button=>{
     const active=options.searchSources[button.dataset.searchSource];button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));
-    button.disabled=!options.branches.lexicalSearch;
+    button.disabled=false; // Standalone concept searches always use these source choices.
   });
   popup.querySelectorAll('[data-special]').forEach(button=>{
     const active=button.dataset.special==='recent'?options.recencyTilt>0:options.impactTilt>0;
@@ -99,8 +100,8 @@ function initDiscoveryControls() {
   }
   setRibbonTab(activeRibbonTab);
   document.getElementById('discoveryResultLimit')?.addEventListener('change',event=>{state.discoveryLimit=Number(event.currentTarget.value);discoveryOptionsChanged();});
-  document.getElementById('discoveryResearchQuestion')?.addEventListener('input',event=>{state.discoveryResearchQuestion=event.currentTarget.value.slice(0,1000);scheduleAutosave();});
-  document.getElementById('discoveryResearchQuestion')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();runDiscoveryPipeline();}});
+  document.getElementById('discoveryResearchQuestion')?.addEventListener('input',event=>{state.discoveryResearchQuestion=event.currentTarget.value.slice(0,1000);syncDiscoveryControls();scheduleAutosave();});
+  document.getElementById('discoveryResearchQuestion')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();runConceptSearch();}});
   document.getElementById('discoveryStrictExcludeInput')?.addEventListener('change',event=>{state.discoveryStrictExclusions=parseSteerList(event.currentTarget.value,16);discoveryOptionsChanged();});
   for(const key of ['discoveryBridgeMode','discoveryAiTriage','discoveryFastEmbed','discoveryFullTextSearch'])document.getElementById(key)?.addEventListener('change',event=>{state[key]=event.currentTarget.checked;discoveryOptionsChanged();});
   document.getElementById('discoveryDiversify')?.addEventListener('change',event=>{state.discoveryDiversify=event.currentTarget.checked;discoveryOptionsChanged();});
@@ -108,6 +109,7 @@ function initDiscoveryControls() {
   document.getElementById('discoveryCancelSearch')?.addEventListener('click',()=>cancelDiscoverySearch());
   if(typeof initDiscoveryReview==='function')initDiscoveryReview();
   document.getElementById('ribbonDiscoverButton')?.addEventListener('click',()=>runDiscoveryPipeline());
+  document.getElementById('ribbonConceptSearchButton')?.addEventListener('click',()=>runConceptSearch());
   document.getElementById('discoveryOptionsButton').addEventListener('click',()=>setDiscoveryOptionsOpen(popup.hidden));
   for(const id of ['discoveryOptionsClose','discoveryOptionsDone'])document.getElementById(id).addEventListener('click',()=>setDiscoveryOptionsOpen(false,true));
   popup.querySelectorAll('[data-method]').forEach(button=>button.addEventListener('click',()=>{

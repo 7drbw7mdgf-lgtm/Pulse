@@ -99,6 +99,8 @@
         bibliographyText: String(paper.bibliographyText || (typeof extractBibliographyText==='function'?extractBibliographyText(paper.text || ''):'')).slice(0,120000),
         referenceText: String(paper.referenceText || '').slice(0,12000), citationMatch: paper.citationMatch || null, bibliographyParent: paper.bibliographyParent || null,
         metadataVerification: paper.metadataVerification || null, publicationDates: paper.publicationDates || {},
+        publicationStatus:paper.publicationStatus||null,publicationRelations:paper.publicationRelations||[],publicationNotices:paper.publicationNotices||[],publicationRole:paper.publicationRole||'',isRetracted:paper.isRetracted===true,
+        authorDetails: paper.authorDetails || [], referenceAuthorDetails:paper.referenceAuthorDetails || [], referenceEntries:paper.referenceEntries || [], bibliographyProvenance:paper.bibliographyProvenance || null,
         size: Number(paper.size || 0),
         x: Number(paper.x || 0),
         y: Number(paper.y || 0),
@@ -194,6 +196,8 @@
     }
 
     function mergeDoiMetadata(paper, metadata) {
+      for(const field of ['publicationStatus','publicationRelations','publicationNotices','publicationRole','authorDetails'])if(metadata[field]!==undefined)paper[field]=metadata[field];
+      if(metadata.isRetracted===true)paper.isRetracted=true;
       if (metadata.title) paper.title = metadata.title;
       if ((metadata.authors || []).length) paper.authors = paperAuthors(metadata);
       if (metadata.date) paper.date = metadata.date;
@@ -396,6 +400,7 @@
       const payload = {
         name: paper.name, title: paper.title === paper.name && /\.pdf$/i.test(paper.name || '') ? '' : paper.title, authors: paperAuthors(paper), doi: paper.doi || '',
         verifyIdentity: Boolean(options.forExport && paper.doi), citationMatch: paper.citationMatch || null,
+        authorDetails:paper.authorDetails || [],referenceAuthorDetails:paper.referenceAuthorDetails || [],
         pmid: paper.pmid || '', year: paper.year || '', date: paper.date || '', journal: paper.journal || '',
         volume: paper.volume || '', issue: paper.issue || '', pages: paper.pages || '', issn: paper.issn || '',
         abstract: paper.abstract || '', keywords: (paper.paperKeywords || []).join('; '),
