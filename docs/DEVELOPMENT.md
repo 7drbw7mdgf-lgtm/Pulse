@@ -1,4 +1,4 @@
-# Pulse 1.7.3 development
+# Pulse 1.7.4 development
 
 The current Tauri desktop app stages `local-web/pulse-frontend` and `local-web/pulse-backend`. Historical root workspace files and tests remain for compatibility.
 
@@ -35,7 +35,7 @@ Requires macOS, Xcode command-line tools, Rust and Node.js:
 ```sh
 python3 -m venv /tmp/pulse-pdf-deps
 /tmp/pulse-pdf-deps/bin/python3 -m pip install -r local-web/requirements.txt
-bash scripts/package-desktop.sh /tmp/pulse-1.7.3-release /tmp/pulse-pdf-deps/lib/python3.12/site-packages
+bash scripts/package-desktop.sh /tmp/pulse-1.7.4-release /tmp/pulse-pdf-deps/lib/python3.12/site-packages
 ```
 
 Adjust the dependency path to the Python version used. The optional second argument is a directory of PDF dependencies built for the target Mac; it is not a previous app bundle. Omit it to rely on separately installed dependencies. The script stages source, builds Tauri, verifies the app signature, creates a DMG and writes its SHA-256 checksum. Stage outputs and build files are ignored; no user library or settings are packaged.
@@ -44,7 +44,7 @@ The launcher finds Python 3.10+ in Homebrew, `/usr/local/bin` or the system loca
 
 ## Build the Windows app
 
-Run `pwsh -File scripts/package-windows.ps1` on Windows 10/11 x64 with Python 3.12, Node.js, Rust and the MSVC C++ build tools. The script stages the current workspace, freezes Python and PyMuPDF into a backend executable, builds the Tauri NSIS setup and writes `outputs/windows/SHA256SUMS.txt`. Run `python scripts/verify-windows-package.py --installer outputs/windows/Pulse-1.7.3-Windows-x64-Setup.exe --report outputs/windows/verification.json` to install into a temporary directory and check the native window, bundled PDF/DOI extraction, SQLite full-text passages, library persistence, session authentication and process cleanup.
+Run `pwsh -File scripts/package-windows.ps1` on Windows 10/11 x64 with Python 3.12, Node.js, Rust and the MSVC C++ build tools. The script stages the current workspace, freezes Python and PyMuPDF into a backend executable, builds the Tauri NSIS setup and writes `outputs/windows/SHA256SUMS.txt`. Run `python scripts/verify-windows-package.py --installer outputs/windows/Pulse-1.7.4-Windows-x64-Setup.exe --report outputs/windows/verification.json` to install into a temporary directory and check the native window, bundled PDF/DOI extraction, SQLite full-text passages, library persistence, session authentication and process cleanup.
 
 GitHub Actions provides a native Windows build workflow with the same commands. Build artifacts contain the setup, checksum and verification report. The setup uses a current-user installation and installs WebView2 if it is absent. No Python installation is needed on users’ computers; local AI still requires Ollama and its model weights. See [Windows installation](WINDOWS-INSTALL.md).
 

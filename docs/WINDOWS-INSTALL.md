@@ -1,10 +1,10 @@
-# Pulse 1.7.3 for Windows
+# Pulse 1.7.4 for Windows
 
 The Windows installer targets **Windows 10/11, x64**. It includes the Pulse desktop window, Python backend, PyMuPDF PDF reader and SQLite full-text support. Users do not need Python, Rust or Node.js. ARM64 Windows is not separately packaged; x64 compatibility depends on the device's Windows emulation support.
 
 ## Install
 
-Run `Pulse-1.7.3-Windows-x64-Setup.exe` and follow the setup prompts. Pulse installs for the current Windows user and adds a Start menu shortcut. The setup downloads Microsoft's WebView2 runtime if the computer does not already have it; that step needs an internet connection.
+Run `Pulse-1.7.4-Windows-x64-Setup.exe` and follow the setup prompts. Pulse installs for the current Windows user and adds a Start menu shortcut. The setup downloads Microsoft's WebView2 runtime if the computer does not already have it; that step needs an internet connection.
 
 This initial Windows build is unsigned. Windows may show an unknown-publisher or SmartScreen warning. Check that the file came from this project and that its SHA-256 matches the supplied checksum. A production signing certificate is not included.
 
@@ -22,7 +22,7 @@ On a Windows x64 development computer, install PowerShell 7, Python 3.12, Node.j
 
 ```powershell
 pwsh -File scripts/package-windows.ps1
-python scripts/verify-windows-package.py --installer outputs/windows/Pulse-1.7.3-Windows-x64-Setup.exe --report outputs/windows/verification.json
+python scripts/verify-windows-package.py --installer outputs/windows/Pulse-1.7.4-Windows-x64-Setup.exe --report outputs/windows/verification.json
 ```
 
 The first command produces the setup and checksum. The second installs a temporary copy and tests its bundled backend, native window, library persistence, authenticated API, PDF and DOI extraction, full-text passages and backend shutdown. It uses synthetic records and an isolated profile. These checks do not establish live provider accuracy, account authorization or AI report quality.

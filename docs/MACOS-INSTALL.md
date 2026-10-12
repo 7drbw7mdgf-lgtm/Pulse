@@ -1,6 +1,6 @@
-# Install Pulse 1.7.3
+# Install Pulse 1.7.4
 
-Quit Pulse, open **Pulse-1.7.3.dmg**, and drag **Pulse.app** into **Applications**.
+Quit Pulse, open **Pulse-1.7.4.dmg**, and drag **Pulse.app** into **Applications**.
 
 This build adds multi-seed bridge discovery, open-access PMC passages, local S2ORC passage search and configurable local AI roles. The discovery review workspace, paper inspector, reading notes and timeline remain available.
 

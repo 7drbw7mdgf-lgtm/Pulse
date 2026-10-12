@@ -2,19 +2,17 @@
 
 ## A connected workspace for scientific literature discovery
 
-**Capability white paper · Pulse 1.7.3 · 12 October 2026**
-
-**Current source update (unreleased):** citation velocity now contributes up to **9 relevance-scaled score points**, and **Related** uses the top **40%** of the final candidate pool. Strong-match safeguards remain in place. See [unreleased changes](docs/UNRELEASED.md). The capability white paper below describes the published 1.7.3 release.
+**Capability white paper · Pulse 1.7.4 · 12 October 2026**
 
 > **Local-first literature discovery for unpublished work.** Your library, PDFs and AI analysis stay on your computer. AI runs through local Ollama models by default, no account is needed, and your papers and manuscripts are never uploaded.
 
 Pulse brings paper discovery, bibliography management, visual exploration and optional local AI reports into one desktop workspace. Begin with a DOI, a title, an imported PDF or a bibliography; confirm the paper's identity; explore related publications; and keep a collection that can be examined as a network, timeline or full-screen table.
 
-**[Mac installer (1.7.3)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.3/Pulse-1.7.3.dmg)** · [Windows installer (1.7.3)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.3/Pulse-1.7.3-Windows-x64-Setup.exe) · [Run from source](local-web/README.md) · [1.7.3 release notes](docs/releases/1.7.3.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
+**[Mac installer (1.7.4)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.4/Pulse-1.7.4.dmg)** · [Windows installer (1.7.4)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.4/Pulse-1.7.4-Windows-x64-Setup.exe) · [Run from source](local-web/README.md) · [1.7.4 release notes](docs/releases/1.7.4.md) · [Issues](https://github.com/7drbw7mdgf-lgtm/Pulse/issues)
 
 ![Pulse 1.7.1 discovery review workspace with grouped matches, review queues, paper preview and two selected papers.](docs/images/pulse-1.7.1-discovery.png)
 
-*This document describes Pulse 1.7.3 with bridge discovery, full-text passages and the citation fallback and ranking safeguards below. The 1.7.1 screenshots use an isolated synthetic demonstration library, captured on 11 October 2026. Papers, source results and the rate-limit warning are simulated for interface verification; they contain no user's reading list. Unavailable citation counts appear as —. The older Mendeley screenshot is also a simulated account.*
+*This document describes Pulse 1.7.4 with bridge discovery, full-text passages and the citation fallback and ranking safeguards below. The 1.7.1 screenshots use an isolated synthetic demonstration library, captured on 11 October 2026. Papers, source results and the rate-limit warning are simulated for interface verification; they contain no user's reading list. Unavailable citation counts appear as —. The older Mendeley screenshot is also a simulated account.*
 
 Windows 10/11 (x64) packaging is available alongside the Mac app. The Windows setup bundles Python and the PDF reader, installs for the current user, and uses Microsoft WebView2. Ollama and model weights remain optional, separate installations. See [Windows installation and builds](docs/WINDOWS-INSTALL.md).
 
@@ -144,7 +142,7 @@ Session authentication, loopback checks, protected credential storage, bounded e
 
 ## 7. Availability, checks and getting started
 
-The **[Pulse 1.7.3 release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.3)** includes Mac and Windows installers for these capabilities. To run from source instead, use the [source guide](local-web/README.md). The Mac app targets Apple Silicon on macOS 11 or later and requires Python 3.10 or later. PDF extraction dependencies are included in packaged builds; a Python interpreter, Ollama and model weights are installed separately. The installer is ad hoc signed and has not been notarized by Apple.
+The **[Pulse 1.7.4 release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.4)** includes Mac and Windows installers for these capabilities. To run from source instead, use the [source guide](local-web/README.md). The Mac app targets Apple Silicon on macOS 11 or later and requires Python 3.10 or later. PDF extraction dependencies are included in packaged builds; a Python interpreter, Ollama and model weights are installed separately. The installer is ad hoc signed and has not been notarized by Apple.
 
 Download the DMG, drag Pulse into Applications and launch it. Add a seed paper, inspect its record, open Discovery options and review related candidates before adding them. The [installation guide](docs/MACOS-INSTALL.md) documents setup; the [source guide](local-web/README.md) supports a separate local test library.
 
