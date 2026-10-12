@@ -1,3 +1,4 @@
+from pulse_performance import DiscoveryCancelled,DiscoveryBudgetExceeded,check_cancelled,remaining_budget
 """DOI-first resolution with conservative, multi-field bibliographic matching."""
 import html
 import re
@@ -265,6 +266,8 @@ def search_metadata(expected):
     try:
         data = fetch_json('https://api.crossref.org/works?' + urllib.parse.urlencode({'query.bibliographic': query, 'rows': 10}))
         candidates += [crossref_to_metadata(item) for item in (data.get('message') or {}).get('items') or []]
+    except (DiscoveryCancelled,DiscoveryBudgetExceeded):
+        raise
     except Exception as error:
         errors.append('Crossref: ' + str(error))
     def ranked(items):
@@ -280,6 +283,8 @@ def search_metadata(expected):
             term = title if meaningful_title(title) else clean(' '.join(filter(None, [expected.get('abstract'), expected.get('keywords')])) or query, 700)
             data = fetch_json('https://api.openalex.org/works?' + urllib.parse.urlencode({'search': term, 'per-page': 10}))
             candidates += [openalex_to_metadata(item) for item in data.get('results') or []]
+        except (DiscoveryCancelled,DiscoveryBudgetExceeded):
+            raise
         except Exception as error:
             errors.append('OpenAlex: ' + str(error))
         results = ranked(candidates)
@@ -289,10 +294,12 @@ def search_metadata(expected):
         from .storage import load_settings
         from pulse_performance import parallel_branches
         term = title if meaningful_title(title) else query
+        check_cancelled()
+        budget=remaining_budget()
         found, _, failures = parallel_branches({
             'Europe PMC': lambda: search_europe_pmc(term, limit=5),
             'CORE': lambda: search_core(term, limit=5, api_key=resolve_core_api_key(load_settings())),
-        })
+        },budget_seconds=min(12,budget) if budget is not None else 12)
         for records in found.values():
             candidates.extend(records)
         errors.extend(message if message.startswith(source + ':') else source + ': ' + message for source, message in failures.items())
@@ -386,6 +393,8 @@ def resolve_metadata(payload):
             metadata.update(doi=doi, doiVerified=True)
             return {'ok': True, 'matched': True, 'strategy': 'doi', 'source': result.get('source'), 'metadata': metadata,
                     'query': doi, 'candidates': [], 'extracted': expected}
+        except (DiscoveryCancelled,DiscoveryBudgetExceeded):
+            raise
         except Exception as error:
             errors.append('DOI: ' + str(error))
     if expected.get('pmid'):
@@ -394,6 +403,8 @@ def resolve_metadata(payload):
             metadata = merge_metadata(result.get('metadata'), expected)
             return {'ok': True, 'matched': True, 'strategy': 'pmid', 'source': 'PubMed', 'metadata': metadata,
                     'query': str(expected['pmid']), 'candidates': [], 'extracted': expected}
+        except (DiscoveryCancelled,DiscoveryBudgetExceeded):
+            raise
         except Exception as error:
             errors.append('PubMed: ' + str(error))
     found = search_metadata(expected)

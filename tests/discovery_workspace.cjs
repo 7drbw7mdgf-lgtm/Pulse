@@ -27,8 +27,8 @@ const {chromium} = require('playwright');
     await page.route('**/api/metadata/citation',async route=>{
       citationRequests.push(route.request().postDataJSON());
       await route.fulfill({json:{ok:true,candidateCount:2,groups:[{citation:'Martín-González et al., 2026',lookupStrategy:route.request().postDataJSON().parentPaper?.bibliographyText?'bibliography':'online',candidates:[
-        {title:'Synthetic indexing methods',authors:['Ana Martín-González'],year:'2026',doi:'10.1234/citation-a',doiVerified:true,metadataSource:'Crossref'},
-        {title:'Synthetic retrieval evaluation',authors:['Ana Martín-González'],year:'2026',doi:'10.1234/citation-b',doiVerified:true,journal:'Retrieval Studies',volume:'2',pages:'1-9',metadataSource:'Crossref'}]}]}});
+        {title:'Synthetic indexing methods',authors:['Ana Martín-González','Sam Lee'],year:'2026',doi:'10.1234/citation-a',doiVerified:true,metadataSource:'Crossref'},
+        {title:'Synthetic retrieval evaluation',authors:['Ana Martín-González','Sam Lee'],year:'2026',doi:'10.1234/citation-b',doiVerified:true,journal:'Retrieval Studies',volume:'2',pages:'1-9',metadataSource:'Crossref'}]}]}});
     });
     await page.route('**/api/metadata/citation/verify',async route=>{
       const request=route.request().postDataJSON();verificationRequests.push(request);

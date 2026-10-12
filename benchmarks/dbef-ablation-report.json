@@ -53,7 +53,7 @@
           "10.1609/aaai.v37i4.25598",
           "10.1093/nsr/nwaa159"
         ],
-        "rankingSeconds": 0.0648,
+        "rankingSeconds": 0.068,
         "dbefScoredCandidates": 0
       },
       "on": {
@@ -104,7 +104,7 @@
           "10.1609/aaai.v37i4.25598",
           "10.1093/nsr/nwaa159"
         ],
-        "rankingSeconds": 0.08,
+        "rankingSeconds": 0.082,
         "dbefScoredCandidates": 0
       }
     },
@@ -157,7 +157,7 @@
           "10.3233/kes-200025",
           "10.1126/science.149.3683.510"
         ],
-        "rankingSeconds": 0.0979,
+        "rankingSeconds": 0.1016,
         "dbefScoredCandidates": 26
       },
       "off": {
@@ -204,7 +204,7 @@
           "10.1177/01655515251322483",
           "10.1016/j.joi.2022.101321"
         ],
-        "rankingSeconds": 0.0806,
+        "rankingSeconds": 0.0862,
         "dbefScoredCandidates": 0
       }
     },
@@ -257,7 +257,7 @@
           "10.63485/38pe1-1g260",
           "10.1007/s11192-018-2663-4"
         ],
-        "rankingSeconds": 0.0829,
+        "rankingSeconds": 0.0881,
         "dbefScoredCandidates": 0
       },
       "on": {
@@ -302,7 +302,7 @@
           "10.1038/d41586-024-00405-0",
           "10.1007/s11192-017-2554-0"
         ],
-        "rankingSeconds": 0.101,
+        "rankingSeconds": 0.1049,
         "dbefScoredCandidates": 12
       }
     }
@@ -313,14 +313,14 @@
       "KnownRelevantRecall@50": 0.5238,
       "KnownRelevantHits@20": 1.6667,
       "LandmarkHits@50": 0.6667,
-      "rankingSeconds": 0.0761
+      "rankingSeconds": 0.0808
     },
     "on": {
       "nDCG@10": 0.1182,
       "KnownRelevantRecall@50": 0.5238,
       "KnownRelevantHits@20": 2.3333,
       "LandmarkHits@50": 0.6667,
-      "rankingSeconds": 0.093
+      "rankingSeconds": 0.0962
     }
   },
   "provenance": {
@@ -340,5 +340,5 @@
     "abstractRepresentation": "Unordered unigram features; raw abstract narrative omitted"
   },
   "note": "Controlled, incomplete manual judgments on frozen public metadata; curated positives are included. Unknown papers are not labelled irrelevant. No live retrieval-recall or full-search latency claim; collection and ranking time are separate. Neural reranking is disabled to isolate DBEF.",
-  "datasetSha256": "ab59484b193b506a51515f4614d18a2522936797666b8944948f18c534e29aaf"
+  "datasetSha256": "62d5dbd05238e8621107f621b81850cb677662b0d4a34d036ccc35c3f5b021d3"
 }

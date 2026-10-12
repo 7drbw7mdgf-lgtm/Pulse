@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'pulse-backend'))
 os.environ.setdefault('PULSE_CONFIG_DIR',tempfile.mkdtemp(prefix='pulse-reliability-'))
-from pulse_core import bibliography, citation_lookup, citation_identity, metadata_scanner
+from pulse_core import bibliography, citation_lookup, citation_identity, metadata_scanner, metadata_resolution
 from pulse_core.metadata_utils import crossref_to_metadata
 import pulse_performance as performance
 import pulse_source_health as health
@@ -81,6 +81,11 @@ class BibliographyIdentityTests(unittest.TestCase):
             result=citation_identity.verify_citation_selection({'papers':[META]})
         self.assertEqual(result['verifiedCount'],0)
         self.assertNotIn('metadata',result['results'][0])
+
+    def test_expired_metadata_budget_does_not_launch_fallback_sources(self):
+        with patch.object(metadata_resolution,'fetch_json',side_effect=performance.DiscoveryBudgetExceeded('Time limit')) as transport:
+            with self.assertRaises(performance.DiscoveryBudgetExceeded):metadata_resolution.search_metadata(META)
+        self.assertEqual(transport.call_count,1)
 
 
 class SourceHealthTests(unittest.TestCase):

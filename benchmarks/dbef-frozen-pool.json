@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "scope": "Curated ranking checks for neural retrieval, citation networks and open-access research",
-  "labelProvenance": "Manual topic relevance from published titles and abstracts; foundational anchors explicitly listed. These judgments are incomplete and have not been used to tune ranking weights.",
+  "labelProvenance": "Assistant-curated topic judgments from published titles and metadata; not independent human annotations; foundational anchors explicitly listed. These judgments are incomplete and have not been used to tune ranking weights.",
   "cases": [
     {
       "name": "Neural and lexical retrieval",
