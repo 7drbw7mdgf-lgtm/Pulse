@@ -319,6 +319,7 @@
     const inspectorReopen = document.getElementById('inspectorReopen');
 
     initDiscoveryControls();
+    if (typeof initMapTabs === 'function') initMapTabs();
 
     function setRailAddOpen(open, returnFocus = false) {
       railAddPopover.hidden = !open;

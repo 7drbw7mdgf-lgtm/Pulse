@@ -7,7 +7,7 @@
     let lastNodeClickId = null;
 
     function layout(width, height) {
-      const papers = state.papers;
+      const papers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
       if (!papers.length) return;
       if (isRecenteringAnimation) return;
       const centerX = width / 2;

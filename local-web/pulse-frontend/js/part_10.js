@@ -65,7 +65,11 @@
       }).join('') : '';
 
       const hasFilter = Boolean(state.filterTags && state.filterTags.length > 0);
-      const sortedLinks = [...state.links].sort((a, b) => a.score - b.score);
+      const visiblePapers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
+      const visiblePaperIds = new Set(visiblePapers.map(p => p.id));
+      const sortedLinks = [...state.links]
+        .filter(link => visiblePaperIds.has(link.source) && visiblePaperIds.has(link.target))
+        .sort((a, b) => a.score - b.score);
       const linkMarkup = sortedLinks.map(link => {
         const source = state.papers.find(paper => paper.id === link.source);
         const target = state.papers.find(paper => paper.id === link.target);
@@ -81,7 +85,7 @@
           <line class="edge-hit" data-link="${id}" data-source="${link.source}" data-target="${link.target}" x1="${source.x}" y1="${source.y}" x2="${target.x}" y2="${target.y}" stroke-width="20" stroke="transparent" stroke-linecap="round"><title>${escapeHtml(label)}</title></line>`;
       }).join('');
 
-      const nodeMarkup = state.papers.map((paper, idx) => {
+      const nodeMarkup = visiblePapers.map((paper, idx) => {
         const color = paperColor(paper, clusterByPaper);
         const radius = state.graphStyle.nodeSize || 22;
         const linked = selectedLinkEndpoints().has(paper.id) ? ' is-linked' : '';
@@ -94,9 +98,9 @@
         let labelPos = 'bottom';
         let neighborBelow = false;
         let neighborAbove = false;
-        for (let j = 0; j < state.papers.length; j++) {
+        for (let j = 0; j < visiblePapers.length; j++) {
           if (j === idx) continue;
-          const other = state.papers[j];
+          const other = visiblePapers[j];
           const dist = Math.hypot(paper.x - other.x, paper.y - other.y);
           if (dist < radius * 2.6 + 36) {
             if (other.y > paper.y) neighborBelow = true;

@@ -78,6 +78,9 @@
           mergePaperIntoExisting(existing, paper);
           merged += 1;
         } else {
+          if (!paper.mapIds || !paper.mapIds.length) {
+            paper.mapIds = [state.activeMapId || (state.maps && state.maps[0]?.id) || 'map-1'];
+          }
           state.papers.push(paper);
           added += 1;
         }

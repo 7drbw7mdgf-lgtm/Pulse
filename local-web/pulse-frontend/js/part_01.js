@@ -1,5 +1,7 @@
 const state = {
       papers: [],
+      maps: [{ id: 'map-1', name: 'Map 1' }],
+      activeMapId: 'map-1',
       librarySelectedIds: new Set(),
       libraryMutation: false,
       libraryUndoId: null,

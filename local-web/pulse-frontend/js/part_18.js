@@ -349,11 +349,30 @@
     }
 
     function updateMetrics() {
-      els.emptyState.style.display = state.papers.length ? 'none' : 'grid';
+      const activePapers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
+      const activeLinks = state.links.filter(link => {
+        const p1 = state.papers.find(p => p.id === link.source);
+        const p2 = state.papers.find(p => p.id === link.target);
+        return p1 && p2 && isPaperOnActiveMap(p1) && isPaperOnActiveMap(p2);
+      });
+      els.emptyState.style.display = activePapers.length ? 'none' : 'grid';
+      if (!activePapers.length && state.papers.length > 0) {
+        const currentMap = state.maps?.find(m => m.id === state.activeMapId);
+        const mapName = currentMap ? currentMap.name : 'This map';
+        const emptyTitle = els.emptyState.querySelector('h2');
+        const emptyHint = els.emptyState.querySelector('.empty-hint');
+        if (emptyTitle) emptyTitle.textContent = `${mapName} is currently blank`;
+        if (emptyHint) emptyHint.innerHTML = 'Add papers from your library using the <strong>On map</strong> checkbox or tab selector, or discover new papers.';
+      } else if (!state.papers.length) {
+        const emptyTitle = els.emptyState.querySelector('h2');
+        const emptyHint = els.emptyState.querySelector('.empty-hint');
+        if (emptyTitle) emptyTitle.textContent = 'Your map starts with the first paper';
+        if (emptyHint) emptyHint.innerHTML = 'Drop paper files directly here, or use <strong>Add paper</strong> and <strong>Import</strong> in the left sidebar.';
+      }
       els.paperCount.textContent = `${state.papers.length} loaded`;
-      els.metricPapers.textContent = state.papers.length;
-      els.metricLinks.textContent = state.links.length;
-      els.metricClusters.textContent = state.papers.length ? state.clusters.length : 0;
+      els.metricPapers.textContent = activePapers.length;
+      els.metricLinks.textContent = activeLinks.length;
+      els.metricClusters.textContent = activePapers.length ? state.clusters.length : 0;
       if (els.storagePaperCount) {
         els.storagePaperCount.textContent = state.papers.length;
       }

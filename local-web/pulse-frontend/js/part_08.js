@@ -110,6 +110,8 @@
         relevance: ['relevant', 'not-relevant'].includes(paper.relevance) ? paper.relevance : '',
         notes: String(paper.notes || '').slice(0, 20000),
         userTags: (Array.isArray(paper.userTags) ? paper.userTags : splitKeywords(paper.userTags || '')).map(tag => cleanField(String(tag)).slice(0, 60)).filter(Boolean).slice(0, 24),
+        mapIds: Array.isArray(paper.mapIds) ? [...paper.mapIds] : (paper.mapId ? [paper.mapId] : (paper.selected !== false ? [state.maps?.[0]?.id || 'map-1'] : [])),
+        mapId: paper.mapId || '',
         metadataSource: paper.metadataSource || source
       };
     }

@@ -145,6 +145,8 @@
           keywords: mergedKeywords(paper),
           color: paper.color || '',
           areaId: paper.areaId || '',
+          mapIds: Array.isArray(paper.mapIds) ? paper.mapIds : (paper.mapId ? [paper.mapId] : []),
+          mapId: paper.mapId || '',
           readingStatus: paper.readingStatus || '', relevance: paper.relevance || '',
           notes: paper.notes || '', userTags: paper.userTags || [],
           text: paper.text || '',
@@ -154,6 +156,8 @@
           metadataSource: paper.metadataSource || '',
           metadataNote: paper.metadataNote || ''
         })),
+        maps: state.maps || [{ id: 'map-1', name: 'Map 1' }],
+        activeMapId: state.activeMapId || 'map-1',
         links: state.links.map(link => ({ ...link, score: Number(link.score.toFixed(4)) })),
         clusters: state.clusters
       };
@@ -239,6 +243,14 @@
         paperKeywords: paper.paperKeywords || paper.keywords || [],
         text: paper.text || paper.fullText || paper.abstract || ''
       }, source));
+      if (Array.isArray(data.maps) && data.maps.length > 0) {
+        state.maps = data.maps.map((m, i) => ({ id: m.id || `map-${i+1}`, name: m.name || `Map ${i+1}` }));
+        state.activeMapId = data.activeMapId && state.maps.some(m => m.id === data.activeMapId) ? data.activeMapId : state.maps[0].id;
+      } else {
+        state.maps = [{ id: 'map-1', name: 'Map 1' }];
+        state.activeMapId = 'map-1';
+      }
+      if (typeof renderMapTabs === 'function') renderMapTabs();
       state.allowEmptySave = false;
       document.querySelectorAll('[data-mode]').forEach(button => {
         button.classList.toggle('is-active', button.dataset.mode === state.mode);

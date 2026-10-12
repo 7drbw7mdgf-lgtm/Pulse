@@ -23,6 +23,12 @@
           <label class="paper-control paper-area" title="Map area">
             <select data-field="areaId" aria-label="Map area">${areaOptions(paper)}</select>
           </label>
+          ${state.maps && state.maps.length > 1 ? `
+          <label class="paper-control paper-map-tab" title="Assign to map tab">
+            <select class="paper-map-tab-dropdown" data-action="set-paper-map-tab" data-paper="${paper.id}" aria-label="Assign to map tab">
+              ${typeof mapTabOptionsMarkup === 'function' ? mapTabOptionsMarkup(paper) : ''}
+            </select>
+          </label>` : ''}
           <div class="paper-actions-row">
             <button class="icon-button" title="Focus paper on graph" aria-label="Focus paper on graph" data-action="focus" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg></button>
             <button class="icon-button danger" title="Remove paper" aria-label="Remove paper" data-action="remove" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg></button>
@@ -51,7 +57,7 @@
       };
       const renderCompactPaper = paper => `
         <article class="pulse-paper-card${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${paper.id}" tabindex="0" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
-          <input type="checkbox" class="paper-chk" ${paper.selected !== false ? 'checked' : ''} data-action="toggle-paper-active" title="Toggle paper on map">
+          <input type="checkbox" class="paper-chk" ${typeof isPaperOnActiveMap === 'function' ? (isPaperOnActiveMap(paper) ? 'checked' : '') : (paper.selected !== false ? 'checked' : '')} data-action="toggle-paper-active" title="Toggle paper on active map">
           <div class="pulse-paper-card-body">
             <div class="pulse-paper-title">${escapeHtml(paper.title || 'Untitled paper')}</div>
             <div class="pulse-paper-meta" title="${escapeHtml([paperAuthorSummary(paper), paper.year, paper.journal].filter(Boolean).join(' · '))}">
@@ -60,6 +66,12 @@
 
               ${paperCitationCount(paper) !== null ? `<span class="pulse-paper-badge-cit" title="${escapeHtml(paper.citationMetrics.source)} citations">★ ${paperCitationCount(paper)}</span>` : ''}
               ${paper.doi ? `<span class="pulse-paper-badge-doi" title="${escapeHtml(paper.doi)}">DOI</span>` : ''}
+              ${state.maps && state.maps.length > 1 ? `
+              <div class="paper-map-tab-selector" onclick="event.stopPropagation()">
+                <select class="paper-map-tab-dropdown" data-action="set-paper-map-tab" data-paper="${paper.id}" title="Assign to map tab" aria-label="Assign to map tab">
+                  ${typeof mapTabOptionsMarkup === 'function' ? mapTabOptionsMarkup(paper) : ''}
+                </select>
+              </div>` : ''}
             </div>
           </div>
         </article>
@@ -113,10 +125,13 @@
       const renderLibraryTable = papers => {
         const columns = [['title', 'Paper'], ['authors', 'Authors'], ['year', 'Year'], ['journal', 'Journal'], ['citations', 'Citations']];
         const headers = columns.map(([key, label]) => `<th scope="col" aria-sort="${state.librarySortKey === key ? (state.librarySortAsc ? 'ascending' : 'descending') : 'none'}"><button type="button" data-table-sort="${key}">${label}${state.librarySortKey === key ? (state.librarySortAsc ? ' ↑' : ' ↓') : ''}</button></th>`).join('');
-        return `<table class="library-table"><caption class="sr-only">Papers in your library. Select a paper to open its inspector.</caption><thead><tr><th scope="col" class="library-select-column"><input id="librarySelectVisible" type="checkbox" aria-label="Select all visible papers"></th><th scope="col" class="library-map-column">On map</th>${headers}<th scope="col">DOI</th><th scope="col">Tags</th></tr></thead><tbody>${papers.map(paper => {
+        const showMapCol = Boolean(state.maps && state.maps.length > 1);
+        return `<table class="library-table"><caption class="sr-only">Papers in your library. Select a paper to open its inspector.</caption><thead><tr><th scope="col" class="library-select-column"><input id="librarySelectVisible" type="checkbox" aria-label="Select all visible papers"></th><th scope="col" class="library-map-column">On map</th>${showMapCol ? '<th scope="col" class="library-maptab-column">Map Tab</th>' : ''}${headers}<th scope="col">DOI</th><th scope="col">Tags</th></tr></thead><tbody>${papers.map(paper => {
           const count = paperCitationCount(paper);
+          const isOnActive = typeof isPaperOnActiveMap === 'function' ? isPaperOnActiveMap(paper) : paper.selected !== false;
           return `<tr class="library-table-row${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${escapeHtml(paper.id)}" tabindex="0" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
-          <td class="library-select-column"><input type="checkbox" data-action="select-library-row" ${state.librarySelectedIds.has(paper.id) ? 'checked' : ''} aria-label="Select ${escapeHtml(paper.title || 'Untitled paper')} for bulk actions"></td><td class="library-map-column"><input type="checkbox" data-action="toggle-paper-active" ${paper.selected !== false ? 'checked' : ''} aria-label="Show ${escapeHtml(paper.title || 'Untitled paper')} on map"></td>
+          <td class="library-select-column"><input type="checkbox" data-action="select-library-row" ${state.librarySelectedIds.has(paper.id) ? 'checked' : ''} aria-label="Select ${escapeHtml(paper.title || 'Untitled paper')} for bulk actions"></td><td class="library-map-column"><input type="checkbox" data-action="toggle-paper-active" ${isOnActive ? 'checked' : ''} aria-label="Show ${escapeHtml(paper.title || 'Untitled paper')} on map"></td>
+          ${showMapCol ? `<td><select class="table-map-tab-select" data-action="set-paper-map-tab" data-paper="${paper.id}" aria-label="Assign to map tab">${typeof mapTabOptionsMarkup === 'function' ? mapTabOptionsMarkup(paper) : ''}</select></td>` : ''}
           <td class="library-title-cell"><button type="button" data-action="focus" class="library-title-button">${escapeHtml(paper.title || 'Untitled paper')}</button></td>
           <td>${escapeHtml(paperAuthors(paper).join(', ') || '—')}</td><td class="library-year-cell">${escapeHtml(paper.year || '—')}</td>
           <td>${escapeHtml(paper.journal || '—')}</td><td class="library-citations-cell" title="${escapeHtml(count !== null ? 'Verified from ' + paper.citationMetrics.source : 'Citation count not checked')}">${count !== null ? count.toLocaleString() : '—'}</td>
@@ -238,8 +253,23 @@
           const card = event.target.closest('[data-paper]');
           const paper = state.papers.find(p => p.id === card?.dataset.paper);
           if (paper) {
-            paper.selected = event.target.checked;
+            if (typeof setPaperOnMap === 'function') {
+              setPaperOnMap(paper, state.activeMapId, event.target.checked);
+            } else {
+              paper.selected = event.target.checked;
+            }
             render();
+            if (typeof renderMapTabs === 'function') renderMapTabs();
+          }
+        });
+      });
+
+      els.paperList.querySelectorAll('[data-action="set-paper-map-tab"]').forEach(sel => {
+        sel.addEventListener('change', event => {
+          event.stopPropagation();
+          const paperId = sel.dataset.paper || event.target.closest('[data-paper]')?.dataset.paper;
+          if (paperId && typeof setPaperMapTab === 'function') {
+            setPaperMapTab(paperId, event.target.value);
           }
         });
       });
