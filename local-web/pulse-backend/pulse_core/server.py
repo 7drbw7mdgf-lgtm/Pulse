@@ -41,6 +41,7 @@ from pulse_core.metadata_scanner import (
     scan_file_for_metadata,
 )
 from pulse_core.metadata_resolution import resolve_metadata
+from pulse_core.citation_lookup import lookup_in_text_citations
 from pulse_core.paper_metrics import paper_metrics, paper_relations
 from pulse_core.library_managers import manager_status, configure_mendeley, public_config, disconnect_mendeley, save_manager_records, search_manager
 from pulse_core.mendeley_oauth import start_oauth
@@ -189,7 +190,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/library/change", "/api/library/recovery/restore",
             "/api/test",
             "/api/metadata/doi",
-            "/api/metadata/resolve",
+            "/api/metadata/resolve", "/api/metadata/citation",
             "/api/metadata/pmid",
             "/api/metadata/scan",
             "/api/metadata/gemma",
@@ -229,6 +230,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/library/recovery/restore": restore_recovery,
                 "/api/metadata/doi": lookup_doi_metadata,
                 "/api/metadata/resolve": resolve_metadata,
+                "/api/metadata/citation": lookup_in_text_citations,
                 "/api/metadata/pmid": lookup_pmid_metadata,
                 "/api/metadata/scan": scan_file_for_metadata,
                 "/api/metadata/gemma": extract_metadata_with_gemma,

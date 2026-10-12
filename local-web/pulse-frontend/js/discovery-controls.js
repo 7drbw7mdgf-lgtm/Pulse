@@ -5,22 +5,23 @@ let activeRibbonTab = 'discovery';
 let ribbonCollapsed = false;
 function discoveryConfiguration() {
   const branches = Object.fromEntries(Object.values(discoveryMethodKeys).map(key => [key,state.discoveryBranches?.[key] !== false]));
-  const depth = ['1','2','3','iterative'].includes(String(state.discoveryDepth)) ? String(state.discoveryDepth) : '1';
+  const depth = branches.citationGraph && ['1','2','3','iterative'].includes(String(state.discoveryDepth)) ? String(state.discoveryDepth) : '1';
   const searchSources=Object.fromEntries(['semanticScholar','europePmc','core'].map(key=>[key,state.discoverySearchSources?.[key] !== false]));
-  const limit=[50,100,200,500].includes(Number(state.discoveryLimit))?Number(state.discoveryLimit):200;
+  const limit=[50,100,500,1000,2000].includes(Number(state.discoveryLimit))?Number(state.discoveryLimit):500;
   return {branches,searchSources,depth,limit,bridgeMode:Boolean(state.discoveryBridgeMode),aiTriage:Boolean(state.discoveryAiTriage),fastEmbed:Boolean(state.discoveryFastEmbed),fullTextSearch:Boolean(state.discoveryFullTextSearch),researchQuestion:String(state.discoveryResearchQuestion||'').trim(),strictExcludeKeywords:[...(state.discoveryStrictExclusions||[])],diversify:state.discoveryDiversify!==false,includeIterativeChase:depth !== '1',
     steerKeywords:[...(state.recommendationSteerKeywords || [])],excludeKeywords:[...(state.recommendationExcludeKeywords || [])],
     recencyTilt:Number(state.recommendationRecencyTilt) || 0,impactTilt:Number(state.recommendationImpactTilt) || 0};
 }
 function discoveryConfigurationKey() {
   const options=discoveryConfiguration();
-  return 'ranking-179::'+Object.values(options.branches).map(Boolean).join('_')+'::'+options.depth+'::'+options.limit+'::'+Object.values(options.searchSources).map(Boolean).join('_')+'::'+JSON.stringify([options.researchQuestion,options.strictExcludeKeywords,options.diversify,options.bridgeMode,options.aiTriage,options.fastEmbed,options.fullTextSearch]);
+  return 'dbef-citation-1710::'+Object.values(options.branches).map(Boolean).join('_')+'::'+options.depth+'::'+options.limit+'::'+Object.values(options.searchSources).map(Boolean).join('_')+'::'+JSON.stringify([options.researchQuestion,options.strictExcludeKeywords,options.diversify,options.bridgeMode,options.aiTriage,options.fastEmbed,options.fullTextSearch]);
 }
 function discoveryOptionsLabel() {
   const options=discoveryConfiguration(),enabled=Object.keys(discoveryMethodKeys).filter(method=>options.branches[discoveryMethodKeys[method]]);
-  const names={citations:'Citations',network:'Network',semantic:'Semantic',concepts:'Concepts'};
+  const names={citations:'Citations',network:'DBEF',semantic:'Semantic',concepts:'Concepts'};
   const methods=enabled.length===4?'All methods':enabled.length===0?'No methods':enabled.length===1?names[enabled[0]]:`${enabled.length} methods`;
-  const parts=[methods,options.depth==='iterative'?'Iterative':options.depth+'-hop'];
+  const parts=[methods];
+  if(options.branches.citationGraph)parts.push(options.depth==='iterative'?'Iterative':options.depth+'-hop');
   if(options.impactTilt>0)parts.push('Foundational');
   if(options.recencyTilt>0)parts.push('Recent');
   return parts.join(' · ');
@@ -44,6 +45,7 @@ function syncDiscoveryControls() {
   });
   popup.querySelectorAll('[data-depth]').forEach(button=>{
     const active=button.dataset.depth===options.depth;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));
+    button.disabled=!options.branches.citationGraph;
   });
   popup.querySelectorAll('[data-search-source]').forEach(button=>{
     const active=options.searchSources[button.dataset.searchSource];button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));

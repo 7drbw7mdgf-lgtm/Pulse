@@ -1,0 +1,5 @@
+{
+  "source": "user-supplied dbef_content.py",
+  "sha256": "41c7d00df59ec5c62ce1e45a0106818149ff6839a4fbc1be76eef6ad1c70f8da",
+  "adaptation": "Sparse standard-library TF-IDF; supplied scoring formula, tokenizer and two-stage bound; full bibliography count support."
+}

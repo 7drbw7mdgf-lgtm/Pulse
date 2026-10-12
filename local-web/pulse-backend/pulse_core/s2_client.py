@@ -138,7 +138,7 @@ def s2_paper_id_for_paper(paper, api_key=None):
     return None
 
 def s2_fetch_references(identifier, api_key=None, limit=30):
-    limit = discovery_limit(limit)
+    limit = min(500, discovery_limit(limit))
     url = f"https://api.semanticscholar.org/graph/v1/paper/{identifier}/references?fields=citedPaper.title,citedPaper.authors,citedPaper.year,citedPaper.venue,citedPaper.externalIds,citedPaper.citationCount,citedPaper.abstract&limit={limit}"
     data = fetch_s2_json(url, api_key=api_key)
     res = []
@@ -149,7 +149,7 @@ def s2_fetch_references(identifier, api_key=None, limit=30):
     return res
 
 def s2_fetch_citations(identifier, api_key=None, limit=30):
-    limit = discovery_limit(limit)
+    limit = min(500, discovery_limit(limit))
     url = f"https://api.semanticscholar.org/graph/v1/paper/{identifier}/citations?fields=citingPaper.title,citingPaper.authors,citingPaper.year,citingPaper.venue,citingPaper.externalIds,citingPaper.citationCount,citingPaper.abstract&limit={limit}"
     data = fetch_s2_json(url, api_key=api_key)
     res = []
@@ -160,7 +160,7 @@ def s2_fetch_citations(identifier, api_key=None, limit=30):
     return res
 
 def s2_recommendations(positive_ids, negative_ids=None, api_key=None, limit=30):
-    limit = discovery_limit(limit)
+    limit = min(500, discovery_limit(limit))
     url = f"https://api.semanticscholar.org/recommendations/v1/papers/?fields=title,authors,year,venue,externalIds,citationCount,abstract,publicationTypes&limit={limit}"
     payload = {"positivePaperIds": positive_ids, "negativePaperIds": negative_ids or []}
     data = post_s2_json(url, payload, api_key=api_key)

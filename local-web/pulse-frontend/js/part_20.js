@@ -82,6 +82,7 @@
     async function addPaperFromInput(input) {
       const trimmed = String(input || '').trim();
       if (!trimmed) return;
+      if (typeof isInTextCitationInput === 'function' && isInTextCitationInput(trimmed)) { await addInTextCitations(trimmed); return; }
       let papers;
       if (/^@\w+\s*[{(]/.test(trimmed)) papers = parseBibtexRecords(trimmed, 'Pasted BibTeX');
       else if (/^\s*TY\s+-/im.test(trimmed)) papers = parseRisRecords(trimmed, 'Pasted citation');

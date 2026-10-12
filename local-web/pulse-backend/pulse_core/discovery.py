@@ -307,70 +307,10 @@ def _collect_extra_hops(seed_papers, hop1_references, hop1_citations, gathered, 
             break
 
 def fetch_citation_network_branch(seed_papers, api_key=None, limit=30):
-    gathered = SearchResults()
-    per_seed = max(10, math.ceil(limit/max(1,len(seed_papers))))
-    for seed_index, paper in enumerate(seed_papers[:24]):
-        work = _core.openalex_work_for_paper(paper)
-        if not work:
-            continue
-        work_id = openalex_work_id(work.get("id"))
-        citing_works = openalex_citing_works(work_id, limit=max(per_seed, 20))
-        if getattr(citing_works, "warning", ""):
-            gathered.warning = citing_works.warning
-        cocite_counts = {}
-        for c_work in citing_works:
-            for ref_id in (c_work.get("referenced_works") or []):
-                ref_norm = openalex_work_id(ref_id)
-                if not ref_norm or ref_norm == work_id:
-                    continue
-                cocite_counts[ref_norm] = cocite_counts.get(ref_norm, 0) + 1
-
-        top_cocited_ids = [ref_norm for ref_norm, count in sorted(cocite_counts.items(), key=lambda x: -x[1]) if count >= 2][:20]
-        co_works = fetch_openalex_works_batch(top_cocited_ids) if top_cocited_ids else []
-        for co_work in co_works:
-            if not co_work:
-                continue
-            ref_norm = openalex_work_id(co_work.get("id"))
-            if not ref_norm or ref_norm not in cocite_counts:
-                continue
-            try:
-                record = recommendation_record(*openalex_recommendation_item(co_work), source="Citation Network (Co-citation)")
-                record["branch"] = "citationNetwork"
-                record["subType"] = "Co-citation"
-                record["sharedCitationsCount"] = cocite_counts[ref_norm]
-                record["networkSimilarity"] = min(1, cocite_counts[ref_norm]/max(1,len(citing_works)))
-                record["reason"] = f"Co-citation triangulation: cited together with seed paper by {cocite_counts[ref_norm]} citing papers."
-                gathered.append(record)
-                if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
-            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-            except Exception:
-                continue
-
-        seed_ref_ids = [openalex_work_id(r) for r in (work.get("referenced_works") or []) if openalex_work_id(r)]
-        if len(seed_ref_ids) >= 2:
-            try:
-                coupled_works = openalex_discovery_works(f"cites:{'|'.join(seed_ref_ids[:4])}", max(per_seed, 20))
-                if getattr(coupled_works, "warning", ""):
-                    gathered.warning = coupled_works.warning
-                for b_work in coupled_works:
-                    b_id = openalex_work_id(b_work.get("id"))
-                    if b_id == work_id:
-                        continue
-                    b_refs = {openalex_work_id(r) for r in (b_work.get("referenced_works") or [])}
-                    shared = len(set(seed_ref_ids).intersection(b_refs))
-                    if shared >= 1:
-                        record = recommendation_record(*openalex_recommendation_item(b_work), source="Citation Network (Bibliographic)")
-                        record["branch"] = "citationNetwork"
-                        record["subType"] = "Bibliographic coupling"
-                        record["sharedReferencesCount"] = shared
-                        record["networkSimilarity"] = normalized_reference_similarity(shared,len(seed_ref_ids),len(b_refs))
-                        record["reason"] = f"Bibliographic coupling: shares {shared} foundational references with seed paper."
-                        gathered.append(record)
-                        if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
-            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-            except Exception:
-                pass
-    return gathered
+    # Keep the existing API/workspace key while replacing both legacy network
+    # searches with the supplied content-aware DBEF shared-reference method.
+    from pulse_core.dbef_discovery import fetch_dbef_branch
+    return fetch_dbef_branch(seed_papers, api_key=api_key, limit=limit)
 
 
 def fetch_semantic_search_branch(seed_papers, api_key=None, exclude_papers=None, limit=30, feedback=None):
@@ -529,6 +469,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
                 "errors": source_errors(results, errors),
                 "notices": source_notices(results),
                 "sourceCounts": {name: len(rows) for name, rows in results.items()},
+                "dbef": getattr(results.get('citationNetwork'), 'dbef_summary', {}),
                 "completed": len(completed) + len(errors),
                 "total": total,
             })
@@ -583,6 +524,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
                     **options.get('_rankingTimings', {})},
         "sourceCounts": {name:len(rows) for name,rows in results.items()},
         "queriesExecuted": {name:getattr(rows,"queries_executed",[]) for name,rows in results.items()},
+        "dbef": getattr(results.get("citationNetwork"), "dbef_summary", {}),
         "seedCount": len(seed_papers),
         "branchesExecuted": executed,
         "recommendations": ranked,

@@ -21,24 +21,25 @@ def rows(start, count):
 
 class DiscoveryLimitTests(unittest.TestCase):
     def test_limit_defaults_and_bounds(self):
-        self.assertEqual(discovery_limit(None), 200)
-        self.assertEqual(discovery_limit('invalid'), 200)
-        self.assertEqual(discovery_limit(9000), 500)
+        self.assertEqual(discovery_limit(None), 500)
+        self.assertEqual(discovery_limit('invalid'), 500)
+        self.assertEqual(discovery_limit(9000), 2000)
         self.assertEqual(discovery_limit(-20), 1)
 
     def test_pipeline_returns_more_than_fifty_and_respects_selected_limit(self):
         payload = {'semanticRerank':False,'seedPapers': [{'title': 'A starting transport paper'}],
                    'branches': dict(citationGraph=False, citationNetwork=False, semanticSearch=False, lexicalSearch=True),
                    'searchSources': dict(semanticScholar=False, europePmc=True, core=False)}
-        records = [{**item, 'source': 'Europe PMC'} for item in rows(1, 600)]
+        records = [{**item, 'source': 'Europe PMC'} for item in rows(1, 2600)]
         with patch.object(core, 'load_settings', return_value={}), patch.object(core, 'search_europe_pmc', return_value=records) as source:
             default = discovery.run_discovery_pipeline(payload)
             expanded = discovery.run_discovery_pipeline({**payload, 'limit': 500})
             bounded = discovery.run_discovery_pipeline({**payload, 'limit': 9000})
-        self.assertEqual(len(default['recommendations']), 200)
+        self.assertEqual(len(default['recommendations']), 500)
         self.assertEqual(len(expanded['recommendations']), 500)
-        self.assertEqual(len(bounded['recommendations']), 500)
-        self.assertEqual([call.kwargs['limit'] for call in source.call_args_list], [300, 300, 500, 500, 500, 500])
+        self.assertEqual(len(bounded['recommendations']), 2000)
+        self.assertEqual([call.kwargs['limit'] for call in source.call_args_list], [1500, 1500, 2000],
+                         'Equivalent seed-title query variants should execute once, with the candidate budget shared over unique queries')
 
     def test_semantic_scholar_search_pages_with_api_safe_limits(self):
         requests = []

@@ -1,0 +1,42 @@
+{
+  "seedDOI": "10.7717/peerj.4375",
+  "seconds": 8.194,
+  "results": 20,
+  "diagnostics": {
+    "method": "DBEF-content",
+    "candidateCount": 131,
+    "rankedCount": 20,
+    "referenceCount": 54,
+    "unknownReferenceCounts": 10,
+    "corpusSize": 3686982,
+    "unknownCountWeightFallback": 132.0,
+    "stage1Count": 131,
+    "stage1BoundCertified": true,
+    "contentCalibrationScope": "Stage-one shortlist",
+    "corpusSizeSource": "OpenAlex field totals",
+    "resolvedSeedCount": 1,
+    "requestedSeedCount": 1
+  },
+  "warnings": "",
+  "notices": [],
+  "sample": [
+    {
+      "title": "Evidence of open access of scientific publications in Google Scholar: A large-scale analysis",
+      "doi": "10.1016/j.joi.2018.06.012",
+      "DBEF": 23.053167,
+      "sharedReferenceCount": 14
+    },
+    {
+      "title": "Sci-Hub provides access to nearly all scholarly literature",
+      "doi": "10.7554/elife.32822",
+      "DBEF": 15.448576,
+      "sharedReferenceCount": 14
+    },
+    {
+      "title": "Anatomy of open access publishing: a study of longitudinal development and internal structure",
+      "doi": "10.1186/1741-7015-10-124",
+      "DBEF": 15.442659,
+      "sharedReferenceCount": 6
+    }
+  ]
+}

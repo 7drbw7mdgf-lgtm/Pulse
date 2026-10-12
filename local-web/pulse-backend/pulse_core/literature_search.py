@@ -173,12 +173,33 @@ def search_europe_pmc(query, limit=30, doi="", structured=False):
     query = 'DOI:"' + normalize_doi(doi) + '"' if doi else (str(query)[:1000] if structured else query_text(query))
     if not query:
         return []
-    from pulse_core.search_limits import discovery_limit
-    params = urllib.parse.urlencode({"query": query, "format": "json", "resultType": "core", "pageSize": discovery_limit(limit), "synonym":"YES"})
-    data = fetch_search("https://www.ebi.ac.uk/europepmc/webservices/rest/search?" + params, "Europe PMC")
-    if not isinstance(data.get("resultList"), dict) or not isinstance(data["resultList"].get("result"), list):
-        raise ClientError(502, "Europe PMC returned an invalid search response.")
-    return [europe_pmc_to_metadata(item) for item in (data.get("resultList") or {}).get("result") or [] if isinstance(item, dict) and text(item.get("title"))]
+    from pulse_core.search_limits import discovery_limit, SearchResults
+    limit = discovery_limit(limit)
+    records = SearchResults()
+    cursor, seen, received = '*', set(), 0
+    while received < limit:
+        page_size = min(1000, limit - received)
+        params = urllib.parse.urlencode({"query": query, "format": "json", "resultType": "core", "pageSize": page_size, "synonym":"YES", "cursorMark": cursor})
+        try:
+            data = fetch_search("https://www.ebi.ac.uk/europepmc/webservices/rest/search?" + params, "Europe PMC")
+            if not isinstance(data.get("resultList"), dict) or not isinstance(data["resultList"].get("result"), list):
+                raise ClientError(502, "Europe PMC returned an invalid search response.")
+        except (ClientError, DiscoveryBudgetExceeded) as error:
+            return records.keep_partial(error)
+        rows = data['resultList']['result'][:page_size]
+        for item in rows:
+            if not isinstance(item, dict) or not text(item.get('title')):
+                continue
+            key = (item.get('source'), item.get('id') or item.get('doi') or item['title'])
+            if key not in seen:
+                seen.add(key)
+                records.append(europe_pmc_to_metadata(item))
+        received += len(rows)
+        next_cursor = data.get('nextCursorMark')
+        if len(rows) < page_size or not next_cursor or next_cursor == cursor or not rows:
+            break
+        cursor = next_cursor
+    return records
 
 
 def search_core(query, limit=30, api_key="", doi="", structured=False):

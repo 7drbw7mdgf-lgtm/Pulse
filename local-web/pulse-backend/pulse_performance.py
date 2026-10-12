@@ -1,5 +1,6 @@
 """Bounded discovery jobs, provider requests, and persistent embedding reuse."""
 import hashlib
+import copy
 from email.utils import parsedate_to_datetime
 import json
 import os
@@ -16,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 REQUEST_CONTEXT = threading.local()
 _CACHE_LOCK = threading.Lock()
 _JSON_CACHE = OrderedDict()
+_JSON_INFLIGHT = {}
 _PROVIDER_GATES = {}
 _EMBED_LOCKS = [threading.Lock() for _ in range(16)]
 LIBRARY_WRITE_LOCK = threading.RLock()
@@ -62,6 +64,40 @@ def _wait(seconds):
 
 
 def request_json(request, timeout=14, cache=True):
+    """Share identical cached GETs while they are running, not just afterwards."""
+    if not cache or request.get_method() != 'GET':
+        return _request_json_once(request,timeout=timeout,cache=cache)
+    key = hashlib.sha256((request.full_url+repr(request.header_items())).encode()+(request.data or b'')).hexdigest()
+    while True:
+        check_cancelled()
+        with _CACHE_LOCK:
+            pending = _JSON_INFLIGHT.get(key)
+            owner = pending is None
+            if owner:
+                pending = {'event':threading.Event()}
+                _JSON_INFLIGHT[key] = pending
+        if owner:
+            try:
+                value = _request_json_once(request,timeout=timeout,cache=cache)
+                pending['result'] = copy.deepcopy(value)
+                return value
+            except BaseException as error:
+                pending['error'] = error
+                raise
+            finally:
+                with _CACHE_LOCK:
+                    _JSON_INFLIGHT.pop(key,None)
+                    pending['event'].set()
+        while not pending['event'].wait(.05): check_cancelled()
+        check_cancelled()
+        if 'result' in pending: return copy.deepcopy(pending['result'])
+        error = pending.get('error')
+        # Another job's cancellation/deadline must not cancel this caller.
+        if isinstance(error,(DiscoveryCancelled,DiscoveryBudgetExceeded)): continue
+        if error: raise error
+
+
+def _request_json_once(request, timeout=14, cache=True):
     """Cache successful responses, bound per-host concurrency, and honor Retry-After."""
     check_cancelled()
     url = request.full_url

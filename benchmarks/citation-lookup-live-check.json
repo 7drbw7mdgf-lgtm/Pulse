@@ -1,0 +1,34 @@
+{
+  "citation": "(Martín-González et al., 2026)",
+  "elapsedSeconds": 2.022,
+  "needsSelection": true,
+  "count": 2,
+  "partial": true,
+  "groups": [
+    {
+      "errors": [
+        "OpenAlex"
+      ],
+      "candidates": [
+        {
+          "title": "Special Issue “Alcohol and Inflammation”",
+          "authors": [
+            "Candelaria Martín-González",
+            "Emilio González-Reimers"
+          ],
+          "doi": "10.3390/ijms27146474",
+          "year": "2026"
+        },
+        {
+          "title": "Stochastic modelling and statistical inference for the time to extinction of a class of populations with sexual reproduction",
+          "authors": [
+            "Ehyter M. Martín-González",
+            "Santiago Abdiel González-Reyes"
+          ],
+          "doi": "10.1007/s00285-026-02416-z",
+          "year": "2026"
+        }
+      ]
+    }
+  ]
+}

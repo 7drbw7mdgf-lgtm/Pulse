@@ -82,7 +82,7 @@ class LiteratureSearchTests(unittest.TestCase):
             self.assertEqual(len(search.search_core('', doi='10.1234/visualization', api_key='fixture-private-key')), 1)
             self.assertEqual(len(search.search_core('urban transport')), 1)
         params = urllib.parse.parse_qs(urllib.parse.urlsplit(captured[0].full_url).query)
-        self.assertEqual(params['pageSize'], ['500'])
+        self.assertEqual(params['pageSize'], ['1000'])
         self.assertEqual(params['resultType'], ['core'])
         self.assertEqual(captured[1].get_header('Authorization'), 'Bearer fixture-private-key')
         self.assertNotIn('fixture-private-key', captured[1].full_url)
@@ -129,7 +129,9 @@ class LiteratureSearchTests(unittest.TestCase):
         self.assertEqual(set(found['recommendations'][0]['branches']), {'europePmc', 'core'})
         self.assertTrue(any('urban' in call.args[0] for call in europe.call_args_list))
         self.assertTrue(any('transport' in call.args[0] for call in repository.call_args_list))
-        self.assertTrue(all(1 <= call.kwargs['limit'] <= 200 and call.kwargs['structured'] for call in europe.call_args_list))
+        self.assertTrue(all(1 <= call.kwargs['limit'] <= 2000 and call.kwargs['structured'] for call in europe.call_args_list))
+        self.assertEqual(len(europe.call_args_list),len(set(' '.join(call.args[0].split()).casefold() for call in europe.call_args_list)),
+                         'Public-provider queries should not repeat equivalent text')
         s2.assert_not_called()
         with patch.object(core, 'load_settings', return_value={}), patch.object(core, 'search_europe_pmc', return_value=[search.europe_pmc_to_metadata(EP)]), patch.object(core, 'search_core', return_value=[]):
             found = run_discovery_pipeline({**payload, 'seedPapers': [{'title': TITLE, 'doi': EP['doi']}]})

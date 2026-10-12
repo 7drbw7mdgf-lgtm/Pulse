@@ -23,7 +23,44 @@ const {chromium} = require('playwright');
     page.on('pageerror', error => errors.push(error.message));
     await page.route('https://**', route => route.fulfill({status:200,body:'Fixture paper link'}));
     await page.route('**/api/metadata/**', route => route.fulfill({json:{ok:true,matched:false,metadata:{}}}));
+    const citationRequests=[];
+    await page.route('**/api/metadata/citation',async route=>{
+      citationRequests.push(route.request().postDataJSON());
+      await route.fulfill({json:{ok:true,candidateCount:2,groups:[{citation:'Martín-González et al., 2026',candidates:[
+        {title:'Synthetic indexing methods',authors:['Ana Martín-González'],year:'2026',doi:'10.1234/citation-a',doiVerified:true,metadataSource:'Crossref'},
+        {title:'Synthetic retrieval evaluation',authors:['Ana Martín-González'],year:'2026',doi:'10.1234/citation-b',doiVerified:true,journal:'Retrieval Studies',volume:'2',pages:'1-9',metadataSource:'Crossref'}]}]}});
+    });
     await page.goto(url); await page.waitForFunction(() => state.autosaveReady);
+    assert.equal(await page.locator('#discoveryResultLimit').inputValue(),'500');
+    await page.locator('#discoveryResultLimit').selectOption('2000');
+    assert.equal(await page.evaluate(()=>discoveryConfiguration().limit),2000);
+    await page.locator('#railAddButton').click();await page.locator('#quickSearchInput').fill('(Martín-González et al., 2026)');await page.locator('#quickSearchInput').press('Enter');
+    await page.locator('[data-citation-index="1"]').waitFor();
+    assert.equal(await page.evaluate(()=>state.papers.length),0,'Citation text must never become a placeholder paper');
+    assert.equal(await page.locator('#citationLookupAdd').isDisabled(),true);
+    assert((await page.locator('[data-citation-index="1"]').boundingBox()).width<20,'Radio control must not consume the candidate text width');
+    await page.setViewportSize({width:600,height:720});assert.equal(await page.locator('#citationLookupDialog').evaluate(el=>el.scrollWidth<=el.clientWidth),true);await page.setViewportSize({width:1547,height:1031});
+    await page.locator('#citationLookupDialog').press('Escape');assert.equal(await page.evaluate(()=>state.papers.length),0);
+    await page.evaluate(()=>addInTextCitations('(Martín-González et al., 2026)'));
+    await page.locator('#citationLookupContext').fill('retrieval');await page.locator('#citationLookupSearch').click();
+    await page.locator('[data-citation-index="1"]').waitFor();
+    assert.equal(citationRequests.at(-1).context,'retrieval');
+    await page.locator('[data-citation-index="1"]').check();await page.locator('#citationLookupAdd').click();
+    assert.equal(await page.evaluate(()=>state.papers.length),1);
+    assert.equal(await page.evaluate(()=>state.papers[0].doi),'10.1234/citation-b');
+    assert.equal(await page.evaluate(()=>state.papers[0].volume),'2');
+    if(process.env.PULSE_UI_SCREENSHOT_DIR){
+      await page.evaluate(()=>addInTextCitations('(Martín-González et al., 2026)'));
+      fs.mkdirSync(process.env.PULSE_UI_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOT_DIR,'citation-lookup.png')});
+      await page.locator('#citationLookupClose').click();
+    }
+    await page.evaluate(()=>setRailAddOpen(false));
+    await page.locator('#discoveryOptionsButton').click();
+    const dbef=page.locator('[data-method="network"]');
+    assert.match(await dbef.innerText(),/DBEF.*Shared references/s);
+    await dbef.click(); assert.equal(await dbef.getAttribute('aria-pressed'),'false');
+    await dbef.click(); assert.equal(await dbef.getAttribute('aria-pressed'),'true');
+    await page.locator('#discoveryOptionsDone').click();
     await page.evaluate(() => {
       state.papers = Array.from({length:12}, (_,i) => normalizeImportedPaper({id:'fixture-'+i,
         title:'Library indexing study '+i, authors:['Example Author'], year:'2024', doi:'10.1234/library-'+i,
@@ -50,17 +87,18 @@ const {chromium} = require('playwright');
       window.fixtureResults = [
         {title:'Indexing study A',doi:'10.1234/first',year:'2020',score:90,matchLabel:'Related',abstract:'A synthetic retrieval abstract.',citationCount:null},
         {title:'Indexing study B',doi:'10.1234/second',year:'2025',score:80,matchLabel:'Related',abstract:'A second synthetic retrieval abstract.',citationCount:0,citationCountSource:'OpenAlex',citationCountsBySource:{OpenAlex:0}},
-        {title:'Indexing study C',doi:'10.1234/third',year:'2018',score:70,matchLabel:'Explore',abstract:'A third synthetic retrieval abstract.',citationCount:0,citationCountSource:'OpenAlex'}
+        {title:'Indexing study C',doi:'10.1234/third',year:'2018',score:70,matchLabel:'Explore',abstract:'A third synthetic retrieval abstract.',citationCount:0,citationCountSource:'OpenAlex',subType:'Bibliographic coupling',rankingMethod:'DBEF-content',dbef:{score:12.3,sharedReferenceIds:['W12','W13']},whyFound:[{kind:'shared-references',label:'Shares references',detail:'Shares 2 references with your seed, weighted by specificity and content relevance.'}]}
       ];
       openDiscoverySearching(state.papers[0],'fixture-run',{branches:{citationGraph:true,citationNetwork:true,semanticSearch:true,lexicalSearch:true},searchSources:{semanticScholar:true,europePmc:true,core:true}});
       updateDiscoverySearching({recommendations:window.fixtureResults,stage:'collecting',completed:1,total:6,
-        branchesExecuted:['citationGraph'],sourceCounts:{citationGraph:3},errors:{},
+        branchesExecuted:['citationGraph','citationNetwork'],sourceCounts:{citationGraph:3,citationNetwork:1},errors:{},
         notices:{citationGraph:[{code:'extra-hop-limit',message:'Extra hops stopped at the limit.'}]}});
     });
     assert.equal(await page.locator('#discoveryProgressPanel').getAttribute('class').then(c=>c.includes('is-compact')),true);
     assert.equal(await page.locator('.dv-progress-sources').count(),0);
     const sourceHeight = await page.locator('#discoverySourceStatus').boundingBox();
     assert(sourceHeight.height < 30, 'Source statuses fit on a single row');
+    assert.match(await page.locator('#discoverySourceStatus').innerText(),/DBEF/);
     await page.evaluate(() => {
       const job=state.discoverySearching.job;
       state.discoveryRunInfo.set('fixture-run',job);

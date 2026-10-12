@@ -341,6 +341,10 @@ def search_metadata(expected):
 def resolve_metadata(payload):
     from .metadata_scanner import lookup_doi_metadata, lookup_pmid_metadata
     text = str(payload.get('text') or '')[:120000]
+    if payload.get('parseInput') and not payload.get('doi') and not payload.get('pmid'):
+        from .citation_lookup import parse_in_text_citations, lookup_in_text_citations
+        if parse_in_text_citations(text):
+            return lookup_in_text_citations(payload)
     extracted = extract_text_metadata(text, payload.get('name') or '')
     expected = {key: payload[key] for key in ('title', 'authors', 'year', 'date', 'journal', 'volume', 'issue', 'pages', 'issn', 'abstract', 'keywords', 'pmid') if payload.get(key)}
     # Labelled/citation parsing is more useful than using the entire pasted input

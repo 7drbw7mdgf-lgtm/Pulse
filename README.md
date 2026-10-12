@@ -2,13 +2,13 @@
 
 ### A private, local-first workspace for scientific literature discovery and synthesis
 
-[![Release](https://img.shields.io/badge/release-v1.7.9-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.9)
+[![Release](https://img.shields.io/badge/release-v1.7.10-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.10)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases)
 
 ---
 
-**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.9/Pulse-1.7.9.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.9.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
+**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.10/Pulse-1.7.10.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.10.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
 
 ---
 
@@ -20,11 +20,19 @@
 
 ---
 
-![Pulse Discovery Review Workspace — synthetic example](docs/images/pulse-1.7.9-discovery.png)
+![Pulse Discovery Review Workspace — synthetic example](docs/images/pulse-1.7.10-discovery.png)
 
-## What’s new in 1.7.9
+## What’s new in 1.7.10
 
-Discovery now keeps successful citation searches green when extra hops reach their planned limit. The paper preview stays linked to the highlighted result through sorting and filtering, unknown citation counts remain unknown, and source progress collapses when papers arrive. Graph controls have their own space below the map, Library clearing lives under **More**, and **Open paper** opens the paper’s DOI or available article link in your browser.
+**DBEF shared-reference discovery** replaces the old co-citation and first-four-reference network searches. It weights reference overlap by specificity and title/abstract relevance, adjusts for bibliography length and recent citation velocity, and balances reference pivots across selected seeds. The supplied scorer is built into the app without extra Python packages or model downloads.
+
+Repeated equivalent provider queries and concurrent identical metadata requests now share work. Direct citations, semantic recommendations, selected literature indexes and optional full-text search remain complementary routes. The clearer statuses, linked previews and paper-link fixes from 1.7.9 remain included. See the [DBEF implementation guide](docs/search/DBEF.md) for equations, limits and validation.
+
+**Find a paper from an in-text citation:** paste `(Martín-González et al., 2026)` or `Smith & Lee (2024)` into **Add paper**. Pulse searches Crossref and OpenAlex by author and year, shows possible titles and indexed DOIs, and lets you choose the paper. Accents, compound surnames, grouped citations and year suffixes are supported; optional title words refine ambiguous searches. Short citations never become placeholder papers or silently select the first result.
+
+Discovery now defaults to **500 results**, with **1,000** and **2,000** options. The collection deadlines and 75-paper cross-encoder budget remain bounded; a requested count is a maximum, not a guarantee of that many matches. Old workspaces saved at 200 results move to 500.
+
+![In-text citation lookup — synthetic example](docs/images/pulse-1.7.10-citation-lookup.png)
 
 ## What Pulse Does
 
@@ -32,7 +40,7 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 
 1. **Import Anything:** Add papers by DOI, title, PMID, pasted citation, or bibliography file (BibTeX, RIS, EndNote, CSV), or simply drop PDF files straight into the workspace.
 2. **Explore Connections Visually:** See how papers relate to each other through an interactive citation network, radial cluster maps, a full-screen library table, or a chronological timeline view.
-3. **Smart Discovery:** Start with a seed paper or a research question. Pulse traverses citation networks and cross-checks multiple scholarly indexes (Semantic Scholar, OpenAlex, Europe PMC, Crossref, and CORE) to recommend relevant literature.
+3. **Smart Discovery:** Start with a seed paper or a research question. Pulse uses DBEF shared-reference discovery, follows direct citations and cross-checks multiple scholarly indexes (Semantic Scholar, OpenAlex, Europe PMC, Crossref, and CORE) to recommend relevant literature.
 4. **Triage Without Noise:** Results are neatly categorized into **Strong matches** (evidence-backed results in the top 10% of the displayed list and full pool), **Related** (the top 40% of the displayed list), and **Explore**. Clear badges explain *why* each paper was suggested (e.g. citation links, co-authors, or shared topics).
 5. **Bridge Literature:** Select 2 to 8 papers to uncover "bridge papers"—cross-disciplinary work connecting different fields or ideas.
 6. **Local AI Assistant:** Run synthesis reports and section summaries directly on your machine using local [Ollama](https://ollama.com) models. No external API keys required, no subscription fees, and no data leaves your device.
@@ -54,7 +62,7 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 
 ## Screenshots
 
-![Current map workspace — synthetic example](docs/images/pulse-1.7.9-workspace.png)
+![Current map workspace — synthetic example](docs/images/pulse-1.7.10-workspace.png)
 
 <div align="center">
 
@@ -73,7 +81,7 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 ## Installation
 
 ### macOS (Apple Silicon, macOS 11+)
-1. Download **[Pulse-1.7.9.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.9/Pulse-1.7.9.dmg)**.
+1. Download **[Pulse-1.7.10.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.10/Pulse-1.7.10.dmg)**.
 2. Open the DMG and drag **Pulse.app** into your **Applications** folder.
 3. *Note:* Ensure you have Python 3.10+ installed (e.g. via Homebrew `brew install python`). Because Pulse is ad-hoc signed, if macOS blocks the first launch, right-click the app and choose **Open**, or run the `Allow-Pulse-Tauri.command` included in the DMG.
 
@@ -132,7 +140,7 @@ python3 /path/to/Pulse/local-web/pulse-backend/pulse_mcp.py
 
 ## Performance changes retained from 1.7.8
 
-- **Less CPU reranking:** The cross-encoder assesses up to 75 candidates instead of 150. It retains overlapping text windows, source/channel coverage and foundational-paper support. All retrieved candidates remain eligible for text/citation ranking and the result limit remains up to 500.
+- **Less CPU reranking:** The cross-encoder assesses up to 75 candidates instead of 150. It retains overlapping text windows, source/channel coverage and foundational-paper support. All retrieved candidates remain eligible for text/citation ranking and the release now offers up to 2,000 displayed results.
 - **Less embedding work:** Meaning ranking uses up to 150 candidates instead of 250. Collection warms the exact question and current ranked shortlist instead of queuing every arriving paper. Background and final ranking share in-flight work, and cache reads/writes are batched. A richer abstract invalidates an older embedding for the same DOI.
 - **Europe PMC time budget:** Europe PMC now shares CORE's eight-second collection cap, including retries and socket waits. Completed results survive with a partial-result notice.
 - **Clear performance measurements:** API timings separate collection, embedding, cross-encoder and total ranking time, with counts for papers actually assessed. Neural budgets and cancellation also apply while waiting for ongoing embedding work.

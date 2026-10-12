@@ -2,17 +2,19 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
-from pulse_core.constants import ClientError
-from pulse_performance import request_json
+from pulse_core.constants import ClientError, APP_VERSION
+from pulse_performance import request_json, DiscoveryCancelled, DiscoveryBudgetExceeded
 
 def fetch_json(url, cache=True):
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "Pulse/1.4-local", "Accept": "application/json"},
+        headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"},
         method="GET",
     )
     try:
         return request_json(request, timeout=12, cache=cache)
+    except (DiscoveryCancelled, DiscoveryBudgetExceeded):
+        raise
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         raise ClientError(error.code, f"DOI lookup failed: {details[:500]}")

@@ -37,11 +37,12 @@ def apply_bridges(records, seeds, options):
             coverage = query_coverage(paper, [seed])
             citation = [ev for ev in paper.get('retrievalEvidence', [])
                         if str(ev.get('channel', '')).startswith(f'citations:{original_index}:')]
-            score = max(coverage, .7 if citation else 0)
+            shared = next((match['shared'] for match in (paper.get('dbef') or {}).get('seedMatches', []) if match['seedIndex'] == original_index), 0)
+            score = max(coverage, .7 if citation else .55 if shared else 0)
             if score >= .35:
                 connections.append({'seedKey': paper_key(seed), 'seedTitle': str(seed.get('title') or 'Seed paper'),
                                     'seedId': str(seed.get('id') or ''),
-                                    'evidence': 'Citation link' if citation else 'Shared concepts in title or abstract',
+                                    'evidence': 'Citation link' if citation else f'{shared} shared references (DBEF)' if shared else 'Shared concepts in title or abstract',
                                     'coverage': round(coverage, 3), 'score': round(score, 3)})
         connections.sort(key=lambda row: -row['score'])
         paper['bridgeEvidence'] = connections

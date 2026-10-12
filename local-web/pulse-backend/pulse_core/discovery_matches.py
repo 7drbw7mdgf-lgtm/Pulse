@@ -29,6 +29,8 @@ def independent_channel_count(record):
         # Query variants and mirrored indexes are one concept-search channel.
         if channel.startswith('concepts:') or channel in {'concepts', 'lexicalConceptual', 'lexicalSearch', 'europePmc', 'core'}:
             channel = 'concepts'
+        elif channel == 'dbef' or channel.startswith('dbef:'):
+            channel = 'dbef'
         elif channel.startswith('fulltext:') or channel == 'fullText':
             channel = 'fulltext'
         elif channel == 'citationNetwork' and item.get('subType'):

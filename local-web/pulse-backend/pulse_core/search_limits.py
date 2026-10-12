@@ -1,7 +1,7 @@
 """Shared discovery limits and partial results from paginated providers."""
 
-DEFAULT_DISCOVERY_LIMIT = 200
-MAX_DISCOVERY_LIMIT = 500
+DEFAULT_DISCOVERY_LIMIT = 500
+MAX_DISCOVERY_LIMIT = 2000
 
 
 def discovery_limit(value, default=DEFAULT_DISCOVERY_LIMIT):
@@ -25,9 +25,9 @@ class SearchResults(list):
         return self
 
 
-MAX_CANDIDATE_POOL = 3000
+MAX_CANDIDATE_POOL = 6000
 
 
 def candidate_limit(display_limit, branches=1):
     """A retrieval budget independent of the final result count."""
-    return min(1500, max(300, discovery_limit(display_limit) * 3))
+    return min(3000, max(300, discovery_limit(display_limit) * 3))

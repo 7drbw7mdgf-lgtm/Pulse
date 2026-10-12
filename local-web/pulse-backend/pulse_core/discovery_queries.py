@@ -111,10 +111,16 @@ def search_query_plan(plan, provider, searcher, limit, on_progress=None, **kwarg
     records, warnings, executed = SearchResults(), [], []
     required = [q for q in plan if q['kind'] in {'question', 'preferred', 'seed', 'bridge'}]
     extra = [q for q in plan if q not in required]
-    chosen = (required + extra)[:26]
-    quota = max(20, min(500, (limit + max(1, len(chosen))-1)//max(1, len(chosen))))
+    chosen, planned_texts = [], set()
+    for query in required + extra:
+        identity = ' '.join(provider_query(query,provider).split()).casefold()
+        if identity in planned_texts: continue
+        planned_texts.add(identity); chosen.append(query)
+        if len(chosen) == 26: break
+    quota = max(20, min(2000, (limit + max(1, len(chosen))-1)//max(1, len(chosen))))
     started, stale = time.monotonic(), 0
-    required_ids, covered = {q['id'] for q in required}, set()
+    required_ids, covered = {q['id'] for q in chosen if q['kind'] in {'question','preferred','seed','bridge'}}, set()
+    requested_texts = set()
     def collect(query, rows):
         nonlocal stale
         before = len(merge_search_records(records))
@@ -138,8 +144,12 @@ def search_query_plan(plan, provider, searcher, limit, on_progress=None, **kwarg
         if required_ids <= covered and stale >= 2: break
         covered.add(query['id'])
         try:
+            literal = provider_query(query,provider)
+            identity = ' '.join(literal.split()).casefold()
+            if identity in requested_texts: continue
+            requested_texts.add(identity)
             check_cancelled()
-            rows = searcher(provider_query(query, provider), limit=quota, **kwargs)
+            rows = searcher(literal, limit=quota, **kwargs)
             executed.append(query['id'])
             count = collect(query, rows)
             if getattr(rows, 'warning', ''):
@@ -151,7 +161,9 @@ def search_query_plan(plan, provider, searcher, limit, on_progress=None, **kwarg
             if len(rows) < 5 and query.get('groups') and len(executed) < 26:
                 broader = dict(query, id=query['id']+'b', kind='broader')
                 broad_text = provider_query(broader, provider)
-                if broad_text != provider_query(query, provider):
+                broad_identity = ' '.join(broad_text.split()).casefold()
+                if broad_identity not in requested_texts:
+                    requested_texts.add(broad_identity)
                     check_cancelled()
                     rows = searcher(broad_text, limit=quota, **kwargs)
                     executed.append(broader['id']); count = collect(broader, rows)
@@ -162,7 +174,9 @@ def search_query_plan(plan, provider, searcher, limit, on_progress=None, **kwarg
                     if len(rows) < 5 and len(executed) < 26:
                         loosest = dict(broader,id=query['id']+'c',kind='broadest')
                         loose_text = provider_query(loosest,provider)
-                        if loose_text != broad_text:
+                        loose_identity = ' '.join(loose_text.split()).casefold()
+                        if loose_identity not in requested_texts:
+                            requested_texts.add(loose_identity)
                             check_cancelled()
                             rows = searcher(loose_text,limit=quota,**kwargs)
                             executed.append(loosest['id']); count = collect(loosest,rows)

@@ -35,7 +35,7 @@ const state = {
         lexicalSearch: true,
       },
       discoveryDepth: '1',
-      discoveryLimit: 200,
+      discoveryLimit: 500,
       discoveryResearchQuestion: '',
       discoveryStrictExclusions: [],
       discoveryDiversify: true,

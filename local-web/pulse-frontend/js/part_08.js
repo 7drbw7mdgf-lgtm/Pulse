@@ -93,6 +93,8 @@
         citedByCount: Number.isFinite(paper.citedByCount ?? paper.citationCount) ? (paper.citedByCount ?? paper.citationCount) : null,
         s2PaperId: paper.s2PaperId || '',
         citationMetrics: paper.citationMetrics || null,
+        discoveryMethod: paper.rankingMethod || paper.discoveryMethod || '',
+        dbef: paper.dbef && typeof paper.dbef === 'object' ? paper.dbef : null,
         text: String(paper.text || paper.abstract || '').slice(0, 120000),
         size: Number(paper.size || 0),
         x: Number(paper.x || 0),

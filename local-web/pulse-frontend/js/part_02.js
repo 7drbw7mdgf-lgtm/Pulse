@@ -213,7 +213,7 @@
 
     // ─── Discovery review workspace (1.7.1) ───
     const DISCOVERY_SOURCE_LABELS = {
-      citationGraph: 'Citations', citationNetwork: 'Network', semanticSearch: 'Semantic',
+      citationGraph: 'Citations', citationNetwork: 'DBEF', semanticSearch: 'Semantic',
       lexicalConceptual: 'Semantic Scholar', europePmc: 'Europe PMC', core: 'CORE', fullText: 'Full-text'
     };
     const DISCOVERY_WHY_GROUPS = {
@@ -305,10 +305,11 @@
         // Compatibility with retained results from earlier app versions. An
         // informational notice must never hide an independent provider error.
         const legacyHopNotice = key === 'citationGraph' && /^Additional citation hops stopped at the time budget; direct citations and collected results are retained\.$/.test(error || '');
+        const dbefNotice = (info.notices?.[key] || []).find(notice => notice.code?.startsWith('dbef-'));
         const extraHopLimit = legacyHopNotice || (info.notices?.[key] || []).some(notice => notice.code === 'extra-hop-limit');
         if (error && !legacyHopNotice) {
           const limited = /429|rate|too many/i.test(error);
-          const canAddKey = ['citationGraph', 'citationNetwork', 'semanticSearch', 'lexicalConceptual', 'core'].includes(key);
+          const canAddKey = ['citationGraph', 'semanticSearch', 'lexicalConceptual', 'core'].includes(key);
           const partial = count > 0;
           return { key, name, status: partial || limited ? 'warn' : 'fail', canAddKey: limited && canAddKey,
             detail: partial ? `${count} papers retained · ${limited ? 'request limit reached' : 'some requests unavailable'}` : limited ? (canAddKey ? 'Request limit reached. Try later or add an API key in Settings.' : 'Request limit reached. Try again later.') : 'Search unavailable. Try again later.' };
@@ -316,7 +317,7 @@
         if (searching && !done.has(key)) return { key, name, status: 'run', count,
           detail: count !== undefined ? `${count} papers so far · searching…` : 'Searching…' };
         return { key, name, status: 'ok', count,
-          detail: `${count !== undefined ? `${count} papers` : 'Done'}${extraHopLimit ? ' · extra hops reached the limit' : ''}` };
+          detail: `${count !== undefined ? `${count} papers` : 'Done'}${extraHopLimit ? ' · extra hops reached the limit' : dbefNotice?.code === 'dbef-limit' ? ' · collection limit reached' : dbefNotice?.code === 'dbef-no-references' ? ' · no indexed seed references' : ''}` };
       });
     }
 
@@ -518,6 +519,7 @@
           return `<span class="dv-source is-${row.status}" title="${escapeHtml(row.detail)}" aria-label="${escapeHtml(row.name + ': ' + row.detail)}"><span class="dv-dot"></span>${escapeHtml(row.name)}${statusText}</span>`;
         }).join('');
       }
+      if (details && runInfo.dbef?.method) details.innerHTML += '<div>DBEF: '+escapeHtml(runInfo.dbef.candidateCount+' candidates · '+runInfo.dbef.referenceCount+' seed references · '+runInfo.dbef.corpusSizeSource)+'</div>';
       if (details) details.innerHTML += rows.map(row => `<div>${escapeHtml(row.name)}: ${escapeHtml(row.detail)}</div>`).join('');
       const notice = document.getElementById('discoverySourceNotice');
       if (notice) {

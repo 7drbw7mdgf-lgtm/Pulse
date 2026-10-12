@@ -1,7 +1,7 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.7.9 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261012-discovery-ux">
-<link rel="icon" type="image/png" href="favicon.png?v=1.7.9"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v1.7.10 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261012-citations">
+<link rel="icon" type="image/png" href="favicon.png?v=1.7.10"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
@@ -14,7 +14,7 @@
 <button id="railAddButton" class="rail-add-button" type="button" aria-expanded="false" aria-controls="railAddPopover">+ Add paper</button>
 <div id="railAddPopover" class="rail-add-popover" role="dialog" aria-labelledby="railAddTitle" hidden>
 <div class="popover-heading"><strong id="railAddTitle">Add a paper</strong><button id="railAddClose" type="button" aria-label="Close add paper">×</button></div> <div class="header-search-wrap"> <span data-feather="search" class="header-search-icon"></span>
-<input id="quickSearchInput" type="text" placeholder="Add papers (title, DOI, PMID or paste text)..." autocomplete="off" aria-label="Paper title, DOI, PMID or text">
+<input id="quickSearchInput" type="text" placeholder="Add papers (title, DOI, PMID, citation or paste text)..." autocomplete="off" aria-label="Paper title, DOI, PMID, author–year citation or text">
 <button id="quickAddBtn" class="pill-btn primary" type="button">+ Add</button> </div><p class="add-paper-help">Enter a title, DOI or PMID, or paste paper text.</p></div> <div class="header-right-tools">
 <button id="importButton" class="header-tool-btn" type="button" title="Import papers or maps (⌘I)"> <span data-feather="download"></span>
 <span>Import</span> </button> <button id="exportButton" class="header-tool-btn" type="button" title="Export JSON map (⌘S)" disabled>
@@ -51,7 +51,7 @@
 <div class="ribbon-group"> <span class="ribbon-label">Discovery methods</span>
 <div class="ribbon-cards">
 <button class="ribbon-card" data-method="citations" type="button" title="Backward references and forward citations"> <span class="ribbon-svg-icon" data-feather="share-2"></span> <div class="ribbon-card-text"><strong>Citations</strong><small>Direct &amp; citing</small></div> </button>
-<button class="ribbon-card" data-method="network" type="button" title="Co-citation and bibliographic coupling"> <span class="ribbon-svg-icon" data-feather="compass"></span> <div class="ribbon-card-text"><strong>Network</strong><small>Co-citations</small></div> </button>
+<button class="ribbon-card" data-method="network" type="button" title="Content-aware DBEF discovery from shared references"> <span class="ribbon-svg-icon" data-feather="compass"></span> <div class="ribbon-card-text"><strong>DBEF</strong><small>Shared references</small></div> </button>
 <button class="ribbon-card active" data-method="semantic" type="button" title="Related papers from scientific recommendations"> <span class="ribbon-svg-icon" data-feather="cpu"></span> <div class="ribbon-card-text"><strong>Semantic</strong><small>Related meaning</small></div> </button>
 <button class="ribbon-card" data-method="concepts" type="button" title="Keywords, MeSH terms, and entities"> <span class="ribbon-svg-icon" data-feather="tag"></span> <div class="ribbon-card-text"><strong>Concepts</strong><small>MeSH &amp; terms</small></div> </button>
 </div> </div>
@@ -61,7 +61,7 @@
 <button class="pill-btn-sm" data-search-source="core" type="button">CORE</button>
 </div><small class="subtle">Search titles and keywords across the selected sources. Available full-text links appear with results.</small></div>
 <span class="ribbon-v-divider" aria-hidden="true"></span> <div class="ribbon-group">
-<span class="ribbon-label">Exploration depth</span> <div class="ribbon-pills">
+<span class="ribbon-label">Citation depth</span> <div class="ribbon-pills">
 <button class="pill-btn-sm active" data-depth="1" type="button">Direct <small>1-hop</small></button>
 <button class="pill-btn-sm" data-depth="2" type="button">2-Hop <small>Extended</small></button>
 <button class="pill-btn-sm" data-depth="3" type="button">3-Hop <small>Broader</small></button>
@@ -85,7 +85,7 @@
 <div class="discovery-popup-footer"><span>Applies when you select Discover related.</span><button id="discoveryOptionsDone" type="button">Done</button></div>
 </div></div>
 <label class="discovery-question" for="discoveryResearchQuestion"><span class="sr-only">Research question</span><input id="discoveryResearchQuestion" maxlength="1000" placeholder="What are you looking for? (optional)" autocomplete="off"></label>
-<label class="ribbon-result-limit" for="discoveryResultLimit"><span>Results</span><select id="discoveryResultLimit" aria-label="Discovery result limit"><option value="50">Up to 50</option><option value="100">Up to 100</option><option value="200" selected>Up to 200</option><option value="500">Up to 500</option></select></label>
+<label class="ribbon-result-limit" for="discoveryResultLimit"><span>Results</span><select id="discoveryResultLimit" aria-label="Discovery result limit"><option value="50">Up to 50</option><option value="100">Up to 100</option><option value="500" selected>Up to 500</option><option value="1000">Up to 1,000</option><option value="2000">Up to 2,000</option></select></label>
 <button id="ribbonDiscoverButton" class="ribbon-discover-button" type="button">Discover related</button>
 <button id="discoveryViewResults" class="ribbon-review-button" type="button" hidden>Review results</button>
 <div id="discoveryRunProgress" class="discovery-run-progress" role="status" aria-live="polite" hidden><progress id="discoveryProgressBar" max="100" value="0" aria-label="Discovery progress"></progress><span id="discoveryProgressText">Searching…</span><button id="discoveryCancelSearch" type="button">Cancel</button></div>
@@ -450,6 +450,11 @@
 <span class="action-label" id="tagActionGraphLabel">Focus map graph around this tag</span> </button>
 <button class="tag-action-item" data-action="toggle-exclude" type="button"> <span class="action-icon">⛔</span>
 <span class="action-label" id="tagActionExcludeLabel">Exclude from recommendations</span> </button> </div> </div>
+<dialog id="citationLookupDialog" class="record-dialog citation-lookup-dialog" aria-labelledby="citationLookupTitle">
+<header><h2 id="citationLookupTitle">Find papers from citations</h2><button id="citationLookupClose" type="button" aria-label="Close citation lookup">×</button></header>
+<div class="record-dialog-body"><p>An author and year can match several papers. Choose the title you intended.</p><p id="citationLookupStatus" role="status"></p>
+<form id="citationLookupForm"><label>Title words or topic (optional)<input id="citationLookupContext" type="search" maxlength="300" placeholder="Narrow the online search"></label><button id="citationLookupSearch" type="submit" class="button secondary">Search again</button></form>
+<div id="citationLookupResults"></div></div><footer><button id="citationLookupAdd" type="button" class="button primary" disabled>Add selected</button></footer></dialog>
 <dialog id="paperRelationsDialog" class="record-dialog" aria-labelledby="relationTitle">
 <header><h2 id="relationTitle">Citation list</h2><button id="relationClose" type="button" aria-label="Close citation list">×</button></header>
 <div class="record-dialog-body"><p id="relationCoverage" role="status"></p><small id="relationNote"></small>
@@ -464,15 +469,15 @@
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your computer until you import them. PDFs and full paper text are not uploaded.</small></p>
 <details id="mendeleyDeveloperSettings" hidden><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this computer's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261012-discovery-ux"></script>
-<script src="js/paper-links.js?v=ui-20261012-discovery-ux"></script>
-<script src="js/part_02.js?v=ui-20261012-discovery-ux"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261012-citations"></script>
+<script src="js/paper-links.js?v=ui-20261012-citations"></script>
+<script src="js/part_02.js?v=ui-20261012-citations"></script>
 <script src="js/part_03.js?v=ui-20261011-171"></script>
 <script src="js/part_04.js?v=ui-20261011-2"></script>
 <script src="js/part_05.js?v=ui-20261011-2"></script>
 <script src="js/part_06.js?v=ui-20261010-2"></script>
 <script src="js/part_07.js?v=ui-20261010-2"></script>
-<script src="js/part_08.js?v=ui-20261011-11"></script>
+<script src="js/part_08.js?v=ui-20261012-citations"></script>
 <script src="js/part_09.js?v=ui-20261010-2"></script>
 <script src="js/part_10.js?v=ui-20261010-2"></script>
 <script src="js/part_11.js?v=ui-20261010-2"></script>
@@ -483,12 +488,13 @@
 <script src="js/part_23.js?v=ui-20261011-1"></script>
 <script src="js/mendeley-sync.js?v=ui-20261010-2"></script>
 <script src="js/part_24.js?v=ui-20261010-2"></script>
-<script src="js/discovery-controls.js?v=ui-20261012-discovery-ux"></script>
+<script src="js/discovery-controls.js?v=ui-20261012-citations"></script>
 <script src="js/inspector.js?v=ui-20261011-11"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
 <script src="js/part_17.js?v=ui-20261011-5"></script>
 <script src="js/part_18.js?v=ui-20261011-171"></script>
 <script src="js/discovery-review.js?v=ui-20261012-bridges-passages"></script>
-<script src="js/part_19.js?v=ui-20261012-discovery-ux"></script>
-<script src="js/part_20.js?v=ui-20261012-discovery-ux"></script>
+<script src="js/part_19.js?v=ui-20261012-citations"></script>
+<script src="js/citation-lookup.js?v=ui-20261012-citations"></script>
+<script src="js/part_20.js?v=ui-20261012-citations"></script>
 <script src="js/timeline.js?v=ui-20261011-9"></script>
-<script src="js/part_21.js?v=ui-20261012-discovery-ux"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>
+<script src="js/part_21.js?v=ui-20261012-citations"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>

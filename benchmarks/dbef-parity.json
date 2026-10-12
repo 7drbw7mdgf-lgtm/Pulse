@@ -1,0 +1,74 @@
+{
+  "suppliedFileSHA256": "41c7d00df59ec5c62ce1e45a0106818149ff6839a4fbc1be76eef6ad1c70f8da",
+  "comparison": "Original NumPy scorer with identical sparse TF-IDF vectors converted to dense arrays",
+  "cases": [
+    {
+      "seeds": 1,
+      "candidates": 400,
+      "rho": 0.2,
+      "lam": 0.3,
+      "calibration": "pool",
+      "stage1": 1000,
+      "identicalTop20": true,
+      "maximumScoreDelta": 0.0,
+      "secondsIncludingComparison": 0.017
+    },
+    {
+      "seeds": 1,
+      "candidates": 400,
+      "rho": 1,
+      "lam": 1,
+      "calibration": "pool",
+      "stage1": 1000,
+      "identicalTop20": true,
+      "maximumScoreDelta": 0.0,
+      "secondsIncludingComparison": 0.012
+    },
+    {
+      "seeds": 1,
+      "candidates": 400,
+      "rho": 0.2,
+      "lam": 0.3,
+      "calibration": "none",
+      "stage1": 50,
+      "identicalTop20": true,
+      "maximumScoreDelta": 3.552713678800501e-15,
+      "secondsIncludingComparison": 0.006
+    },
+    {
+      "seeds": 3,
+      "candidates": 400,
+      "rho": 0.2,
+      "lam": 0.3,
+      "calibration": "pool",
+      "stage1": 1000,
+      "identicalTop20": true,
+      "maximumScoreDelta": 0.0,
+      "secondsIncludingComparison": 0.016
+    },
+    {
+      "seeds": 3,
+      "candidates": 400,
+      "rho": 1,
+      "lam": 1,
+      "calibration": "pool",
+      "stage1": 1000,
+      "identicalTop20": true,
+      "maximumScoreDelta": 0.0,
+      "secondsIncludingComparison": 0.013
+    },
+    {
+      "seeds": 3,
+      "candidates": 400,
+      "rho": 0.2,
+      "lam": 0.3,
+      "calibration": "none",
+      "stage1": 50,
+      "identicalTop20": true,
+      "maximumScoreDelta": 1.7763568394002505e-15,
+      "secondsIncludingComparison": 0.007
+    }
+  ],
+  "maximumScoreDelta": 3.552713678800501e-15,
+  "newRuntimeDependencies": []
+}

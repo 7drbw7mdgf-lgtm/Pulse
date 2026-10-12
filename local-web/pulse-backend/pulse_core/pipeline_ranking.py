@@ -298,6 +298,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
     peak_rrf = max(raw_rrf) or 1
     rejected = {paper_key(row['paper']) for row in options.get('relevanceFeedback') or [] if row['grade'] == 0}
     prelim = [.7*relevance[i]+.3*raw_rrf[i]/peak_rrf +
+              (.12*float((records[i].get("dbef") or {}).get("normalizedScore") or 0)) +
               (.06*foundational_support(records[i], relevance[i])
                if options.get('foundationalPrior', True) and paper_key(records[i]) not in rejected else 0)
               for i in range(len(records))]
@@ -372,7 +373,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         if len(cohort)<3: cohort = [value for value in impacts if value is not None]
         impact = sum(value<impacts[i] for value in cohort)/len(cohort) if impacts[i] is not None and len(cohort)>=3 else 0
         topic_support = max(relevance[i], sem or 0)
-        velocity_prior = .09*impact*topic_support if options.get('citationVelocityPrior', True) and grade != 0 else 0
+        velocity_prior = .09*impact*topic_support if options.get('citationVelocityPrior', True) and grade != 0 and not record.get('dbef') else 0
         score += velocity_prior
         foundation_prior = .06*foundational_support(record, topic_support) if options.get('foundationalPrior', True) and grade != 0 else 0
         score += foundation_prior
@@ -380,7 +381,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         score += .05*min(2,float(options.get('recencyTilt') or 0))*recency*max(relevance[i],sem or 0)
         record['score'] = round(100*max(0,min(1,score)),3)
         record['scoreBreakdown'] = {'text':round(relevance[i],3),'fusion':round(fusion,3),'semantic':round(sem,3) if sem is not None else None,
-            'citationEvidence':round(graph,3),'optionalImpact':round(impact,3),'citationVelocityPrior':round(velocity_prior,4),'foundationalPrior':round(foundation_prior,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
+            'dbef':record.get('dbef'),'citationEvidence':round(graph,3),'optionalImpact':round(impact,3),'citationVelocityPrior':round(velocity_prior,4),'foundationalPrior':round(foundation_prior,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
         record['branchHits'] = {b:True for b in record['branches']}
         if any(b in record['branches'] for b in ('core','europePmc','fullText')): record['branchHits']['lexicalConceptual']=True
         explanations = []

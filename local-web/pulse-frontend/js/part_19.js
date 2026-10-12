@@ -92,7 +92,7 @@
         discoveryBranches: { ...state.discoveryBranches },
         discoverySearchSources: { ...state.discoverySearchSources },
         discoveryDepth: state.discoveryDepth || '1',
-        discoveryLimit: state.discoveryLimit || 200,
+        discoveryLimit: state.discoveryLimit || 500,
         discoveryResearchQuestion: state.discoveryResearchQuestion || '',
         discoveryStrictExclusions: state.discoveryStrictExclusions || [],
         discoveryDiversify: state.discoveryDiversify !== false,
@@ -118,6 +118,7 @@
           fullTextUrl: paper.fullTextUrl || '', fullTextLinks: paper.fullTextLinks || [],
           sourceList: paper.sourceList || [], sourceIdentifiers: paper.sourceIdentifiers || {},
           citationCountSource: paper.citationCountSource || '', citationCountsBySource: paper.citationCountsBySource || {},
+          discoveryMethod: paper.discoveryMethod || '', dbef: paper.dbef || null,
           volume: paper.volume || '', issue: paper.issue || '', pages: paper.pages || '', issn: paper.issn || '',
           publisher: String(paper.publisher || ''), url: String(paper.url || ''), articleNumber: String(paper.articleNumber || ''), isbn: String(paper.isbn || ''), language: String(paper.language || ''), publicationType: String(paper.publicationType || ''),
         metadataCheckedAt: paper.metadataCheckedAt || '', metadataSnapshot: paper.metadataSnapshot || null, mendeleySource: paper.mendeleySource || null,
@@ -189,7 +190,7 @@
       state.discoveryBranches = Object.fromEntries(['citationGraph','citationNetwork','semanticSearch','lexicalSearch'].map(key => [key,data.discoveryBranches?.[key] !== false]));
       state.discoverySearchSources = Object.fromEntries(['semanticScholar','europePmc','core'].map(key => [key,data.discoverySearchSources?.[key] !== false]));
       state.discoveryDepth = ['1','2','3','iterative'].includes(String(data.discoveryDepth)) ? String(data.discoveryDepth) : '1';
-      state.discoveryLimit = [50,100,200,500].includes(Number(data.discoveryLimit)) ? Number(data.discoveryLimit) : 200;
+      state.discoveryLimit = [50,100,500,1000,2000].includes(Number(data.discoveryLimit)) ? Number(data.discoveryLimit) : 500;
       state.discoveryResearchQuestion = String(data.discoveryResearchQuestion || '').slice(0,1000);
       state.discoveryStrictExclusions = Array.isArray(data.discoveryStrictExclusions) ? data.discoveryStrictExclusions.slice(0,16) : [];
       state.discoveryDiversify = data.discoveryDiversify !== false;
