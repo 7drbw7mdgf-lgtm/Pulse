@@ -284,7 +284,7 @@
         `Ollama embeddings endpoint: ${settings.ollamaEmbeddingsEndpoint || 'http://127.0.0.1:11434/api/embeddings'}`,
         `Bundled Ollama: ${bundled.available ? (bundled.processRunning ? 'running from app bundle' : 'available') : 'not bundled'}`,
         `Bundled runtime status: ${bundledBoot.reason || 'unknown'}`,
-        `Ollama model storage: ${bundled.modelsDir || '~/Library/Application Support/pulse/models'}`,
+        `Ollama model storage: ${bundled.modelsDir || 'Pulse model folder'}`,
         `PDF extraction: ${settings.workflow?.pdfExtraction || 'byte scan fallback'}`,
         `Section detection: ${settings.workflow?.sectionDetection || 'heading heuristics'}`,
         `Metadata extraction: local parser + local chat model`,

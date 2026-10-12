@@ -37,6 +37,7 @@ jobs:
           }
           Pop-Location
       - name: Build installer
+        id: build
         shell: pwsh
         run: ./scripts/package-windows.ps1
       - name: Install and verify native app
@@ -44,6 +45,12 @@ jobs:
         run: |
           python scripts/verify-windows-package.py --installer outputs/windows/Pulse-1.7.2-Windows-x64-Setup.exe --report outputs/windows/verification.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Save successful compilation cache
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: desktop/src-tauri/target
+          key: windows-pulse-${{ hashFiles('desktop/src-tauri/Cargo.lock') }}
       - uses: actions/upload-artifact@v4
         with:
           name: Pulse-1.7.2-Windows-x64

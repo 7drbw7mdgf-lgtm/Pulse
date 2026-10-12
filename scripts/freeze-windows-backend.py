@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Freeze the Windows backend after staging; run on Windows with Python 3.12."""
 import argparse
+import importlib.metadata
 from pathlib import Path
 import shutil
 import subprocess
@@ -29,6 +30,16 @@ def main():
                     str(backend / 'pulse_backend.py')], cwd=ROOT, check=True)
     staged = ROOT / 'desktop/src-tauri/resources/backend'
     shutil.copytree(work / 'dist/pulse_backend', staged, dirs_exist_ok=True)
+    notices = staged / 'LICENSES'
+    notices.mkdir(exist_ok=True)
+    python_license = Path(sys.base_prefix) / 'LICENSE.txt'
+    if python_license.is_file():
+        shutil.copy2(python_license, notices / 'Python-LICENSE.txt')
+    distribution = importlib.metadata.distribution('PyMuPDF')
+    for entry in distribution.files or []:
+        if entry.name == 'COPYING':
+            shutil.copy2(distribution.locate_file(entry), notices / 'PyMuPDF-COPYING.txt')
+    (notices / 'README.txt').write_text('Pulse source: https://github.com/7drbw7mdgf-lgtm/Pulse\nPyMuPDF: https://github.com/pymupdf/PyMuPDF (AGPL-3.0)\nPython: https://www.python.org/\n', encoding='utf-8')
     assert (staged / 'pulse_backend.exe').is_file()
     print('Staged Windows backend with its own Python runtime and PDF dependency.')
 

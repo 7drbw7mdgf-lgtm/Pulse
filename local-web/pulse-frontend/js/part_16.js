@@ -293,7 +293,7 @@ function bindInspectorSections() {
         <section class="insp-section">
           <label class="insp-label" for="inspectorNotes">Notes</label>
           <textarea id="inspectorNotes" class="insp-notes" rows="8" maxlength="20000" placeholder="What does this paper show, and how will you use it?">${escapeHtml(paper.notes || '')}</textarea>
-          <span class="insp-saved">${inspectorIcon('lock')}<span data-notes-status>Saved on this Mac only</span></span>
+          <span class="insp-saved">${inspectorIcon('lock')}<span data-notes-status>Saved on this computer only</span></span>
         </section>
         <button class="insp-btn block" type="button" data-action="open-agent">${inspectorIcon('chat')}Ask the AI agent about this paper</button>`;
     }
@@ -343,7 +343,7 @@ function bindInspectorSections() {
         const label = root.querySelector('[data-notes-status]');
         if (label) label.textContent = 'Saving…';
         clearTimeout(state.inspectorNotesTimer);
-        state.inspectorNotesTimer = setTimeout(() => { scheduleAutosave(); if (label) label.textContent = 'Saved on this Mac only'; }, 600);
+        state.inspectorNotesTimer = setTimeout(() => { scheduleAutosave(); if (label) label.textContent = 'Saved on this computer only'; }, 600);
       });
       const tagInput = root.querySelector('[data-action="add-user-tag"]');
       tagInput?.addEventListener('keydown', event => {

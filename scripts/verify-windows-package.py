@@ -104,7 +104,8 @@ def main():
             health = request('/api/health')
             assert health['ok'] and health['version'] == '1.7.2', health
             backend_pid = health['pid']
-            assert executable_path(backend_pid) == backend, executable_path(backend_pid)
+            running_backend = executable_path(backend_pid)
+            assert running_backend and os.path.samefile(running_backend, backend), running_backend
             while not has_window(application.pid):
                 assert application.poll() is None and time.monotonic() < deadline, 'Pulse window did not open'
                 time.sleep(.25)
