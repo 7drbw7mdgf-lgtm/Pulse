@@ -37,7 +37,7 @@ def independent_channel_count(record):
     return len(channels)
 
 
-def match_label(evidence, calibration=None, grade=None, *, pool_rank=None, pool_size=None, channel_count=0):
+def match_label(evidence, calibration=None, grade=None, *, pool_rank=None, pool_size=None, channel_count=0, visible_size=None):
     if grade is not None: return 'Relevant' if grade > 0 else 'Not relevant'
     thresholds = calibration or {}
     try:
@@ -46,11 +46,13 @@ def match_label(evidence, calibration=None, grade=None, *, pool_rank=None, pool_
         if not 0 <= related < strong <= 1: raise ValueError()
     except (ValueError, TypeError): strong, related = .72, .35
     top_decile = bool(pool_rank and pool_size and 1 <= pool_rank <= max(1, math.ceil(pool_size / 10)))
+    if visible_size:
+        top_decile = top_decile and pool_rank <= max(1, math.ceil(visible_size / 10))
     if evidence >= strong and top_decile and channel_count >= 2: return 'Strong match'
     if pool_rank and pool_size:
-        # Related is a relative review band, rather than an absolute evidence
-        # threshold. Use the full deduplicated pool, not the visible page.
-        top_forty_percent = 1 <= pool_rank <= math.ceil(.4 * pool_size)
+        # Review bands describe the returned list. Strong keeps its conservative
+        # full-pool gate as well as a visible-list decile to avoid flooding the UI.
+        top_forty_percent = 1 <= pool_rank <= math.ceil(.4 * (visible_size or pool_size))
         return 'Related' if top_forty_percent else 'Explore'
     # Preserve the evidence-based fallback for callers without pool context.
     return 'Related' if evidence >= related else 'Explore'

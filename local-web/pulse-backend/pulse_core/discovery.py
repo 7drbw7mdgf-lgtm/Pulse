@@ -172,7 +172,7 @@ def openalex_discovery_works(work_filter, limit, sort='cited_by_count:desc', max
     return gathered
 
 
-def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_chase=True, limit=30, depth=None):
+def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_chase=False, limit=30, depth=None):
     gathered = SearchResults()
     hop1_references = []
     hop1_citations = []
@@ -252,6 +252,24 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                     gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex references: ' + str(error)]))
 
     max_depth = 4 if str(depth) == "iterative" else max(1, min(int(depth or (2 if include_iterative_chase else 1)), 3))
+    if max_depth == 1:
+        return gathered
+    # Extra hops share eight seconds, including provider waits and retries. The
+    # transport clips socket timeouts to this deadline and preserves hop-one work.
+    previous_deadline = getattr(REQUEST_CONTEXT, 'deadline', None)
+    extra_deadline = time.monotonic() + 8
+    REQUEST_CONTEXT.deadline = min(previous_deadline, extra_deadline) if previous_deadline else extra_deadline
+    try:
+        _collect_extra_hops(seed_papers, hop1_references, hop1_citations, gathered, max_depth, api_key)
+    except DiscoveryBudgetExceeded:
+        gathered.warning = ' · '.join(filter(None, [gathered.warning,
+            'Additional citation hops stopped at the time budget; direct citations and collected results are retained.']))
+    finally:
+        REQUEST_CONTEXT.deadline = previous_deadline
+    return gathered
+
+
+def _collect_extra_hops(seed_papers, hop1_references, hop1_citations, gathered, max_depth, api_key):
     seen = {s2_paper_identifier(p) for p in seed_papers}
     frontier = [(p, "backward") for p in hop1_references] + [(p, "forward") for p in hop1_citations]
     for hop in range(2, max_depth + 1):
@@ -259,6 +277,7 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
         for direction in ("backward", "forward"):
             candidates = balanced_frontier([p for p,d in frontier if d==direction],seed_papers,4)
             for parent in candidates:
+                check_cancelled()
                 key = s2_paper_identifier(parent)
                 if not key or key in seen:
                     continue
@@ -275,15 +294,14 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                         item.update(subType=f"Iterative Chase ({hop}-Hop)", hop=hop, chaseViaTitle=parent.get("title", ""), reason=f"Citation hop {hop} via {parent.get('title', '')[:80]}")
                         gathered.append(item)
                         next_frontier.append((item, direction))
+                    publish_partial(copy.deepcopy(gathered))
+                    check_cancelled()
                 except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
                 except Exception:
                     continue
         frontier = next_frontier
         if not frontier:
             break
-
-    return gathered
-
 
 def fetch_citation_network_branch(seed_papers, api_key=None, limit=30):
     gathered = SearchResults()
@@ -395,7 +413,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     steer_keywords = steering_terms(payload.get("steerKeywords") or payload.get("keywords") or [])
     exclude_keywords = steering_terms(payload.get("excludeKeywords") or [])
     limit = discovery_limit(payload.get("limit"))
-    include_iterative = bool(payload.get("includeIterativeChase", True))
+    include_iterative = bool(payload.get("includeIterativeChase", False))
     feedback = feedback_for_context(payload, seed_papers)
     retrieval_limit = candidate_limit(limit)
     query_plan = []
@@ -418,7 +436,14 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         if sources.get("semanticScholar", True):
             tasks["lexicalConceptual"] = lambda: search_query_plan(query_plan,'semanticScholar',s2_paper_search,retrieval_limit,api_key=api_key)
         def public_search(provider, searcher, **kwargs):
-            records = search_query_plan(query_plan,provider,searcher,retrieval_limit,structured=True,**kwargs)
+            previous_deadline = getattr(REQUEST_CONTEXT, 'deadline', None)
+            if provider == 'core':
+                deadline = time.monotonic() + 8
+                REQUEST_CONTEXT.deadline = min(previous_deadline, deadline) if previous_deadline else deadline
+            try:
+                records = search_query_plan(query_plan,provider,searcher,retrieval_limit,structured=True,**kwargs)
+            finally:
+                REQUEST_CONTEXT.deadline = previous_deadline
             for record in records:
                 record.update(branch="lexicalConceptual", subType="Conceptual search", isSeed=False,
                               reason="Keyword search via " + record["source"], discoveryBadges=[record["source"], "Concept search"])
@@ -438,6 +463,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         "recencyTilt": payload.get("recencyTilt") or 0,
         "impactTilt": payload.get("impactTilt") or 0,
         "citationVelocityPrior": payload.get("citationVelocityPrior", True),
+        "foundationalPrior": payload.get("foundationalPrior", True),
         "limit": limit,
         "relevanceFeedback": feedback,
         "_matchCalibration": settings.get('searchMatchCalibration'),

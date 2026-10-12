@@ -38,6 +38,25 @@ def normalized_reference_similarity(shared, seed_total, candidate_total):
     return min(1, max(0, shared)/math.sqrt(max(1, seed_total)*max(1,candidate_total)))
 
 
+def foundational_support(record, relevance):
+    """Bounded total-citation support for relevant, citation-linked older work.
+
+    Velocity favours currently active work. Total citations complement it only
+    for work supported by an actual seed/reference relationship and topic text.
+    """
+    count = known_count(record)
+    if count is None or count < 50 or relevance < .2:
+        return 0.0
+    paths = record.get('retrievalEvidence') or []
+    supported = any(str(ev.get('channel') or '').startswith('citations:') and
+                    str(ev.get('channel') or '').endswith(':backward') or
+                    'Co-citation' in str(ev.get('subType') or '') or
+                    'Bibliographic coupling' in str(ev.get('subType') or '') for ev in paths)
+    if not supported:
+        return 0.0
+    return min(1.0, math.log1p(count) / math.log1p(5000)) * relevance
+
+
 def balanced_frontier(papers, seeds, count=4):
     # Half recent, half related; a citation total alone never chooses the frontier.
     queries = [text_for_paper(seed) for seed in seeds]
@@ -270,7 +289,11 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
             channels[channel] = min(rank,channels.get(channel,rank))
         raw_rrf.append(sum(1/(60+rank) for rank in channels.values()))
     peak_rrf = max(raw_rrf) or 1
-    prelim = [.7*relevance[i]+.3*raw_rrf[i]/peak_rrf for i in range(len(records))]
+    rejected = {paper_key(row['paper']) for row in options.get('relevanceFeedback') or [] if row['grade'] == 0}
+    prelim = [.7*relevance[i]+.3*raw_rrf[i]/peak_rrf +
+              (.06*foundational_support(records[i], relevance[i])
+               if options.get('foundationalPrior', True) and paper_key(records[i]) not in rejected else 0)
+              for i in range(len(records))]
     indices = balanced_indices(records, prelim, MAX_CANDIDATE_POOL)
     records, relevance, raw_rrf, prelim = ([records[i] for i in indices], [relevance[i] for i in indices], [raw_rrf[i] for i in indices], [prelim[i] for i in indices])
     options['_candidateCount'] = len(records)
@@ -289,6 +312,8 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         options['_pairwiseNotice'] = notice
         if values is not None:
             pairwise = dict(zip(indices, values)); options['_rankingNotice'] = notice
+        else:
+            options['_rankingNotice'] = notice
     feedback = options.get('relevanceFeedback') or []
     grades = {paper_key(row['paper']): row['grade'] for row in feedback}
     feedback_terms = [(row['grade'], set(terms(row['paper'].get('title'))+terms(row['paper'].get('abstract')))) for row in feedback]
@@ -336,11 +361,13 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         topic_support = max(relevance[i], sem or 0)
         velocity_prior = .09*impact*topic_support if options.get('citationVelocityPrior', True) and grade != 0 else 0
         score += velocity_prior
+        foundation_prior = .06*foundational_support(record, topic_support) if options.get('foundationalPrior', True) and grade != 0 else 0
+        score += foundation_prior
         score += .06*min(2,float(options.get('impactTilt') or 0))*impact*topic_support
         score += .05*min(2,float(options.get('recencyTilt') or 0))*recency*max(relevance[i],sem or 0)
         record['score'] = round(100*max(0,min(1,score)),3)
         record['scoreBreakdown'] = {'text':round(relevance[i],3),'fusion':round(fusion,3),'semantic':round(sem,3) if sem is not None else None,
-            'citationEvidence':round(graph,3),'optionalImpact':round(impact,3),'citationVelocityPrior':round(velocity_prior,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
+            'citationEvidence':round(graph,3),'optionalImpact':round(impact,3),'citationVelocityPrior':round(velocity_prior,4),'foundationalPrior':round(foundation_prior,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
         record['branchHits'] = {b:True for b in record['branches']}
         if any(b in record['branches'] for b in ('core','europePmc','fullText')): record['branchHits']['lexicalConceptual']=True
         explanations = []
@@ -362,7 +389,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         if profile.get('version') != 'evidence-v1' or profile.get('mode') != mode: profile = None
         record['matchMode'] = mode
         record['matchLabel'] = match_label(evidence, profile, grade)
-        record['matchStrengthVersion'] = 'evidence-v3'
+        record['matchStrengthVersion'] = 'evidence-v4'
         if grade is not None:
             record['relevanceGrade'] = grade
             record['matchReasons'].insert(0, 'Marked relevant for this question' if grade > 0 else 'Marked not relevant for this question')
@@ -424,14 +451,16 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
             best=max(remaining,key=mmr)
             selected.append(best);remaining.remove(best)
         records=selected+records[80:]
+    visible_size = min(len(records), discovery_limit(options.get('limit')))
     for rank,record in enumerate(records,1):
         record['rank'] = rank
         channels = independent_channel_count(record)
         record['independentChannelCount'] = channels
         record['matchPoolSize'] = len(records)
+        record['matchDisplaySize'] = visible_size
         profile = (options.get('_calibrationApplied') or {}).get(record['matchMode']) or options.get('_matchCalibration') or {}
         if profile.get('version') != 'evidence-v1' or profile.get('mode') != record['matchMode']: profile = None
-        context = dict(pool_rank=rank, pool_size=len(records), channel_count=channels)
+        context = dict(pool_rank=rank, pool_size=len(records), channel_count=channels, visible_size=visible_size)
         record['strongMatchEligible'] = (record.get('relevanceGrade') != 0 and
             match_label(record['matchEvidenceScore'], profile, **context) == 'Strong match')
         record['matchLabel'] = match_label(record['matchEvidenceScore'], profile, record.get('relevanceGrade'), **context)

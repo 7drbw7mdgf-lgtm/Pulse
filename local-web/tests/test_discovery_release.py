@@ -179,14 +179,15 @@ class StrongMatchTests(unittest.TestCase):
         self.assertEqual(match_label(.95, pool_rank=3, pool_size=3), 'Explore')
         self.assertEqual(match_label(.1, grade=2, pool_rank=20, pool_size=20), 'Relevant')
 
-    def test_related_band_uses_final_full_pool_before_display_limit(self):
+    def test_related_band_uses_final_display_list_after_diversity(self):
         records = [paper(index, retrievalEvidence=[{'channel':'concepts:q1','rank':index+1}]) for index in range(30)]
         for diversify in (False, True):
             found = rank({'concepts':records}, [SEED], {'limit':15,'diversify':diversify})
-            self.assertEqual([row['rank'] for row in found if row['matchLabel']=='Related'], list(range(1,13)))
-            self.assertEqual([row['rank'] for row in found if row['matchLabel']=='Explore'], [13,14,15])
+            self.assertEqual([row['rank'] for row in found if row['matchLabel']=='Related'], list(range(1,7)))
+            self.assertEqual([row['rank'] for row in found if row['matchLabel']=='Explore'], list(range(7,16)))
             self.assertTrue(all(row['matchPoolSize']==30 for row in found))
-            self.assertTrue(all(row['matchStrengthVersion']=='evidence-v3' for row in found))
+            self.assertTrue(all(row['matchDisplaySize']==15 for row in found))
+            self.assertTrue(all(row['matchStrengthVersion']=='evidence-v4' for row in found))
 
     def test_provider_mirrors_and_query_variants_are_not_independent(self):
         evidence = [{'channel':'concepts:q1','provider':'CORE'}, {'channel':'concepts:q1','provider':'Semantic Scholar'}, {'channel':'concepts:q2','provider':'Europe PMC'}]
@@ -199,7 +200,7 @@ class StrongMatchTests(unittest.TestCase):
         original = copy.deepcopy(records)
         for diversify in (False, True):
             found = rank({'concepts':records}, [SEED], {'limit':10, 'researchQuestion':'Protected bicycle lanes reduce intersection injuries', 'diversify':diversify})
-            self.assertEqual([row['rank'] for row in found if row['matchLabel']=='Strong match'], [1,2,3])
+            self.assertEqual([row['rank'] for row in found if row['matchLabel']=='Strong match'], [1])
             self.assertTrue(all(row['matchPoolSize']==30 for row in found))
         self.assertEqual(records, original)
 

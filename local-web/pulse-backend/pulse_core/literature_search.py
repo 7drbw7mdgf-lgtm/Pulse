@@ -8,7 +8,7 @@ from datetime import datetime
 
 from pulse_core.constants import APP_VERSION, ClientError
 from pulse_core.doi_utils import normalize_doi
-from pulse_performance import DiscoveryCancelled, DiscoveryBudgetExceeded, request_json
+from pulse_performance import DiscoveryCancelled, DiscoveryBudgetExceeded, request_json, _wait
 
 __all__ = ["search_europe_pmc", "search_core", "europe_pmc_to_metadata", "core_to_metadata", "literature_query"]
 
@@ -195,7 +195,16 @@ def search_core(query, limit=30, api_key="", doi="", structured=False):
         page_size = min(100, limit - offset)
         params = urllib.parse.urlencode({"q": query, "limit": page_size, "offset": offset})
         try:
-            data = fetch_search("https://api.core.ac.uk/v3/search/works/?" + params, "CORE", api_key)
+            # One recovery attempt for a transient upstream fault. Persistent
+            # failures stop the provider instead of repeating every query.
+            for attempt in range(2):
+                try:
+                    data = fetch_search("https://api.core.ac.uk/v3/search/works/?" + params, "CORE", api_key)
+                    break
+                except ClientError as error:
+                    if error.status not in {500, 502, 504} or attempt:
+                        raise
+                    _wait(.5)
             if not isinstance(data.get("results"), list):
                 raise ClientError(502, "CORE returned an invalid search response.")
         except (ClientError, DiscoveryBudgetExceeded) as error:

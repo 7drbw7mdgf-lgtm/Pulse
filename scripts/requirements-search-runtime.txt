@@ -1,0 +1,5 @@
+# Release-only runtime build; CPU wheels support macOS 11 and Python 3.9.
+PyInstaller==6.22.3
+onnxruntime==1.18.1
+numpy==1.26.4
+tokenizers==0.20.3

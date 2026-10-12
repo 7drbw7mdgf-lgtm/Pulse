@@ -1,5 +1,3 @@
 # Unreleased source changes
 
-All recent performance optimizations, disk embedding caching, and paper opening updates have been incorporated into the [Pulse 1.7.6 release](releases/1.7.6.md).
-
-No unreleased changes are currently pending.
+The discovery timing, portable Mac ranker, visible review bands, foundational support and CORE recovery fixes are included in [Pulse 1.7.7](releases/1.7.7.md).

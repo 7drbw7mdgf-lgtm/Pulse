@@ -17,11 +17,12 @@ def _find_search_runtime(settings):
             return py_path, mod_path
 
     here = Path(__file__).resolve()
-    candidate_roots = []
+    candidate_roots = [here.parent.parent / '.search-runtime']
     for parent in here.parents:
-        candidate_roots.append(parent / '.search-runtime')
-        if parent.name in ('Pulse.app', 'repo', 'Pulse', 'pulse-backend', 'src-tauri'):
-            if parent.parent: candidate_roots.append(parent.parent / '.search-runtime')
+        if (parent / 'desktop/src-tauri/tauri.conf.json').is_file():
+            candidate_roots.append(parent / '.search-runtime')
+            break
+        if parent.name == 'Pulse.app':
             break
     config_dir = os.environ.get('PULSE_CONFIG_DIR')
     if config_dir:
@@ -32,40 +33,29 @@ def _find_search_runtime(settings):
         Path.home() / '.pulse/.search-runtime',
     ])
 
-    # First, look for an all-in-one root (python + model)
+    # Bundled executables carry the interpreter and inference dependencies.
+    # Relative manifest paths make installed and relocated apps equivalent.
+    for root in candidate_roots:
+        manifest = root / 'manifest.json'
+        if not manifest.is_file(): continue
+        try:
+            data = json.loads(manifest.read_text())
+            if data.get('format') != 'onnx-executable-v1': continue
+            executable = (root / data['executable']).resolve()
+            model = (root / data['modelDirectory']).resolve()
+            executable.relative_to(root.resolve()); model.relative_to(root.resolve())
+            if executable.is_file() and (model / 'model.onnx').is_file() and (model / 'tokenizer.json').is_file():
+                return executable, model
+        except (KeyError, ValueError, TypeError, OSError):
+            continue
+
+    # A developer install must contain its venv; an old absolute manifest path
+    # to the builder's base Python is not a usable inference runtime.
     for root in candidate_roots:
         python = root / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
         model = root / 'model'
-        if python.is_file() and model.is_dir():
+        if python.is_file() and (model / 'model.safetensors').is_file() and (root / 'pyvenv.cfg').is_file():
             return python, model
-
-    # Second, look for model directory across candidate roots
-    found_model = None
-    for root in candidate_roots:
-        model = root / 'model' if root.name == '.search-runtime' else root
-        if (model / 'model.safetensors').is_file() and (model / 'config.json').is_file():
-            found_model = model
-            # Check if root has a manifest pointing to python
-            manifest = (root if root.name == '.search-runtime' else root.parent) / 'manifest.json'
-            if manifest.is_file():
-                try:
-                    data = json.loads(manifest.read_text())
-                    py_candidate = Path(data.get('python', ''))
-                    if py_candidate.is_file():
-                        return py_candidate, found_model
-                except Exception:
-                    pass
-            break
-
-    if not found_model:
-        return None, None
-
-    # Check potential external pythons if model is found
-    for root in candidate_roots:
-        py = root / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
-        if py.is_file():
-            return py, found_model
-
     return None, None
 
 
@@ -76,7 +66,8 @@ def crossencoder_scores(settings, queries, records, cancel_event=None):
     worker = Path(__file__).with_name('reranker_worker.py')
     payload = json.dumps({'model': str(model.resolve()), 'queries': queries[:2], 'records': records}, ensure_ascii=False)
     try:
-        process = subprocess.Popen([str(python), str(worker)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+        command = [str(python)] if python.name in ('pulse-reranker', 'pulse-reranker.exe') else [str(python), str(worker)]
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except OSError:
         return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
     started = time.monotonic()

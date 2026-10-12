@@ -3,16 +3,16 @@
 set -euo pipefail
 release_dir=${1:?Pass a fresh release directory outside the checkout}
 python_dependencies=${2:-}
+search_runtime=${3:-}
 source_root=$(cd "$(dirname "$0")/.." && pwd)
 version=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["version"])' "$source_root/package.json")
 [ ! -e "$release_dir/staging" ] || { echo 'Use a fresh release directory.' >&2; exit 1; }
 mkdir -p "$release_dir"
 release_dir=$(cd "$release_dir" && pwd)
-if [ -n "$python_dependencies" ]; then
-  python3 "$source_root/scripts/stage-desktop.py" --python-dependencies "$python_dependencies"
-else
-  python3 "$source_root/scripts/stage-desktop.py"
-fi
+stage_args=()
+if [ -n "$python_dependencies" ]; then stage_args+=(--python-dependencies "$python_dependencies"); fi
+if [ -n "$search_runtime" ]; then stage_args+=(--search-runtime "$search_runtime"); fi
+python3 "$source_root/scripts/stage-desktop.py" "${stage_args[@]}"
 build_args=(build --ci --bundles app -- --locked)
 if [ "${PULSE_BUILD_OFFLINE:-0}" = 1 ]; then build_args+=(--offline); fi
 cd "$source_root/desktop"

@@ -2,13 +2,13 @@
 
 ### A private, local-first workspace for scientific literature discovery and synthesis
 
-[![Release](https://img.shields.io/badge/release-v1.7.6-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.6)
+[![Release](https://img.shields.io/badge/release-v1.7.7-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.7)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases)
 
 ---
 
-**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.6.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
+**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.7/Pulse-1.7.7.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.7.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
 
 ---
 
@@ -29,7 +29,7 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 1. **Import Anything:** Add papers by DOI, title, PMID, pasted citation, or bibliography file (BibTeX, RIS, EndNote, CSV), or simply drop PDF files straight into the workspace.
 2. **Explore Connections Visually:** See how papers relate to each other through an interactive citation network, radial cluster maps, a full-screen library table, or a chronological timeline view.
 3. **Smart Discovery:** Start with a seed paper or a research question. Pulse traverses citation networks and cross-checks multiple scholarly indexes (Semantic Scholar, OpenAlex, Europe PMC, Crossref, and CORE) to recommend relevant literature.
-4. **Triage Without Noise:** Results are neatly categorized into **Strong matches** (the top 10% verified by multiple search channels), **Related** (the top 40% band), and **Explore**. Clear badges explain *why* each paper was suggested (e.g. citation links, co-authors, or shared topics).
+4. **Triage Without Noise:** Results are neatly categorized into **Strong matches** (evidence-backed results in the top 10% of the displayed list and full pool), **Related** (the top 40% of the displayed list), and **Explore**. Clear badges explain *why* each paper was suggested (e.g. citation links, co-authors, or shared topics).
 5. **Bridge Literature:** Select 2 to 8 papers to uncover "bridge papers"—cross-disciplinary work connecting different fields or ideas.
 6. **Local AI Assistant:** Run synthesis reports and section summaries directly on your machine using local [Ollama](https://ollama.com) models. No external API keys required, no subscription fees, and no data leaves your device.
 7. **Reference Manager Sync:** Seamlessly send papers and metadata to Zotero Desktop or export citation bundles in RIS format for Mendeley.
@@ -124,14 +124,15 @@ python3 /path/to/Pulse/local-web/pulse-backend/pulse_mcp.py
 
 ---
 
-## What's New in 1.7.4
+## What's New in 1.7.7
 
-- **Smarter Landmark Ranking:** An age-adjusted citation velocity prior contributes up to 9 score points, boosting landmark foundational papers without letting 0-citation case reports artificially outrank them.
-- **Calibrated Triage Bands:** Candidates are now neatly organized into the top 40% **Related** review band and an **Explore** band, while keeping strict **Strong Match** criteria (top 10% pool rank and verification by at least 2 independent search sources).
-- **Independent Citation Fallbacks:** Forward and backward citation lookups now operate with decoupled Semantic Scholar and OpenAlex fallbacks, ensuring high-impact citing works are never silently lost due to rate limits.
-- **Windows Reliability:** Automated readiness retries and isolated startup diagnostics prevent initial setup file-lock collisions.
+- **Faster citation exploration:** Direct, one-hop discovery is the default. Optional extra hops share an eight-second budget, retaining direct citations and any completed results when the budget expires.
+- **Portable offline ranking on Mac:** The DMG carries the cross-encoder model and a self-contained executable with its interpreter and inference libraries. It does not depend on a developer's Python installation or home-directory model cache. Unavailable pairwise ranking is reported in the review header.
+- **Readable review bands:** Related uses the top 40% of the returned list. Strong match requires the top 10% of that list, the full-pool rank gate, an absolute evidence threshold and two independent retrieval channels. Remaining results stay available as Explore; explicit relevance labels take precedence.
+- **Foundational-paper support:** A capped six-point bonus combines total citations with topic support and an actual seed-reference, co-citation or shared-reference relationship. It complements the nine-point velocity prior and participates in shortlist selection. Popularity alone does not qualify a paper.
+- **CORE recovery:** Transient server errors get one short recovery attempt. Persistent errors stop that source within an eight-second budget, preserving results from other providers. Pulse cannot repair an upstream CORE outage.
 
-For full technical details, read the [1.7.4 Release Notes](docs/releases/1.7.4.md).
+The Mac release includes these fixes; the linked Windows installer remains 1.7.6. Current Windows source is built in CI. See the [1.7.7 release notes](docs/releases/1.7.7.md) for checks and limits. The reported Inciteful comparison has not been rerun against its original seed set; the ranking change is not a claim of measured parity.
 
 ---
 

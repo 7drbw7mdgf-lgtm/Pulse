@@ -34,7 +34,7 @@ const state = {
         semanticSearch: true,
         lexicalSearch: true,
       },
-      discoveryDepth: '2',
+      discoveryDepth: '1',
       discoveryLimit: 200,
       discoveryResearchQuestion: '',
       discoveryStrictExclusions: [],
