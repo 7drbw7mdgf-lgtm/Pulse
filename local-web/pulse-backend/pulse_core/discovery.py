@@ -515,7 +515,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         if not on_progress and not (embed_thread and embed_thread.is_alive()):
             return
         ordered = {name: results.get(name, []) for name in tasks}
-        ranked = merge_and_rank_pipeline_candidates(ordered, seed_papers, dict(options, limit=max(limit, SEMANTIC_SHORTLIST_LIMIT)))
+        ranked = merge_and_rank_pipeline_candidates(ordered, seed_papers, dict(options))
         if embed_thread and embed_thread.is_alive():
             queue_embeddings(ranked[:SEMANTIC_SHORTLIST_LIMIT])
         if on_progress:

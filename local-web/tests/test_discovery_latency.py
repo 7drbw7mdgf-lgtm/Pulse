@@ -50,6 +50,23 @@ class ProviderBudgetTests(unittest.TestCase):
     def tearDown(self):
         for field in ('deadline', 'cancel_event', 'on_partial', 'request_counter'): setattr(REQUEST_CONTEXT, field, None)
 
+    def test_partial_review_bands_use_display_limit_even_below_warmup_size(self):
+        updates = []
+        rows = [paper(i, source='Europe PMC') for i in range(200)]
+        def branches(tasks, progress, cancel):
+            progress({'europePmc': rows}, ['europePmc'], {}, 1)
+            return {'europePmc': rows}, ['europePmc'], {}
+        payload = {'seedPapers': [SEED], 'limit': 50, 'semanticRerank': False, 'pairwiseRerank': False,
+                   'branches': {'citationGraph': False, 'citationNetwork': False, 'semanticSearch': False},
+                   'searchSources': {'semanticScholar': False, 'core': False}}
+        with patch.object(core, 'load_settings', return_value={}), \
+             patch.object(discovery, 'parallel_branches', side_effect=branches):
+            discovery.run_discovery_pipeline(payload, on_progress=updates.append)
+        partial = next(update['recommendations'] for update in updates if update.get('recommendations'))
+        self.assertEqual(len(partial), 50)
+        self.assertTrue(all(p['matchDisplaySize'] == 50 for p in partial))
+        self.assertEqual(sum(p['matchLabel'] == 'Related' for p in partial), 20)
+
     def test_europe_pmc_and_core_clip_transport_to_eight_seconds_and_keep_partials(self):
         REQUEST_CONTEXT.deadline = 50
         observed = {}
