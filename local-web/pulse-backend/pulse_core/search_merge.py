@@ -4,6 +4,7 @@ import html
 import re
 import unicodedata
 from pulse_core.doi_utils import normalize_doi
+from pulse_core.metadata_utils import citation_count
 
 
 def title_key(value):
@@ -39,8 +40,11 @@ def clean_title(value):
 
 
 def known_count(record):
-    value = record.get("citationCount", record.get("citedByCount"))
-    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+    for field in ('citationCount', 'citedByCount'):
+        value = citation_count(record.get(field))
+        if value is not None:
+            return value
+    return None
 
 
 def compatible(first, second):
@@ -86,7 +90,7 @@ def merge_search_records(records):
         else:
             base = group["record"]
             for key, value in record.items():
-                if key not in {"branches", "sourceList", "fullTextLinks", "discoveryBadges", "sourceIdentifiers", "citationCountsBySource", "retrievalEvidence"} and value not in (None, "", [], {}) and base.get(key) in (None, "", [], {}):
+                if key not in {"branches", "sourceList", "fullTextLinks", "discoveryBadges", "sourceIdentifiers", "citationCountsBySource", "retrievalEvidence", "citationCount", "citedByCount", "citationCountSource"} and value not in (None, "", [], {}) and base.get(key) in (None, "", [], {}):
                     base[key] = value
             for key in ("branches", "sourceList", "fullTextLinks", "discoveryBadges", "retrievalEvidence"):
                 if key in base or key in record:
@@ -98,8 +102,7 @@ def merge_search_records(records):
             incoming = known_count(record)
             if incoming is not None and (known_count(base) is None or incoming > known_count(base)):
                 base["citationCount"] = base["citedByCount"] = incoming
-                if record.get("citationCountSource"):
-                    base["citationCountSource"] = record["citationCountSource"]
+                base["citationCountSource"] = record.get("citationCountSource") or record.get("metadataSource") or ''
             for key in ("sourceIdentifiers", "citationCountsBySource"):
                 if key in base or key in record:
                     base[key] = {**(record.get(key) or {}), **(base.get(key) or {})}

@@ -330,9 +330,9 @@ const state = {
     }
 
     function bottomDockSpace() {
-      const el = document.querySelector('.pulse-workspace-cols') || document.querySelector('.workspace') || document.body;
-      const value = el ? Number.parseFloat(getComputedStyle(el).getPropertyValue('--bottom-dock-space')) : 84;
-      return Number.isFinite(value) ? value : 84;
+      // The toolbar is outside the SVG viewport, so its height is already
+      // excluded from the map's measured dimensions.
+      return 0;
     }
 
     function showToast(message) {
@@ -430,13 +430,12 @@ const state = {
       if (!cleanDoi && rawDoi) {
         cleanDoi = String(rawDoi).replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, '').trim();
       }
-      if (cleanDoi) {
+      if (/^10\.\d{4,9}\/\S+$/i.test(cleanDoi)) {
         return 'https://doi.org/' + encodeURI(cleanDoi);
       }
-      const direct = paper.url || paper.landingPageUrl || paper.fullTextUrl || paper.pdfUrl || '';
-      const cleanedDirect = String(direct).trim();
-      if (/^https?:\/\//i.test(cleanedDirect)) {
-        return cleanedDirect;
+      for (const direct of [paper.url, paper.landingPageUrl, paper.fullTextUrl, paper.pdfUrl]) {
+        const cleanedDirect = String(direct || '').trim();
+        if (/^https?:\/\//i.test(cleanedDirect)) return cleanedDirect;
       }
       if (paper.openAlexUrl && /^https?:\/\//i.test(paper.openAlexUrl)) {
         return paper.openAlexUrl;

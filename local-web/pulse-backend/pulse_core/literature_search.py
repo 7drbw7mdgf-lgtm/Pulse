@@ -8,6 +8,7 @@ from datetime import datetime
 
 from pulse_core.constants import APP_VERSION, ClientError
 from pulse_core.doi_utils import normalize_doi
+from pulse_core.metadata_utils import citation_count
 from pulse_performance import DiscoveryCancelled, DiscoveryBudgetExceeded, request_json, _wait
 
 __all__ = ["search_europe_pmc", "search_core", "europe_pmc_to_metadata", "core_to_metadata", "literature_query"]
@@ -27,10 +28,7 @@ def safe_url(value):
 
 
 def number(value):
-    try:
-        return max(0, int(value)) if value is not None and not isinstance(value, bool) else None
-    except (TypeError, ValueError, OverflowError):
-        return None
+    return citation_count(value)
 
 
 def publication_date(value):

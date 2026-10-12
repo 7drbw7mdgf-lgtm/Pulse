@@ -7,7 +7,7 @@
       }
       const continuing = Boolean(state.discoverySearching && (!resultKey || state.discoverySearching.key === resultKey));
       const keepSelected = continuing ? new Set(state.discoverySelectedKeys || []) : new Set();
-      const keepFocus = continuing ? state.discoveryFocusKey : null;
+      const keepFocus = continuing && state.discoveryFocusExplicit ? state.discoveryFocusKey : null;
       state.discoverySearching = null;
       state.discoveryResults = results || [];
       state.discoverySeed = seedPaper || state.papers.find(p => p.id === state.selectedId) || state.papers[0];
@@ -18,6 +18,7 @@
       state.discoveryMobilePane = 'results';
       state.discoveryFiltersOpen = false;
       state.discoveryFocusKey = keepFocus;
+      state.discoveryFocusExplicit = Boolean(keepFocus);
       state.discoveryFilterText = '';
       state.discoveryFilterAuthor = '';
       state.discoveryFilterYear = 'all';
@@ -39,6 +40,7 @@
 
       if (els.discoveryModal) els.discoveryModal.hidden = false;
       renderDiscoveryModal();
+      if (keepFocus) scrollFocusedDiscoveryPaper();
       if (typeof els.discoveryModal?.querySelector === 'function') els.discoveryModal.querySelector('.dv-card')?.focus();
     }
 
@@ -86,9 +88,23 @@
 
     function setDiscoveryPaperSelected(key, selected) {
       if (!(state.discoveryResults || []).some(item => discoveryPaperKey(item) === key)) return;
-      if (selected) state.discoverySelectedKeys.add(key);
-      else state.discoverySelectedKeys.delete(key);
-      updateDiscoverySelection();
+      const restoreCheckbox = document.activeElement?.matches?.('.discovery-item-checkbox') && document.activeElement.dataset.paperKey === key;
+      if (selected) {
+        state.discoverySelectedKeys.add(key);
+        state.discoveryFocusKey = key;
+        state.discoveryFocusExplicit = true;
+      } else {
+        state.discoverySelectedKeys.delete(key);
+        if (state.discoveryFocusKey === key) {
+          const next = getFilteredDiscoveryPapers().find(item => state.discoverySelectedKeys.has(discoveryPaperKey(item)));
+          state.discoveryFocusKey = next ? discoveryPaperKey(next) : null;
+          state.discoveryFocusExplicit = Boolean(next);
+        }
+      }
+      renderDiscoveryModal();
+      if (restoreCheckbox) {
+        [...(els.discoveryPaperList?.querySelectorAll('.discovery-item-checkbox') || [])].find(input => input.dataset.paperKey === key)?.focus({preventScroll:true});
+      }
     }
 
     function getFilteredDiscoveryPapers() {
@@ -176,7 +192,7 @@
       }).sort((a, b) => {
         const sortBy = state.discoverySortBy || 'score';
         if (sortBy === 'citations') {
-          return (b.citedByCount ?? b.citationCount ?? -1) - (a.citedByCount ?? a.citationCount ?? -1);
+          return (discoveryCitationCount(b) ?? -1) - (discoveryCitationCount(a) ?? -1);
         }
         if (sortBy === 'year-desc') {
           const yA = parseInt(String(a.year || a.date || '').match(/\b(19|20)\d{2}\b/)?.[0] || '0', 10);
@@ -243,11 +259,19 @@
       return String(value || 'Untitled').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
     }
 
-    function discoveryCitationText(item) {
+    function discoveryCitationCount(item) {
       const value = item.citedByCount ?? item.citationCount;
-      if (Number.isFinite(value) && value > 0) return `${value.toLocaleString()} citation${value === 1 ? '' : 's'}`;
-      if (value === 0 && item.citationCountSource && item.citationCountSource !== 'CORE') return '0 citations';
-      return '—';
+      if (Number.isInteger(value) && value > 0) return value;
+      // Older cached records can have a default zero. Only show zero when the
+      // provider actually supplied it, with matching count provenance.
+      if (value === 0 && item.citationCountSource && item.citationCountSource !== 'CORE'
+          && item.citationCountsBySource?.[item.citationCountSource] === 0) return 0;
+      return null;
+    }
+
+    function discoveryCitationText(item) {
+      const value = discoveryCitationCount(item);
+      return value === null ? '—' : `${value.toLocaleString()} citation${value === 1 ? '' : 's'}`;
     }
 
     function discoveryAuthorLine(item, limit = 3) {
@@ -277,14 +301,22 @@
       return planned.map(key => {
         const name = DISCOVERY_SOURCE_LABELS[key] || key;
         const error = errors[key];
-        if (error) {
+        const count = counts[key];
+        // Compatibility with retained results from earlier app versions. An
+        // informational notice must never hide an independent provider error.
+        const legacyHopNotice = key === 'citationGraph' && /^Additional citation hops stopped at the time budget; direct citations and collected results are retained\.$/.test(error || '');
+        const extraHopLimit = legacyHopNotice || (info.notices?.[key] || []).some(notice => notice.code === 'extra-hop-limit');
+        if (error && !legacyHopNotice) {
           const limited = /429|rate|too many/i.test(error);
           const canAddKey = ['citationGraph', 'citationNetwork', 'semanticSearch', 'lexicalConceptual', 'core'].includes(key);
-          return { key, name, status: limited ? 'warn' : 'fail', canAddKey: limited && canAddKey,
-            detail: limited ? (canAddKey ? 'Request limit reached. Try later or add an API key in Settings.' : 'Request limit reached. Try again later.') : 'Search unavailable. Try again later.' };
+          const partial = count > 0;
+          return { key, name, status: partial || limited ? 'warn' : 'fail', canAddKey: limited && canAddKey,
+            detail: partial ? `${count} papers retained · ${limited ? 'request limit reached' : 'some requests unavailable'}` : limited ? (canAddKey ? 'Request limit reached. Try later or add an API key in Settings.' : 'Request limit reached. Try again later.') : 'Search unavailable. Try again later.' };
         }
-        if (done.has(key) || counts[key] !== undefined || !searching) return { key, name, status: 'ok', detail: counts[key] !== undefined ? `${counts[key]} papers` : 'Done' };
-        return { key, name, status: 'run', detail: 'Searching…' };
+        if (searching && !done.has(key)) return { key, name, status: 'run', count,
+          detail: count !== undefined ? `${count} papers so far · searching…` : 'Searching…' };
+        return { key, name, status: 'ok', count,
+          detail: `${count !== undefined ? `${count} papers` : 'Done'}${extraHopLimit ? ' · extra hops reached the limit' : ''}` };
       });
     }
 
@@ -306,6 +338,8 @@
       state.discoveryResultKey = key;
       state.discoverySeed = seedPaper;
       state.discoverySelectedKeys = new Set();
+      state.discoveryFocusKey = null;
+      state.discoveryFocusExplicit = false;
       state.discoveryQueue = 'review';
       if (els.discoveryModal) els.discoveryModal.hidden = false;
       renderDiscoveryModal();
@@ -314,6 +348,7 @@
     function updateDiscoverySearching(job) {
       if (!state.discoverySearching) return;
       state.discoverySearching.job = job;
+      if (!state.discoveryFocusExplicit) state.discoveryFocusKey = null;
       if (Array.isArray(job?.recommendations)) state.discoveryResults = job.recommendations;
       if (els.discoveryModal && !els.discoveryModal.hidden) renderDiscoveryModal();
     }
@@ -359,7 +394,7 @@
       return `
         <article class="discovery-paper-item dv-row${isSelected ? ' is-selected' : ''}${key === focusedKey ? ' is-focused' : ''}" data-paper-key="${escapeHtml(key)}" role="listitem">
           ${searching ? '' : `<input type="checkbox" class="discovery-item-checkbox" data-paper-key="${escapeHtml(key)}" ${isSelected ? 'checked' : ''} aria-label="${escapeHtml(`Select ${cleanDiscoveryTitle(item.title)}`)}">`}
-          <button class="dv-row-main" type="button" data-dv-focus="${escapeHtml(key)}">
+          <button class="dv-row-main" type="button" data-dv-focus="${escapeHtml(key)}" aria-current="${key === focusedKey}">
             <span class="dv-row-title"><span>${escapeHtml(cleanDiscoveryTitle(item.title))}</span>${tag}</span>
             <span class="dv-row-meta">${escapeHtml(meta)}</span>
             ${reasons ? `<span class="dv-reasons">${reasons}</span>` : ''}
@@ -405,7 +440,7 @@
           <div class="dv-preview-meta">
             <p>${escapeHtml(discoveryAuthorLine(item, 6))}${publication ? ` · ${escapeHtml(publication)}` : ''}</p>
           </div>
-          <div class="dv-paper-facts">${doiHref ? `<a href="${escapeHtml(doiHref)}" target="_blank" rel="noreferrer" aria-label="DOI ${escapeHtml(item.doi)}">${escapeHtml(item.doi)}</a>` : ''}<span title="${escapeHtml(item.citationCountSource || '')}">${citationText === '—' ? 'Citation count unavailable' : escapeHtml(citationText)}</span></div>
+          <div class="dv-paper-facts">${doiHref ? `<a href="${escapeHtml(doiHref)}" target="_blank" rel="noreferrer" aria-label="DOI ${escapeHtml(doi)}">${escapeHtml(doi)}</a>\n` : ''}<span title="${escapeHtml(item.citationCountSource || '')}">${citationText === '—' ? 'Citation count unavailable' : escapeHtml(citationText)}</span></div>
           <div class="dv-suggested-card">
             <h4>WHY PULSE SUGGESTED THIS</h4>
             <ul>
@@ -478,11 +513,12 @@
       const sourceStatus = document.getElementById('discoverySourceStatus');
       if (sourceStatus) {
         sourceStatus.innerHTML = rows.map(row => {
-          const countNum = row.status === 'ok' && /papers/.test(row.detail) ? ` ${row.detail.replace(' papers', '')}` : '';
+          const countNum = row.count !== undefined ? ` ${row.count}` : '';
           const statusText = row.status === 'fail' ? ' failed' : row.status === 'warn' ? ' limited' : countNum;
-          return `<span class="dv-source is-${row.status}" title="${escapeHtml(row.detail)}"><span class="dv-dot"></span>${escapeHtml(row.name)}${statusText}</span>`;
+          return `<span class="dv-source is-${row.status}" title="${escapeHtml(row.detail)}" aria-label="${escapeHtml(row.name + ': ' + row.detail)}"><span class="dv-dot"></span>${escapeHtml(row.name)}${statusText}</span>`;
         }).join('');
       }
+      if (details) details.innerHTML += rows.map(row => `<div>${escapeHtml(row.name)}: ${escapeHtml(row.detail)}</div>`).join('');
       const notice = document.getElementById('discoverySourceNotice');
       if (notice) {
         const problems = rows.filter(row => row.status === 'fail' || row.status === 'warn');
@@ -493,6 +529,7 @@
       const progress = document.getElementById('discoveryProgressPanel');
       if (progress) {
         progress.hidden = !searching;
+        progress.classList?.toggle('is-compact', Boolean(searching && totalItems.length));
         if (searching) {
           const job = searching.job || {};
           const percent = job.stage === 'ranking' ? 95 : Math.round(85 * (job.completed || 0) / Math.max(1, job.total || rows.length || 1));
@@ -503,7 +540,7 @@
               <span class="dv-progress-bar"><span style="width:${percent}%"></span></span>
               <button type="button" class="dv-btn" data-dv-action="stop-review">Stop and review</button>
             </div>
-            <div class="dv-progress-sources">${rows.map(row => `<div class="dv-source-card is-${row.status}"><i></i><span><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.detail)}</small></span>${row.canAddKey ? '<button type="button" class="dv-btn small" data-dv-action="open-settings">Add key</button>' : ''}</div>`).join('')}</div>`;
+            ${totalItems.length ? '' : `<div class="dv-progress-sources">${rows.map(row => `<div class="dv-source-card is-${row.status}"><i></i><span><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.detail)}</small></span>${row.canAddKey ? '<button type="button" class="dv-btn small" data-dv-action="open-settings">Add key</button>' : ''}</div>`).join('')}</div>`}`;
         }
       }
 
@@ -544,10 +581,15 @@
 
       updateDiscoverySelection();
       if (!els.discoveryPaperList) return;
-      const focused = filtered.find(item => discoveryPaperKey(item) === state.discoveryFocusKey) || filtered[0] || null;
+      const previousFocus = filtered.find(item => discoveryPaperKey(item) === state.discoveryFocusKey);
+      const focused = previousFocus || filtered[0] || null;
+      if (!previousFocus) state.discoveryFocusExplicit = false;
       state.discoveryFocusKey = focused ? discoveryPaperKey(focused) : null;
       const preview = document.getElementById('discoveryPreview');
-      if (preview) preview.innerHTML = discoveryPreviewMarkup(focused, Boolean(searching));
+      if (preview) {
+        if (preview.dataset) preview.dataset.paperKey = state.discoveryFocusKey || '';
+        preview.innerHTML = discoveryPreviewMarkup(focused, Boolean(searching));
+      }
 
       if (!filtered.length) {
         els.discoveryPaperList.innerHTML = `
@@ -581,10 +623,15 @@
 
     function focusDiscoveryPaper(key, scroll = true) {
       state.discoveryFocusKey = key;
+      state.discoveryFocusExplicit = true;
       state.discoveryMobilePane = 'preview';
       state.discoveryFiltersOpen = false;
       renderDiscoveryModal();
-      if (scroll) els.discoveryPaperList?.querySelector(`[data-paper-key="${CSS.escape(key)}"]`)?.scrollIntoView({ block: 'nearest' });
+      if (scroll) scrollFocusedDiscoveryPaper();
+    }
+
+    function scrollFocusedDiscoveryPaper() {
+      els.discoveryPaperList?.querySelector?.('.dv-row.is-focused')?.scrollIntoView({ block: 'nearest' });
     }
 
     function stepDiscoveryFocus(offset) {

@@ -3,6 +3,7 @@ from pulse_core.constants import clean_string_list
 from pulse_core.doi_utils import same_doi
 from pulse_core.metadata_utils import (
     clean_crossref_text,
+    citation_metadata,
     crossref_to_metadata,
     first_list_value,
     openalex_to_metadata,
@@ -21,14 +22,14 @@ def recommendation_record(metadata, extra, source):
 def openalex_recommendation_item(item):
     meta = openalex_to_metadata(item)
     score = float(item.get("relevance_score") or 0.0)
-    cited = item.get("cited_by_count") or 0
-    return meta, {"score": round(score, 3), "reason": f"OpenAlex relevance {score:.2f} (cited by {cited})"}
+    cited = meta['citationCount']
+    return meta, {"score": round(score, 3), "reason": f"OpenAlex relevance {score:.2f}" + (f" (cited by {cited})" if cited is not None else "")}
 
 def crossref_recommendation_item(item):
     meta = crossref_to_metadata(item)
     score = float(item.get("score") or 0.0)
-    cited = item.get("is-referenced-by-count") or 0
-    return meta, {"score": round(score, 3), "reason": f"Crossref score {score:.1f} (cited by {cited})"}
+    cited = meta['citationCount']
+    return meta, {"score": round(score, 3), "reason": f"Crossref score {score:.1f}" + (f" (cited by {cited})" if cited is not None else "")}
 
 def dimensions_recommendation_item(item):
     title = clean_crossref_text(item.get("title") or "")
@@ -40,11 +41,11 @@ def dimensions_recommendation_item(item):
         "journal": (item.get("journal") or {}).get("title") or "",
         "doi": item.get("doi") or "",
         "abstract": item.get("abstract") or "",
-        "citationCount": item.get("times_cited") or 0,
+        **citation_metadata(item.get("times_cited"), "Dimensions"),
         "metadataSource": "Dimensions",
     }
     score = float(item.get("score") or 0.0)
-    return meta, {"score": round(score, 3), "reason": f"Dimensions score {score:.1f} (cited {meta['citationCount']})"}
+    return meta, {"score": round(score, 3), "reason": f"Dimensions score {score:.1f}" + (f" (cited {meta['citationCount']})" if meta['citationCount'] is not None else "")}
 
 def steering_terms(values):
     return clean_string_list(values or [], limit=20)

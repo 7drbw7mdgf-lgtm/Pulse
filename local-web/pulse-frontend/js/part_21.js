@@ -78,7 +78,22 @@
     els.clearDimensionsKeyButton?.addEventListener('click', () => saveBackendSettings({ clearDimensionsApiKey: true }));
     els.clearSemanticScholarKeyButton?.addEventListener('click', () => saveBackendSettings({ clearSemanticScholarApiKey: true }));
     els.clearCoreKeyButton?.addEventListener('click', () => saveBackendSettings({ clearCoreApiKey: true }));
-    els.clearButton?.addEventListener('click', promptClearLibrary);
+    els.clearButton?.addEventListener('click', () => {
+      const menu = document.getElementById('libraryActionsMenu');
+      if (menu) menu.open = false;
+      promptClearLibrary();
+    });
+    document.addEventListener('click', event => {
+      const menu = document.getElementById('libraryActionsMenu');
+      if (menu?.open && !menu.contains(event.target)) menu.open = false;
+    });
+    document.addEventListener('keydown', event => {
+      const menu = document.getElementById('libraryActionsMenu');
+      if (event.key === 'Escape' && menu?.open) {
+        menu.open = false;
+        menu.querySelector('summary')?.focus();
+      }
+    });
     els.sidebarClearButton?.addEventListener('click', promptClearLibrary);
     els.clearAppToDefaultButton?.addEventListener('click', () => clearAppToDefault(false));
     els.clearAppToDefaultQuickButton?.addEventListener('click', () => clearAppToDefault(false));

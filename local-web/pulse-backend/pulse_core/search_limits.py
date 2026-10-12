@@ -13,7 +13,10 @@ def discovery_limit(value, default=DEFAULT_DISCOVERY_LIMIT):
 
 
 class SearchResults(list):
-    warning = ""
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.warning = ""
+        self.notices = []
 
     def keep_partial(self, error):
         if not self:

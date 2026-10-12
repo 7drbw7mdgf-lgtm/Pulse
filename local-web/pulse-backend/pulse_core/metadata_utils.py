@@ -1,5 +1,19 @@
 import re
 
+def citation_count(value):
+    """Missing/invalid index counts are unknown, rather than an invented zero."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str) and len(value.strip()) <= 20 and re.fullmatch(r'[0-9]+', value.strip()):
+        value = int(value.strip())
+    return value if isinstance(value, int) and value >= 0 else None
+
+def citation_metadata(value, source):
+    count = citation_count(value)
+    return {"citationCount": count, "citedByCount": count,
+            "citationCountSource": source if count is not None else "",
+            "citationCountsBySource": {source: count} if count is not None else {}}
+
 def title_match_tokens(value):
     clean = re.sub(r"[^a-z0-9\s]", " ", (value or "").lower())
     stops = {"a", "an", "the", "and", "or", "of", "to", "in", "on", "with", "for", "by", "as", "at"}
@@ -91,7 +105,7 @@ def crossref_to_metadata(item):
         "journal": journal,
         "doi": doi,
         "abstract": abstract,
-        "citationCount": item.get("is-referenced-by-count") or 0,
+        **citation_metadata(item.get("is-referenced-by-count"), "Crossref"),
         "metadataSource": "Crossref",
         "volume": str(item.get("volume") or ""), "issue": str(item.get("issue") or ""),
         "pages": str(item.get("page") or ""), "issn": "; ".join(item.get("ISSN") or []),
@@ -134,7 +148,7 @@ def openalex_to_metadata(item):
         "journal": journal,
         "doi": doi,
         "abstract": abstract,
-        "citationCount": item.get("cited_by_count") or 0,
+        **citation_metadata(item.get("cited_by_count"), "OpenAlex"),
         "openAlexId": item.get("id"),
         "field": ((item.get("primary_topic") or {}).get("field") or {}).get("display_name") or "",
         "metadataSource": "OpenAlex",
@@ -151,12 +165,24 @@ def openalex_to_metadata(item):
 def merge_metadata(base, incoming):
     res = dict(base or {})
     for k, v in (incoming or {}).items():
+        if k in {"citationCount", "citedByCount", "citationCountSource", "citationCountsBySource"}:
+            continue
         if v and not res.get(k):
             res[k] = v
         elif k == "authors" and v and len(v) > len(res.get("authors") or []):
             res["authors"] = v
-        elif k == "citationCount" and isinstance(v, (int, float)) and v > (res.get("citationCount") or 0):
-            res["citationCount"] = v
+    old = next((value for field in ('citationCount', 'citedByCount') if (value := citation_count(res.get(field))) is not None), None)
+    new = next((value for field in ('citationCount', 'citedByCount') if (value := citation_count((incoming or {}).get(field))) is not None), None)
+    if new is not None and (old is None or new > old):
+        res['citationCount'] = res['citedByCount'] = new
+        res['citationCountSource'] = incoming.get('citationCountSource') or incoming.get('metadataSource') or ''
+    counts = dict(res.get('citationCountsBySource') or {})
+    for source, value in ((incoming or {}).get('citationCountsBySource') or {}).items():
+        count = citation_count(value)
+        if count is not None and (citation_count(counts.get(source)) is None or count > counts[source]):
+            counts[source] = count
+    if counts:
+        res['citationCountsBySource'] = counts
     return res
 
 def merge_verified_doi_metadata(extracted, verified):

@@ -314,6 +314,7 @@
     els.discoverySortBy?.addEventListener('change', () => {
       state.discoverySortBy = els.discoverySortBy.value;
       renderDiscoveryModal();
+      scrollFocusedDiscoveryPaper();
     });
     els.discoveryModal?.querySelectorAll('.branch-filter-btn').forEach(btn => {
       btn.addEventListener('click', () => {

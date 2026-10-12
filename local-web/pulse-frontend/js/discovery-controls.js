@@ -14,7 +14,7 @@ function discoveryConfiguration() {
 }
 function discoveryConfigurationKey() {
   const options=discoveryConfiguration();
-  return 'ranking-178::'+Object.values(options.branches).map(Boolean).join('_')+'::'+options.depth+'::'+options.limit+'::'+Object.values(options.searchSources).map(Boolean).join('_')+'::'+JSON.stringify([options.researchQuestion,options.strictExcludeKeywords,options.diversify,options.bridgeMode,options.aiTriage,options.fastEmbed,options.fullTextSearch]);
+  return 'ranking-179::'+Object.values(options.branches).map(Boolean).join('_')+'::'+options.depth+'::'+options.limit+'::'+Object.values(options.searchSources).map(Boolean).join('_')+'::'+JSON.stringify([options.researchQuestion,options.strictExcludeKeywords,options.diversify,options.bridgeMode,options.aiTriage,options.fastEmbed,options.fullTextSearch]);
 }
 function discoveryOptionsLabel() {
   const options=discoveryConfiguration(),enabled=Object.keys(discoveryMethodKeys).filter(method=>options.branches[discoveryMethodKeys[method]]);

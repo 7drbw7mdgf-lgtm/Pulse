@@ -387,7 +387,9 @@
           cancel.removeEventListener('click', onCancel);
           confirm.removeEventListener('click', onConfirm);
           dialog.removeEventListener('cancel', onEscape);
-          els.clearButton?.focus();
+          const menu = document.getElementById('libraryActionsMenu');
+          if (menu) menu.querySelector('summary')?.focus();
+          else els.clearButton?.focus();
           resolve(value);
         };
         const onCancel = () => finish(false);

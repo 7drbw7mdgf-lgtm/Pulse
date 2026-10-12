@@ -27,7 +27,8 @@
 .dv-summary-left { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
 .dv-count { font-weight: 500; color: var(--ink); }
 .dv-count strong { font-weight: 650; }
-.dv-sources-inline { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 12.5px; color: var(--ink-2); }
+.dv-sources-inline { display: inline-flex; align-items: center; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; gap: 12px; font-size: 12.5px; color: var(--ink-2); }
+.dv-sources-inline .dv-source { flex-shrink: 0; white-space: nowrap; }
 .dv-source { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
 .dv-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: #10b981; }
 .dv-source.is-fail .dv-dot { background: #ef4444; }
@@ -40,6 +41,10 @@
 .dv-notice { margin: 0; padding: 8px 18px; background: var(--surface-2); color: var(--ink-2); font-size: 12px; line-height: 1.5; border-bottom: 1px solid var(--line); }
 
 .dv-progress { display: flex; flex-direction: column; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.dv-progress.is-compact { padding: 6px 18px; }
+.dv-progress.is-compact .dv-progress-head { flex-wrap: nowrap; }
+.dv-progress.is-compact .dv-progress-head > span:not(.dv-progress-bar) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv-progress.is-compact .dv-progress-head > strong, .dv-progress.is-compact .dv-btn { flex-shrink: 0; }
 .dv-progress-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .dv-progress-head strong { color: var(--ink); font-size: 13.5px; }
 .dv-progress-bar { flex: 1 1 160px; height: 6px; border-radius: 6px; background: var(--surface-3); overflow: hidden; }
@@ -126,6 +131,8 @@
 .dv-preview-title { margin: 0; font-size: 21px; font-weight: 700; line-height: 1.35; color: var(--ink); }
 .dv-preview-meta { margin: -6px 0 0; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
 .dv-preview-meta p { margin: 0; }
+.dv-paper-facts { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.dv-paper-facts a { max-width: 100%; overflow-wrap: anywhere; }
 
 .dv-suggested-card { padding: 14px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); display: flex; flex-direction: column; gap: 10px; }
 .dv-suggested-card h4 { margin: 0; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }

@@ -52,7 +52,7 @@ assert.equal(sourceRows.find(row=>row.key==='europePmc').canAddKey,false,'Europe
 assert.equal(sourceRows.find(row=>row.key==='core').canAddKey,true,'CORE supports a configured API key');
 assert(!sourceRows.find(row=>row.key==='europePmc').detail.includes('API key'));
 state.discoverySearchErrors.set('completed-run',{core:'HTTP 500: {"message":"raw upstream response"}'});
-assert.equal(context.discoverySourceRows().find(row=>row.key==='core').detail,'Search unavailable. Try again later.','Raw provider responses must not fill the reading interface');
+assert.equal(context.discoverySourceRows().find(row=>row.key==='core').detail,'4 papers retained · some requests unavailable','Raw provider responses must not fill the reading interface');
 context.safeHref=value=>value.startsWith('https://')?value:'';
 const preview=context.discoveryPreviewMarkup({...results[0],doi:'10.1234/example',abstract:'Readable abstract',matchReasons:['Shared reference'],citationCount:12,citationCountSource:'OpenAlex'},false);
 assert(preview.indexOf('class="dv-abstract"')<preview.indexOf('class="dv-why"'),'Put the abstract before optional match explanations');

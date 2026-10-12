@@ -52,7 +52,9 @@ class ExtraHopTests(unittest.TestCase):
              patch.object(core, 's2_fetch_references', side_effect=references):
             found = discovery.fetch_citation_graph_branch([SEED], depth=3)
         self.assertEqual(len(found), 3)
-        self.assertIn('time budget', found.warning)
+        self.assertFalse(found.warning)
+        self.assertEqual(found.notices[0]['code'], 'extra-hop-limit')
+        self.assertIn('time budget', found.notices[0]['message'])
         self.assertEqual(REQUEST_CONTEXT.deadline, 40)
 
     def test_extra_hop_cancellation_propagates_and_keeps_shorter_outer_deadline(self):

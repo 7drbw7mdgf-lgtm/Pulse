@@ -263,8 +263,10 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
     try:
         _collect_extra_hops(seed_papers, hop1_references, hop1_citations, gathered, max_depth, api_key)
     except DiscoveryBudgetExceeded:
-        gathered.warning = ' · '.join(filter(None, [gathered.warning,
-            'Additional citation hops stopped at the time budget; direct citations and collected results are retained.']))
+        gathered.notices.append({
+            'code': 'extra-hop-limit',
+            'message': 'Additional citation hops stopped at the time budget; direct citations and collected results are retained.',
+        })
     finally:
         REQUEST_CONTEXT.deadline = previous_deadline
     return gathered
@@ -511,6 +513,8 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
 
     def source_errors(results, errors):
         return {**errors, **{name: records.warning for name, records in results.items() if getattr(records, "warning", "")}}
+    def source_notices(results):
+        return {name: records.notices for name, records in results.items() if getattr(records, "notices", None)}
     def progress(results, completed, errors, total):
         if not on_progress and not (embed_thread and embed_thread.is_alive()):
             return
@@ -523,6 +527,8 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
                 "recommendations": ranked[:limit],
                 "branchesExecuted": [name for name in tasks if name in completed],
                 "errors": source_errors(results, errors),
+                "notices": source_notices(results),
+                "sourceCounts": {name: len(rows) for name, rows in results.items()},
                 "completed": len(completed) + len(errors),
                 "total": total,
             })
@@ -581,6 +587,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         "branchesExecuted": executed,
         "recommendations": ranked,
         "errors": source_errors(results, errors),
+        "notices": source_notices(results),
         "limit": limit,
         "completed": len(executed) + len(errors),
         "total": len(tasks),

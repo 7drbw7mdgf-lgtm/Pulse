@@ -120,6 +120,14 @@ button:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
 .library-action-button:disabled { opacity: .4; cursor: default; }
 .library-clear-button { color: #be4545; }
 .library-clear-button:not(:disabled):hover { color: #ad3030; border-color: #dc9696; background: rgba(190,69,69,.06); }
+.library-actions-menu { position: relative; margin-left: auto; }
+.library-actions-menu > summary { list-style: none; }
+.library-actions-menu > summary::-webkit-details-marker { display: none; }
+.library-actions-popup { position: absolute; right: 0; top: calc(100% + 6px); width: 155px; z-index: 30; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 6px 18px rgba(15,23,42,.12); }
+.library-actions-popup .library-action-button { width: 100%; text-align: left; padding: 8px; border: 0; background: transparent; }
+.map-viewport { min-height: 0; }
+.canvas-dock-modern { position: relative; inset: auto; transform: none; align-self: center; flex-shrink: 0; max-width: calc(100% - 16px); box-sizing: border-box; margin: 8px; box-shadow: 0 2px 8px rgba(15,23,42,.06); }
+.canvas-dock-modern .dock-row { flex-wrap: wrap; }
 .library-fullscreen .col-header-actions { width: auto; flex-wrap: wrap; }
 .library-fullscreen .library-action-button { font-size: 12px; padding: 6px 10px; }
 @media (max-width: 700px) { .library-fullscreen .col-header-actions { width: 100%; } }

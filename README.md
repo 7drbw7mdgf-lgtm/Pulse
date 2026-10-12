@@ -2,13 +2,13 @@
 
 ### A private, local-first workspace for scientific literature discovery and synthesis
 
-[![Release](https://img.shields.io/badge/release-v1.7.8-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.8)
+[![Release](https://img.shields.io/badge/release-v1.7.9-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.9)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases)
 
 ---
 
-**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.8/Pulse-1.7.8.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.8.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
+**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.9/Pulse-1.7.9.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.9.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
 
 ---
 
@@ -20,7 +20,11 @@
 
 ---
 
-![Pulse Discovery Review Workspace](docs/images/pulse-1.7.1-discovery.png)
+![Pulse Discovery Review Workspace — synthetic example](docs/images/pulse-1.7.9-discovery.png)
+
+## What’s new in 1.7.9
+
+Discovery now keeps successful citation searches green when extra hops reach their planned limit. The paper preview stays linked to the highlighted result through sorting and filtering, unknown citation counts remain unknown, and source progress collapses when papers arrive. Graph controls have their own space below the map, Library clearing lives under **More**, and **Open paper** opens the paper’s DOI or available article link in your browser.
 
 ## What Pulse Does
 
@@ -50,6 +54,8 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 
 ## Screenshots
 
+![Current map workspace — synthetic example](docs/images/pulse-1.7.9-workspace.png)
+
 <div align="center">
 
 | Interactive Timeline View | Dark Mode Review Workspace |
@@ -67,7 +73,7 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 ## Installation
 
 ### macOS (Apple Silicon, macOS 11+)
-1. Download **[Pulse-1.7.4.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.4/Pulse-1.7.4.dmg)**.
+1. Download **[Pulse-1.7.9.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.9/Pulse-1.7.9.dmg)**.
 2. Open the DMG and drag **Pulse.app** into your **Applications** folder.
 3. *Note:* Ensure you have Python 3.10+ installed (e.g. via Homebrew `brew install python`). Because Pulse is ad-hoc signed, if macOS blocks the first launch, right-click the app and choose **Open**, or run the `Allow-Pulse-Tauri.command` included in the DMG.
 
@@ -124,7 +130,7 @@ python3 /path/to/Pulse/local-web/pulse-backend/pulse_mcp.py
 
 ---
 
-## What's New in 1.7.8
+## Performance changes retained from 1.7.8
 
 - **Less CPU reranking:** The cross-encoder assesses up to 75 candidates instead of 150. It retains overlapping text windows, source/channel coverage and foundational-paper support. All retrieved candidates remain eligible for text/citation ranking and the result limit remains up to 500.
 - **Less embedding work:** Meaning ranking uses up to 150 candidates instead of 250. Collection warms the exact question and current ranked shortlist instead of queuing every arriving paper. Background and final ranking share in-flight work, and cache reads/writes are batched. A richer abstract invalidates an older embedding for the same DOI.

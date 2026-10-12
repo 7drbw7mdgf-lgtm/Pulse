@@ -4,7 +4,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pulse_core.constants import ClientError
-from pulse_core.metadata_utils import clean_author_name, clean_crossref_text
+from pulse_core.metadata_utils import clean_author_name, clean_crossref_text, citation_metadata
 from pulse_core.paper_identity import confident_candidate
 from pulse_core.search_limits import discovery_limit, SearchResults
 from pulse_performance import request_json, DiscoveryCancelled, DiscoveryBudgetExceeded
@@ -106,7 +106,7 @@ def s2_to_metadata(item):
         "pmid": str(ext_ids.get("PubMed") or ""),
         "documentType": "preprint" if any(str(value).lower()=="preprint" for value in item.get("publicationTypes") or []) else "",
         "abstract": (item.get("abstract") or "").strip(),
-        "citationCount": item.get("citationCount"),
+        **citation_metadata(item.get("citationCount"), "Semantic Scholar"),
         "referenceCount": item.get("referenceCount"),
         "influentialCitationCount": item.get("influentialCitationCount"),
         "metadataSource": "Semantic Scholar",
