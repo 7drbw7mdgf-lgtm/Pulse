@@ -4,6 +4,7 @@ import copy
 import datetime
 import math
 import re
+import time
 from pulse_core.doi_utils import normalize_doi
 from pulse_core.discovery_queries import terms, text_for_paper
 from pulse_core.metadata_resolution import similarity
@@ -11,6 +12,9 @@ from pulse_core.search_merge import merge_search_records, title_key, known_count
 from pulse_core.search_limits import discovery_limit, MAX_CANDIDATE_POOL
 from pulse_core.discovery_feedback import paper_key
 from pulse_core.discovery_matches import query_coverage, match_evidence, match_label, fit_calibration, independent_channel_count
+
+SEMANTIC_SHORTLIST_LIMIT = 150
+PAIRWISE_SHORTLIST_LIMIT = 75
 
 
 def contains_phrase(text, phrase):
@@ -252,6 +256,9 @@ def balanced_indices(records, scores, size):
 
 
 def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, options):
+    ranking_started = time.monotonic()
+    timings = options['_rankingTimings'] = {'embeddingSeconds': 0, 'pairwiseSeconds': 0}
+    options['_semanticCount'] = options['_pairwiseCount'] = 0
     options.pop('_calibrationApplied', None)
     excluded_dois = {normalize_doi(d).lower() for d in (options.get('excludeDois') or []) if d}
     excluded_titles = {title_key(t) for t in (options.get('excludeTitles') or [])}
@@ -300,15 +307,21 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
     semantic, pairwise = {}, {}
     options['_rankingNotice'] = 'Titles and abstracts ranked by text and citation evidence'
     if options.get('_semanticReranker'):
-        indices = balanced_indices(records, prelim, min(250, len(records)))
+        indices = balanced_indices(records, prelim, SEMANTIC_SHORTLIST_LIMIT)
+        started = time.monotonic()
         values, options['_rankingNotice'] = options['_semanticReranker'](queries, [records[i] for i in indices])
+        timings['embeddingSeconds'] = round(time.monotonic()-started, 3)
+        options['_semanticCount'] = len(indices) if values is not None else 0
         if values is not None: semantic = dict(zip(indices, values))
     if options.get('_pairwiseReranker'):
-        indices = balanced_indices(records, [.7*prelim[i]+.3*semantic.get(i,0) for i in range(len(records))], 150)
+        indices = balanced_indices(records, [.7*prelim[i]+.3*semantic.get(i,0) for i in range(len(records))], PAIRWISE_SHORTLIST_LIMIT)
         # Research question first; without one use focused titles/keywords, not
         # a concatenation of many complete abstracts as one question.
         pair_queries = [options['researchQuestion']] if options.get('researchQuestion') else [str(p.get('title') or '')+' '+' '.join(p.get('paperKeywords') or []) for p in seed_papers[:2]]
+        started = time.monotonic()
         values, notice = options['_pairwiseReranker'](pair_queries, [records[i] for i in indices])
+        timings['pairwiseSeconds'] = round(time.monotonic()-started, 3)
+        options['_pairwiseCount'] = len(indices) if values is not None else 0
         options['_pairwiseNotice'] = notice
         if values is not None:
             pairwise = dict(zip(indices, values)); options['_rankingNotice'] = notice
@@ -464,4 +477,5 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         record['strongMatchEligible'] = (record.get('relevanceGrade') != 0 and
             match_label(record['matchEvidenceScore'], profile, **context) == 'Strong match')
         record['matchLabel'] = match_label(record['matchEvidenceScore'], profile, record.get('relevanceGrade'), **context)
+    timings['rankingSeconds'] = round(time.monotonic()-ranking_started, 3)
     return records[:discovery_limit(options.get('limit'))]

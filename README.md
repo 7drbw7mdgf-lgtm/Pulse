@@ -2,13 +2,13 @@
 
 ### A private, local-first workspace for scientific literature discovery and synthesis
 
-[![Release](https://img.shields.io/badge/release-v1.7.7-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.7)
+[![Release](https://img.shields.io/badge/release-v1.7.8-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.8)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases)
 
 ---
 
-**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.7/Pulse-1.7.7.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.7.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
+**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.8/Pulse-1.7.8.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.8.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
 
 ---
 
@@ -124,15 +124,14 @@ python3 /path/to/Pulse/local-web/pulse-backend/pulse_mcp.py
 
 ---
 
-## What's New in 1.7.7
+## What's New in 1.7.8
 
-- **Faster citation exploration:** Direct, one-hop discovery is the default. Optional extra hops share an eight-second budget, retaining direct citations and any completed results when the budget expires.
-- **Portable offline ranking on Mac:** The DMG carries the cross-encoder model and a self-contained executable with its interpreter and inference libraries. It does not depend on a developer's Python installation or home-directory model cache. Unavailable pairwise ranking is reported in the review header.
-- **Readable review bands:** Related uses the top 40% of the returned list. Strong match requires the top 10% of that list, the full-pool rank gate, an absolute evidence threshold and two independent retrieval channels. Remaining results stay available as Explore; explicit relevance labels take precedence.
-- **Foundational-paper support:** A capped six-point bonus combines total citations with topic support and an actual seed-reference, co-citation or shared-reference relationship. It complements the nine-point velocity prior and participates in shortlist selection. Popularity alone does not qualify a paper.
-- **CORE recovery:** Transient server errors get one short recovery attempt. Persistent errors stop that source within an eight-second budget, preserving results from other providers. Pulse cannot repair an upstream CORE outage.
+- **Less CPU reranking:** The cross-encoder assesses up to 75 candidates instead of 150. It retains overlapping text windows, source/channel coverage and foundational-paper support. All retrieved candidates remain eligible for text/citation ranking and the result limit remains up to 500.
+- **Less embedding work:** Meaning ranking uses up to 150 candidates instead of 250. Collection warms the exact question and current ranked shortlist instead of queuing every arriving paper. Background and final ranking share in-flight work, and cache reads/writes are batched. A richer abstract invalidates an older embedding for the same DOI.
+- **Europe PMC time budget:** Europe PMC now shares CORE's eight-second collection cap, including retries and socket waits. Completed results survive with a partial-result notice.
+- **Clear performance measurements:** API timings separate collection, embedding, cross-encoder and total ranking time, with counts for papers actually assessed. Neural budgets and cancellation also apply while waiting for ongoing embedding work.
 
-The Mac release includes these fixes; the linked Windows installer remains 1.7.6. Current Windows source is built in CI. See the [1.7.7 release notes](docs/releases/1.7.7.md) for checks and limits. The reported Inciteful comparison has not been rerun against its original seed set; the ranking change is not a claim of measured parity.
+The offline Mac ranker, visible result bands, citation-hop cap and CORE recovery from 1.7.7 remain in place. The Mac release includes these changes; the linked Windows installer remains 1.7.6 and current Windows source is built in CI. See the [1.7.8 release notes](docs/releases/1.7.8.md). Timing measurements use synthetic inputs on the test Mac and do not establish live search latency or real-world recall.
 
 ---
 

@@ -1,8 +1,8 @@
-# Install Pulse 1.7.7
+# Install Pulse 1.7.8
 
-Quit Pulse, open **Pulse-1.7.7.dmg**, and drag **Pulse.app** into **Applications**.
+Quit Pulse, open **Pulse-1.7.8.dmg**, and drag **Pulse.app** into **Applications**.
 
-This build defaults to direct citation discovery, bounds extra hops, assigns review bands from the returned list and improves support for citation-linked foundational work. It bundles an offline cross-encoder executable and model; no separate Python, PyTorch or home-directory runtime is needed for pairwise ranking. Bridge discovery, full-text passages and configurable local AI roles remain available. The discovery review workspace, paper inspector, reading notes and timeline remain available.
+This build reduces CPU cross-encoder ranking to 75 candidates and meaning ranking to 150, reuses background embedding work, and caps Europe PMC collection at eight seconds. It retains all candidates for ordinary ranking and keeps multi-window text coverage in the bundled offline ranker. Direct citation discovery, bridge discovery, full-text passages and selected-paper reports remain available.
 
 Apple Silicon Mac, macOS 11 or later, and Python 3.10 or later are required. PDF extraction dependencies are included. Python for the main backend, Ollama and its optional model weights are installed separately; the cross-encoder is bundled. The app is ad hoc signed and has not been notarized by Apple.
 

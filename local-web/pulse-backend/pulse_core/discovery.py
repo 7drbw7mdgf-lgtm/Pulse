@@ -19,7 +19,8 @@ from pulse_core.paper_identity import confident_candidate
 from pulse_core.doi_utils import normalize_doi
 from pulse_core.external_apis import fetch_json
 from pulse_core.metadata_utils import normalize_title_key, openalex_to_metadata
-from pulse_core.pipeline_ranking import merge_and_rank_pipeline_candidates, normalized_reference_similarity, balanced_frontier
+from pulse_core.pipeline_ranking import merge_and_rank_pipeline_candidates, normalized_reference_similarity, balanced_frontier, SEMANTIC_SHORTLIST_LIMIT
+from pulse_core.discovery_queries import text_for_paper
 from pulse_core.search_limits import discovery_limit, candidate_limit, SearchResults
 from pulse_core.search_merge import merge_search_records
 from pulse_core.recommendations import (
@@ -437,7 +438,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
             tasks["lexicalConceptual"] = lambda: search_query_plan(query_plan,'semanticScholar',s2_paper_search,retrieval_limit,api_key=api_key)
         def public_search(provider, searcher, **kwargs):
             previous_deadline = getattr(REQUEST_CONTEXT, 'deadline', None)
-            if provider == 'core':
+            if provider in ('core', 'europePmc'):
                 deadline = time.monotonic() + 8
                 REQUEST_CONTEXT.deadline = min(previous_deadline, deadline) if previous_deadline else deadline
             try:
@@ -472,28 +473,33 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     }
     fast_mode = bool(payload.get('fastEmbed'))
     semantic_enabled = bool(payload.get('semanticRerank', True))
-    embed_queue = queue.Queue()
-    queued_keys = set()
+    # Keep the latest shortlist, rather than a backlog of hundreds of papers
+    # that will never reach the neural stage. Text-keyed cache claims are shared
+    # with foreground ranking so an unfinished warmup cannot duplicate requests.
+    embed_queue = queue.Queue(maxsize=1)
     embed_stop = threading.Event()
+    embed_queries = ([options['researchQuestion']] if options['researchQuestion'] else []) + [text_for_paper(p) for p in seed_papers]
+    if steer_keywords: embed_queries.append(' '.join(steer_keywords))
+
+    def queue_embeddings(records):
+        try:
+            embed_queue.get_nowait()
+        except queue.Empty:
+            pass
+        embed_queue.put_nowait(records)
 
     def embed_collector_worker():
         while not embed_stop.is_set():
             if cancel_event and cancel_event.is_set():
                 break
-            batch = []
             try:
-                item = embed_queue.get(timeout=0.2)
-                batch.append(item)
-                while len(batch) < 48:
-                    try:
-                        batch.append(embed_queue.get_nowait())
-                    except queue.Empty:
-                        break
+                batch = embed_queue.get(timeout=0.2)
             except queue.Empty:
                 continue
-            if batch:
+            if batch or embed_queries:
                 try:
-                    pre_embed_papers(settings, batch, cancel_event, fast_mode=fast_mode)
+                    pre_embed_papers(settings, batch, cancel_event, fast_mode=fast_mode,
+                                     queries=embed_queries, stop_event=embed_stop)
                 except Exception:
                     pass
 
@@ -501,26 +507,20 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     if semantic_enabled:
         embed_thread = threading.Thread(target=embed_collector_worker, name="pulse-embed-collector", daemon=True)
         embed_thread.start()
-        for seed in seed_papers:
-            pk = seed.get('doi') or seed.get('title')
-            if pk and pk not in queued_keys:
-                queued_keys.add(pk)
-                embed_queue.put(seed)
+        queue_embeddings([])  # Warm the exact question and seed queries immediately.
 
     def source_errors(results, errors):
         return {**errors, **{name: records.warning for name, records in results.items() if getattr(records, "warning", "")}}
     def progress(results, completed, errors, total):
+        if not on_progress and not (embed_thread and embed_thread.is_alive()):
+            return
+        ordered = {name: results.get(name, []) for name in tasks}
+        ranked = merge_and_rank_pipeline_candidates(ordered, seed_papers, dict(options, limit=max(limit, SEMANTIC_SHORTLIST_LIMIT)))
         if embed_thread and embed_thread.is_alive():
-            for branch_rows in results.values():
-                for p in branch_rows:
-                    pk = p.get('doi') or p.get('title')
-                    if pk and pk not in queued_keys:
-                        queued_keys.add(pk)
-                        embed_queue.put(p)
+            queue_embeddings(ranked[:SEMANTIC_SHORTLIST_LIMIT])
         if on_progress:
-            ordered = {name: results.get(name, []) for name in tasks}
             on_progress({
-                "recommendations": merge_and_rank_pipeline_candidates(ordered, seed_papers, options),
+                "recommendations": ranked[:limit],
                 "branchesExecuted": [name for name in tasks if name in completed],
                 "errors": source_errors(results, errors),
                 "completed": len(completed) + len(errors),
@@ -533,7 +533,9 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     finally:
         if embed_thread:
             embed_stop.set()
-            embed_thread.join(timeout=1.5)
+            # Any current request is reused through the inference lock below;
+            # no unconditional 1.5-second join is added to final ranking.
+            embed_thread.join(timeout=.05)
     retrieval_seconds = time.monotonic()-started
     ordered = {name: results.get(name, []) for name in tasks}
     if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
@@ -568,8 +570,11 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         "bridgeMode": bool(payload.get('bridgeMode')),
         "aiReviewedCount": options.get('_aiReviewedCount', 0),
         "pairwiseRankingNotice": options.get('_pairwiseNotice'),
+        "semanticRankedCount": options.get('_semanticCount', 0),
+        "pairwiseRankedCount": options.get('_pairwiseCount', 0),
         "matchCalibration": options.get('_calibrationApplied') or 'evidence-based',
-        "timings": {'retrievalSeconds': round(retrieval_seconds,3), 'totalSeconds': round(time.monotonic()-started,3)},
+        "timings": {'retrievalSeconds': round(retrieval_seconds,3), 'totalSeconds': round(time.monotonic()-started,3),
+                    **options.get('_rankingTimings', {})},
         "sourceCounts": {name:len(rows) for name,rows in results.items()},
         "queriesExecuted": {name:getattr(rows,"queries_executed",[]) for name,rows in results.items()},
         "seedCount": len(seed_papers),

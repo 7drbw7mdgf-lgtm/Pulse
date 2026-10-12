@@ -225,39 +225,43 @@ class DiscoveryJobs:
 
 
 def cached_embedding(config_dir, identity, text, compute):
-    """Reuse vectors across questions and restarts; raw document text is never stored."""
+    """Reuse vectors across questions and restarts; store only hashed text keys."""
     key = hashlib.sha256(json.dumps(identity, sort_keys=True).encode() + b'\0' + text.encode()).hexdigest()
-    lock = _EMBED_LOCKS[int(key[:2], 16) % len(_EMBED_LOCKS)]
-    with lock:
-        path = config_dir / 'embedding-cache.sqlite3'
-        connection = None
-        try:
-            config_dir.mkdir(parents=True, exist_ok=True)
-            connection = sqlite3.connect(str(path), timeout=5)
-            os.chmod(path, 0o600)
-            connection.execute('CREATE TABLE IF NOT EXISTS embeddings (key TEXT PRIMARY KEY, vector TEXT NOT NULL, used REAL NOT NULL)')
-            row = connection.execute('SELECT vector FROM embeddings WHERE key = ?', (key,)).fetchone()
-            if row:
-                connection.execute('UPDATE embeddings SET used = ? WHERE key = ?', (time.time(), key))
-                connection.commit()
-                return json.loads(row[0])
-        except (OSError, sqlite3.Error, ValueError):
-            if connection:
-                connection.close()
-            connection = None
-        try:
-            vector = compute()
-            if vector and connection:
-                try:
-                    connection.execute('INSERT OR REPLACE INTO embeddings VALUES (?, ?, ?)', (key, json.dumps(vector), time.time()))
-                    connection.execute('DELETE FROM embeddings WHERE key IN (SELECT key FROM embeddings ORDER BY used DESC LIMIT -1 OFFSET 1000)')
-                    connection.commit()
-                except sqlite3.Error:
-                    pass
-            return vector
-        finally:
-            if connection:
-                connection.close()
+    with _EMBED_LOCKS[int(key[:2], 16) % len(_EMBED_LOCKS)]:
+        found = cached_embeddings(config_dir, identity, [text])
+        if text in found: return found[text]
+        vector = compute()
+        if vector: cached_embeddings(config_dir, identity, [text], {text: vector})
+        return vector
+
+
+def cached_embeddings(config_dir, identity, texts, vectors=None):
+    """Read/write a vector batch in one transaction; only text hashes are stored."""
+    if not texts: return {}
+    keys = {text: hashlib.sha256(json.dumps(identity, sort_keys=True).encode() + b'\0' + text.encode()).hexdigest() for text in texts}
+    connection = None
+    try:
+        config_dir.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(str(config_dir / 'embedding-cache.sqlite3'), timeout=2)
+        os.chmod(config_dir / 'embedding-cache.sqlite3', 0o600)
+        connection.execute('CREATE TABLE IF NOT EXISTS embeddings (key TEXT PRIMARY KEY, vector TEXT NOT NULL, used REAL NOT NULL)')
+        now = time.time()
+        if vectors is not None:
+            connection.executemany('INSERT OR REPLACE INTO embeddings VALUES (?, ?, ?)',
+                                   [(keys[text], json.dumps(vector), now) for text, vector in vectors.items()])
+            connection.execute('DELETE FROM embeddings WHERE key IN (SELECT key FROM embeddings ORDER BY used DESC LIMIT -1 OFFSET 1000)')
+            connection.commit()
+            return vectors
+        placeholders = ','.join('?' for _ in keys)
+        rows = dict(connection.execute('SELECT key, vector FROM embeddings WHERE key IN ('+placeholders+')', list(keys.values())))
+        if rows:
+            connection.execute('UPDATE embeddings SET used=? WHERE key IN ('+placeholders+')', [now, *keys.values()])
+            connection.commit()
+        return {text: json.loads(rows[key]) for text, key in keys.items() if key in rows}
+    except (OSError, sqlite3.Error, ValueError):
+        return {}
+    finally:
+        if connection: connection.close()
 
 
 def parallel_lookup(fetcher, items):

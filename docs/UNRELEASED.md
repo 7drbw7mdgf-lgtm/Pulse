@@ -1,3 +1,3 @@
 # Unreleased source changes
 
-The discovery timing, portable Mac ranker, visible review bands, foundational support and CORE recovery fixes are included in [Pulse 1.7.7](releases/1.7.7.md).
+Neural shortlist limits, shared and batched embedding work, detailed timing fields and the Europe PMC deadline are included in [Pulse 1.7.8](releases/1.7.8.md).

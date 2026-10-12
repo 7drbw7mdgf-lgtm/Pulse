@@ -1,4 +1,4 @@
-"""Optional, bounded local neural reranking; never downloads or calls cloud AI."""
+"""Optional local neural ranking with shared, bounded embedding work."""
 import collections
 import json
 import math
@@ -9,151 +9,161 @@ from pulse_core.platform_support import config_directory
 from pulse_core.config_resolvers import resolve_embedding_model, resolve_ollama_tags_endpoint
 from pulse_core.embeddings import cosine
 from pulse_core.discovery_queries import text_for_paper
-from pulse_core.doi_utils import normalize_doi
-from pulse_performance import DiscoveryCancelled, request_json, cached_embedding
+from pulse_performance import DiscoveryCancelled, REQUEST_CONTEXT, request_json, cached_embeddings
 
 _cache = collections.OrderedDict()
 _models = {}
 _lock = threading.RLock()
+_inference_lock = threading.Lock()
+
 
 def local_model(settings, fast_mode=False):
     endpoint = resolve_ollama_tags_endpoint(settings)
     with _lock:
         cached = _models.get(endpoint)
-    if cached and time.monotonic()-cached[0]<60: names = cached[1]
+    if cached and time.monotonic()-cached[0] < 60:
+        names = cached[1]
     else:
         try:
             data = request_json(urllib.request.Request(endpoint), timeout=2, cache=False)
             names = [item.get('name') for item in data.get('models', []) if item.get('name')]
-        except DiscoveryCancelled: raise
-        except Exception: names = []
-        with _lock: _models[endpoint] = (time.monotonic(), names)
+        except DiscoveryCancelled:
+            raise
+        except Exception:
+            names = []
+        with _lock:
+            _models[endpoint] = (time.monotonic(), names)
     configured = resolve_embedding_model(settings)
     model_order = (['all-minilm'] if fast_mode else []) + [configured, 'embeddinggemma', 'nomic-embed-text', 'all-minilm', 'mxbai-embed-large']
     for model in model_order:
         if not model: continue
         for name in names:
-            if name == model or name == model+':latest': return endpoint.rsplit('/',1)[0]+'/embed', name
+            if name == model or name == model+':latest':
+                return endpoint.rsplit('/', 1)[0]+'/embed', name
     return None, None
 
-def pre_embed_papers(settings, records, cancel_event=None, fast_mode=False):
-    """Embed arriving candidates in the background during collection."""
-    if not records: return
+
+def _check(cancel_event, stop_event, deadline):
+    if (cancel_event and cancel_event.is_set()) or (stop_event and stop_event.is_set()):
+        raise DiscoveryCancelled()
+    if time.monotonic() >= deadline:
+        raise TimeoutError('Local ranking time budget exceeded')
+
+
+def _valid(vector):
+    return (isinstance(vector, list) and len(vector) >= 8 and
+            all(isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) for x in vector))
+
+
+def _remember(identity, text, vector):
+    with _lock:
+        _cache[(identity, text)] = vector
+        _cache.move_to_end((identity, text))
+        while len(_cache) > 3000: _cache.popitem(last=False)
+
+
+def _cached(identity, text):
+    with _lock:
+        vector = _cache.get((identity, text))
+        if vector is not None: _cache.move_to_end((identity, text))
+        return vector
+
+
+def _disk_cached(identity, texts):
+    # One SQLite transaction per batch. The fingerprint includes the full text,
+    # so metadata enrichment cannot reuse a stale title-only DOI vector.
+    keys = ['text-v2:'+text for text in texts]
+    found = cached_embeddings(config_directory(), identity, keys)
+    for text in texts:
+        vector = found.get('text-v2:'+text)
+        if _valid(vector): _remember(identity, text, vector)
+
+
+def _resolve(identity, texts, cancel_event, deadline, stop_event=None):
+    endpoint, model = identity
+    resolved = {}
+    unique = list(dict.fromkeys(texts))
+    for offset in range(0, len(unique), 24):
+        _check(cancel_event, stop_event, deadline)
+        batch = unique[offset:offset+24]
+        missing = []
+        for text in batch:
+            vector = _cached(identity, text)
+            if vector is not None: resolved[text] = vector
+            else: missing.append(text)
+        if not missing: continue
+        _disk_cached(identity, missing)
+        missing = [text for text in missing if _cached(identity, text) is None]
+        for text in batch:
+            vector = _cached(identity, text)
+            if vector is not None: resolved[text] = vector
+        if not missing: continue
+        while not _inference_lock.acquire(timeout=.05):
+            _check(cancel_event, stop_event, deadline)
+        try:
+            _check(cancel_event, stop_event, deadline)
+            # A background batch may have completed while this caller waited.
+            still_missing = []
+            for text in missing:
+                vector = _cached(identity, text)
+                if vector is not None: resolved[text] = vector
+                else: still_missing.append(text)
+            if not still_missing: continue
+            request = urllib.request.Request(endpoint,
+                data=json.dumps({'model': model, 'input': still_missing, 'truncate': True, 'keep_alive': '5m'}).encode(),
+                headers={'Content-Type': 'application/json'}, method='POST')
+            previous_deadline = getattr(REQUEST_CONTEXT, 'deadline', None)
+            previous_cancel = getattr(REQUEST_CONTEXT, 'cancel_event', None)
+            REQUEST_CONTEXT.deadline = min(previous_deadline, deadline) if previous_deadline else deadline
+            REQUEST_CONTEXT.cancel_event = cancel_event
+            try:
+                data = request_json(request, timeout=min(12, max(.1, deadline-time.monotonic())), cache=False)
+            finally:
+                REQUEST_CONTEXT.deadline = previous_deadline
+                REQUEST_CONTEXT.cancel_event = previous_cancel
+            vectors = data.get('embeddings') or []
+            if len(vectors) != len(still_missing) or not vectors or any(not _valid(v) or len(v) != len(vectors[0]) for v in vectors):
+                raise ValueError('Invalid or incomplete embeddings')
+            # Cache completed work even if collection ended during the request.
+            # Foreground ranking can then reuse it without a duplicate HTTP call.
+            for text, vector in zip(still_missing, vectors):
+                resolved[text] = vector
+                _remember(identity, text, vector)
+            stored = {'text-v2:'+text: vector for text, vector in zip(still_missing, vectors)}
+            cached_embeddings(config_directory(), identity, list(stored), stored)
+        finally:
+            _inference_lock.release()
+    return resolved
+
+
+def pre_embed_papers(settings, records, cancel_event=None, fast_mode=False, queries=None, stop_event=None):
+    """Warm the exact query and current ranked shortlist during collection."""
+    if not records and not queries: return
     try:
+        _check(cancel_event, stop_event, float('inf'))
         endpoint, model = local_model(settings, fast_mode=fast_mode)
         if not model: return
-        identity = (endpoint, model)
-        items_to_check = []
-        for p in records:
-            if cancel_event and cancel_event.is_set(): return
-            text = text_for_paper(p)[:16000]
-            doi = normalize_doi(p.get('doi') or '').lower()
-            with _lock:
-                in_mem = (identity, text) in _cache or (doi and (identity, 'doi:'+doi) in _cache)
-            if not in_mem:
-                items_to_check.append((doi, text))
-        if not items_to_check: return
-        missing = []
-        for doi, text in items_to_check:
-            if cancel_event and cancel_event.is_set(): return
-            disk_key = f"doi:{doi}" if doi else text
-            cached_vec = cached_embedding(config_directory(), identity, disk_key, lambda: None)
-            if cached_vec:
-                with _lock:
-                    _cache[(identity, text)] = cached_vec
-                    if doi: _cache[(identity, 'doi:'+doi)] = cached_vec
-            else:
-                missing.append((doi, text))
-        if not missing: return
-        for offset in range(0, min(len(missing), 72), 24):
-            if cancel_event and cancel_event.is_set(): return
-            chunk = missing[offset:offset+24]
-            chunk_texts = [t for _, t in chunk]
-            req = urllib.request.Request(endpoint, data=json.dumps({'model':model,'input':chunk_texts,'truncate':True,'keep_alive':'5m'}).encode(),
-                headers={'Content-Type':'application/json'}, method='POST')
-            data = request_json(req, timeout=12, cache=False)
-            vectors = data.get('embeddings') or []
-            if len(vectors) == len(chunk):
-                with _lock:
-                    for (doi, text), vec in zip(chunk, vectors):
-                        _cache[(identity, text)] = vec
-                        if doi: _cache[(identity, 'doi:'+doi)] = vec
-                        disk_key = f"doi:{doi}" if doi else text
-                        cached_embedding(config_directory(), identity, disk_key, lambda v=vec: v)
-                        while len(_cache)>3000: _cache.popitem(last=False)
+        texts = [str(q)[:12000] for q in queries or []] + [text_for_paper(p)[:16000] for p in records]
+        _resolve((endpoint, model), texts, cancel_event, time.monotonic()+4, stop_event)
     except Exception:
+        # Warmup is optional. Completed batches remain in the shared cache.
         pass
 
+
 def semantic_scores(settings, queries, records, cancel_event=None, focus_first=False, fast_mode=False):
+    _check(cancel_event, None, float('inf'))
     endpoint, model = local_model(settings, fast_mode=fast_mode)
     if not model: return None, 'Text and citation ranking · local semantic ranking unavailable'
     texts = [str(q)[:12000] for q in queries] + [text_for_paper(p)[:16000] for p in records]
-    dois = [''] * len(queries) + [normalize_doi(p.get('doi') or '').lower() for p in records]
-    identity=(endpoint,model)
-    started = time.monotonic()
-    resolved = {}
     try:
-        for offset in range(0, len(texts), 24):
-            if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
-            if time.monotonic()-started>35: raise TimeoutError('Local ranking time budget exceeded')
-            batch_texts = texts[offset:offset+24]
-            batch_dois = dois[offset:offset+24]
-            missing = []
-            for text, doi in zip(batch_texts, batch_dois):
-                if text in resolved: continue
-                with _lock:
-                    key = (identity, text)
-                    doi_key = (identity, 'doi:'+doi) if doi else None
-                    if key in _cache:
-                        resolved[text] = _cache[key]
-                        _cache.move_to_end(key)
-                        continue
-                    if doi_key and doi_key in _cache:
-                        resolved[text] = _cache[doi_key]
-                        _cache.move_to_end(doi_key)
-                        continue
-                disk_key = f"doi:{doi}" if doi else text
-                vec = cached_embedding(config_directory(), identity, disk_key, lambda: None)
-                if vec:
-                    resolved[text] = vec
-                    with _lock:
-                        _cache[(identity, text)] = vec
-                        if doi: _cache[(identity, 'doi:'+doi)] = vec
-                else:
-                    missing.append((doi, text))
-            if missing:
-                unique_missing = []
-                seen_txt = set()
-                for d, t in missing:
-                    if t not in seen_txt:
-                        seen_txt.add(t)
-                        unique_missing.append((d, t))
-                input_texts = [t for _, t in unique_missing]
-                req = urllib.request.Request(endpoint, data=json.dumps({'model':model,'input':input_texts,'truncate':True,'keep_alive':'5m'}).encode(),
-                    headers={'Content-Type':'application/json'}, method='POST')
-                data = request_json(req, timeout=15, cache=False)
-                vectors = data.get('embeddings') or []
-                if len(vectors)!=len(input_texts) or not vectors: raise ValueError('Incomplete embedding response')
-                size = len(vectors[0])
-                if size<8 or any(len(v)!=size or any(not isinstance(x,(int,float)) or not math.isfinite(x) for x in v) for v in vectors):
-                    raise ValueError('Invalid embeddings')
-                with _lock:
-                    for (doi, text), vector in zip(unique_missing, vectors):
-                        resolved[text] = vector
-                        _cache[(identity,text)] = vector
-                        if doi: _cache[(identity, 'doi:'+doi)] = vector
-                        disk_key = f"doi:{doi}" if doi else text
-                        cached_embedding(config_directory(), identity, disk_key, lambda v=vector: v)
-                    while len(_cache)>3000: _cache.popitem(last=False)
-        vectors = [resolved[text] for text in texts]
-        query_vectors, candidate_vectors = vectors[:len(queries)], vectors[len(queries):]
-        scores=[]
-        for vector in candidate_vectors:
-            similarities=[max(0,cosine(query,vector)) for query in query_vectors]
-            scores.append(.75*similarities[0]+.25*max(similarities[1:],default=0) if focus_first else max(similarities,default=0))
-        notice = f"Titles and abstracts ranked by meaning ({model}), text and citation evidence" if fast_mode else 'Titles and abstracts ranked by meaning, text and citation evidence'
-        return scores, notice
-    except DiscoveryCancelled: raise
+        resolved = _resolve((endpoint, model), texts, cancel_event, time.monotonic()+12)
+        query_vectors = [resolved[text] for text in texts[:len(queries)]]
+        scores = []
+        for text in texts[len(queries):]:
+            similarities = [max(0, cosine(query, resolved[text])) for query in query_vectors]
+            scores.append(.75*similarities[0]+.25*max(similarities[1:], default=0) if focus_first else max(similarities, default=0))
+        return scores, 'Titles and abstracts ranked by meaning, text and citation evidence'
+    except DiscoveryCancelled:
+        raise
     except Exception:
         return None, 'Text and citation ranking · local semantic ranking unavailable'
-

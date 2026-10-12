@@ -1,0 +1,31 @@
+{
+  "scope": "Synthetic long transport abstracts on this Mac; warm models, fresh vector caches. Excludes public-provider retrieval. One timing sample per workload, not a live seed benchmark.",
+  "embeddings": {
+    "previous": {
+      "papers": 250,
+      "seconds": 21.684,
+      "requests": 11,
+      "inputs": 250
+    },
+    "current": {
+      "papers": 150,
+      "seconds": 12.026,
+      "requests": 7,
+      "inputs": 150
+    }
+  },
+  "crossEncoder": {
+    "previous": {
+      "papers": 150,
+      "seconds": 28.511,
+      "queries": 2,
+      "abstractCharacters": 4057
+    },
+    "current": {
+      "papers": 75,
+      "seconds": 14.645,
+      "queries": 2,
+      "abstractCharacters": 4057
+    }
+  }
+}
