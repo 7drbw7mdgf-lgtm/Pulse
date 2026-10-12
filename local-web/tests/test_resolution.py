@@ -14,7 +14,13 @@ from pulse_core import metadata_scanner as scan
 from pulse_core.doi_utils import normalize_doi
 from pulse_core.pdf_utils import extract_document
 from pulse_core.constants import ClientError
-import pymupdf as fitz
+try:
+    import pymupdf as fitz
+except ImportError:
+    try:
+        import fitz
+    except ImportError:
+        fitz = None
 
 TITLE = 'A theory of human motivation'
 META = {'title': TITLE, 'authors': ['Abraham H. Maslow'], 'journal': 'Psychological Review', 'year': '1943', 'doi': '10.1037/h0054346'}
@@ -94,6 +100,7 @@ class ResolutionTests(unittest.TestCase):
         self.assertEqual(found['metadata']['authors'],META['authors'])
         self.assertEqual(len(found['errors']),4)
     def test_pdf_text_links_and_metadata(self):
+        if fitz is None: self.skipTest("PyMuPDF not available")
         doc=fitz.open();page=doc.new_page()
         page.insert_text((50,60), TITLE, fontsize=18)
         page.insert_text((50,90),'Abraham H. Maslow\nYear: 1943\nJournal: Psychological Review',fontsize=11)
@@ -108,6 +115,7 @@ class ResolutionTests(unittest.TestCase):
         self.assertEqual(found['doi'],META['doi'])
         self.assertEqual(found['metadata']['title'],TITLE)
     def test_pdf_reference_doi_is_not_assigned(self):
+        if fitz is None: self.skipTest("PyMuPDF not available")
         doc=fitz.open();page=doc.new_page()
         page.insert_text((50,60),'An independent original research paper\nReferences\nDOI: 10.1037/h0054346')
         raw=doc.tobytes(deflate=True);doc.close()
