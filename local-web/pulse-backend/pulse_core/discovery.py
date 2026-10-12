@@ -78,6 +78,54 @@ def fetch_openalex_work_by_id(work_id):
     return fetch_json(f"https://api.openalex.org/works/{urllib.parse.quote(normalized, safe='')}")
 
 
+def fetch_openalex_works_batch(work_ids):
+    clean_ids = [openalex_work_id(w) for w in work_ids if openalex_work_id(w)]
+    if not clean_ids:
+        return []
+    results = []
+    chunk_size = 100
+    for i in range(0, len(clean_ids), chunk_size):
+        chunk = clean_ids[i:i + chunk_size]
+        filter_arg = "openalex_id:" + "|".join(chunk)
+        params = urllib.parse.urlencode({"filter": filter_arg, "per-page": len(chunk)})
+        try:
+            data = fetch_json(f"https://api.openalex.org/works?{params}")
+            results.extend(data.get("results") or [])
+        except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+        except Exception:
+            continue
+    return results
+
+
+def openalex_reference_works(work_id, limit=20, referenced_works=None):
+    normalized = openalex_work_id(work_id)
+    if not normalized:
+        return []
+    limit = discovery_limit(limit)
+    gathered = SearchResults()
+    try:
+        rows = openalex_discovery_works(f"cited_by:{normalized}", limit, sort="cited_by_count:desc")
+        if rows:
+            gathered.extend(rows)
+            if getattr(rows, "warning", ""):
+                gathered.warning = rows.warning
+            return gathered
+    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+    except Exception as error:
+        gathered.warning = str(error)
+
+    if referenced_works:
+        clean_ids = [openalex_work_id(w) for w in referenced_works if openalex_work_id(w)][:limit]
+        if clean_ids:
+            try:
+                batch_rows = fetch_openalex_works_batch(clean_ids)
+                gathered.extend(batch_rows[:limit])
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+            except Exception as error:
+                gathered.warning = " · ".join(filter(None, [gathered.warning, str(error)]))
+    return gathered
+
+
 def openalex_citing_works(work_id, limit=12):
     normalized = openalex_work_id(work_id)
     if not normalized:
@@ -109,7 +157,7 @@ def openalex_discovery_works(work_filter, limit, sort='cited_by_count:desc'):
     page_size = min(limit, 100)
     for page in range(1, (limit + page_size - 1) // page_size + 1):
         params = urllib.parse.urlencode({"filter": work_filter, "sort": sort,
-                                       "per_page": page_size, "page": page})
+                                       "per-page": page_size, "per_page": page_size, "page": page})
         try:
             data = fetch_json(f"https://api.openalex.org/works?{params}")
             rows = data.get("results") or []
@@ -133,16 +181,6 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
         except Exception: s2_id = None
         if s2_id:
             try:
-                refs = _core.s2_fetch_references(s2_id, api_key=api_key, limit=per_seed)
-                refs = copy.deepcopy(refs)
-                for rank,item in enumerate(refs,1): item.update(hop=1,branch='citationGraph',subType='Backward',retrievalEvidence=[{'channel':f'citations:{seed_index}:backward','rank':rank,'provider':'Semantic Scholar'}])
-                gathered.extend(refs)
-                publish_partial(copy.deepcopy(gathered))
-                hop1_references.extend(refs)
-            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-            except Exception:
-                pass
-            try:
                 cites = _core.s2_fetch_citations(s2_id, api_key=api_key, limit=per_seed)
                 cites = copy.deepcopy(cites)
                 for rank,item in enumerate(cites,1): item.update(hop=1,branch='citationGraph',subType='Forward',retrievalEvidence=[{'channel':f'citations:{seed_index}:forward','rank':rank,'provider':'Semantic Scholar'}])
@@ -152,10 +190,20 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
             except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
             except Exception:
                 pass
+            try:
+                refs = _core.s2_fetch_references(s2_id, api_key=api_key, limit=per_seed)
+                refs = copy.deepcopy(refs)
+                for rank,item in enumerate(refs,1): item.update(hop=1,branch='citationGraph',subType='Backward',retrievalEvidence=[{'channel':f'citations:{seed_index}:backward','rank':rank,'provider':'Semantic Scholar'}])
+                gathered.extend(refs)
+                publish_partial(copy.deepcopy(gathered))
+                hop1_references.extend(refs)
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+            except Exception:
+                pass
 
-        need_references = not refs or bool(getattr(refs, 'warning', ''))
         need_citations = not cites or bool(getattr(cites, 'warning', ''))
-        if need_references or need_citations:
+        need_references = not refs or bool(getattr(refs, 'warning', ''))
+        if need_citations or need_references:
             try:
                 work = _core.openalex_work_for_paper(paper)
             except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
@@ -165,22 +213,7 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
             if not work:
                 continue
             work_id = openalex_work_id(work.get("id"))
-            # A failure in one direction must not suppress the other fallback.
-            if need_references:
-                try:
-                    for rank, (ref_id, ref_work) in enumerate(parallel_lookup(fetch_openalex_work_by_id, (work.get("referenced_works") or [])[:per_seed]), 1):
-                        if not ref_work:
-                            continue
-                        record = recommendation_record(*openalex_recommendation_item(ref_work), source="OpenAlex references")
-                        record.update(branch="citationGraph", subType="Backward", hop=1,
-                                      retrievalEvidence=[{"channel":f"citations:{seed_index}:backward","rank":rank,"provider":"OpenAlex"}],
-                                      reason="Backward citation: foundational reference cited by seed paper.")
-                        gathered.append(record)
-                        hop1_references.append(record)
-                        if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
-                except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                except Exception as error:
-                    gathered.warning = 'OpenAlex references: ' + str(error)
+            # Fetch citing papers first: downstream papers citing the seed arrive early
             if need_citations:
                 try:
                     citing_works = openalex_citing_works(work_id, limit=per_seed)
@@ -197,6 +230,23 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                 except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
                 except Exception as error:
                     gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex citing papers: ' + str(error)]))
+            # References fallback uses cited_by:{seed} sorted by citations first, with batch fallback
+            if need_references:
+                try:
+                    ref_works = openalex_reference_works(work_id, limit=per_seed, referenced_works=work.get("referenced_works") or [])
+                    if getattr(ref_works, "warning", ""):
+                        gathered.warning = ' · '.join(filter(None, [gathered.warning, ref_works.warning]))
+                    for rank, ref_work in enumerate(ref_works, 1):
+                        record = recommendation_record(*openalex_recommendation_item(ref_work), source="OpenAlex references")
+                        record.update(branch="citationGraph", subType="Backward", hop=1,
+                                      retrievalEvidence=[{"channel":f"citations:{seed_index}:backward","rank":rank,"provider":"OpenAlex"}],
+                                      reason="Backward citation: foundational reference cited by seed paper.")
+                        gathered.append(record)
+                        hop1_references.append(record)
+                        if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
+                except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                except Exception as error:
+                    gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex references: ' + str(error)]))
 
     max_depth = 4 if str(depth) == "iterative" else max(1, min(int(depth or (2 if include_iterative_chase else 1)), 3))
     seen = {s2_paper_identifier(p) for p in seed_papers}
@@ -252,8 +302,12 @@ def fetch_citation_network_branch(seed_papers, api_key=None, limit=30):
                 cocite_counts[ref_norm] = cocite_counts.get(ref_norm, 0) + 1
 
         top_cocited_ids = [ref_norm for ref_norm, count in sorted(cocite_counts.items(), key=lambda x: -x[1]) if count >= 2][:20]
-        for ref_norm, co_work in parallel_lookup(fetch_openalex_work_by_id, top_cocited_ids):
+        co_works = fetch_openalex_works_batch(top_cocited_ids) if top_cocited_ids else []
+        for co_work in co_works:
             if not co_work:
+                continue
+            ref_norm = openalex_work_id(co_work.get("id"))
+            if not ref_norm or ref_norm not in cocite_counts:
                 continue
             try:
                 record = recommendation_record(*openalex_recommendation_item(co_work), source="Citation Network (Co-citation)")

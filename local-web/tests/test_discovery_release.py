@@ -31,7 +31,7 @@ class CitationFallbackTests(unittest.TestCase):
              patch.object(core, 's2_fetch_references', side_effect=references if isinstance(references, Exception) else None, return_value=references), \
              patch.object(core, 's2_fetch_citations', side_effect=citations if isinstance(citations, Exception) else None, return_value=citations), \
              patch.object(core, 'openalex_work_for_paper', return_value={'id':'https://openalex.org/W1', 'referenced_works':['W2']}) as identify, \
-             patch.object(discovery, 'parallel_lookup', side_effect=oa_references if isinstance(oa_references, Exception) else None, return_value=oa_references or [('W2', {'id':'W2','title':'A foundational transport paper','doi':'https://doi.org/10.1234/oa-ref'})]) as backward, \
+             patch.object(discovery, 'openalex_reference_works', side_effect=oa_references if isinstance(oa_references, Exception) else None, return_value=oa_references or [{'id':'W2','title':'A foundational transport paper','doi':'https://doi.org/10.1234/oa-ref'}]) as backward, \
              patch.object(discovery, 'openalex_citing_works', side_effect=oa_citations if isinstance(oa_citations, Exception) else None, return_value=oa_citations or [{'id':'W3','title':'A later transport paper','doi':'https://doi.org/10.1234/oa-cite'}]) as forward:
             result = discovery.fetch_citation_graph_branch([SEED], depth=1)
         return result, identify, backward, forward
@@ -62,6 +62,29 @@ class CitationFallbackTests(unittest.TestCase):
         forward.assert_called_once()
         self.assertEqual(result[0]['subType'], 'Forward')
         self.assertIn('Reference lookup failed', result.warning)
+
+    def test_citations_fetched_before_references_in_s2_and_openalex(self):
+        call_order = []
+        with patch.object(core, 's2_paper_id_for_paper', return_value='seed-id'), \
+             patch.object(core, 's2_fetch_citations', side_effect=lambda *args, **kwargs: call_order.append('s2_cites') or [paper('c1')]), \
+             patch.object(core, 's2_fetch_references', side_effect=lambda *args, **kwargs: call_order.append('s2_refs') or [paper('r1')]):
+            discovery.fetch_citation_graph_branch([SEED], depth=1)
+        self.assertEqual(call_order, ['s2_cites', 's2_refs'])
+
+        oa_order = []
+        with patch.object(core, 's2_paper_id_for_paper', return_value=None), \
+             patch.object(core, 'openalex_work_for_paper', return_value={'id':'https://openalex.org/W1'}), \
+             patch.object(discovery, 'openalex_citing_works', side_effect=lambda *args, **kwargs: oa_order.append('oa_cites') or [{'id':'W3'}]), \
+             patch.object(discovery, 'openalex_reference_works', side_effect=lambda *args, **kwargs: oa_order.append('oa_refs') or [{'id':'W2'}]):
+            discovery.fetch_citation_graph_branch([SEED], depth=1)
+        self.assertEqual(oa_order, ['oa_cites', 'oa_refs'])
+
+    def test_openalex_reference_works_uses_cited_by_query(self):
+        with patch.object(discovery, 'openalex_discovery_works', return_value=[{'id': 'W2', 'title': 'Landmark ref'}]) as disc_mock:
+            results = discovery.openalex_reference_works('W1', limit=20)
+            disc_mock.assert_called_once_with('cited_by:W1', 20, sort='cited_by_count:desc')
+            self.assertEqual(len(results), 1)
+            self.assertEqual(results[0]['id'], 'W2')
 
     def test_established_forward_stream_survives_recent_stream_failure(self):
         def fetch(work_filter, limit, sort):

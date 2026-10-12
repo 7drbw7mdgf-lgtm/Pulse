@@ -108,7 +108,8 @@
         return '<div class="settings-status">No literature suggestions yet. Select a paper and select Discover related.</div>';
       }
       return recommendations.map((item, index) => {
-        const href = safeHref(item.doi ? `https://doi.org/${item.doi}` : (item.url || (item.s2PaperId ? `https://www.semanticscholar.org/paper/${item.s2PaperId}` : '') || item.openAlexId || '#'));
+        const openUrl = typeof paperOpenUrl === 'function' ? paperOpenUrl(item) : '';
+        const href = safeHref(openUrl || (item.doi ? `https://doi.org/${item.doi}` : (item.url || (item.s2PaperId ? `https://www.semanticscholar.org/paper/${item.s2PaperId}` : '') || item.openAlexId || '#')));
         const authorList = paperAuthors(item);
         const authors = authorList.length ? (authorList.slice(0, 3).join(', ') + (authorList.length > 3 ? ' et al.' : '')) : '';
         const meta = [item.source || '', authors, item.year || item.date, item.journal, item.doi ? `DOI ${item.doi}` : '', item.citedByCount ? `${item.citedByCount} citations` : '', item.influentialCitationCount ? `⭐ ${item.influentialCitationCount} influential` : '']
@@ -155,7 +156,8 @@
     function renderSeminalMarkup() {
       if (!state.seminalSuggestions.length) return '';
       return state.seminalSuggestions.map((item, index) => {
-        const href = safeHref(item.doi ? `https://doi.org/${item.doi}` : (item.url || item.openAlexId || '#'));
+        const openUrl = typeof paperOpenUrl === 'function' ? paperOpenUrl(item) : '';
+        const href = safeHref(openUrl || (item.doi ? `https://doi.org/${item.doi}` : (item.url || item.openAlexId || '#')));
         const authorList = paperAuthors(item);
         const authors = authorList.length ? (authorList.slice(0, 3).join(', ') + (authorList.length > 3 ? ' et al.' : '')) : '';
         const meta = [authors, item.year || item.date, item.journal, item.doi ? `DOI ${item.doi}` : '', item.citedByLoadedCount ? `${item.citedByLoadedCount} map citations` : ''].filter(Boolean).join(' | ');

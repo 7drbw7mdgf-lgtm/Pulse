@@ -120,7 +120,7 @@
           <td class="library-title-cell"><button type="button" data-action="focus" class="library-title-button">${escapeHtml(paper.title || 'Untitled paper')}</button></td>
           <td>${escapeHtml(paperAuthors(paper).join(', ') || '—')}</td><td class="library-year-cell">${escapeHtml(paper.year || '—')}</td>
           <td>${escapeHtml(paper.journal || '—')}</td><td class="library-citations-cell" title="${escapeHtml(count !== null ? 'Verified from ' + paper.citationMetrics.source : 'Citation count not checked')}">${count !== null ? count.toLocaleString() : '—'}</td>
-          <td class="library-doi-cell">${paper.doi ? `<a href="${escapeHtml(safePaperUrl('https://doi.org/' + paper.doi))}" target="_blank" rel="noreferrer">${escapeHtml(paper.doi)}</a>` : '—'}</td><td><div class="library-table-tags">${paperMetaChips(paper)}</div></td></tr>`;
+          <td class="library-doi-cell">${paper.doi ? `<a href="${escapeHtml((typeof paperOpenUrl === 'function' ? paperOpenUrl(paper) : '') || safePaperUrl('https://doi.org/' + paper.doi))}" target="_blank" rel="noreferrer">${escapeHtml(paper.doi)}</a>` : '—'}</td><td><div class="library-table-tags">${paperMetaChips(paper)}</div></td></tr>`;
         }).join('')}</tbody></table>`;
       };
       const hasFilter = Boolean(state.filterTags && state.filterTags.length > 0);

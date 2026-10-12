@@ -115,7 +115,10 @@ function bindInspectorSections() {
       const neighbours = libraryNeighbours(paper);
       const isSeed = state.discoverySeed?.id === paper.id;
       const status = normalizedReadingStatus(paper.readingStatus);
-      const doiHref = paper.doi ? `https://doi.org/${encodeURIComponent(paper.doi).replace(/%2F/gi, '/')}` : '';
+      const doi = (typeof normalizeDoi === 'function' ? normalizeDoi(paper.doi || '') : '') || (paper.doi || '').trim();
+      const cleanDoi = doi ? doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, '').trim() : '';
+      const doiHref = cleanDoi ? `https://doi.org/${encodeURI(cleanDoi)}` : '';
+      const openHref = (typeof paperOpenUrl === 'function' ? paperOpenUrl(paper) : '') || doiHref;
       const fullText = safeHref(paper.fullTextUrl || '');
       const venue = [paper.journal ? `<i>${escapeHtml(paper.journal)}</i>` : '', escapeHtml(inspectorPagination(paper))].filter(Boolean).join(' ');
       const meta = [escapeHtml(inspectorAuthorLine(paper)), escapeHtml(paper.year || 'No year'), venue].filter(Boolean).join(' · ');
@@ -127,7 +130,7 @@ function bindInspectorSections() {
           <p class="insp-meta">${meta}</p>
           <div class="insp-status">
             ${paper.doi
-              ? `<a class="insp-chip ${paper.doiVerified ? 'is-ok' : ''}" href="${escapeHtml(doiHref)}" target="_blank" rel="noreferrer" title="${escapeHtml(`${paper.doi} — ${provenance}`)}">${paper.doiVerified ? inspectorIcon('check') + 'DOI verified' : 'DOI unconfirmed'}</a>`
+              ? `<a class="insp-chip ${paper.doiVerified ? 'is-ok' : ''}" href="${escapeHtml(doiHref || '#')}" target="_blank" rel="noreferrer" title="${escapeHtml(`${paper.doi} — ${provenance}`)}">${paper.doiVerified ? inspectorIcon('check') + 'DOI verified' : 'DOI unconfirmed'}</a>`
               : `<span class="insp-chip is-warn" title="${escapeHtml(provenance)}">No DOI yet</span>`}
             ${isSeed ? '<span class="insp-chip is-accent">Discovery seed</span>' : ''}
             <label class="insp-chip insp-status-chip${status ? ' is-' + status : ''}">
@@ -139,7 +142,7 @@ function bindInspectorSections() {
             </label>
           </div>
           <div class="insp-actions">
-            <a class="insp-btn primary" href="${escapeHtml(doiHref || `https://scholar.google.com/scholar?q=${encodeURIComponent(paperMetadataSearchText(paper))}`)}" target="_blank" rel="noreferrer">${inspectorIcon('open')}${paper.doi ? 'Open paper' : 'Find paper'}</a>
+            <a class="insp-btn primary" href="${escapeHtml(openHref || `https://scholar.google.com/scholar?q=${encodeURIComponent(paperMetadataSearchText(paper))}`)}" target="_blank" rel="noreferrer">${inspectorIcon('open')}${openHref ? 'Open paper' : 'Find paper'}</a>
             <button class="insp-btn soft" data-action="run-discovery-pipeline" type="button" ${state.discoveryLoading || !Object.values(discoveryConfiguration().branches).some(Boolean) ? 'disabled' : ''}>${inspectorIcon('discover')}${state.discoveryLoading ? 'Discovering…' : 'Discover related'}</button>
             <div class="insp-more">
               <button class="insp-btn icon" type="button" data-action="toggle-more" aria-haspopup="menu" aria-expanded="false" aria-controls="inspectorMoreMenu" aria-label="More actions for this paper"><svg viewBox="0 0 24 24" aria-hidden="true" class="filled"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>

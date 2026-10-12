@@ -1,4 +1,4 @@
-# Pulse 1.7.4 development
+# Pulse 1.7.5 development
 
 The current Tauri desktop app stages `local-web/pulse-frontend` and `local-web/pulse-backend`. Historical root workspace files and tests remain for compatibility.
 

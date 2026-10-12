@@ -367,16 +367,19 @@
       const strength = discoveryStrength(item);
       const queue = discoveryQueueOf(item);
       const rating = typeof discoveryRating === 'function' ? discoveryRating(item) : undefined;
-      const href = safeHref(item.url || (item.doi ? `https://doi.org/${item.doi}` : ''));
+      const openUrl = typeof paperOpenUrl === 'function' ? paperOpenUrl(item) : '';
+      const href = safeHref(openUrl || item.url || (item.doi ? `https://doi.org/${item.doi}` : ''));
       const fullText = safeHref(item.fullTextUrl || '');
       const versions = (item.relatedVersions || []).map(version => {
-        const link = safeHref(version.url || (version.doi ? `https://doi.org/${version.doi}` : ''));
+        const versionOpen = typeof paperOpenUrl === 'function' ? paperOpenUrl(version) : '';
+        const link = safeHref(versionOpen || version.url || (version.doi ? `https://doi.org/${version.doi}` : ''));
         const label = [version.year, (version.sourceList || []).join(', ') || version.documentType || 'Other version'].filter(Boolean).join(' · ');
         return link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>` : `<span>${escapeHtml(label)}</span>`;
       }).join('');
       const publication = [item.year || item.date || '', item.journal || item.venue || ''].filter(Boolean).join(' · ');
       const citationText = discoveryCitationText(item);
-      const doiHref = item.doi ? safeHref(`https://doi.org/${item.doi}`) : '';
+      const doi = (typeof normalizeDoi === 'function' ? normalizeDoi(item.doi || '') : '') || (item.doi || '').trim();
+      const doiHref = doi ? safeHref(`https://doi.org/${encodeURI(doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, ''))}`) : '';
       const strengthName = DISCOVERY_STRENGTHS.find(([id]) => id === strength)[1].replace(/es$/, '').replace(/s$/, '');
       return `
         <div class="dv-preview-heading"><span>Paper preview</span><button type="button" class="dv-link dv-preview-back" data-dv-action="show-results">Back to results</button></div>

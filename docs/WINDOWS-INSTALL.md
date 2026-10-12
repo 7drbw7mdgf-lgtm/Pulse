@@ -1,10 +1,10 @@
-# Pulse 1.7.4 for Windows
+# Pulse 1.7.5 for Windows
 
 The Windows installer targets **Windows 10/11, x64**. It includes the Pulse desktop window, Python backend, PyMuPDF PDF reader and SQLite full-text support. Users do not need Python, Rust or Node.js. ARM64 Windows is not separately packaged; x64 compatibility depends on the device's Windows emulation support.
 
 ## Install
 
-Run `Pulse-1.7.4-Windows-x64-Setup.exe` and follow the setup prompts. Pulse installs for the current Windows user and adds a Start menu shortcut. The setup downloads Microsoft's WebView2 runtime if the computer does not already have it; that step needs an internet connection.
+Run `Pulse-1.7.5-Windows-x64-Setup.exe` and follow the setup prompts. Pulse installs for the current Windows user and adds a Start menu shortcut. The setup downloads Microsoft's WebView2 runtime if the computer does not already have it; that step needs an internet connection.
 
 This initial Windows build is unsigned. Windows may show an unknown-publisher or SmartScreen warning. Check that the file came from this project and that its SHA-256 matches the supplied checksum. A production signing certificate is not included.
 

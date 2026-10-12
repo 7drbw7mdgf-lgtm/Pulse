@@ -117,7 +117,7 @@ def request_json(request, timeout=14, cache=True):
         gate.release()
 
 
-def parallel_branches(tasks, on_progress=None, cancel_event=None, budget_seconds=50, request_budget=24):
+def parallel_branches(tasks, on_progress=None, cancel_event=None, budget_seconds=50, request_budget=48):
     """Start independent sources together; publish query-level partial results.
 
     Per-host gates still bound transport concurrency. Cooperative deadlines

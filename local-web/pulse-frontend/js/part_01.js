@@ -416,3 +416,24 @@ const state = {
       if (item.openAlexId) return `oa:${item.openAlexId}`;
       return `t:${cleanField(item.title || '').toLowerCase()}`;
     }
+
+    function paperOpenUrl(paper) {
+      if (!paper) return '';
+      const rawDoi = paper.doi || '';
+      let cleanDoi = '';
+      if (typeof normalizeDoi === 'function') {
+        cleanDoi = normalizeDoi(rawDoi);
+      }
+      if (!cleanDoi && rawDoi) {
+        cleanDoi = String(rawDoi).replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, '').trim();
+      }
+      if (cleanDoi) {
+        return 'https://doi.org/' + encodeURI(cleanDoi);
+      }
+      const direct = paper.url || paper.landingPageUrl || paper.fullTextUrl || paper.pdfUrl || '';
+      const cleanedDirect = String(direct).trim();
+      if (/^https?:\/\//i.test(cleanedDirect)) {
+        return cleanedDirect;
+      }
+      return '';
+    }
