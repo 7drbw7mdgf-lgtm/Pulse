@@ -340,6 +340,10 @@ def search_metadata(expected):
 
 def resolve_metadata(payload):
     from .metadata_scanner import lookup_doi_metadata, lookup_pmid_metadata
+    if payload.get('verifyIdentity') and normalize_doi(payload.get('doi')):
+        from .citation_identity import verify_candidate
+        verified = verify_candidate(payload)
+        return {'ok':True,'matched':verified['verified'],'strategy':'doi','source':(verified.get('verification') or {}).get('sources'),'metadata':verified.get('metadata') or {},'errors':[] if verified['verified'] else [verified.get('reason')],'candidates':[]}
     text = str(payload.get('text') or '')[:120000]
     if payload.get('parseInput') and not payload.get('doi') and not payload.get('pmid'):
         from .citation_lookup import parse_in_text_citations, lookup_in_text_citations

@@ -2,13 +2,13 @@
 
 ### A private, local-first workspace for scientific literature discovery and synthesis
 
-[![Release](https://img.shields.io/badge/release-v1.7.10-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.10)
+[![Release](https://img.shields.io/badge/release-v1.7.11-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.7.11)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases)
 
 ---
 
-**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.10/Pulse-1.7.10.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.10.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
+**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.11/Pulse-1.7.11.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.7.11.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
 
 ---
 
@@ -20,9 +20,17 @@
 
 ---
 
-![Pulse Discovery Review Workspace — synthetic example](docs/images/pulse-1.7.10-discovery.png)
+![Pulse Discovery Review Workspace — synthetic example](docs/images/pulse-1.7.11-discovery.png)
 
-## What’s new in 1.7.10
+## What’s new in 1.7.11
+
+- **Bibliography-first lookup:** author–year citations use the selected paper’s full reference list before online search, including explicit `2026a`/`2026b` suffixes. Bibliography tails survive long PDF imports and workspace recovery.
+- **Verify before adding:** choosing a citation fetches the DOI record and checks the title, authors and publication dates. Complete registry metadata leads; mismatches and unavailable verification leave the library unchanged. Exports recheck records that have not passed identity verification, preserving personal corrections.
+- **Source backoff:** rate limits and repeated HTTP/connection failures pause the affected credential scope. Cached successes and other sources continue. Search details show provider contributions and retry times. Local cancellation and time budgets do not count as source failures.
+- **Progressive review:** large result lists render in batches of 100. Incoming results and final ranking preserve selection, filters and the visible scroll anchor; unchanged rows retain their DOM identity.
+- **Measured ranking checks:** a frozen public-metadata benchmark compares DBEF on/off on the same pools, reports known-paper/landmark ranks, top-20 hits, top-50 misses, nDCG and separate collection/ranking times. The first run shows mixed results, rather than a universal DBEF improvement. See [the benchmark guide](docs/search/RANKING-BENCHMARK.md) and [reliability notes](docs/search/SEARCH-RELIABILITY.md).
+
+## DBEF introduced in 1.7.10
 
 **DBEF shared-reference discovery** replaces the old co-citation and first-four-reference network searches. It weights reference overlap by specificity and title/abstract relevance, adjusts for bibliography length and recent citation velocity, and balances reference pivots across selected seeds. The supplied scorer is built into the app without extra Python packages or model downloads.
 
@@ -32,7 +40,7 @@ Repeated equivalent provider queries and concurrent identical metadata requests 
 
 Discovery now defaults to **500 results**, with **1,000** and **2,000** options. The collection deadlines and 75-paper cross-encoder budget remain bounded; a requested count is a maximum, not a guarantee of that many matches. Old workspaces saved at 200 results move to 500.
 
-![In-text citation lookup — synthetic example](docs/images/pulse-1.7.10-citation-lookup.png)
+![In-text citation lookup — synthetic example](docs/images/pulse-1.7.11-citation-lookup.png)
 
 ## What Pulse Does
 
@@ -62,7 +70,7 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 
 ## Screenshots
 
-![Current map workspace — synthetic example](docs/images/pulse-1.7.10-workspace.png)
+![Current map workspace — synthetic example](docs/images/pulse-1.7.11-workspace.png)
 
 <div align="center">
 
@@ -81,7 +89,7 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 ## Installation
 
 ### macOS (Apple Silicon, macOS 11+)
-1. Download **[Pulse-1.7.10.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.10/Pulse-1.7.10.dmg)**.
+1. Download **[Pulse-1.7.11.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.11/Pulse-1.7.11.dmg)**.
 2. Open the DMG and drag **Pulse.app** into your **Applications** folder.
 3. *Note:* Ensure you have Python 3.10+ installed (e.g. via Homebrew `brew install python`). Because Pulse is ad-hoc signed, if macOS blocks the first launch, right-click the app and choose **Open**, or run the `Allow-Pulse-Tauri.command` included in the DMG.
 

@@ -1,7 +1,7 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.7.10 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261012-citations">
-<link rel="icon" type="image/png" href="favicon.png?v=1.7.10"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v1.7.11 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261012-reliability">
+<link rel="icon" type="image/png" href="favicon.png?v=1.7.11"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
@@ -453,6 +453,7 @@
 <dialog id="citationLookupDialog" class="record-dialog citation-lookup-dialog" aria-labelledby="citationLookupTitle">
 <header><h2 id="citationLookupTitle">Find papers from citations</h2><button id="citationLookupClose" type="button" aria-label="Close citation lookup">×</button></header>
 <div class="record-dialog-body"><p>An author and year can match several papers. Choose the title you intended.</p><p id="citationLookupStatus" role="status"></p>
+<label class="citation-bibliography-source"><input id="citationUseBibliography" type="checkbox" checked> <span id="citationBibliographyLabel">Use selected paper’s bibliography first</span></label>
 <form id="citationLookupForm"><label>Title words or topic (optional)<input id="citationLookupContext" type="search" maxlength="300" placeholder="Narrow the online search"></label><button id="citationLookupSearch" type="submit" class="button secondary">Search again</button></form>
 <div id="citationLookupResults"></div></div><footer><button id="citationLookupAdd" type="button" class="button primary" disabled>Add selected</button></footer></dialog>
 <dialog id="paperRelationsDialog" class="record-dialog" aria-labelledby="relationTitle">
@@ -469,15 +470,15 @@
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your computer until you import them. PDFs and full paper text are not uploaded.</small></p>
 <details id="mendeleyDeveloperSettings" hidden><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this computer's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261012-citations"></script>
-<script src="js/paper-links.js?v=ui-20261012-citations"></script>
-<script src="js/part_02.js?v=ui-20261012-citations"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261012-reliability"></script>
+<script src="js/paper-links.js?v=ui-20261012-reliability"></script>
+<script src="js/part_02.js?v=ui-20261012-reliability"></script>
 <script src="js/part_03.js?v=ui-20261011-171"></script>
 <script src="js/part_04.js?v=ui-20261011-2"></script>
 <script src="js/part_05.js?v=ui-20261011-2"></script>
-<script src="js/part_06.js?v=ui-20261010-2"></script>
-<script src="js/part_07.js?v=ui-20261010-2"></script>
-<script src="js/part_08.js?v=ui-20261012-citations"></script>
+<script src="js/part_06.js?v=ui-20261012-reliability"></script>
+<script src="js/part_07.js?v=ui-20261012-reliability"></script>
+<script src="js/part_08.js?v=ui-20261012-reliability"></script>
 <script src="js/part_09.js?v=ui-20261010-2"></script>
 <script src="js/part_10.js?v=ui-20261010-2"></script>
 <script src="js/part_11.js?v=ui-20261010-2"></script>
@@ -488,13 +489,13 @@
 <script src="js/part_23.js?v=ui-20261011-1"></script>
 <script src="js/mendeley-sync.js?v=ui-20261010-2"></script>
 <script src="js/part_24.js?v=ui-20261010-2"></script>
-<script src="js/discovery-controls.js?v=ui-20261012-citations"></script>
+<script src="js/discovery-controls.js?v=ui-20261012-reliability"></script>
 <script src="js/inspector.js?v=ui-20261011-11"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
 <script src="js/part_17.js?v=ui-20261011-5"></script>
 <script src="js/part_18.js?v=ui-20261011-171"></script>
 <script src="js/discovery-review.js?v=ui-20261012-bridges-passages"></script>
-<script src="js/part_19.js?v=ui-20261012-citations"></script>
-<script src="js/citation-lookup.js?v=ui-20261012-citations"></script>
-<script src="js/part_20.js?v=ui-20261012-citations"></script>
+<script src="js/part_19.js?v=ui-20261012-reliability"></script>
+<script src="js/citation-lookup.js?v=ui-20261012-reliability"></script>
+<script src="js/part_20.js?v=ui-20261012-reliability"></script>
 <script src="js/timeline.js?v=ui-20261011-9"></script>
-<script src="js/part_21.js?v=ui-20261012-citations"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>
+<script src="js/part_21.js?v=ui-20261012-reliability"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>

@@ -23,12 +23,17 @@ const {chromium} = require('playwright');
     page.on('pageerror', error => errors.push(error.message));
     await page.route('https://**', route => route.fulfill({status:200,body:'Fixture paper link'}));
     await page.route('**/api/metadata/**', route => route.fulfill({json:{ok:true,matched:false,metadata:{}}}));
-    const citationRequests=[];
+    const citationRequests=[],verificationRequests=[];let rejectVerification=true;
     await page.route('**/api/metadata/citation',async route=>{
       citationRequests.push(route.request().postDataJSON());
-      await route.fulfill({json:{ok:true,candidateCount:2,groups:[{citation:'Martín-González et al., 2026',candidates:[
+      await route.fulfill({json:{ok:true,candidateCount:2,groups:[{citation:'Martín-González et al., 2026',lookupStrategy:route.request().postDataJSON().parentPaper?.bibliographyText?'bibliography':'online',candidates:[
         {title:'Synthetic indexing methods',authors:['Ana Martín-González'],year:'2026',doi:'10.1234/citation-a',doiVerified:true,metadataSource:'Crossref'},
         {title:'Synthetic retrieval evaluation',authors:['Ana Martín-González'],year:'2026',doi:'10.1234/citation-b',doiVerified:true,journal:'Retrieval Studies',volume:'2',pages:'1-9',metadataSource:'Crossref'}]}]}});
+    });
+    await page.route('**/api/metadata/citation/verify',async route=>{
+      const request=route.request().postDataJSON();verificationRequests.push(request);
+      await route.fulfill({json:{ok:true,results:request.papers.map((paper,index)=>rejectVerification?{index,verified:false,reason:'The DOI record disagrees with the selected title. Nothing added.'}:
+        {index,verified:true,metadata:{...paper,journal:'Retrieval Studies',volume:'2',pages:'1-9',metadataVerification:{verified:true},doiVerified:true},verification:{verified:true,checkedAt:new Date().toISOString()}})}});
     });
     await page.goto(url); await page.waitForFunction(() => state.autosaveReady);
     assert.equal(await page.locator('#discoveryResultLimit').inputValue(),'500');
@@ -46,9 +51,26 @@ const {chromium} = require('playwright');
     await page.locator('[data-citation-index="1"]').waitFor();
     assert.equal(citationRequests.at(-1).context,'retrieval');
     await page.locator('[data-citation-index="1"]').check();await page.locator('#citationLookupAdd').click();
+    await page.waitForFunction(()=>!citationLookup.busy);
+    assert.equal(await page.evaluate(()=>state.papers.length),0,'A mismatched DOI must never be imported');
+    assert.equal(await page.locator('#citationLookupDialog').isVisible(),true);
+    rejectVerification=false;await page.locator('#citationLookupAdd').click();
+    await page.waitForFunction(()=>state.papers.length===1);
+    assert.equal(verificationRequests.length,2);assert.equal(verificationRequests[1].papers[0].doi,'10.1234/citation-b');
     assert.equal(await page.evaluate(()=>state.papers.length),1);
     assert.equal(await page.evaluate(()=>state.papers[0].doi),'10.1234/citation-b');
     assert.equal(await page.evaluate(()=>state.papers[0].volume),'2');
+    await page.evaluate(()=>{
+      const parent=normalizeImportedPaper({id:'lookup-parent',title:'Review of document indexing methods',year:'2026',
+        bibliographyText:'Martín-González, A., & Lee, S. (2026a). Synthetic indexing methods. Retrieval Studies. https://doi.org/10.1234/citation-a\nMartín-González, A., & Lee, S. (2026b). Synthetic retrieval evaluation. Retrieval Studies. https://doi.org/10.1234/citation-b',
+        metadataMatch:{matched:true},metadataCheckedAt:new Date().toISOString()},'Fixture');
+      state.papers.push(parent);state.selectedId=parent.id;
+    });
+    await page.evaluate(()=>addInTextCitations('(Martín-González et al., 2026)'));
+    assert.equal(await page.locator('#citationUseBibliography').isChecked(),true);
+    assert.match(await page.locator('#citationLookupResults').innerText(),/selected paper’s full reference list/);
+    assert.match(citationRequests.at(-1).parentPaper.bibliographyText,/2026a/);
+    await page.locator('#citationLookupClose').click();
     if(process.env.PULSE_UI_SCREENSHOT_DIR){
       await page.evaluate(()=>addInTextCitations('(Martín-González et al., 2026)'));
       fs.mkdirSync(process.env.PULSE_UI_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOT_DIR,'citation-lookup.png')});
@@ -61,6 +83,26 @@ const {chromium} = require('playwright');
     await dbef.click(); assert.equal(await dbef.getAttribute('aria-pressed'),'false');
     await dbef.click(); assert.equal(await dbef.getAttribute('aria-pressed'),'true');
     await page.locator('#discoveryOptionsDone').click();
+    await page.evaluate(()=>{
+      window.largeFixtures=Array.from({length:500},(_,i)=>({title:'Progressive indexing paper '+i,doi:'10.1234/progressive-'+i,year:'2024',matchLabel:'Related',score:90-i/100,abstract:'A synthetic indexing abstract.'}));
+      openDiscoverySearching(state.papers[0],'large-stream',{branches:{lexicalSearch:true},searchSources:{europePmc:true}});
+      updateDiscoverySearching({recommendations:window.largeFixtures.slice(0,200),stage:'collecting',sourceCounts:{europePmc:200},branchesExecuted:[],completed:0,total:1});
+      const list=document.getElementById('discoveryPaperList');list.scrollTop=3000;
+    });
+    assert.equal(await page.locator('.dv-row').count(),100,'Large searches render their first 100 papers');
+    const anchor=await page.evaluate(()=>captureDiscoveryPosition(document.getElementById('discoveryPaperList')).key);
+    await page.locator(`[data-dv-focus="${anchor}"]`).click();
+    const before=await page.evaluate(()=>{window.keptRow=document.querySelector('.dv-row.is-focused');return captureDiscoveryPosition(document.getElementById('discoveryPaperList'));});
+    await page.evaluate(()=>updateDiscoverySearching({recommendations:window.largeFixtures.slice(0,300).reverse(),stage:'collecting',sourceCounts:{europePmc:300},branchesExecuted:[],completed:0,total:1}));
+    const after=await page.evaluate(()=>captureDiscoveryPosition(document.getElementById('discoveryPaperList')));
+    assert.equal(after.key,before.key);assert(Math.abs(after.offset-before.offset)<2,'Incoming papers preserve the visible anchor');
+    assert.equal(await page.evaluate(()=>window.keptRow===document.querySelector('.dv-row.is-focused')),true,'Unchanged paper rows retain their DOM identity');
+    assert.equal(await page.locator('#discoveryPreview').getAttribute('data-paper-key'),anchor);
+    await page.evaluate(()=>{state.discoveryRunInfo.set('large-stream',{sourceCounts:{europePmc:500},branchesExecuted:['europePmc']});openDiscoveryModal(window.largeFixtures,state.papers[0],'large-stream');});
+    assert.equal(await page.locator('#discoveryPreview').getAttribute('data-paper-key'),anchor,'Final results preserve the selected preview');
+    assert.equal(await page.locator('.dv-row').count(),100);
+    await page.locator('[data-dv-action="load-more"]').click();assert.equal(await page.locator('.dv-row').count(),200);
+    await page.locator('#discoveryModalCloseButton').click();
     await page.evaluate(() => {
       state.papers = Array.from({length:12}, (_,i) => normalizeImportedPaper({id:'fixture-'+i,
         title:'Library indexing study '+i, authors:['Example Author'], year:'2024', doi:'10.1234/library-'+i,

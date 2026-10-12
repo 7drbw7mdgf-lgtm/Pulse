@@ -1,0 +1,41 @@
+{
+  "scope": "Curated ranking checks for neural retrieval, citation networks and open-access research",
+  "labelProvenance": "Manual topic relevance from published titles and abstracts; foundational anchors explicitly listed. These judgments are incomplete and have not been used to tune ranking weights.",
+  "papers": {
+    "10.18653/v1/D19-1410": "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks",
+    "10.18653/v1/2020.emnlp-main.550": "Dense Passage Retrieval for Open-Domain Question Answering",
+    "10.1145/3397271.3401075": "ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction over BERT",
+    "10.1145/3404835.3463098": "SPLADE: Sparse Lexical and Expansion Model for First Stage Ranking",
+    "10.48550/arXiv.2104.08663": "BEIR: A Heterogenous Benchmark for Zero-shot Evaluation of Information Retrieval Models",
+    "10.18653/v1/2023.eacl-main.148": "MTEB: Massive Text Embedding Benchmark",
+    "10.1561/1500000019": "The Probabilistic Relevance Framework: BM25 and Beyond",
+    "10.48550/arXiv.1904.08375": "Document Expansion by Query Prediction",
+    "10.1002/asi.4630240406": "Co-citation in the scientific literature: A new measure of the relationship between two documents",
+    "10.1002/asi.5090140103": "Bibliographic coupling between scientific papers",
+    "10.1126/science.149.3683.510": "Networks of Scientific Papers",
+    "10.1126/science.122.3159.108": "Citation Indexes for Science: A New Dimension in Documentation through Association of Ideas",
+    "10.1073/pnas.98.2.404": "The structure of scientific collaboration networks",
+    "10.1103/PhysRevE.69.026113": "Finding and evaluating community structure in networks",
+    "10.1088/1742-5468/2008/10/P10008": "Fast unfolding of communities in large networks",
+    "10.1038/s41598-019-41695-z": "From Louvain to Leiden: guaranteeing well-connected communities",
+    "10.7717/peerj.4375": "The state of OA: a large-scale analysis of the prevalence and impact of Open Access articles",
+    "10.1045/june2004-harnad": "Comparing the Impact of Open Access (OA) vs. Non-OA Articles in the Same Journals",
+    "10.1186/1741-7015-10-124": "Anatomy of open access publishing: a study of longitudinal development and internal structure",
+    "10.1371/journal.pone.0020961": "The Development of Open Access Journal Publishing from 1993 to 2009",
+    "10.1371/journal.pone.0011273": "Open Access to the Scientific Journal Literature: Situation 2009",
+    "10.1371/journal.pbio.0040157": "Citation Advantage of Open Access Articles",
+    "10.7554/eLife.32822": "Sci-Hub provides access to nearly all scholarly literature",
+    "10.48550/arXiv.cs/0701137": "The Open Access Citation Advantage: Quality Advantage or Quality Bias?"
+  },
+  "cases": [
+    {"name":"Neural and lexical retrieval","question":"Neural dense sparse passage retrieval evaluation benchmarks","seed":"10.18653/v1/D19-1410",
+     "relevant":["10.18653/v1/2020.emnlp-main.550","10.1145/3397271.3401075","10.1145/3404835.3463098","10.48550/arXiv.2104.08663","10.18653/v1/2023.eacl-main.148","10.1561/1500000019","10.48550/arXiv.1904.08375"],
+     "landmarks":["10.1561/1500000019","10.1145/3397271.3401075"]},
+    {"name":"Citation and scientific networks","question":"Bibliographic coupling co-citation scientific paper networks community structure","seed":"10.1002/asi.4630240406",
+     "relevant":["10.1002/asi.5090140103","10.1126/science.149.3683.510","10.1126/science.122.3159.108","10.1073/pnas.98.2.404","10.1103/PhysRevE.69.026113","10.1088/1742-5468/2008/10/P10008","10.1038/s41598-019-41695-z"],
+     "landmarks":["10.1002/asi.5090140103","10.1126/science.122.3159.108"]},
+    {"name":"Open access availability and impact","question":"Open access journal publishing availability citation advantage impact","seed":"10.7717/peerj.4375",
+     "relevant":["10.1045/june2004-harnad","10.1186/1741-7015-10-124","10.1371/journal.pone.0020961","10.1371/journal.pone.0011273","10.1371/journal.pbio.0040157","10.7554/eLife.32822","10.48550/arXiv.cs/0701137"],
+     "landmarks":["10.1186/1741-7015-10-124","10.1045/june2004-harnad"]}
+  ]
+}

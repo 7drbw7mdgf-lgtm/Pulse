@@ -1,47 +1,26 @@
+const discoveryBoundCheckboxes=new WeakSet();
 
-    function openDiscoveryModal(results, seedPaper, resultKey=null) {
-      if(typeof recommendationKey==='function'&&typeof selectedPapersForRecommendation==='function'){
-        const activeKey=resultKey||recommendationKey(selectedPapersForRecommendation());
-        if(state.discoveryResultKey!==activeKey)state.discoveryRunContext=state.discoveryRunInfo?.get(activeKey)?.runContext||null;
-        state.discoveryResultKey=activeKey;
+    function openDiscoveryModal(results,seedPaper,resultKey=null) {
+      const key=resultKey||(typeof recommendationKey==='function'&&typeof selectedPapersForRecommendation==='function'?recommendationKey(selectedPapersForRecommendation()):state.discoveryResultKey||null);
+      const continuing=Boolean(state.discoverySearching&&state.discoverySearching.key===key);
+      const keepSelected=continuing?new Set(state.discoverySelectedKeys||[]):new Set();
+      const keepFocus=continuing&&state.discoveryFocusExplicit?state.discoveryFocusKey:null;
+      if(state.discoveryResultKey!==key)state.discoveryRunContext=state.discoveryRunInfo?.get(key)?.runContext||null;
+      state.discoveryResultKey=key;state.discoverySearching=null;state.discoveryResults=results||[];
+      state.discoverySeed=seedPaper||state.papers.find(p=>p.id===state.selectedId)||state.papers[0];
+      if(!continuing){
+        Object.assign(state,{discoveryQueue:'review',discoveryWhyKinds:new Set(),discoveryHiddenStrengths:new Set(),discoveryShowExplore:false,
+          discoveryMobilePane:'results',discoveryFiltersOpen:false,discoveryFilterText:'',discoveryFilterAuthor:'',discoveryFilterYear:'all',
+          discoveryFilterBranch:'all',discoverySortBy:'score',discoveryQuickTag:'',discoveryFullTextOnly:false,discoveryExpandedAbstracts:new Set(),discoveryRenderLimit:100,discoveryPageSignature:''});
+        for(const [element,value] of [[els.discoveryFilterText,''],[els.discoveryFilterAuthor,''],[els.discoveryFilterYear,'all'],[els.discoverySortBy,'score']])if(element)element.value=value;
+        if(els.discoveryClearTextBtn)els.discoveryClearTextBtn.hidden=true;
+        const fullText=document.getElementById('discoveryFullTextOnly');if(fullText)fullText.checked=false;
       }
-      const continuing = Boolean(state.discoverySearching && (!resultKey || state.discoverySearching.key === resultKey));
-      const keepSelected = continuing ? new Set(state.discoverySelectedKeys || []) : new Set();
-      const keepFocus = continuing && state.discoveryFocusExplicit ? state.discoveryFocusKey : null;
-      state.discoverySearching = null;
-      state.discoveryResults = results || [];
-      state.discoverySeed = seedPaper || state.papers.find(p => p.id === state.selectedId) || state.papers[0];
-      state.discoveryQueue = 'review';
-      state.discoveryWhyKinds = new Set();
-      state.discoveryHiddenStrengths = new Set();
-      state.discoveryShowExplore = false;
-      state.discoveryMobilePane = 'results';
-      state.discoveryFiltersOpen = false;
-      state.discoveryFocusKey = keepFocus;
-      state.discoveryFocusExplicit = Boolean(keepFocus);
-      state.discoveryFilterText = '';
-      state.discoveryFilterAuthor = '';
-      state.discoveryFilterYear = 'all';
-      state.discoveryFilterBranch = 'all';
-      state.discoverySortBy = 'score';
-      state.discoveryQuickTag = '';
-      state.discoveryFullTextOnly = false;
-      const fullTextToggle=document.getElementById('discoveryFullTextOnly');if(fullTextToggle)fullTextToggle.checked=false;
-      state.discoveryExpandedAbstracts = new Set();
-
-      const validKeys = new Set(state.discoveryResults.map(discoveryPaperKey));
-      state.discoverySelectedKeys = new Set([...keepSelected].filter(key => validKeys.has(key)));
-
-      if (els.discoveryFilterText) els.discoveryFilterText.value = '';
-      if (els.discoveryClearTextBtn) els.discoveryClearTextBtn.hidden = true;
-      if (els.discoveryFilterAuthor) els.discoveryFilterAuthor.value = '';
-      if (els.discoveryFilterYear) els.discoveryFilterYear.value = 'all';
-      if (els.discoverySortBy) els.discoverySortBy.value = 'score';
-
-      if (els.discoveryModal) els.discoveryModal.hidden = false;
-      renderDiscoveryModal();
-      if (keepFocus) scrollFocusedDiscoveryPaper();
-      if (typeof els.discoveryModal?.querySelector === 'function') els.discoveryModal.querySelector('.dv-card')?.focus();
+      state.discoveryFocusKey=keepFocus;state.discoveryFocusExplicit=Boolean(keepFocus);
+      const valid=new Set(state.discoveryResults.map(discoveryPaperKey));state.discoverySelectedKeys=new Set([...keepSelected].filter(key=>valid.has(key)));
+      if(els.discoveryModal)els.discoveryModal.hidden=false;
+      renderDiscoveryModal({preservePosition:continuing});
+      if(!continuing&&typeof els.discoveryModal?.querySelector==='function')els.discoveryModal.querySelector('.dv-card')?.focus();
     }
 
     function closeDiscoveryModal() {
@@ -307,6 +286,10 @@
         const legacyHopNotice = key === 'citationGraph' && /^Additional citation hops stopped at the time budget; direct citations and collected results are retained\.$/.test(error || '');
         const dbefNotice = (info.notices?.[key] || []).find(notice => notice.code?.startsWith('dbef-'));
         const extraHopLimit = legacyHopNotice || (info.notices?.[key] || []).some(notice => notice.code === 'extra-hop-limit');
+        if(error&&/temporarily paused/i.test(error)){
+          const seconds=String(error).match(/retry in (\d+) seconds/i)?.[1];
+          return {key,name,status:'warn',count,canAddKey:false,detail:`Temporarily paused${seconds?' · retry in '+seconds+'s':''}${count>0?' · '+count+' papers retained':''}`};
+        }
         if (error && !legacyHopNotice) {
           const limited = /429|rate|too many/i.test(error);
           const canAddKey = ['citationGraph', 'semanticSearch', 'lexicalConceptual', 'core'].includes(key);
@@ -335,7 +318,9 @@
 
     function openDiscoverySearching(seedPaper, key, options) {
       state.discoverySearching = { key, seed: seedPaper, startedAt: Date.now(), job: null, planned: discoveryPlannedSources(options || {}) };
-      state.discoveryResults = [];
+      state.discoveryResults = [];state.discoveryRenderLimit=100;state.discoveryPageSignature='';
+      Object.assign(state,{discoveryFilterText:'',discoveryFilterAuthor:'',discoveryFilterYear:'all',discoveryFilterBranch:'all',discoverySortBy:'score',discoveryQuickTag:'',discoveryShowExplore:false,discoveryWhyKinds:new Set(),discoveryHiddenStrengths:new Set(),discoveryFullTextOnly:false});
+      for(const [element,value] of [[els.discoveryFilterText,''],[els.discoveryFilterAuthor,''],[els.discoveryFilterYear,'all'],[els.discoverySortBy,'score']])if(element)element.value=value;
       state.discoveryResultKey = key;
       state.discoverySeed = seedPaper;
       state.discoverySelectedKeys = new Set();
@@ -350,8 +335,12 @@
       if (!state.discoverySearching) return;
       state.discoverySearching.job = job;
       if (!state.discoveryFocusExplicit) state.discoveryFocusKey = null;
-      if (Array.isArray(job?.recommendations)) state.discoveryResults = job.recommendations;
-      if (els.discoveryModal && !els.discoveryModal.hidden) renderDiscoveryModal();
+      if (Array.isArray(job?.recommendations)) {
+        const incoming=new Map(job.recommendations.map(paper=>[discoveryPaperKey(paper),paper]));
+        const old=state.discoveryResults||[],keys=new Set(old.map(discoveryPaperKey));
+        state.discoveryResults=[...old.map(paper=>incoming.get(discoveryPaperKey(paper))||paper),...job.recommendations.filter(paper=>!keys.has(discoveryPaperKey(paper)))];
+      }
+      if (els.discoveryModal && !els.discoveryModal.hidden) renderDiscoveryModal({preservePosition:true});
     }
 
     function discoveryElapsed(start) {
@@ -476,11 +465,45 @@
         </div>`}`;
     }
 
-    function renderDiscoveryModal() {
+    function captureDiscoveryPosition(list) {
+      if(!list?.getBoundingClientRect)return null;
+      const top=list.getBoundingClientRect().top;
+      const anchor=[...list.querySelectorAll('.dv-row')].find(row=>row.getBoundingClientRect().bottom>top);
+      const active=document.activeElement;
+      return {key:anchor?.dataset.paperKey,offset:anchor?anchor.getBoundingClientRect().top-top:0,scrollTop:list.scrollTop,
+        activeKey:list.contains(active)?active.closest?.('.dv-row')?.dataset.paperKey:null,activeCheckbox:active?.classList?.contains('discovery-item-checkbox')};
+    }
+    function restoreDiscoveryPosition(list,position) {
+      if(!position)return;
+      const row=[...list.querySelectorAll('.dv-row')].find(row=>row.dataset.paperKey===position.key);
+      list.scrollTop=row?list.scrollTop+row.getBoundingClientRect().top-list.getBoundingClientRect().top-position.offset:position.scrollTop;
+      const active=[...list.querySelectorAll('.dv-row')].find(row=>row.dataset.paperKey===position.activeKey);
+      active?.querySelector(position.activeCheckbox?'.discovery-item-checkbox':'.dv-row-main')?.focus({preventScroll:true});
+    }
+    function reconcileDiscoveryRows(list,html) {
+      if(typeof document.createElement!=='function'){list.innerHTML=html;return;}
+      const template=document.createElement('template');
+      if(!template.content){list.innerHTML=html;return;}
+      template.innerHTML=html;
+      const existing=new Map([...list.querySelectorAll('.dv-row')].map(row=>[row.dataset.paperKey,row]));
+      for(const row of template.content.querySelectorAll('.dv-row')){
+        const previous=existing.get(row.dataset.paperKey);
+        if(previous&&previous.outerHTML===row.outerHTML)row.replaceWith(previous);
+      }
+      list.replaceChildren(template.content);
+    }
+
+    function renderDiscoveryModal(options={}) {
       if (!els.discoveryModal || els.discoveryModal.hidden) return;
       const searching = state.discoverySearching;
       const totalItems = state.discoveryResults || [];
       const filtered = getFilteredDiscoveryPapers();
+      const signature=JSON.stringify([state.discoveryResultKey,state.discoveryFilterText,state.discoveryFilterAuthor,state.discoveryFilterYear,state.discoverySortBy,state.discoveryQueue,[...(state.discoveryHiddenStrengths||[])],[...(state.discoveryWhyKinds||[])],state.discoveryShowExplore,state.discoveryQuickTag,state.discoveryFullTextOnly,state.discoveryHideLibrary,state.discoveryFilterBranch]);
+      const sameView=signature===state.discoveryPageSignature;
+      if(!sameView){state.discoveryRenderLimit=100;state.discoveryPageSignature=signature;}
+      const position=sameView?captureDiscoveryPosition(els.discoveryPaperList):null;
+      const previewScroll=document.getElementById('discoveryPreview')?.querySelector?.('.dv-preview-scroll')?.scrollTop||0;
+      const oldPreviewKey=state.discoveryFocusKey;
       const seed = searching?.seed || state.discoverySeed;
       const seedTitle = cleanDiscoveryTitle(seed?.title || 'Selected seed paper');
       const strengthCount = id => totalItems.filter(item => discoveryStrength(item) === id).length;
@@ -508,7 +531,7 @@
       const rankingNotice = document.getElementById('discoveryRankingNotice');
       if (rankingNotice) rankingNotice.textContent = runInfo.rankingNotice || 'Ranked by research relevance · scores are relative, not probabilities';
       const details = document.getElementById('discoverySearchDetailsContent');
-      if (details) details.innerHTML = '<div>' + escapeHtml((runInfo.queryPlan || []).length + ' focused queries · ' + (runInfo.candidateCount || totalItems.length) + ' candidates assessed · ' + (runInfo.feedbackApplied || 0) + ' relevance labels used · ' + (runInfo.bridgeCount || 0) + ' bridges · ' + (runInfo.aiReviewedCount || 0) + ' AI-reviewed · ' + Object.entries(runInfo.sourceCounts || {}).map(([name, count]) => (DISCOVERY_SOURCE_LABELS[name] || name) + ': ' + count).join(' · ')) + '</div>' + (runInfo.queryPlan || []).slice(0, 8).map(query => `<div>${escapeHtml(query.label || query.kind || 'Query')}: ${escapeHtml(query.text || query.query || '')}</div>`).join('');
+      if (details) details.innerHTML = '<div>' + escapeHtml((runInfo.queryPlan || []).length + ' focused queries · ' + (runInfo.candidateCount || totalItems.length) + ' candidates assessed · ' + (runInfo.feedbackApplied || 0) + ' relevance labels used · ' + (runInfo.bridgeCount || 0) + ' bridges · ' + (runInfo.aiReviewedCount || 0) + ' AI-reviewed · ' + Object.entries(runInfo.sourceCounts || {}).map(([name, count]) => (DISCOVERY_SOURCE_LABELS[name] || name) + ': ' + count).join(' · ')) + '</div>' + '<div>'+escapeHtml('Provider contributions: '+Object.entries(runInfo.providerContributions||{}).map(([name,count])=>name+': '+count).join(' · '))+'</div>' + '<div>'+escapeHtml(Object.entries(runInfo.sourceCooldowns||{}).map(([name,status])=>name+' paused · retry in '+status.retryInSeconds+'s').join(' · '))+'</div>' + (runInfo.queryPlan || []).slice(0, 8).map(query => `<div>${escapeHtml(query.label || query.kind || 'Query')}: ${escapeHtml(query.text || query.query || '')}</div>`).join('');
 
       const rows = discoverySourceRows();
       const sourceStatus = document.getElementById('discoverySourceStatus');
@@ -591,6 +614,7 @@
       if (preview) {
         if (preview.dataset) preview.dataset.paperKey = state.discoveryFocusKey || '';
         preview.innerHTML = discoveryPreviewMarkup(focused, Boolean(searching));
+        if(oldPreviewKey===state.discoveryFocusKey){const body=preview.querySelector?.('.dv-preview-scroll');if(body)body.scrollTop=previewScroll;}
       }
 
       if (!filtered.length) {
@@ -602,22 +626,32 @@
         return;
       }
       const focusKey = state.discoveryFocusKey;
+      const focusedIndex=filtered.findIndex(item=>discoveryPaperKey(item)===focusKey);
+      if(state.discoveryFocusExplicit&&focusedIndex>=state.discoveryRenderLimit)state.discoveryRenderLimit=Math.ceil((focusedIndex+1)/100)*100;
+      const visible=filtered.slice(0,state.discoveryRenderLimit||100);
+      let html;
       if ((state.discoverySortBy || 'score') === 'score') {
-        els.discoveryPaperList.innerHTML = DISCOVERY_STRENGTHS.map(([id, label]) => {
-          const items = filtered.filter(item => discoveryStrength(item) === id);
+        html = DISCOVERY_STRENGTHS.map(([id, label]) => {
+          const items = visible.filter(item => discoveryStrength(item) === id);
+          const totalGroup=filtered.filter(item=>discoveryStrength(item)===id).length;
           if (!items.length) return '';
           const groupTitle = id === 'strong' ? 'Strong matches' : id === 'related' ? 'Related' : 'Worth exploring';
           const selectGroupLabel = id === 'strong' ? 'Select all strong' : id === 'related' ? 'Select all related' : 'Select all explore';
           return `<section class="dv-group" aria-label="${label}">
-            <div class="dv-group-head"><h3>${groupTitle} <span>· ${items.length}</span></h3>${searching ? '' : `<button type="button" data-dv-select-group="${id}">${selectGroupLabel}</button>`}</div>
+            <div class="dv-group-head"><h3>${groupTitle} <span>· ${totalGroup}</span></h3>${searching ? '' : `<button type="button" data-dv-select-group="${id}">${selectGroupLabel}</button>`}</div>
             ${items.map(item => discoveryRowMarkup(item, focusKey, Boolean(searching))).join('')}
-            ${id === 'strong' ? '<div class="dv-group-footer"><button type="button" class="dv-all-shown-btn" disabled>All strong matches shown</button></div>' : ''}
+            ${id === 'strong' && items.length===totalGroup ? '<div class="dv-group-footer"><button type="button" class="dv-all-shown-btn" disabled>All strong matches shown</button></div>' : ''}
           </section>`;
         }).join('');
       } else {
-        els.discoveryPaperList.innerHTML = filtered.map(item => discoveryRowMarkup(item, focusKey, Boolean(searching))).join('');
+        html = visible.map(item => discoveryRowMarkup(item, focusKey, Boolean(searching))).join('');
       }
+      if(visible.length<filtered.length)html+=`<div class="dv-page-more"><span>${visible.length} of ${filtered.length} matching papers shown</span><button type="button" class="dv-btn" data-dv-action="load-more">Show next ${Math.min(100,filtered.length-visible.length)}</button></div>`;
+      reconcileDiscoveryRows(els.discoveryPaperList,html);
+      restoreDiscoveryPosition(els.discoveryPaperList,position);
+      if(!sameView)els.discoveryPaperList.scrollTop=0;
       els.discoveryPaperList.querySelectorAll('.discovery-item-checkbox').forEach(checkbox => {
+        if(discoveryBoundCheckboxes.has(checkbox))return;discoveryBoundCheckboxes.add(checkbox);
         checkbox.addEventListener('change', () => setDiscoveryPaperSelected(checkbox.dataset.paperKey, checkbox.checked));
       });
       initDiscoveryWorkspace();
@@ -690,7 +724,8 @@
         }
         const action = target.dataset.dvAction;
         const item = (state.discoveryResults || []).find(result => discoveryPaperKey(result) === target.dataset.paperKey);
-        if (action === 'toggle-filters') { state.discoveryFiltersOpen = !state.discoveryFiltersOpen; renderDiscoveryModal(); }
+        if(action==='load-more'){state.discoveryRenderLimit=(state.discoveryRenderLimit||100)+100;renderDiscoveryModal({preservePosition:true});}
+        else if (action === 'toggle-filters') { state.discoveryFiltersOpen = !state.discoveryFiltersOpen; renderDiscoveryModal(); }
         else if (action === 'show-results') { state.discoveryMobilePane = 'results'; renderDiscoveryModal(); }
         else if (action === 'show-explore') { state.discoveryShowExplore = true; renderDiscoveryModal(); }
         else if (action === 'add-focused' && item) addSelectedDiscoveredToMap({ items: [item], keepOpen: true });

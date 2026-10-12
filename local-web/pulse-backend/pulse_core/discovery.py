@@ -1,3 +1,4 @@
+from pulse_source_health import cooldowns
 import pulse_core as _core
 import re
 import copy
@@ -451,6 +452,17 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         embed_thread.start()
         queue_embeddings([])  # Warm the exact question and seed queries immediately.
 
+    def contributions(results):
+        providers={}
+        for rows in results.values():
+            for paper in rows:
+                names=set(paper.get('sourceList') or [])
+                names.update(e.get('provider') for e in paper.get('retrievalEvidence') or [] if e.get('provider'))
+                if not names and paper.get('metadataSource'): names.add(paper['metadataSource'])
+                for name in names:
+                    providers.setdefault(name,set()).add(str(paper.get('doi') or paper.get('openalexId') or paper.get('title')))
+        return {name:len(ids) for name,ids in providers.items()}
+    last_progress_rank=[0,0]
     def source_errors(results, errors):
         return {**errors, **{name: records.warning for name, records in results.items() if getattr(records, "warning", "")}}
     def source_notices(results):
@@ -459,16 +471,22 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         if not on_progress and not (embed_thread and embed_thread.is_alive()):
             return
         ordered = {name: results.get(name, []) for name in tasks}
-        ranked = merge_and_rank_pipeline_candidates(ordered, seed_papers, dict(options))
-        if embed_thread and embed_thread.is_alive():
+        now=time.monotonic()
+        should_rank=last_progress_rank[0]==0 or now-last_progress_rank[0]>=.6 or len(completed)+len(errors)!=last_progress_rank[1]
+        ranked=merge_and_rank_pipeline_candidates(ordered,seed_papers,dict(options,limit=min(limit,150))) if should_rank else None
+        if should_rank:last_progress_rank[:]=[now,len(completed)+len(errors)]
+        if ranked is not None and embed_thread and embed_thread.is_alive():
             queue_embeddings(ranked[:SEMANTIC_SHORTLIST_LIMIT])
         if on_progress:
             on_progress({
-                "recommendations": ranked[:limit],
+                **({"recommendations":ranked[:min(limit,100)]} if ranked is not None else {}),
+                "availableCount": sum(len(rows) for rows in ordered.values()),
                 "branchesExecuted": [name for name in tasks if name in completed],
                 "errors": source_errors(results, errors),
                 "notices": source_notices(results),
                 "sourceCounts": {name: len(rows) for name, rows in results.items()},
+                "sourceCooldowns": cooldowns(),
+                "providerContributions": contributions(results),
                 "dbef": getattr(results.get('citationNetwork'), 'dbef_summary', {}),
                 "completed": len(completed) + len(errors),
                 "total": total,
@@ -523,6 +541,8 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         "timings": {'retrievalSeconds': round(retrieval_seconds,3), 'totalSeconds': round(time.monotonic()-started,3),
                     **options.get('_rankingTimings', {})},
         "sourceCounts": {name:len(rows) for name,rows in results.items()},
+        "sourceCooldowns": cooldowns(),
+        "providerContributions": contributions(results),
         "queriesExecuted": {name:getattr(rows,"queries_executed",[]) for name,rows in results.items()},
         "dbef": getattr(results.get("citationNetwork"), "dbef_summary", {}),
         "seedCount": len(seed_papers),

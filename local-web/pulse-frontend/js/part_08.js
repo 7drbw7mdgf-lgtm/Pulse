@@ -96,6 +96,9 @@
         discoveryMethod: paper.rankingMethod || paper.discoveryMethod || '',
         dbef: paper.dbef && typeof paper.dbef === 'object' ? paper.dbef : null,
         text: String(paper.text || paper.abstract || '').slice(0, 120000),
+        bibliographyText: String(paper.bibliographyText || (typeof extractBibliographyText==='function'?extractBibliographyText(paper.text || ''):'')).slice(0,120000),
+        referenceText: String(paper.referenceText || '').slice(0,12000), citationMatch: paper.citationMatch || null, bibliographyParent: paper.bibliographyParent || null,
+        metadataVerification: paper.metadataVerification || null, publicationDates: paper.publicationDates || {},
         size: Number(paper.size || 0),
         x: Number(paper.x || 0),
         y: Number(paper.y || 0),
@@ -179,6 +182,8 @@
         paper.doi = result.doi || doi;
         paper.doiVerified = true;
         applyVerifiedMetadata(paper, result.metadata || {});
+        if(result.metadata?.metadataVerification)paper.metadataVerification=result.metadata.metadataVerification;
+        if(result.metadata?.publicationDates)paper.publicationDates=result.metadata.publicationDates;
         if (result.matched) paper.metadataCheckedAt = new Date().toISOString();
         paper.metadataSource = result.source || 'DOI';
         return true;
@@ -387,9 +392,10 @@
     }
     const metadataResolutionCache = new Map();
     async function resolvePaperMetadata(paper, options = {}) {
-      if (!options.force && paper.metadataMatch?.matched && Date.now() - Date.parse(paper.metadataCheckedAt || '') < 7 * 86400000) return true;
+      if (!options.force && (!options.forExport || !paper.doi || paper.metadataVerification?.verified) && paper.metadataMatch?.matched && Date.now() - Date.parse(paper.metadataCheckedAt || '') < 7 * 86400000) return true;
       const payload = {
         name: paper.name, title: paper.title === paper.name && /\.pdf$/i.test(paper.name || '') ? '' : paper.title, authors: paperAuthors(paper), doi: paper.doi || '',
+        verifyIdentity: Boolean(options.forExport && paper.doi), citationMatch: paper.citationMatch || null,
         pmid: paper.pmid || '', year: paper.year || '', date: paper.date || '', journal: paper.journal || '',
         volume: paper.volume || '', issue: paper.issue || '', pages: paper.pages || '', issn: paper.issn || '',
         abstract: paper.abstract || '', keywords: (paper.paperKeywords || []).join('; '),
@@ -412,6 +418,8 @@
         const result = await metadataResolutionCache.get(cacheKey);
         if (!result.matched) metadataResolutionCache.delete(cacheKey);
         applyVerifiedMetadata(paper, result.metadata || {});
+        if(result.metadata?.metadataVerification)paper.metadataVerification=result.metadata.metadataVerification;
+        if(result.metadata?.publicationDates)paper.publicationDates=result.metadata.publicationDates;
         if (result.matched) paper.metadataCheckedAt = new Date().toISOString();
         paper.metadataSource = result.source || paper.metadataSource;
         paper.metadataMatch = { matched: result.matched, strategy: result.strategy, ambiguous: result.ambiguous,
@@ -472,7 +480,7 @@
       showToast('Checking citation details…');
       let next = 0;
       await Promise.all(Array.from({length: Math.min(2, papers.length)}, async () => {
-        while (next < papers.length) await lookupPaperOnce(papers[next++]);
+        while (next < papers.length) await lookupPaperOnce(papers[next++],{forExport:true});
       }));
       if (papers.some(p => state.papers.includes(p))) render();
       const missing = papers.filter(p => !paperAuthors(p).length || !p.year || !p.journal || (!p.pages && !p.articleNumber));

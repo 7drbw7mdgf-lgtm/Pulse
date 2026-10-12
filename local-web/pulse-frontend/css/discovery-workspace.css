@@ -195,3 +195,5 @@
 .dv-passages details { margin-top: 10px; font-size: 12px; line-height: 1.6; }
 .dv-passages summary { cursor: pointer; font-weight: 600; }
 .dv-passages details p { white-space: pre-wrap; }
+
+.dv-page-more {display:flex;align-items:center;justify-content:center;gap:12px;padding:24px;color:var(--muted);font-size:12px}

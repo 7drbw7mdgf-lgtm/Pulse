@@ -1,4 +1,4 @@
-# Pulse 1.7.10 development
+# Pulse 1.7.11 development
 
 The current Tauri desktop app stages `local-web/pulse-frontend` and `local-web/pulse-backend`. Historical root workspace files and tests remain for compatibility.
 
@@ -35,7 +35,7 @@ Requires macOS, Xcode command-line tools, Rust and Node.js:
 ```sh
 python3 -m venv /tmp/pulse-pdf-deps
 /tmp/pulse-pdf-deps/bin/python3 -m pip install -r local-web/requirements.txt
-bash scripts/package-desktop.sh /tmp/pulse-1.7.10-release /tmp/pulse-pdf-deps/lib/python3.12/site-packages
+bash scripts/package-desktop.sh /tmp/pulse-1.7.11-release /tmp/pulse-pdf-deps/lib/python3.12/site-packages
 ```
 
 Adjust the dependency path to the Python version used. The optional second argument is a directory of PDF dependencies built for the target Mac; it is not a previous app bundle. Omit it to rely on separately installed dependencies. The script stages source, builds Tauri, verifies the app signature, creates a DMG and writes its SHA-256 checksum. Stage outputs and build files are ignored; no user library or settings are packaged.
@@ -62,7 +62,7 @@ The Mac release uses a frozen CPU ONNX worker, independent of the system Python 
 
 ```sh
 /path/to/build-venv/bin/python scripts/build-search-runtime.py --output /tmp/pulse-search-runtime
-bash scripts/package-desktop.sh /tmp/pulse-1.7.10-release /path/to/pdf-dependencies /tmp/pulse-search-runtime
+bash scripts/package-desktop.sh /tmp/pulse-1.7.11-release /path/to/pdf-dependencies /tmp/pulse-search-runtime
 ```
 
 The builder downloads the fixed model revision, bundles its licence, records SHA-256 values and freezes the interpreter, ONNX Runtime, NumPy and tokenizer into a relocatable executable. It verifies inference with an empty HOME and without a Python executable on PATH. Search does not download weights or execute remote model code. Staging rejects model-only manifests and machine-specific Python paths. The release check additionally denies access to network, Homebrew and the user's search runtime while running inference from the DMG. Windows builds currently omit this optional executable; core discovery and explicit developer-installed rankers remain supported.

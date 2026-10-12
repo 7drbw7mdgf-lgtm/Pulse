@@ -1,6 +1,6 @@
 [package]
 name = "pulse-desktop"
-version = "1.7.10"
+version = "1.7.11"
 description = "Pulse - Scientific Literature Discovery & Synthesis"
 authors = ["Pulse"]
 edition = "2021"

@@ -1,3 +1,4 @@
+from pulse_source_health import ProviderCooldown
 """Public literature search, with bounded transport and provider provenance."""
 import html
 import re
@@ -157,6 +158,8 @@ def fetch_search(url, source, api_key=""):
         return data
     except (DiscoveryCancelled, DiscoveryBudgetExceeded):
         raise
+    except ProviderCooldown as error:
+        raise ClientError(error.status,str(error)) from None
     except urllib.error.HTTPError as error:
         status = error.code
         error.close()

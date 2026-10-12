@@ -1,0 +1,344 @@
+{
+  "cases": [
+    {
+      "name": "Neural and lexical retrieval",
+      "candidateCount": 122,
+      "collectionSeconds": 0.801,
+      "missingMetadata": [],
+      "off": {
+        "nDCG@10": 0.0,
+        "KnownRelevantRecall@50": 0.1429,
+        "KnownRelevantHits@20": 0,
+        "LandmarkHits@50": 0,
+        "missedLandmarks": [
+          "10.1145/3397271.3401075",
+          "10.1561/1500000019"
+        ],
+        "missedKnownPapers": [
+          "10.1145/3397271.3401075",
+          "10.1145/3404835.3463098",
+          "10.1561/1500000019",
+          "10.18653/v1/2020.emnlp-main.550",
+          "10.18653/v1/2023.eacl-main.148",
+          "10.48550/arxiv.1904.08375"
+        ],
+        "ranks": {
+          "10.1145/3397271.3401075": 99,
+          "10.1145/3404835.3463098": 93,
+          "10.1561/1500000019": 105,
+          "10.18653/v1/2020.emnlp-main.550": 80,
+          "10.18653/v1/2023.eacl-main.148": 106,
+          "10.48550/arxiv.1904.08375": 97,
+          "10.48550/arxiv.2104.08663": 22
+        },
+        "top20": [
+          "10.1007/978-3-540-75148-9_11",
+          "10.1007/978-3-030-22948-1_25",
+          "10.1145/3477495.3531685",
+          "10.1007/s00521-023-08562-5",
+          "10.21236/ada477634",
+          "10.18653/v1/2025.findings-acl.543",
+          "10.32743/unitech.2026.145.4.22584",
+          "10.18653/v1/2022.findings-emnlp.39",
+          "10.22541/au.175934564.40505248/v1",
+          "10.14778/3565816.3565819",
+          "10.1016/j.array.2021.100101",
+          "10.18653/v1/2025.emnlp-main.1345",
+          "10.63317/364iqsayfxvs",
+          "10.1109/imsa70415.2026.11700246",
+          "10.1162/tacl_a_00369",
+          "10.52436/1.jutif.2026.7.3.5776",
+          "10.2139/ssrn.7087840",
+          "10.1016/j.measurement.2026.122375",
+          "10.1609/aaai.v37i4.25598",
+          "10.1093/nsr/nwaa159"
+        ],
+        "rankingSeconds": 0.0648,
+        "dbefScoredCandidates": 0
+      },
+      "on": {
+        "nDCG@10": 0.0,
+        "KnownRelevantRecall@50": 0.1429,
+        "KnownRelevantHits@20": 0,
+        "LandmarkHits@50": 0,
+        "missedLandmarks": [
+          "10.1145/3397271.3401075",
+          "10.1561/1500000019"
+        ],
+        "missedKnownPapers": [
+          "10.1145/3397271.3401075",
+          "10.1145/3404835.3463098",
+          "10.1561/1500000019",
+          "10.18653/v1/2020.emnlp-main.550",
+          "10.18653/v1/2023.eacl-main.148",
+          "10.48550/arxiv.1904.08375"
+        ],
+        "ranks": {
+          "10.1145/3397271.3401075": 99,
+          "10.1145/3404835.3463098": 93,
+          "10.1561/1500000019": 105,
+          "10.18653/v1/2020.emnlp-main.550": 80,
+          "10.18653/v1/2023.eacl-main.148": 106,
+          "10.48550/arxiv.1904.08375": 97,
+          "10.48550/arxiv.2104.08663": 22
+        },
+        "top20": [
+          "10.1007/978-3-540-75148-9_11",
+          "10.1007/978-3-030-22948-1_25",
+          "10.1145/3477495.3531685",
+          "10.1007/s00521-023-08562-5",
+          "10.21236/ada477634",
+          "10.18653/v1/2025.findings-acl.543",
+          "10.32743/unitech.2026.145.4.22584",
+          "10.18653/v1/2022.findings-emnlp.39",
+          "10.22541/au.175934564.40505248/v1",
+          "10.14778/3565816.3565819",
+          "10.1016/j.array.2021.100101",
+          "10.18653/v1/2025.emnlp-main.1345",
+          "10.63317/364iqsayfxvs",
+          "10.1109/imsa70415.2026.11700246",
+          "10.1162/tacl_a_00369",
+          "10.52436/1.jutif.2026.7.3.5776",
+          "10.2139/ssrn.7087840",
+          "10.1016/j.measurement.2026.122375",
+          "10.1609/aaai.v37i4.25598",
+          "10.1093/nsr/nwaa159"
+        ],
+        "rankingSeconds": 0.08,
+        "dbefScoredCandidates": 0
+      }
+    },
+    {
+      "name": "Citation and scientific networks",
+      "candidateCount": 121,
+      "collectionSeconds": 1.24,
+      "missingMetadata": [],
+      "on": {
+        "nDCG@10": 0.2096,
+        "KnownRelevantRecall@50": 0.5714,
+        "KnownRelevantHits@20": 3,
+        "LandmarkHits@50": 1,
+        "missedLandmarks": [
+          "10.1126/science.122.3159.108"
+        ],
+        "missedKnownPapers": [
+          "10.1038/s41598-019-41695-z",
+          "10.1088/1742-5468/2008/10/p10008",
+          "10.1126/science.122.3159.108"
+        ],
+        "ranks": {
+          "10.1002/asi.5090140103": 8,
+          "10.1038/s41598-019-41695-z": 55,
+          "10.1073/pnas.98.2.404": 3,
+          "10.1088/1742-5468/2008/10/p10008": 59,
+          "10.1103/physreve.69.026113": 30,
+          "10.1126/science.122.3159.108": 103,
+          "10.1126/science.149.3683.510": 20
+        },
+        "top20": [
+          "10.1002/pra2.2016.14505301131",
+          "10.1177/0165551520962775",
+          "10.1073/pnas.98.2.404",
+          "10.1002/meet.2008.1450450292",
+          "10.2478/jdis-2024-0028",
+          "10.1002/asi.21419",
+          "10.5958/0975-8089.2020.00008.1",
+          "10.1002/asi.5090140103",
+          "10.1016/j.joi.2022.101321",
+          "10.1108/oir-12-2020-0540",
+          "10.1371/journal.pone.0251493",
+          "10.1023/a:1020458612014",
+          "10.1002/asi.22680",
+          "10.1177/01655515251322483",
+          "10.1007/s41109-019-0126-3",
+          "10.52352/jbh.v15i1.2459",
+          "10.1177/26314541221078909",
+          "10.1016/j.acalib.2021.102351",
+          "10.3233/kes-200025",
+          "10.1126/science.149.3683.510"
+        ],
+        "rankingSeconds": 0.0979,
+        "dbefScoredCandidates": 26
+      },
+      "off": {
+        "nDCG@10": 0.2407,
+        "KnownRelevantRecall@50": 0.5714,
+        "KnownRelevantHits@20": 3,
+        "LandmarkHits@50": 1,
+        "missedLandmarks": [
+          "10.1126/science.122.3159.108"
+        ],
+        "missedKnownPapers": [
+          "10.1038/s41598-019-41695-z",
+          "10.1088/1742-5468/2008/10/p10008",
+          "10.1126/science.122.3159.108"
+        ],
+        "ranks": {
+          "10.1002/asi.5090140103": 5,
+          "10.1038/s41598-019-41695-z": 51,
+          "10.1073/pnas.98.2.404": 3,
+          "10.1088/1742-5468/2008/10/p10008": 55,
+          "10.1103/physreve.69.026113": 28,
+          "10.1126/science.122.3159.108": 102,
+          "10.1126/science.149.3683.510": 15
+        },
+        "top20": [
+          "10.1002/pra2.2016.14505301131",
+          "10.1177/0165551520962775",
+          "10.1073/pnas.98.2.404",
+          "10.5958/0975-8089.2020.00008.1",
+          "10.1002/asi.5090140103",
+          "10.1002/asi.21419",
+          "10.1371/journal.pone.0251493",
+          "10.1108/oir-12-2020-0540",
+          "10.1023/a:1020458612014",
+          "10.1002/meet.2008.1450450292",
+          "10.2478/jdis-2024-0028",
+          "10.1007/s41109-019-0126-3",
+          "10.52352/jbh.v15i1.2459",
+          "10.1177/26314541221078909",
+          "10.1126/science.149.3683.510",
+          "10.3233/kes-200025",
+          "10.1108/oir-12-2020-0540/v3/review1",
+          "10.1002/asi.22680",
+          "10.1177/01655515251322483",
+          "10.1016/j.joi.2022.101321"
+        ],
+        "rankingSeconds": 0.0806,
+        "dbefScoredCandidates": 0
+      }
+    },
+    {
+      "name": "Open access availability and impact",
+      "candidateCount": 121,
+      "collectionSeconds": 0.958,
+      "missingMetadata": [
+        "10.1045/june2004-harnad"
+      ],
+      "off": {
+        "nDCG@10": 0.1449,
+        "KnownRelevantRecall@50": 0.8571,
+        "KnownRelevantHits@20": 2,
+        "LandmarkHits@50": 1,
+        "missedLandmarks": [
+          "10.1045/june2004-harnad"
+        ],
+        "missedKnownPapers": [
+          "10.1045/june2004-harnad"
+        ],
+        "ranks": {
+          "10.1045/june2004-harnad": null,
+          "10.1186/1741-7015-10-124": 45,
+          "10.1371/journal.pbio.0040157": 34,
+          "10.1371/journal.pone.0011273": 29,
+          "10.1371/journal.pone.0020961": 21,
+          "10.48550/arxiv.cs/0701137": 13,
+          "10.7554/elife.32822": 1
+        },
+        "top20": [
+          "10.7554/elife.32822",
+          "10.2174/1874372200802010069",
+          "10.2139/ssrn.1777090",
+          "10.3390/publications13020020",
+          "10.63485/zx37t-h2674",
+          "10.3138/jsp.40.4.343",
+          "10.1108/14684521211206953",
+          "10.1007/s11192-025-05297-z",
+          "10.5937/bioac-68",
+          "10.1177/0165551510389358",
+          "10.2139/ssrn.2391692",
+          "10.1371/journal.pone.0253129",
+          "10.48550/arxiv.cs/0701137",
+          "10.31235/osf.io/7k8cp_v1",
+          "10.29173/istl2512",
+          "10.1038/d41586-024-00405-0",
+          "10.1007/s11192-017-2554-0",
+          "10.63485/g9t98-n2h08",
+          "10.63485/38pe1-1g260",
+          "10.1007/s11192-018-2663-4"
+        ],
+        "rankingSeconds": 0.0829,
+        "dbefScoredCandidates": 0
+      },
+      "on": {
+        "nDCG@10": 0.1449,
+        "KnownRelevantRecall@50": 0.8571,
+        "KnownRelevantHits@20": 4,
+        "LandmarkHits@50": 1,
+        "missedLandmarks": [
+          "10.1045/june2004-harnad"
+        ],
+        "missedKnownPapers": [
+          "10.1045/june2004-harnad"
+        ],
+        "ranks": {
+          "10.1045/june2004-harnad": null,
+          "10.1186/1741-7015-10-124": 18,
+          "10.1371/journal.pbio.0040157": 36,
+          "10.1371/journal.pone.0011273": 14,
+          "10.1371/journal.pone.0020961": 27,
+          "10.48550/arxiv.cs/0701137": 15,
+          "10.7554/elife.32822": 1
+        },
+        "top20": [
+          "10.7554/elife.32822",
+          "10.5937/bioac-68",
+          "10.1108/14684521211206953",
+          "10.2174/1874372200802010069",
+          "10.3390/publications13020020",
+          "10.1177/0165551510389358",
+          "10.2139/ssrn.1777090",
+          "10.1371/journal.pone.0253129",
+          "10.1007/s11192-018-2663-4",
+          "10.63485/zx37t-h2674",
+          "10.3138/jsp.40.4.343",
+          "10.1007/s11192-025-05297-z",
+          "10.2139/ssrn.2391692",
+          "10.1371/journal.pone.0011273",
+          "10.48550/arxiv.cs/0701137",
+          "10.31235/osf.io/7k8cp_v1",
+          "10.29173/istl2512",
+          "10.1186/1741-7015-10-124",
+          "10.1038/d41586-024-00405-0",
+          "10.1007/s11192-017-2554-0"
+        ],
+        "rankingSeconds": 0.101,
+        "dbefScoredCandidates": 12
+      }
+    }
+  ],
+  "summary": {
+    "off": {
+      "nDCG@10": 0.1285,
+      "KnownRelevantRecall@50": 0.5238,
+      "KnownRelevantHits@20": 1.6667,
+      "LandmarkHits@50": 0.6667,
+      "rankingSeconds": 0.0761
+    },
+    "on": {
+      "nDCG@10": 0.1182,
+      "KnownRelevantRecall@50": 0.5238,
+      "KnownRelevantHits@20": 2.3333,
+      "LandmarkHits@50": 0.6667,
+      "rankingSeconds": 0.093
+    }
+  },
+  "provenance": {
+    "provider": "Crossref and DataCite public metadata; OpenAlex rate-limited",
+    "knownPaperCount": 23,
+    "curatedKnownPapers": 24,
+    "collectionSeconds": 9.129,
+    "issues": [
+      "Missing or unavailable known paper: 10.1045/june2004-harnad"
+    ],
+    "sourceCooldowns": {},
+    "positiveInjection": true,
+    "retrievalRecallMeasured": false,
+    "neuralModels": false,
+    "corpusSizeAssumption": 10000000,
+    "limitations": "Many abstracts and reference DOIs are missing; annual citation velocity is neutral. Only supplied bibliography DOIs form shared-reference evidence.",
+    "abstractRepresentation": "Unordered unigram features; raw abstract narrative omitted"
+  },
+  "note": "Controlled, incomplete manual judgments on frozen public metadata; curated positives are included. Unknown papers are not labelled irrelevant. No live retrieval-recall or full-search latency claim; collection and ranking time are separate. Neural reranking is disabled to isolate DBEF.",
+  "datasetSha256": "ab59484b193b506a51515f4614d18a2522936797666b8944948f18c534e29aaf"
+}

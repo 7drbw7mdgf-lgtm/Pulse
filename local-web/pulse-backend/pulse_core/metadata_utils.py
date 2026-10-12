@@ -87,6 +87,8 @@ def crossref_to_metadata(item):
     if not isinstance(item, dict):
         return {}
     title = clean_crossref_text(first_list_value(item.get("title") or ""))
+    subtitle = clean_crossref_text(first_list_value(item.get('subtitle') or ''))
+    if subtitle and subtitle.casefold() not in title.casefold():title += ': '+subtitle
     authors = []
     for author in item.get("author") or []:
         name = " ".join(filter(None, [author.get("given"), author.get("family")])).strip()
@@ -100,6 +102,7 @@ def crossref_to_metadata(item):
     abstract = clean_crossref_text(item.get("abstract") or "")
     return {
         "title": title,
+        "primaryTitle": clean_crossref_text(first_list_value(item.get("title") or "")), "subtitle": subtitle,
         "authors": authors,
         "year": year,
         "journal": journal,
@@ -109,6 +112,9 @@ def crossref_to_metadata(item):
         "metadataSource": "Crossref",
         "volume": str(item.get("volume") or ""), "issue": str(item.get("issue") or ""),
         "pages": str(item.get("page") or ""), "issn": "; ".join(item.get("ISSN") or []),
+        "publicationDates": {field:'-'.join(str(v) if i==0 else str(v).zfill(2) for i,v in enumerate(parts[0][:3]))
+                             for field in ('published-print','published-online','issued')
+                             for parts in [(item.get(field) or {}).get('date-parts') or []] if parts and parts[0]},
         "date": crossref_full_date(item), "publisher": clean_crossref_text(item.get("publisher")),
         "url": str(item.get("URL") or ''), "articleNumber": str(item.get("article-number") or ''),
         "isbn": "; ".join(item.get("ISBN") or []), "language": str(item.get("language") or ''),

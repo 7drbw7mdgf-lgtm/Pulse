@@ -1,3 +1,4 @@
+from pulse_source_health import ProviderCooldown
 import json
 import time
 import urllib.error
@@ -39,6 +40,8 @@ def fetch_s2_json(url, api_key=None, timeout=14, cache=True):
     request = urllib.request.Request(url, headers=s2_request_headers(active_key), method="GET")
     try:
         return request_json(request, timeout=timeout, cache=cache)
+    except ProviderCooldown as error:
+        raise ClientError(error.status,str(error)) from None
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         if error.code == 404:
@@ -67,6 +70,8 @@ def post_s2_json(url, payload, api_key=None, timeout=14):
     request = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
         return request_json(request, timeout=timeout)
+    except ProviderCooldown as error:
+        raise ClientError(error.status,str(error)) from None
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         if error.code == 403 and active_key:

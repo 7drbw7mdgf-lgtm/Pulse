@@ -1,3 +1,4 @@
+from pulse_source_health import ProviderCooldown
 import json
 import urllib.error
 import urllib.parse
@@ -15,6 +16,8 @@ def fetch_json(url, cache=True):
         return request_json(request, timeout=12, cache=cache)
     except (DiscoveryCancelled, DiscoveryBudgetExceeded):
         raise
+    except ProviderCooldown as error:
+        raise ClientError(error.status,str(error)) from None
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         raise ClientError(error.code, f"DOI lookup failed: {details[:500]}")

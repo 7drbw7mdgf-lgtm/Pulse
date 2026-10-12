@@ -185,6 +185,8 @@ def _scan_file_for_metadata_local(payload):
     except Exception as error:
         raise ClientError(400, "Could not read this document: " + str(error))
     text = document["text"]
+    from .bibliography import bibliography_text
+    bibliography = bibliography_text(text)
     parsed = merge_metadata(document.get("metadata"), extract_text_metadata(text, name))
     # Explicit document/XMP identifiers and readable front matter come first.
     candidates = primary_doi_candidates(document.get("doiText"))
@@ -193,7 +195,7 @@ def _scan_file_for_metadata_local(payload):
     if not candidates and not DOI_REFERENCES_RE.search(text):
         candidates = scan_doi_candidates_from_bytes(raw)[:3]
     return {"ok": True, "doi": candidates[0] if candidates else "", "candidates": candidates[:4],
-            "title": parsed.get("title") or "", "text": text, "metadata": parsed,
+            "title": parsed.get("title") or "", "text": text, "bibliographyText": bibliography, "metadata": parsed,
             "extractionSource": document.get("extractionSource"),
             "textAvailable": bool(text), "pageCount": document.get("pageCount")}
 

@@ -92,7 +92,7 @@ def search_citation(group, context=''):
     records.sort(key=lambda p: (not bool(normalize_doi(p.get('doi'))), normalized_title(p.get('title'))))
     for paper in records:
         doi = normalize_doi(paper.get('doi'))
-        paper.update(doi=doi, doiVerified=bool(doi), citationMatch={'citation': group['citation'], 'authors': group['authors'], 'year': year},
+        paper.update(doi=doi, doiVerified=bool(doi), citationMatch={'citation': group['citation'], 'authors': group['authors'], 'year': year,'etAl':group.get('etAl',False)},
                      lookupSources=list(paper.get('sources') or [paper.get('metadataSource') or 'Online index']))
     return {**group, 'candidates': records[:60], 'errors': list(errors), 'partial': bool(errors)}
 
@@ -104,7 +104,14 @@ def lookup_in_text_citations(payload):
     context = re.sub(r'\s+', ' ', str(payload.get('context') or '')).strip()[:300]
     # A grouped paste is bounded to six citations. Groups run together; each
     # retains its candidates and missing-source status independently.
-    tasks = {str(i): (lambda group=group: search_citation(group, context)) for i, group in enumerate(groups)}
+    parent = payload.get('parentPaper') if isinstance(payload.get('parentPaper'), dict) else {}
+    def search_group(group):
+        from .bibliography import matching_references
+        local = matching_references(group, parent) if parent else []
+        if local:
+            return {**group,'candidates':local,'errors':[],'partial':False,'lookupStrategy':'bibliography'}
+        return dict(search_citation(group,context), lookupStrategy='online')
+    tasks = {str(i): (lambda group=group: search_group(group)) for i, group in enumerate(groups)}
     found, _, errors = parallel_branches(tasks, budget_seconds=15, request_budget=24)
     results = [found.get(str(i), {**group, 'candidates': [], 'errors': ['Online lookup'], 'partial': True}) for i, group in enumerate(groups)]
     return {'ok': True, 'matched': False, 'strategy': 'in-text-citation', 'needsSelection': True, 'metadata': {},

@@ -1,3 +1,7 @@
+function extractBibliographyText(text) {
+  const value=String(text||'');const heading=/^\s*(?:\d+[.\s]+)?(?:references(?: and notes)?|bibliography|literature cited|works cited|reference list)\s*:?\s*$/im.exec(value);
+  return heading?value.slice(heading.index+heading[0].length).trim().slice(0,120000):'';
+}
 
     function extractLastName(raw) {
       const cleaned = cleanAuthorName(raw);

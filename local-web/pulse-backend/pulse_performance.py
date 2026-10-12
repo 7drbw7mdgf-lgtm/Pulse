@@ -14,6 +14,8 @@ import urllib.request
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from pulse_source_health import check_source, failed as source_failed, succeeded as source_succeeded, ProviderCooldown
+
 REQUEST_CONTEXT = threading.local()
 _CACHE_LOCK = threading.Lock()
 _JSON_CACHE = OrderedDict()
@@ -110,11 +112,13 @@ def _request_json_once(request, timeout=14, cache=True):
             return json.loads(entry[1])
         limit = 10 if 'openalex.org' in host else 2
         gate = _PROVIDER_GATES.setdefault(host, threading.BoundedSemaphore(limit))
+    check_source(request)
     while not gate.acquire(timeout=.1):
         check_cancelled()
     try:
         for attempt in range(3):
             check_cancelled()
+            check_source(request)
             try:
                 remaining = remaining_budget()
                 counter = getattr(REQUEST_CONTEXT, 'request_counter', None)
@@ -126,6 +130,7 @@ def _request_json_once(request, timeout=14, cache=True):
                 with urllib.request.urlopen(request, timeout=request_timeout) as response:
                     data = json.loads(response.read().decode('utf-8'))
                 check_cancelled()
+                source_succeeded(request)
                 encoded=json.dumps(data) if cache else ''
                 if cache and len(encoded)<=1_000_000:
                     with _CACHE_LOCK:
@@ -135,6 +140,11 @@ def _request_json_once(request, timeout=14, cache=True):
                             _JSON_CACHE.popitem(last=False)
                 return data
             except urllib.error.HTTPError as error:
+                source_failed(request,error)
+                try: check_source(request)
+                except ProviderCooldown:
+                    error.close()
+                    raise
                 if error.code not in (429, 503) or attempt == 2:
                     raise
                 raw = error.headers.get('Retry-After', '') if error.headers else ''
@@ -150,6 +160,11 @@ def _request_json_once(request, timeout=14, cache=True):
                     raise
                 error.close()
                 _wait(delay)
+            except (DiscoveryCancelled,DiscoveryBudgetExceeded):
+                raise
+            except (urllib.error.URLError,TimeoutError,OSError,ValueError) as error:
+                source_failed(request,error)
+                raise
     finally:
         gate.release()
 
