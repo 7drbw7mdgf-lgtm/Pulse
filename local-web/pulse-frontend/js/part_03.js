@@ -23,18 +23,21 @@
         state.papers.push(paper);
         addedCount++;
 
-        if (seed && seed.id !== paper.id) {
+        const bridgeSources=item.isBridge?(item.bridgeEvidence||[]).map(row=>state.papers.find(p=>p.id===row.seedId)||state.papers.find(p=>p.title===row.seedTitle)).filter(Boolean):[];
+        for(const connectedSeed of bridgeSources.length?bridgeSources:[seed]){
+        if (connectedSeed && connectedSeed.id !== paper.id) {
           const isBib = item.subType === 'Bibliographic coupling' || (item.discoveryBadges || []).some(b => b.includes('Bib Coupling'));
           const isCoCite = item.subType === 'Co-citation' || (item.discoveryBadges || []).some(b => b.includes('Co-citation'));
           const isSpecter = item.subType === 'SPECTER2' || (item.discoveryBadges || []).some(b => b.includes('SPECTER2'));
           const ltype = isBib ? 'bibliographic' : (isCoCite ? 'cocitation' : (isSpecter ? 'similarity' : 'mixed'));
           state.links.push({
-            source: seed.id,
+            source: connectedSeed.id,
             target: paper.id,
             score: item.score ? Math.min(0.95, Math.max(0.4, item.score / 100)) : 0.82,
-            type: ltype,
+            type: item.isBridge ? 'similarity' : ltype,
             evidence: (item.whyFound || []).map(reason => reason.detail).join('; ') || item.reason || 'Literature discovery recommendation'
           });
+        }
         }
       });
 

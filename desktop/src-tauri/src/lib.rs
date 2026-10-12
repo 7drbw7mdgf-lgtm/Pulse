@@ -1,5 +1,8 @@
 use serde::Deserialize;
+#[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::{
     fs,
     path::PathBuf,
@@ -18,6 +21,60 @@ struct Launch {
     token: String,
 }
 
+fn background_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
+    let command = Command::new(program);
+    #[cfg(windows)]
+    let command = {
+        let mut command = command;
+        command.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        command
+    };
+    command
+}
+
+fn backend_command(backend: &std::path::Path) -> Result<Command, Box<dyn std::error::Error>> {
+    #[cfg(windows)]
+    if backend.join("pulse_backend.exe").is_file() {
+        return Ok(background_command(backend.join("pulse_backend.exe")));
+    }
+    let mut candidates: Vec<(std::ffi::OsString, Vec<&str>)> = Vec::new();
+    if let Some(python) = std::env::var_os("PULSE_PYTHON") {
+        candidates.push((python, vec![]));
+    }
+    #[cfg(windows)]
+    candidates.extend([
+        ("py".into(), vec!["-3"]),
+        ("python".into(), vec![]),
+        ("python3".into(), vec![]),
+    ]);
+    #[cfg(not(windows))]
+    candidates.extend([
+        ("/opt/homebrew/bin/python3".into(), vec![]),
+        ("/usr/local/bin/python3".into(), vec![]),
+        ("/usr/bin/python3".into(), vec![]),
+        ("python3".into(), vec![]),
+    ]);
+    for (python, prefix) in candidates {
+        if background_command(&python)
+            .args(&prefix)
+            .args([
+                "-c",
+                "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)",
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+        {
+            let mut command = background_command(python);
+            command.args(prefix).arg(backend.join("pulse_backend.py"));
+            return Ok(command);
+        }
+    }
+    Err("Pulse's bundled backend is missing. Reinstall Pulse, or use Python 3.10+ for a source build.".into())
+}
+
 fn launch_backend(app: &tauri::AppHandle) -> Result<(Child, Launch), Box<dyn std::error::Error>> {
     let backend = app
         .path()
@@ -27,45 +84,40 @@ fn launch_backend(app: &tauri::AppHandle) -> Result<(Child, Launch), Box<dyn std
         None => app.path().app_cache_dir()?,
     };
     fs::create_dir_all(&cache)?;
-    let log = fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .mode(0o600)
-        .open(cache.join("backend.log"))?;
+    let mut options = fs::OpenOptions::new();
+    options.create(true).append(true);
+    #[cfg(unix)]
+    options.mode(0o600);
+    let log = options.open(cache.join("backend.log"))?;
     let launch_path = cache.join(format!(
         "launch-{}-{}.json",
         std::process::id(),
         SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()
     ));
-    let python = [
-        "/opt/homebrew/bin/python3",
-        "/usr/local/bin/python3",
-        "/usr/bin/python3",
-    ]
-    .into_iter()
-    .find(|p| {
-        std::path::Path::new(p).is_file()
-            && Command::new(p)
-                .args(["-c", "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)"])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-                .map(|status| status.success())
-                .unwrap_or(false)
-    })
-    .ok_or("Python 3.10 or later is required to open Pulse")?;
-    let mut child = Command::new(python)
-        .arg(backend.join("pulse_backend.py"))
+    let mut command = backend_command(&backend)?;
+    #[cfg(windows)]
+    if std::env::var_os("PULSE_CONFIG_DIR").is_none()
+        && std::env::var_os("IRATXE_CONFIG_DIR").is_none()
+    {
+        command.env(
+            "PULSE_CONFIG_DIR",
+            dirs::data_local_dir()
+                .ok_or("Windows user data folder is unavailable")?
+                .join("Pulse"),
+        );
+    }
+    let mut child = command
         .current_dir(&backend)
         .env("PULSE_PORT", "0")
         .env("PULSE_WEB_ROOT", &backend)
         .env("PULSE_APP_VERSION", env!("CARGO_PKG_VERSION"))
         .env("PULSE_LAUNCH_FILE", &launch_path)
+        .env("PULSE_LAUNCHER_PID", std::process::id().to_string())
         .env("PYTHONDONTWRITEBYTECODE", "1")
         .stdout(Stdio::null())
         .stderr(Stdio::from(log))
         .spawn()?;
-    let deadline = Instant::now() + Duration::from_secs(15);
+    let deadline = Instant::now() + Duration::from_secs(45);
     loop {
         if let Ok(bytes) = fs::read(&launch_path) {
             if let Ok(launch) = serde_json::from_slice::<Launch>(&bytes) {

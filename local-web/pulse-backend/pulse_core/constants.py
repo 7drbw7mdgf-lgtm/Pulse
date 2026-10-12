@@ -7,6 +7,7 @@ import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from pulse_core.platform_support import config_directory
 
 ROOT = Path(os.environ.get("PULSE_WEB_ROOT") or Path(__file__).resolve().parents[2] / "pulse-frontend")
 
@@ -14,9 +15,9 @@ VENDORED_PYTHON = ROOT / "python"
 if VENDORED_PYTHON.exists():
     sys.path.insert(0, str(VENDORED_PYTHON))
 
-CONFIG_DIR = Path(os.environ.get("PULSE_CONFIG_DIR") or os.environ.get("IRATXE_CONFIG_DIR") or (Path.home() / "Library" / "Application Support" / "pulse"))
+CONFIG_DIR = config_directory()
 _legacy_config_dir = Path.home() / "Library" / "Application Support" / "iratxe"
-if not (os.environ.get("PULSE_CONFIG_DIR") or os.environ.get("IRATXE_CONFIG_DIR")) and not CONFIG_DIR.exists() and _legacy_config_dir.exists():
+if sys.platform == 'darwin' and not (os.environ.get("PULSE_CONFIG_DIR") or os.environ.get("IRATXE_CONFIG_DIR")) and not CONFIG_DIR.exists() and _legacy_config_dir.exists():
     try:
         shutil.copytree(_legacy_config_dir, CONFIG_DIR, dirs_exist_ok=True)
     except Exception:
@@ -37,14 +38,14 @@ LOCAL_BACKEND_DEFAULTS = {
     "autoGemmaExtraction": True,
 }
 DEFAULT_GEMMA_MODEL = LOCAL_BACKEND_DEFAULTS["chatModel"]
-APP_VERSION = os.environ.get("PULSE_APP_VERSION") or os.environ.get("IRATXE_APP_VERSION") or "1.7.1"
+APP_VERSION = os.environ.get("PULSE_APP_VERSION") or os.environ.get("IRATXE_APP_VERSION") or "1.7.2"
 CONTACT_EMAIL = (os.environ.get("PULSE_CONTACT_EMAIL") or os.environ.get("IRATXE_CONTACT_EMAIL") or "").strip()
 API_TOKEN = (os.environ.get("PULSE_API_TOKEN") or os.environ.get("IRATXE_API_TOKEN") or "").strip() or secrets.token_urlsafe(32)
 BOUND_PORT = int(os.environ.get("PULSE_PORT") or os.environ.get("IRATXE_PORT") or "8000")
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1", "[::1]"}
 DIMENSIONS_API_ROOT = "https://app.dimensions.ai"
 SEMANTIC_SCHOLAR_API_ROOT = "https://api.semanticscholar.org"
-BUNDLED_OLLAMA = ROOT / "bin" / "ollama"
+BUNDLED_OLLAMA = ROOT / "bin" / ("ollama.exe" if sys.platform == 'win32' else "ollama")
 OLLAMA_MODELS_DIR = Path(os.environ.get("PULSE_OLLAMA_MODELS") or os.environ.get("IRATXE_OLLAMA_MODELS") or (CONFIG_DIR / "models"))
 OLLAMA_PROCESS = None
 OLLAMA_BOOT_STATUS = {"started": False, "reason": "not-started"}

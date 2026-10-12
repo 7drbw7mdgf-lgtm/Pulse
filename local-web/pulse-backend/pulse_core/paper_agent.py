@@ -32,20 +32,21 @@ def agent_status():
                   and (not m.get("capabilities") or "completion" in m["capabilities"])
                   and not re.search(r"embed|bge-|all-minilm", m["name"], re.I)]
         configured = resolve_gemma_model(load_settings())
-        preferred = configured if configured in models else next(
+        report_model = str(load_settings().get('reportModel') or 'qwen2.5:7b')
+        preferred = report_model if report_model in models else configured if configured in models else next(
             (m for m in models if m == "llama3.2:latest"), models[0] if models else "")
         return {"online": True, "models": models, "model": preferred, "localOnly": True,
                 "message": "Ollama connected" if models else "No local chat model installed. Add one in Ollama, then refresh."}
     except Exception:
         return {"online": False, "models": [], "model": "", "localOnly": True,
-                "message": "Open Ollama on this Mac, then refresh the connection."}
+                "message": "Open Ollama, then refresh the connection."}
 
 
 def paper_source(paper):
     abstract = str(paper.get("abstract") or "").strip()
     text = str(paper.get("text") or "").strip()
     name = str(paper.get("name") or "").lower()
-    structured = bool(re.search(r"\.(bib|ris|enw|xml|csv)$", name) or
+    structured = bool(name.endswith('recommendation') or re.search(r"\.(bib|ris|enw|xml|csv)$", name) or
                       re.match(r"\s*(?:@\w+\s*[{(]|TY\s*-|<\?xml|<record)", text))
     metadata = {k: paper.get(k) for k in ("title", "authors", "year", "journal", "doi", "keywords") if paper.get(k)}
     # Pasted citations and export records are not a source of study findings.
@@ -176,9 +177,21 @@ class PaperSummaryJobs:
             job["view"].update(fields)
 
     def summarize(self, job, paper, focus, index):
+        evidence = None
+        # Fetch only the selected paper, and keep abstracts/PDF text when the
+        # archive cannot provide an exact identifier match.
+        if paper_source(paper)[1] in ('Abstract', 'Metadata only') and any(paper.get(key) for key in ('doi','pmcid','pmid','corpusId','s2PaperId')):
+            from pulse_core.passages import retrieve_passages
+            self.update(job, stage='Looking for available full-text passages…')
+            evidence = retrieve_passages({'paper': paper, 'question': focus, 'limit': 8})
+            if evidence.get('available'):
+                paper = dict(paper, text='\n\n'.join('[%s · %s]\n%s' % (p['id'],p['section'],p['text']) for p in evidence['passages']))
         text, source, metadata = paper_source(paper)
+        if evidence and evidence.get('available'): source = 'Selected full-text passages · '+evidence['source']
         result = {"id": str(paper.get("id") or index), "title": str(paper.get("title") or paper.get("name") or "Untitled paper"),
                   "doi": str(paper.get("doi") or ""), "source": source, "charactersRead": len(text), "error": ""}
+        if evidence and evidence.get('available'):
+            result['evidence'] = evidence
         if not text:
             result["summary"] = "Only bibliographic metadata is available. Import a readable PDF or an abstract to summarize the study's methods and findings.\n\n" + "\n".join(
                 f"{key.title()}: {', '.join(map(str, value)) if isinstance(value, list) else value}" for key, value in metadata.items())
@@ -189,10 +202,12 @@ class PaperSummaryJobs:
             if job["cancel"].is_set():
                 raise ScanCancelled()
             self.update(job, stage=f"Reading paper {index} of {job['view']['total']} · part {number} of {len(segments)}")
-            instructions = ("Summarize this paper in about 180 words. Cover its aim, methods, main findings, and stated limitations. "
+            instructions = ("Summarize this paper in about 180 words. Cover its aim, a high-level method description, main findings, stated sample size where supported, and stated limitations. "
                 "Only include information supported by the source. Acknowledge missing details.") if len(segments) == 1 else (
                 "Extract concise factual notes from this excerpt: aims, methods, reported findings and stated limitations. "
                 "Do not infer missing sections. This is one part of a paper, not the whole paper.")
+            if evidence and evidence.get('available'):
+                instructions += ' This is a selected passage set, not the whole article. Cite passage IDs such as [p3] for findings; acknowledge coverage limits. Keep hazardous biology non-operational.'
             prompt = instructions + "\nFocus requested: " + (focus or "General study summary") + "\nMetadata: " + json.dumps(metadata, ensure_ascii=False) + "\nSOURCE:\n" + segment
             notes.append(local_chat(job["view"]["model"], prompt, job["cancel"], 600))
         if len(notes) > 1:

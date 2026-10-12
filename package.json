@@ -1,13 +1,13 @@
 {
   "name": "pulse-literature",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "private": true,
   "description": "Local scientific literature discovery and paper linkage workspace",
   "license": "MIT",
   "scripts": {
     "start": "python3 local-web/pulse-backend/pulse_backend.py",
     "test": "python3 -m unittest discover -s tests -p 'test_*.py' && node tests/ui.cjs && node tests/graph.cjs && node tests/performance.cjs",
-    "test:workspace": "cd local-web && python3 -m unittest discover -s tests -p 'test_*.py' && node tests/parser.cjs && node tests/library.cjs && node tests/bulk_library.cjs && node tests/selection.cjs && node tests/inspector_sections.cjs && node tests/discovery_options.cjs && node tests/discovery_selection.cjs && node tests/discovery_review.cjs && node tests/literature_search.cjs && node tests/timeline.cjs && node tests/navigation.cjs && node tests/selected_report.cjs && node tests/mendeley_ui.cjs && node tests/metadata_export.cjs && node tests/mendeley_sync.cjs && node tests/inspector.cjs"
+    "test:workspace": "cd local-web && python3 -m unittest discover -s tests -p 'test_*.py' && node tests/parser.cjs && node tests/library.cjs && node tests/bulk_library.cjs && node tests/selection.cjs && node tests/inspector_sections.cjs && node tests/discovery_options.cjs && node tests/discovery_selection.cjs && node tests/discovery_review.cjs && node tests/literature_search.cjs && node tests/timeline.cjs && node tests/navigation.cjs && node tests/selected_report.cjs && node tests/mendeley_ui.cjs && node tests/metadata_export.cjs && node tests/mendeley_sync.cjs && node tests/inspector.cjs && node tests/bridges_passages.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

@@ -1,0 +1,1239 @@
+{
+  "cases": 30,
+  "scope": "Official SciFact development claims and human-annotated evidence papers",
+  "semanticRanking": false,
+  "pairwiseRequested": true,
+  "pairwiseCases": 30,
+  "note": "Known judged relevance only; unjudged papers are not labelled negative. nDCG and recall use the supplied qrels. Live provider recall is not measured by an offline candidate pool.",
+  "provenance": {
+    "source": "https://scifact.s3-us-west-2.amazonaws.com/release/latest/data.tar.gz",
+    "sha256": "11c621288d41ac144d29b13b0f8503b3820b7d6e8b1f6ff24dff335c196d76be",
+    "project": "https://github.com/allenai/scifact",
+    "claimsLicense": "CC BY 4.0",
+    "abstractsLicense": "ODC-By 1.0",
+    "authors": "David Wadden, Shanchuan Lin, Kyle Lo, Lucy Lu Wang, Madeleine van Zuylen, Arman Cohan, Hannaneh Hajishirzi",
+    "corpusSize": 5183,
+    "candidateCount": 300,
+    "selection": "First distinct annotated dev claims ordered by claim id"
+  },
+  "summary": {
+    "baseline": {
+      "Recall@50": 0.8917,
+      "nDCG@10": 0.6469,
+      "MRR@10": 0.6154,
+      "JudgedCoverage@10": 0.08
+    },
+    "lexical": {
+      "Recall@50": 0.975,
+      "nDCG@10": 0.9174,
+      "MRR@10": 0.9278,
+      "JudgedCoverage@10": 0.1
+    },
+    "hybrid": {
+      "Recall@50": 1.0,
+      "nDCG@10": 0.9341,
+      "MRR@10": 0.9306,
+      "JudgedCoverage@10": 0.11
+    }
+  },
+  "timings": {
+    "medianRankingSeconds": 10.690999999999999,
+    "p95RankingSeconds": 13.676
+  },
+  "results": [
+    {
+      "name": "SciFact dev claim 3",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.4307,
+        "MRR@10": 0.25,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 10.377,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "14717500",
+          "grade": 1,
+          "evidence": 0.8127,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 5",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.2891,
+        "MRR@10": 0.1,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 10.267,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "13734012",
+          "grade": 1,
+          "evidence": 0.382,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 42",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 12.032,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "18174210",
+          "grade": 1,
+          "evidence": 0.8652,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 48",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0,
+        "MRR@10": 0,
+        "JudgedPrecision@10": null,
+        "JudgedCoverage@10": 0.0
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.5,
+        "MRR@10": 0.3333,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.5,
+        "MRR@10": 0.3333,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 13.035,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "13734012",
+          "grade": 1,
+          "evidence": 0.2417,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 49",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 11.09,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "5953485",
+          "grade": 1,
+          "evidence": 0.8602,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 50",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 10.65,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "12580014",
+          "grade": 1,
+          "evidence": 0.9273,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 51",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0,
+        "MRR@10": 0,
+        "JudgedPrecision@10": null,
+        "JudgedCoverage@10": 0.0
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 12.287,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "45638119",
+          "grade": 1,
+          "evidence": 0.8872,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 53",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 0.0,
+        "nDCG@10": 0.0,
+        "MRR@10": 0,
+        "JudgedPrecision@10": null,
+        "JudgedCoverage@10": 0.0
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 9.528,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "45638119",
+          "grade": 1,
+          "evidence": 0.91,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 54",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.0,
+        "MRR@10": 0,
+        "JudgedPrecision@10": null,
+        "JudgedCoverage@10": 0.0
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.6309,
+        "MRR@10": 0.5,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.4307,
+        "MRR@10": 0.25,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 9.069,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "49556906",
+          "grade": 1,
+          "evidence": 0.8307,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 56",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 9.527,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "4709641",
+          "grade": 1,
+          "evidence": 0.9085,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 57",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 10.096,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "4709641",
+          "grade": 1,
+          "evidence": 0.9033,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 70",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.3066,
+        "MRR@10": 0.3333,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.2
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.9197,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.2
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 9.123,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "5956380",
+          "grade": 1,
+          "evidence": 0.8532,
+          "mode": "pairwise"
+        },
+        {
+          "id": "4414547",
+          "grade": 1,
+          "evidence": 0.6665,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 100",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 8.745,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "4381486",
+          "grade": 1,
+          "evidence": 0.9368,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 113",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.6309,
+        "MRR@10": 0.5,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 10.041,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "6157837",
+          "grade": 1,
+          "evidence": 0.9413,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 115",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.5,
+        "MRR@10": 0.3333,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 8.755,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "33872649",
+          "grade": 1,
+          "evidence": 0.5076,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 118",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 9.394,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "6372244",
+          "grade": 1,
+          "evidence": 0.9119,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 124",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 9.572,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "4883040",
+          "grade": 1,
+          "evidence": 0.893,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 129",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 11.049,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "27768226",
+          "grade": 1,
+          "evidence": 0.9283,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 130",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 16.095,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "27768226",
+          "grade": 1,
+          "evidence": 0.9303,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 133",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.0,
+        "MRR@10": 0,
+        "JudgedPrecision@10": null,
+        "JudgedCoverage@10": 0.0
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.0,
+        "MRR@10": 0,
+        "JudgedPrecision@10": null,
+        "JudgedCoverage@10": 0.0
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.5,
+        "MRR@10": 0.3333,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 13.676,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "16280642",
+          "grade": 1,
+          "evidence": 0.4255,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 137",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.5,
+        "MRR@10": 0.3333,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 13.583,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "26016929",
+          "grade": 1,
+          "evidence": 0.8951,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 141",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 11.119,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "14437255",
+          "grade": 1,
+          "evidence": 0.9057,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 142",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 10.953,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "10582939",
+          "grade": 1,
+          "evidence": 0.9091,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 143",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 10.464,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "10582939",
+          "grade": 1,
+          "evidence": 0.906,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 146",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 10.697,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "10582939",
+          "grade": 1,
+          "evidence": 0.9247,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 148",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.0,
+        "MRR@10": 0,
+        "JudgedPrecision@10": null,
+        "JudgedCoverage@10": 0.0
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 12.755,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "1084345",
+          "grade": 1,
+          "evidence": 0.9592,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 163",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.6309,
+        "MRR@10": 0.5,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 13.354,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "18872233",
+          "grade": 1,
+          "evidence": 0.9275,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 171",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 12.495,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "12670680",
+          "grade": 1,
+          "evidence": 0.9236,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 179",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 0.75,
+        "nDCG@10": 0.1175,
+        "MRR@10": 0.1111,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 0.25,
+        "nDCG@10": 0.3904,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 0.6715,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.3
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 11.907,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "16322674",
+          "grade": 1,
+          "evidence": 0.9273,
+          "mode": "pairwise"
+        },
+        {
+          "id": "17450673",
+          "grade": 1,
+          "evidence": 0.8888,
+          "mode": "pairwise"
+        },
+        {
+          "id": "27123743",
+          "grade": 1,
+          "evidence": 0.8623,
+          "mode": "pairwise"
+        },
+        {
+          "id": "23557241",
+          "grade": 1,
+          "evidence": 0.6169,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    },
+    {
+      "name": "SciFact dev claim 180",
+      "judgedOnly": true,
+      "baseline": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "lexical": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "hybrid": {
+        "Recall@50": 1.0,
+        "nDCG@10": 1.0,
+        "MRR@10": 1.0,
+        "JudgedPrecision@10": 1.0,
+        "JudgedCoverage@10": 0.1
+      },
+      "candidateRecall": 1.0,
+      "knownRelevantMissed": [],
+      "rankingSeconds": 10.685,
+      "pairwiseApplied": true,
+      "labels": [
+        {
+          "id": "16966326",
+          "grade": 1,
+          "evidence": 0.8839,
+          "mode": "pairwise"
+        }
+      ],
+      "sourceErrors": {},
+      "providerTimings": {}
+    }
+  ]
+}

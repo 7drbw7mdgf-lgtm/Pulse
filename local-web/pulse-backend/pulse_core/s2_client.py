@@ -7,7 +7,7 @@ from pulse_core.constants import ClientError
 from pulse_core.metadata_utils import clean_author_name, clean_crossref_text
 from pulse_core.paper_identity import confident_candidate
 from pulse_core.search_limits import discovery_limit, SearchResults
-from pulse_performance import request_json, DiscoveryCancelled
+from pulse_performance import request_json, DiscoveryCancelled, DiscoveryBudgetExceeded
 
 S2_CACHE = {}
 
@@ -41,7 +41,7 @@ def fetch_s2_json(url, api_key=None, timeout=14, cache=True):
         if error.code == 404:
             return None
         raise ClientError(error.code, f"Semantic Scholar error: {details[:400]}")
-    except DiscoveryCancelled: raise
+    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
     except Exception as error:
         raise ClientError(502, f"Semantic Scholar connection error: {error}")
 
@@ -59,7 +59,7 @@ def post_s2_json(url, payload, api_key=None, timeout=14):
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         raise ClientError(error.code, f"Semantic Scholar error: {details[:400]}")
-    except DiscoveryCancelled: raise
+    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
     except Exception as error:
         raise ClientError(502, f"Semantic Scholar connection error: {error}")
 
@@ -81,6 +81,8 @@ def s2_to_metadata(item):
         "journal": (item.get("venue") or (item.get("journal") or {}).get("name") or "").strip(),
         "doi": doi,
         "s2PaperId": item.get("paperId"),
+        "corpusId": item.get('corpusId') or '',
+        "pmcid": str(ext_ids.get('PubMedCentral') or ''),
         "pmid": str(ext_ids.get("PubMed") or ""),
         "documentType": "preprint" if any(str(value).lower()=="preprint" for value in item.get("publicationTypes") or []) else "",
         "abstract": (item.get("abstract") or "").strip(),
@@ -158,7 +160,7 @@ def s2_paper_search(query, api_key=None, limit=30):
         url = f"https://api.semanticscholar.org/graph/v1/paper/search?query={enc}&fields=title,authors,year,venue,externalIds,citationCount,abstract,publicationTypes&limit={page_size}&offset={offset}"
         try:
             data = fetch_s2_json(url, api_key=api_key) or {}
-        except ClientError as error:
+        except (ClientError, DiscoveryBudgetExceeded) as error:
             return res.keep_partial(error)
         rows = data.get("data") or []
         for item in rows[:page_size]:

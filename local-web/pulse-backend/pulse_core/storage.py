@@ -284,6 +284,9 @@ def save_settings(payload):
     settings["gemmaModel"] = gemma_model
     settings["ollamaChatEndpoint"] = ollama_chat_endpoint
     settings["embeddingModel"] = embedding_model
+    from pulse_core.research_models import role
+    for name in ('triageModel', 'reportModel'):
+        settings[name] = role({**current, **({name: payload[name]} if name in payload else {})}, name)
     settings["autoGemmaExtraction"] = bool(auto_gemma_extraction)
     if isinstance(api_key, str) and api_key.strip():
         settings["apiKey"] = api_key.strip()
@@ -339,6 +342,8 @@ def public_settings(settings):
         "ollamaTagsEndpoint": resolve_ollama_tags_endpoint(settings),
         "ollamaEmbeddingsEndpoint": resolve_ollama_embeddings_endpoint(settings),
         "embeddingModel": resolve_embedding_model(settings),
+        "triageModel": settings.get('triageModel') or 'llama3.2:3b',
+        "reportModel": settings.get('reportModel') or 'qwen2.5:7b',
         "autoGemmaExtraction": settings.get("autoGemmaExtraction", LOCAL_BACKEND_DEFAULTS["autoGemmaExtraction"]),
         "configPath": str(_core.CONFIG_PATH),
         "defaults": LOCAL_BACKEND_DEFAULTS,

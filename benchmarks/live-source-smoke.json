@@ -1,0 +1,22 @@
+{
+  "sources": {
+    "europePmc": 75
+  },
+  "candidates": 75,
+  "displayed": 74,
+  "seconds": {
+    "retrievalSeconds": 4.171,
+    "totalSeconds": 11.143
+  },
+  "progressUpdates": 11,
+  "firstResults": {
+    "seconds": 1.02,
+    "completed": 0,
+    "count": 74
+  },
+  "pairwiseApplied": 74,
+  "sourceProblems": [
+    "core",
+    "lexicalConceptual"
+  ]
+}

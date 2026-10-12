@@ -219,6 +219,7 @@
       }
 
       const defaults = settings.defaults || {};
+      for(const key of ['triageModel','reportModel']){const input=document.getElementById(key+'Input');if(input)input.value=settings[key]||(key==='triageModel'?'llama3.2:3b':'qwen2.5:7b');}
       els.aiProviderInput.value = settings.aiProvider || defaults.aiProvider || 'local';
       els.cloudProviderInput.value = settings.cloudProvider || defaults.cloudProvider || 'not-configured';
       els.ollamaChatEndpointInput.value = settings.ollamaChatEndpoint || defaults.ollamaChatEndpoint || 'http://127.0.0.1:11434/api/chat';

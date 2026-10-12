@@ -46,6 +46,7 @@ from pulse_core.library_managers import manager_status, configure_mendeley, publ
 from pulse_core.mendeley_oauth import start_oauth
 from pulse_core.mendeley_sync import page as mendeley_sync_page, preferences as mendeley_sync_preferences
 from pulse_core.paper_agent import agent_status, PAPER_SUMMARY_JOBS
+from pulse_core.passages import retrieve_passages, import_s2orc
 from pulse_core.ollama_mgr import (
     OLLAMA_PROCESS,
     start_ollama_runtime_background,
@@ -181,6 +182,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/managers/save", "/api/managers/search", "/api/managers/mendeley/sync-page", "/api/managers/mendeley/sync-preferences",
             "/api/agent/start",
             "/api/agent/cancel",
+            "/api/papers/passages", "/api/corpus/s2orc/import",
             "/api/analyze",
             "/api/settings",
             "/api/library",
@@ -219,6 +221,8 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/managers/mendeley/sync-preferences": mendeley_sync_preferences,
                 "/api/agent/start": PAPER_SUMMARY_JOBS.start,
                 "/api/agent/cancel": PAPER_SUMMARY_JOBS.cancel,
+                "/api/papers/passages": retrieve_passages,
+                "/api/corpus/s2orc/import": import_s2orc,
                 "/api/settings": lambda p: public_settings(save_settings(p)),
                 "/api/library": save_library,
                 "/api/library/change": change_library,
@@ -385,14 +389,15 @@ except (ValueError, AttributeError):
 atexit.register(cleanup_resources)
 
 def start_parent_watchdog():
-    launcher_pid = os.getppid()
+    from pulse_core.platform_support import process_alive
+    launcher_pid = int(os.environ.get('PULSE_LAUNCHER_PID') or os.getppid())
     if launcher_pid <= 1:
         return
     def _watch():
         import time
         while True:
             time.sleep(3)
-            if os.getppid() != launcher_pid:
+            if not process_alive(launcher_pid):
                 cleanup_resources()
                 os._exit(0)
     t = threading.Thread(target=_watch, name="pulse-parent-watchdog", daemon=True)

@@ -1,5 +1,5 @@
 from test_library_save import storage, core, ClientError, patch, json
-import unittest, tempfile
+import unittest, tempfile, os
 from pathlib import Path
 
 class LibraryRecoveryTests(unittest.TestCase):
@@ -66,5 +66,6 @@ class LibraryRecoveryTests(unittest.TestCase):
     def test_recovery_files_are_private_and_listing_has_no_paper_text(self):
         result=storage.change_library({'action':'clear','workspace':self.workspace()})
         path=self.root/'recovery'/ (result['recoveryId']+'.json')
-        self.assertEqual(path.stat().st_mode & 0o777,0o600)
+        if os.name != 'nt':
+            self.assertEqual(path.stat().st_mode & 0o777,0o600)
         self.assertNotIn('Complete synthetic paper text',json.dumps(storage.list_recovery()))

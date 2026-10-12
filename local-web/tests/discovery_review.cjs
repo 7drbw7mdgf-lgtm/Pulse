@@ -18,3 +18,13 @@ console.log('PASS: delegated relevance labels, replacement grades, context isola
 const payloadSource=fs.readFileSync(path.join(frontend,'part_17.js'),'utf8');vm.runInContext(payloadSource.slice(payloadSource.indexOf('    function citationPaperPayload'),payloadSource.indexOf('    function applyCitationMetadata')),context);
 const payload=context.citationPaperPayload({...paper,authors:['Ada Brooks'],year:'2024',journal:'Synthetic journal',pmid:'123'});
 assert.equal(payload.abstract,paper.abstract);assert.equal(payload.year,'2024');assert.equal(payload.pmid,'123');assert.deepEqual([...payload.authors],['Ada Brooks']);assert.equal(payload.journal,'Synthetic journal');
+
+// Search feedback follows stable seed identities and the current question.
+state.discoveryRunContext={researchQuestion:'Safer cycling',seedPapers:[{title:'Transport design'}]};
+let steering=context.discoveryFeedbackPayload([{title:'Transport design',abstract:'Newly enriched metadata'}],{researchQuestion:'Safer cycling'});
+assert.equal(steering.relevanceFeedback.length,1);assert.equal(steering.relevanceFeedback[0].grade,0);
+assert.equal(context.discoveryFeedbackPayload([{title:'Different seed'}],{researchQuestion:'Safer cycling'}).relevanceFeedback.length,0);
+assert.equal(context.discoveryFeedbackPayload([{title:'Transport design'}],{researchQuestion:'Train frequency'}).relevanceFeedback.length,0);
+state.discoveryRunContext.seedPapers[0].abstract='Metadata added later';assert.equal(context.discoveryRating(paper),0,'Metadata enrichment must not lose existing judgements');
+assert(fs.readFileSync(path.join(frontend,'part_18.js'),'utf8').includes('discoveryFeedbackPayload(seeds,options)'),'Search requests must include scoped feedback');
+console.log('PASS: question-scoped feedback payload, stable context after metadata enrichment and request wiring.');

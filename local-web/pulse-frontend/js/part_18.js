@@ -101,7 +101,9 @@
       }
       if (state.discoveryLoading) return;
       const options = discoveryConfiguration();
-      if (!Object.values(options.branches).some(Boolean)) { showToast('Choose at least one discovery method.'); return; }
+      if(options.bridgeMode && seeds.length>8){showToast('Select up to eight seed papers for one bridge search.');return;}
+      if(options.bridgeMode && new Set(seeds.map(discoveryPaperKey)).size<2){showToast('Select at least two different seed papers to find bridges.');return;}
+      if (!Object.values(options.branches).some(Boolean) && !options.fullTextSearch) { showToast('Choose at least one discovery method.'); return; }
       if (options.branches.lexicalSearch && !Object.values(options.searchSources).some(Boolean) && !['citationGraph','citationNetwork','semanticSearch'].some(method=>options.branches[method])) { showToast('Choose at least one search source.'); return; }
       const key = recommendationKey(seeds);
       state.discoveryLoading = true;
@@ -117,7 +119,8 @@
           headers: apiHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             seedPapers: seeds.map(citationPaperPayload),
-            ...options
+            ...options,
+            ...(typeof discoveryFeedbackPayload === 'function' ? discoveryFeedbackPayload(seeds,options) : {})
           })
         });
         let data = await response.json();

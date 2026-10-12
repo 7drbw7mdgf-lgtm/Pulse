@@ -2,17 +2,23 @@ import pulse_core as _core
 import re
 import copy
 import math
+import time
 import urllib.parse
 from pulse_core.constants import ClientError
 from pulse_core.config_resolvers import resolve_semantic_scholar_api_key, resolve_core_api_key
 from pulse_core.discovery_queries import build_query_plan, search_query_plan
 from pulse_core.discovery_semantics import semantic_scores
+from pulse_core.discovery_crossencoder import crossencoder_scores
+from pulse_core.discovery_feedback import feedback_for_context
+from pulse_core.discovery_bridges import bridge_queries, distinct_seeds
+from pulse_core.research_models import triage
+from pulse_core.passages import search_fulltext_library
 from pulse_core.paper_identity import confident_candidate
 from pulse_core.doi_utils import normalize_doi
 from pulse_core.external_apis import fetch_json
 from pulse_core.metadata_utils import normalize_title_key, openalex_to_metadata
 from pulse_core.pipeline_ranking import merge_and_rank_pipeline_candidates, normalized_reference_similarity, balanced_frontier
-from pulse_core.search_limits import discovery_limit, SearchResults
+from pulse_core.search_limits import discovery_limit, candidate_limit, SearchResults
 from pulse_core.search_merge import merge_search_records
 from pulse_core.recommendations import (
     openalex_recommendation_item,
@@ -30,7 +36,7 @@ from pulse_core.s2_client import (
     s2_to_metadata,
 )
 from pulse_core.storage import load_settings
-from pulse_performance import parallel_branches, parallel_lookup, DiscoveryCancelled, REQUEST_CONTEXT, check_cancelled
+from pulse_performance import parallel_branches, parallel_lookup, DiscoveryCancelled, REQUEST_CONTEXT, check_cancelled, publish_partial, DiscoveryBudgetExceeded
 
 
 def openalex_work_id(value):
@@ -47,7 +53,7 @@ def openalex_work_for_paper(paper):
         try:
             work = fetch_json(f"https://api.openalex.org/works/{urllib.parse.quote('https://doi.org/' + doi, safe='')}")
             if confident_candidate(paper,[openalex_to_metadata(work)]): return work
-        except DiscoveryCancelled: raise
+        except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
         except Exception:
             pass
     title = (paper.get("title") or "").strip()
@@ -59,7 +65,7 @@ def openalex_work_for_paper(paper):
             metadata = [dict(openalex_to_metadata(work), _work=work) for work in results]
             match = confident_candidate(paper,metadata)
             if match: return match['_work']
-        except DiscoveryCancelled: raise
+        except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
         except Exception:
             pass
     return None
@@ -100,7 +106,7 @@ def openalex_discovery_works(work_filter, limit, sort='cited_by_count:desc'):
         try:
             data = fetch_json(f"https://api.openalex.org/works?{params}")
             rows = data.get("results") or []
-        except ClientError as error:
+        except (ClientError, DiscoveryBudgetExceeded) as error:
             return gathered.keep_partial(error)
         gathered.extend(rows[:limit - len(gathered)])
         if len(rows) < page_size:
@@ -116,7 +122,7 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
     for seed_index, paper in enumerate(seed_papers[:24]):
         before = len(gathered)
         try: s2_id = _core.s2_paper_id_for_paper(paper, api_key=api_key)
-        except DiscoveryCancelled: raise
+        except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
         except Exception: s2_id = None
         if s2_id:
             try:
@@ -124,8 +130,9 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                 refs = copy.deepcopy(refs)
                 for rank,item in enumerate(refs,1): item.update(hop=1,branch='citationGraph',subType='Backward',retrievalEvidence=[{'channel':f'citations:{seed_index}:backward','rank':rank,'provider':'Semantic Scholar'}])
                 gathered.extend(refs)
+                publish_partial(copy.deepcopy(gathered))
                 hop1_references.extend(refs)
-            except DiscoveryCancelled: raise
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
             except Exception:
                 pass
             try:
@@ -133,8 +140,9 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                 cites = copy.deepcopy(cites)
                 for rank,item in enumerate(cites,1): item.update(hop=1,branch='citationGraph',subType='Forward',retrievalEvidence=[{'channel':f'citations:{seed_index}:forward','rank':rank,'provider':'Semantic Scholar'}])
                 gathered.extend(cites)
+                publish_partial(copy.deepcopy(gathered))
                 hop1_citations.extend(cites)
-            except DiscoveryCancelled: raise
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
             except Exception:
                 pass
 
@@ -152,8 +160,9 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                         record["retrievalEvidence"] = [{"channel":f"citations:{seed_index}:backward","rank":len(hop1_references)+1,"provider":"OpenAlex"}]
                         record["reason"] = "Backward citation: foundational reference cited by seed paper."
                         gathered.append(record)
+                        if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
                         hop1_references.append(record)
-                    except DiscoveryCancelled: raise
+                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
                     except Exception:
                         continue
                 citing_works = openalex_citing_works(work_id, limit=per_seed)
@@ -166,6 +175,7 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                     record["retrievalEvidence"] = [{"channel":f"citations:{seed_index}:forward","rank":len(hop1_citations)+1,"provider":"OpenAlex"}]
                     record["reason"] = "Forward citation: downstream paper citing seed paper."
                     gathered.append(record)
+                    if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
                     hop1_citations.append(record)
 
     max_depth = 4 if str(depth) == "iterative" else max(1, min(int(depth or (2 if include_iterative_chase else 1)), 3))
@@ -192,7 +202,7 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                         item.update(subType=f"Iterative Chase ({hop}-Hop)", hop=hop, chaseViaTitle=parent.get("title", ""), reason=f"Citation hop {hop} via {parent.get('title', '')[:80]}")
                         gathered.append(item)
                         next_frontier.append((item, direction))
-                except DiscoveryCancelled: raise
+                except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
                 except Exception:
                     continue
         frontier = next_frontier
@@ -233,7 +243,8 @@ def fetch_citation_network_branch(seed_papers, api_key=None, limit=30):
                 record["networkSimilarity"] = min(1, cocite_counts[ref_norm]/max(1,len(citing_works)))
                 record["reason"] = f"Co-citation triangulation: cited together with seed paper by {cocite_counts[ref_norm]} citing papers."
                 gathered.append(record)
-            except DiscoveryCancelled: raise
+                if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
             except Exception:
                 continue
 
@@ -257,13 +268,14 @@ def fetch_citation_network_branch(seed_papers, api_key=None, limit=30):
                         record["networkSimilarity"] = normalized_reference_similarity(shared,len(seed_ref_ids),len(b_refs))
                         record["reason"] = f"Bibliographic coupling: shares {shared} foundational references with seed paper."
                         gathered.append(record)
-            except DiscoveryCancelled: raise
+                        if len(gathered) % 10 == 1: publish_partial(copy.deepcopy(gathered))
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
             except Exception:
                 pass
     return gathered
 
 
-def fetch_semantic_search_branch(seed_papers, api_key=None, exclude_papers=None, limit=30):
+def fetch_semantic_search_branch(seed_papers, api_key=None, exclude_papers=None, limit=30, feedback=None):
     positive_ids = []
     for p in seed_papers:
         ident = _core.s2_paper_id_for_paper(p, api_key=api_key)
@@ -271,7 +283,13 @@ def fetch_semantic_search_branch(seed_papers, api_key=None, exclude_papers=None,
             positive_ids.append(ident)
     if not positive_ids:
         return []
-    recs = s2_recommendations(positive_ids[:24], api_key=api_key, limit=limit)
+    negative_ids = []
+    for row in feedback or []:
+        ident = s2_paper_identifier(row['paper'])
+        if ident:
+            if row['grade'] > 0: positive_ids.append(ident)
+            else: negative_ids.append(ident)
+    recs = s2_recommendations(list(dict.fromkeys(positive_ids))[:24], negative_ids=list(dict.fromkeys(negative_ids))[:24], api_key=api_key, limit=limit)
     return [recommendation_record(r, {"score": 1.0, "reason": "S2 recommendations"}, "S2 Recommendations") for r in recs]
 
 
@@ -289,6 +307,11 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     seed_papers = payload.get("seedPapers") or payload.get("papers") or []
     if not seed_papers:
         raise ClientError(400, "Select at least one seed paper to run the literature discovery pipeline.")
+    if payload.get('bridgeMode') and len(distinct_seeds(seed_papers)) < 2:
+        raise ClientError(400, 'Select at least two different seed papers to find bridge papers.')
+    if payload.get('bridgeMode') and len(distinct_seeds(seed_papers)) > 8:
+        raise ClientError(400, 'Use up to eight different seed papers for one bridge search.')
+    started = time.monotonic()
     settings = _core.load_settings()
     api_key = resolve_semantic_scholar_api_key(settings)
     branches = payload.get("branches") or {}
@@ -296,20 +319,29 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     exclude_keywords = steering_terms(payload.get("excludeKeywords") or [])
     limit = discovery_limit(payload.get("limit"))
     include_iterative = bool(payload.get("includeIterativeChase", True))
+    feedback = feedback_for_context(payload, seed_papers)
+    retrieval_limit = candidate_limit(limit)
+    query_plan = []
     tasks = {}
+    if payload.get('fullTextSearch'):
+        fulltext_query = str(payload.get('researchQuestion') or ' '.join(str(p.get('title') or '') for p in seed_papers[:8]))
+        tasks['fullText'] = lambda: search_fulltext_library(fulltext_query, retrieval_limit)
     if branches.get("citationGraph", True):
         tasks["citationGraph"] = lambda: _core.fetch_citation_graph_branch(seed_papers, api_key=api_key, include_iterative_chase=include_iterative, limit=limit, depth=payload.get("depth"))
     if branches.get("citationNetwork", True):
         tasks["citationNetwork"] = lambda: fetch_citation_network_branch(seed_papers, api_key=api_key, limit=limit)
     if branches.get("semanticSearch", True):
-        tasks["semanticSearch"] = lambda: fetch_semantic_search_branch(seed_papers, api_key=api_key, limit=limit)
+        tasks["semanticSearch"] = lambda: fetch_semantic_search_branch(seed_papers, api_key=api_key, limit=limit, feedback=feedback)
     if branches.get("lexicalSearch", branches.get("lexicalConceptual", True)):
         sources = payload.get("searchSources") or {}
-        query_plan = build_query_plan(seed_papers,steer_keywords,str(payload.get('researchQuestion') or '')[:1000])
+        query_plan = build_query_plan(seed_papers,steer_keywords,str(payload.get('researchQuestion') or '')[:1000],feedback)
+        if payload.get('bridgeMode'):
+            focused = bridge_queries(seed_papers)
+            query_plan = focused + query_plan
         if sources.get("semanticScholar", True):
-            tasks["lexicalConceptual"] = lambda: search_query_plan(query_plan,'semanticScholar',s2_paper_search,limit,api_key=api_key)
+            tasks["lexicalConceptual"] = lambda: search_query_plan(query_plan,'semanticScholar',s2_paper_search,retrieval_limit,api_key=api_key)
         def public_search(provider, searcher, **kwargs):
-            records = search_query_plan(query_plan,provider,searcher,limit,structured=True,**kwargs)
+            records = search_query_plan(query_plan,provider,searcher,retrieval_limit,structured=True,**kwargs)
             for record in records:
                 record.update(branch="lexicalConceptual", subType="Conceptual search", isSeed=False,
                               reason="Keyword search via " + record["source"], discoveryBadges=[record["source"], "Concept search"])
@@ -329,6 +361,10 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         "recencyTilt": payload.get("recencyTilt") or 0,
         "impactTilt": payload.get("impactTilt") or 0,
         "limit": limit,
+        "relevanceFeedback": feedback,
+        "_matchCalibration": settings.get('searchMatchCalibration'),
+        "bridgeMode": bool(payload.get('bridgeMode')),
+        "_originalSeeds": seed_papers,
     }
     def source_errors(results, errors):
         return {**errors, **{name: records.warning for name, records in results.items() if getattr(records, "warning", "")}}
@@ -345,6 +381,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     if on_progress:
         on_progress({"total": len(tasks)})
     results, executed, errors = parallel_branches(tasks, progress, cancel_event)
+    retrieval_seconds = time.monotonic()-started
     ordered = {name: results.get(name, []) for name in tasks}
     if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
     if on_progress: on_progress({'stage':'ranking','completed':len(executed)+len(errors),'total':len(tasks)})
@@ -352,6 +389,11 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
     try:
         if payload.get('semanticRerank', True):
             options['_semanticReranker'] = lambda queries,records: semantic_scores(settings,queries,records,cancel_event,focus_first=bool(options['researchQuestion']))
+        if payload.get('pairwiseRerank', True):
+            options['_pairwiseReranker'] = lambda queries,records: crossencoder_scores(settings,queries,records,cancel_event)
+        if payload.get('aiTriage'):
+            question = options['researchQuestion'] or 'Related research to: '+ '; '.join(str(p.get('title') or '') for p in seed_papers[:8])
+            options['_aiTriage'] = lambda records: triage(records,question,settings,cancel_event)
         ranked = merge_and_rank_pipeline_candidates(ordered,seed_papers,options)
         check_cancelled()
     finally:
@@ -361,7 +403,16 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None):
         "provider": "Pulse literature discovery",
         "stage":"complete",
         "rankingNotice": options.get('_rankingNotice'),
-        "queryPlan": build_query_plan(seed_papers,steer_keywords,options['researchQuestion']),
+        "queryPlan": query_plan,
+        "candidateCount": options.get('_candidateCount', len(ranked)),
+        "retrievalLimitPerSource": retrieval_limit,
+        "feedbackApplied": len(feedback),
+        "bridgeCount": sum(p.get('isBridge', False) for p in ranked),
+        "bridgeMode": bool(payload.get('bridgeMode')),
+        "aiReviewedCount": options.get('_aiReviewedCount', 0),
+        "pairwiseRankingNotice": options.get('_pairwiseNotice'),
+        "matchCalibration": options.get('_calibrationApplied') or 'evidence-based',
+        "timings": {'retrievalSeconds': round(retrieval_seconds,3), 'totalSeconds': round(time.monotonic()-started,3)},
         "sourceCounts": {name:len(rows) for name,rows in results.items()},
         "queriesExecuted": {name:getattr(rows,"queries_executed",[]) for name,rows in results.items()},
         "seedCount": len(seed_papers),

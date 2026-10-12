@@ -42,6 +42,7 @@ function renderSelectedPaperReport() {
   summary.textContent = result.error ? 'The report could not be completed. Please try again.' : result.summary;
   if (result.error) summary.classList.add('agent-error');
   card.append(tag,title,summary);
+  if(result.evidence){const details=document.createElement('details');const heading=document.createElement('summary');heading.textContent='Source passages';details.append(heading);for(const passage of result.evidence.passages||[]){const p=document.createElement('p');p.textContent=`[${passage.id}] ${passage.section}: ${passage.text}`;details.append(p);}const note=document.createElement('p');note.textContent=result.evidence.message;details.append(note);card.append(details);}
   if (result.doi) {const doi=document.createElement('p');doi.className='agent-coverage';doi.textContent=`DOI: ${result.doi}`;card.append(doi);}
   els.aiResult.append(card);
 }
@@ -139,7 +140,7 @@ async function startPaperScan() {
   try {
     const job = await paperAgentRequest('/api/agent/start',{model:paperAgent.model, focus:els.aiPrompt.value,
       papers:[{id:paper.id,name:paper.name,title:paper.title,authors:paper.authors,year:paper.year,journal:paper.journal,
-        doi:paper.doi,keywords:mergedKeywords(paper),abstract:paper.abstract || '',text:paper.text || ''}]});
+        doi:paper.doi,pmcid:paper.pmcid,pmid:paper.pmid,corpusId:paper.corpusId,s2PaperId:paper.s2PaperId,keywords:mergedKeywords(paper),abstract:paper.abstract || '',text:paper.text || ''}]});
     try {sessionStorage.setItem(agentSessionKey,job.id);} catch (_) {}
     renderPaperAgentJob(job); pollPaperAgentJob(job.id);
   } catch (error) {

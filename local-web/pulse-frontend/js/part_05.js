@@ -25,6 +25,8 @@
             clearCoreApiKey,
             gemmaModel: els.gemmaModelInput.value.trim() || 'gemma3:4b',
             embeddingModel: els.embeddingModelInput.value.trim() || 'nomic-embed-text',
+            triageModel: document.getElementById('triageModelInput')?.value.trim() || 'llama3.2:3b',
+            reportModel: document.getElementById('reportModelInput')?.value.trim() || 'qwen2.5:7b',
             autoGemmaExtraction: els.autoGemmaExtractionInput?.checked !== false
           })
         });
