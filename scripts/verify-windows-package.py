@@ -98,7 +98,7 @@ def main():
             def request(path, payload=None):
                 data = json.dumps(payload).encode() if payload is not None else None
                 req = urllib.request.Request(base + path, data=data,
-                    headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
+                    headers={'X-Pulse-Token': token, 'Content-Type': 'application/json'})
                 with urllib.request.urlopen(req, timeout=20) as response:
                     return json.load(response)
             health = request('/api/health')
@@ -126,7 +126,7 @@ def main():
             passages = request('/api/papers/passages', {'paper': {'doi': row['doi']}, 'question': 'bicycle lanes intersection injuries'})
             assert passages['available'] and passages['passages'], passages
             report['installedPassageApi'] = True
-            assert 'configured' in request('/api/agent/status') or isinstance(request('/api/agent/status'), dict)
+            assert isinstance(request('/api/agent/status'), dict)
             assert isinstance(request('/api/managers/status'), dict)
             report['agentAndManagerApis'] = True
         finally:
