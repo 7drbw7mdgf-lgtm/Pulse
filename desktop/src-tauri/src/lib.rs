@@ -121,8 +121,15 @@ fn launch_backend(app: &tauri::AppHandle) -> Result<(Child, Launch), Box<dyn std
     loop {
         if let Ok(bytes) = fs::read(&launch_path) {
             if let Ok(launch) = serde_json::from_slice::<Launch>(&bytes) {
-                fs::remove_file(&launch_path)?;
-                return Ok((child, launch));
+                match fs::remove_file(&launch_path) {
+                    Ok(()) => return Ok((child, launch)),
+                    // Windows cannot delete the handshake while Python flushes
+                    // its open writer (or a scanner holds it). Retry until the
+                    // handle closes, keeping the normal exit/timeout checks.
+                    #[cfg(windows)]
+                    Err(error) if matches!(error.raw_os_error(), Some(32 | 33)) => (),
+                    Err(error) => return Err(error.into()),
+                }
             }
         }
         if let Some(status) = child.try_wait()? {
