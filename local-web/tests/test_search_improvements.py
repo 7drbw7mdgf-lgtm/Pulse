@@ -91,10 +91,11 @@ class SearchImprovementsTests(unittest.TestCase):
             self.assertEqual(network.call_count,1)
 
     def test_request_timeout_respects_remaining_budget(self):
-        perf.REQUEST_CONTEXT.deadline=time.monotonic()+.8
-        with patch.object(perf.urllib.request,'urlopen',return_value=io.BytesIO(b'{}')) as network:
+        perf.REQUEST_CONTEXT.deadline=101.0
+        # Exact binary fractions avoid platform clock resolution and subtraction noise.
+        with patch.object(perf.time,'monotonic',return_value=100.25), patch.object(perf.urllib.request,'urlopen',return_value=io.BytesIO(b'{}')) as network:
             perf.request_json(urllib.request.Request('https://unit.test/budget'),cache=False)
-            self.assertLessEqual(network.call_args.kwargs['timeout'],.8)
+            self.assertEqual(network.call_args.kwargs['timeout'],.75)
 
     def test_feedback_is_scoped_to_question_and_seed_identity(self):
         payload={'researchQuestion':'Safer cycling','feedbackContext':{'researchQuestion':'Safer cycling','seedPapers':[SEED]},'relevanceFeedback':[{'grade':0,'paper':paper('no')},{'grade':2,'paper':paper('yes')}]}
