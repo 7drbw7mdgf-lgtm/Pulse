@@ -16,14 +16,19 @@ try {
     Invoke-Checked python @("-m", "pip", "install", "-r", "scripts/requirements-windows-build.txt")
     Invoke-Checked python @("scripts/stage-desktop.py")
     Invoke-Checked python @("scripts/freeze-windows-backend.py", "--work-dir", (Join-Path $Output "backend-build"))
+    $Target = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path $Root "desktop/src-tauri/target" }
+    $NsisDir = Join-Path $Target "x86_64-pc-windows-msvc/release/bundle/nsis"
+    if (Test-Path $NsisDir) { Remove-Item (Join-Path $NsisDir "*.exe") -Force -ErrorAction SilentlyContinue }
     Push-Location (Join-Path $Root "desktop")
     try {
         Invoke-Checked npm @("ci")
         Invoke-Checked npm @("run", "tauri", "--", "build", "--ci", "--config", "src-tauri/tauri.windows.conf.json", "--target", "x86_64-pc-windows-msvc", "--", "--locked")
     } finally { Pop-Location }
-    $Target = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path $Root "desktop/src-tauri/target" }
-    $Installers = @(Get-ChildItem (Join-Path $Target "x86_64-pc-windows-msvc/release/bundle/nsis") -Filter "*.exe")
-    if ($Installers.Count -ne 1) { throw "Expected one NSIS installer, found $($Installers.Count)." }
+    $Installers = @(Get-ChildItem $NsisDir -Filter "*$Version*.exe")
+    if ($Installers.Count -ne 1) {
+        $Installers = @(Get-ChildItem $NsisDir -Filter "*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+    }
+    if ($Installers.Count -ne 1) { throw "Expected one NSIS installer in $NsisDir, found $($Installers.Count)." }
     $Name = "Pulse-$Version-Windows-x64-Setup.exe"
     $Setup = Join-Path $Output $Name
     Copy-Item $Installers[0].FullName $Setup -Force
