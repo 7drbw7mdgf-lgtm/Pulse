@@ -16,6 +16,11 @@ from pulse_performance import DiscoveryCancelled
 _score_cache=collections.OrderedDict()
 _cache_lock=threading.RLock()
 _inference_lock=threading.Lock()
+# Passages scored per paper. Mac rankers shipped in 1.7.12-1.8.1 were frozen
+# before the window cap existed and always scored up to four spread windows;
+# 4 reproduces their scores exactly. One window is faster but changes
+# rankings, so it needs validation on labelled benchmarks before use.
+PAIRWISE_MAX_WINDOWS = 4
 
 
 def _cached_crossencoder_disk(config_dir, keys, scores=None):
@@ -129,7 +134,7 @@ def crossencoder_scores(settings, queries, records, cancel_event=None, nonblocki
     files=[python,model/'model.onnx',model/'model.safetensors',model/'tokenizer.json',worker]
     try:fingerprint=tuple((str(path.resolve()),path.stat().st_mtime_ns,path.stat().st_size) for path in files if path.is_file())
     except OSError:return None,'Pairwise ranking unavailable; using text, meaning and citation evidence.'
-    keys=[hashlib.sha256(json.dumps([fingerprint,queries[:2],paper,'single-window-v1'],ensure_ascii=False).encode()).hexdigest() for paper in prepared]
+    keys=[hashlib.sha256(json.dumps([fingerprint,queries[:2],paper,f'windows-{PAIRWISE_MAX_WINDOWS}-v1'],ensure_ascii=False).encode()).hexdigest() for paper in prepared]
     started=time.monotonic()
     if nonblocking:
         # Background pre-scoring never waits behind foreground ranking.
@@ -153,7 +158,7 @@ def crossencoder_scores(settings, queries, records, cancel_event=None, nonblocki
             with _cache_lock:return [_score_cache[key] for key in keys], 'Titles and abstracts assessed together with your research question.'
         positions={key:index for index,key in enumerate(keys)}
         payload_data = {'model': str(model.resolve()), 'queries': queries[:2],
-            'records':[prepared[positions[key]] for key in missing], 'maxWindows':1}
+            'records':[prepared[positions[key]] for key in missing], 'maxWindows':PAIRWISE_MAX_WINDOWS}
         scores,notice=_infer(python,worker,payload_data,len(missing),cancel_event,max(1,12-(time.monotonic()-started)))
         if scores is None:return None,notice
         with _cache_lock:
@@ -417,7 +422,7 @@ def warmup_crossencoder(settings):
         'model': str(model.resolve()),
         'queries': ['warmup query'],
         'records': [{'title': 'Warmup Title', 'abstract': 'Warmup abstract'}],
-        'maxWindows': 1
+        'maxWindows': PAIRWISE_MAX_WINDOWS
     }
     if not _inference_lock.acquire(blocking=False):
         return
