@@ -220,6 +220,12 @@
         node.addEventListener('pointerdown', event => {
           if (event.button !== 0) return;
           event.stopPropagation();
+          if ((event.shiftKey || event.metaKey || event.ctrlKey) && typeof toggleMapMultiSelection === 'function') {
+            event.preventDefault();  // Shift-click would otherwise extend a text selection.
+            window.getSelection?.()?.removeAllRanges?.();
+            toggleMapMultiSelection(id);
+            return;
+          }
           const paper = state.papers.find(item => item.id === id);
           if (!paper) return;
           node.parentNode.appendChild(node);

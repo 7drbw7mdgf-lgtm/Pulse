@@ -18,7 +18,7 @@ const {chromium}=require('playwright');
     page.on('pageerror',error=>errors.push(error.message));
     await page.goto(url);await page.waitForFunction(()=>state.autosaveReady);
     assert.equal(await page.evaluate(()=>state.papers.length),0);
-    assert.equal(await page.locator('#ribbonConceptSearchButton').isDisabled(),true);
+    assert.equal(await page.locator('#ribbonConceptSearchButton').count(),0,'Concept search runs from the search bar with Enter');
 
     // Real HTTP route accepts seed-free topics and validates them before spawning a job.
     const validation=await page.evaluate(async()=>{
@@ -51,7 +51,6 @@ const {chromium}=require('playwright');
         sourceCounts:{europePmc:1},branchesExecuted:['europePmc'],errors:{}}});
     });
     await page.locator('#discoveryResearchQuestion').fill('How do bicycle lanes reduce intersection injuries?');
-    assert.equal(await page.locator('#ribbonConceptSearchButton').isDisabled(),false);
     await page.locator('#discoveryResearchQuestion').press('Enter');
     await page.waitForFunction(()=>!state.discoveryLoading&&state.discoveryResults.length===1);
     assert.equal(requests.length,1);assert.equal(requests[0].searchMode,'concept');
@@ -89,7 +88,8 @@ const {chromium}=require('playwright');
     await page.locator('#discoveryResearchQuestion').fill('cycling infrastructure');
     for(const size of [{width:1547,height:1031},{width:1024,height:720},{width:600,height:720}]){
       await page.setViewportSize(size);
-      assert.equal(await page.locator('#ribbonConceptSearchButton').isVisible(),true);
+      assert.equal(await page.locator('#discoveryResearchQuestion').isVisible(),true);
+      if(size.width>=1500)assert.ok((await page.locator('#discoveryResearchQuestion').boundingBox()).width>470,'The search bar uses the freed space');
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Search controls must fit the viewport');
     }
     if(process.env.PULSE_UI_SCREENSHOT_DIR){await page.setViewportSize({width:1547,height:1031});

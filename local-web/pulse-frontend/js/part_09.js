@@ -135,8 +135,11 @@
 
       focus.x = centerX;
       focus.y = centerY;
-      placePaperRing(neighbors, centerX, centerY, innerRadius, -Math.PI / 2);
-      placePaperRing(others, centerX, centerY, outerRadius, -Math.PI / 2 + Math.PI / Math.max(others.length, 2));
+      // Papers the user placed (dragged or dropped from the Library) keep their position.
+      const unpinned = list => list.filter(paper => !paper.pinnedPosition);
+      placePaperRing(unpinned(neighbors), centerX, centerY, innerRadius, -Math.PI / 2);
+      const looseOthers = unpinned(others);
+      placePaperRing(looseOthers, centerX, centerY, outerRadius, -Math.PI / 2 + Math.PI / Math.max(looseOthers.length, 2));
       constrainPapers(width, height);
       return true;
     }
@@ -175,6 +178,7 @@
       const spanX = (width / 2 - 80) * Math.max(1, spacing);
       const spanY = (height / 2 - 70) * Math.max(1, spacing);
       state.papers.forEach(paper => {
+        if (paper.pinnedPosition) return;  // A user-placed paper stays where it was put.
         paper.x = Math.min(centerX + spanX, Math.max(centerX - spanX, paper.x));
         paper.y = Math.min(centerY + spanY, Math.max(centerY - spanY, paper.y));
       });

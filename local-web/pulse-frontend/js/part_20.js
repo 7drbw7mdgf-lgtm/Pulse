@@ -283,6 +283,7 @@
     }
     els.map?.addEventListener('click', handleGraphBackgroundClick);
     bindCanvasPanEvents();
+    if (typeof bindMapInteractions === 'function') bindMapInteractions();
     els.settingsButton?.addEventListener('click', () => setSettingsOpen(true));
     els.settingsCloseButton?.addEventListener('click', () => setSettingsOpen(false));
     els.settingsPanel?.addEventListener('click', event => {

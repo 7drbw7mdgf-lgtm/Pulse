@@ -540,8 +540,10 @@ const discoveryBoundCheckboxes=new WeakSet();
 
       const title = document.getElementById('discoveryModalTitle');
       if (title) title.textContent = conceptMode?'Concept search':'Literature discovery';
-      const eyebrow=document.getElementById('discoveryModalEyebrow');if(eyebrow)eyebrow.textContent=conceptMode?'Papers matching your concept':'Related to your seed paper';
-      if (els.discoveryModalSubtitle) els.discoveryModalSubtitle.textContent = seedTitle;
+      const bridgeSeeds=!conceptMode&&state.discoveryRunContext?.bridgeMode?(state.discoveryRunContext.seedPapers||[]):[];
+      const eyebrow=document.getElementById('discoveryModalEyebrow');if(eyebrow)eyebrow.textContent=conceptMode?'Papers matching your concept':bridgeSeeds.length>1?`Bridging ${bridgeSeeds.length} selected papers`:'Related to your seed paper';
+      const bridgeTitle=bridgeSeeds.slice(0,3).map(paper=>cleanDiscoveryTitle(paper.title||'Untitled')).join(' ↔ ')+(bridgeSeeds.length>3?` + ${bridgeSeeds.length-3} more`:'');
+      if (els.discoveryModalSubtitle) els.discoveryModalSubtitle.textContent = bridgeSeeds.length>1?bridgeTitle:seedTitle;
       if (els.discoveryModal.dataset) {
         els.discoveryModal.dataset.pane = state.discoveryMobilePane || 'results';
         els.discoveryModal.dataset.filtersOpen = String(Boolean(state.discoveryFiltersOpen));
@@ -555,9 +557,12 @@ const discoveryBoundCheckboxes=new WeakSet();
       const runInfo = discoveryRunInfoForModal();
       const conceptSummary=document.getElementById('discoveryConceptSummary');
       if(conceptSummary){
-        const intent=searching?.job?.conceptSearch||runInfo.conceptSearch;
-        conceptSummary.hidden=!conceptMode||!intent;
-        conceptSummary.innerHTML=conceptMode&&intent?'<strong>'+(intent.aiAssisted?'AI search keywords':'Search keywords')+'</strong>'+intent.keywords.map(term=>`<span class="dv-keyword">${escapeHtml(term)}</span>`).join('')+(intent.aiAssisted?'':`<small>${escapeHtml(intent.notice)}</small>`):'';
+        // Bridge searches show the concepts the selected papers share.
+        const bridgeIntent=!conceptMode?(searching?.job?.bridgeConcept||runInfo.bridgeConcept):null;
+        const intent=conceptMode?(searching?.job?.conceptSearch||runInfo.conceptSearch):bridgeIntent;
+        const label=bridgeIntent?(intent?.aiAssisted?'Shared concepts':'Shared terms'):(intent?.aiAssisted?'AI search keywords':'Search keywords');
+        conceptSummary.hidden=!intent?.keywords?.length;
+        conceptSummary.innerHTML=intent?.keywords?.length?'<strong>'+label+'</strong>'+intent.keywords.map(term=>`<span class="dv-keyword">${escapeHtml(term)}</span>`).join('')+(intent.aiAssisted?'':`<small>${escapeHtml(intent.notice)}</small>`):'';
       }
       const refine = document.getElementById('discoveryRefineFeedback');
       if (refine) {
@@ -611,7 +616,7 @@ const discoveryBoundCheckboxes=new WeakSet();
           const percent = isRefining ? 95 : Math.round(85 * (job.completed || 0) / Math.max(1, job.total || rows.length || 1));
           progress.innerHTML = `
             <div class="dv-progress-head">
-              <strong>${job.stage === 'keywords' ? 'Preparing search keywords…' : isRefining ? 'Refining…' : `Searching ${rows.length || ''} source${rows.length === 1 ? '' : 's'}…`}</strong>
+              <strong>${job.stage === 'keywords' ? (job.searchMode === 'bridge' ? 'Finding what the selected papers share…' : 'Preparing search keywords…') : isRefining ? 'Refining…' : `Searching ${rows.length || ''} source${rows.length === 1 ? '' : 's'}…`}</strong>
               <span>${job.total ? `${job.completed || 0} of ${job.total} done · ` : ''}${totalItems.length} candidates so far · ${discoveryElapsed(searching.startedAt)} elapsed</span>
               <span class="dv-progress-bar"><span style="width:${percent}%"></span></span>
               <button type="button" class="dv-btn dv-btn-stop-review" data-dv-action="stop-review">Stop and review</button>

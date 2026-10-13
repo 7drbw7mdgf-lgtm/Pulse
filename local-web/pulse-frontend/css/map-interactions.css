@@ -1,0 +1,26 @@
+/* Map pointer modes, box selection, library-to-map dragging and the selection bar. */
+.dock-mode-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.dock-mode-toggle .dock-icon-btn { border-color: transparent; background: transparent; }
+.dock-mode-toggle .dock-icon-btn.is-active { background: var(--surface); color: #4f46e5; border-color: rgba(99, 102, 241, 0.35); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); }
+
+.map.is-select-mode { cursor: crosshair; }
+.map.is-select-mode .node { cursor: pointer; }
+.map .selection-box { fill: rgba(79, 70, 229, 0.08); stroke: #4f46e5; stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.node.is-multi-selected circle { stroke: #4f46e5; stroke-width: 3.5; stroke-dasharray: 4 3; }
+.pulse-paper-card.is-multi-selected, .library-table-row.is-multi-selected { box-shadow: inset 3px 0 0 #4f46e5; }
+
+.map-selection-bar { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12); font-size: 12px; color: var(--ink); }
+.map-selection-bar[hidden] { display: none; }
+.map-selection-bar, .map-viewport svg.map { user-select: none; -webkit-user-select: none; }
+.map-selection-count { font-weight: 600; margin-right: 4px; white-space: nowrap; }
+.map-selection-bar button { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+.map-selection-bar button:hover:not(:disabled) { background: var(--surface-2); }
+.map-selection-bar .map-selection-primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+.map-selection-bar .map-selection-primary:hover:not(:disabled) { background: #4338ca; }
+.map-selection-bar button:disabled { opacity: .5; cursor: default; }
+
+body.is-dragging-paper, body.is-dragging-paper * { user-select: none; -webkit-user-select: none; cursor: grabbing !important; }
+.map-viewport.is-paper-drop-target { outline: 2px dashed #4f46e5; outline-offset: -4px; background-color: rgba(79, 70, 229, 0.04); }
+.map-drag-ghost { position: fixed; z-index: 1000; pointer-events: none; max-width: 260px; padding: 7px 10px; border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 12px; font-weight: 600; box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translate(12px, 12px); }
+.map-drag-ghost small { display: block; font-weight: 400; color: var(--muted); }
+.pulse-paper-card.is-drag-source, .library-table-row.is-drag-source { opacity: .55; }

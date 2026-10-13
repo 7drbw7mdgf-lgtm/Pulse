@@ -108,6 +108,7 @@
 
       els.map.addEventListener('pointerdown', event => {
         if (event.target.closest?.('.node') || event.target.closest?.('.edge') || event.target.closest?.('.edge-hit') || event.target.closest?.('.area-region')) return;
+        if (typeof beginMapBoxSelection === 'function' && beginMapBoxSelection(event)) return;
         state.panDrag = {
           pointerId: event.pointerId,
           clientX: event.clientX,
@@ -124,22 +125,27 @@
           updateAreaResize(event);
           return;
         }
+        if (typeof updateMapBoxSelection === 'function' && updateMapBoxSelection(event)) return;
         if (!state.panDrag || state.panDrag.pointerId !== event.pointerId) return;
         const rect = els.map.getBoundingClientRect();
         const scaleX = state.view.width / Math.max(rect.width, 1);
         const scaleY = state.view.height / Math.max(rect.height, 1);
+        if (Math.hypot(event.clientX - state.panDrag.clientX, event.clientY - state.panDrag.clientY) > 4) state.panDrag.moved = true;
         state.view.x = state.panDrag.startX - (event.clientX - state.panDrag.clientX) * scaleX;
         state.view.y = state.panDrag.startY - (event.clientY - state.panDrag.clientY) * scaleY;
         els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
       });
 
       const endPan = event => {
+        if (typeof finishMapBoxSelection === 'function' && finishMapBoxSelection(event)) return;
         if (state.areaResize && state.areaResize.pointerId === event.pointerId) {
           state.areaResize = null;
           render();
           return;
         }
         if (!state.panDrag || state.panDrag.pointerId !== event.pointerId) return;
+        // A drag that panned the map is not a click on the background.
+        if (state.panDrag.moved) state.suppressMapClick = true;
         state.panDrag = null;
         els.map.classList.remove('is-panning');
       };

@@ -146,6 +146,7 @@
       bindAreaEvents();
       bindEdgeEvents();
       bindNodeEvents();
+      if (typeof renderMultiSelection === 'function') renderMultiSelection();
       renderTagFilterBar();
       renderTableView();
       renderPapers();

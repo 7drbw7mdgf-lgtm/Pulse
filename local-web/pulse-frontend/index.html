@@ -1,6 +1,6 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.8.2 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261012-dbef-scale">
+<title>Pulse v1.8.2 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261013-map">
 <link rel="icon" type="image/png" href="favicon.png?v=1.8.2"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
@@ -62,7 +62,7 @@
 <button class="pill-btn-sm" data-search-source="europePmc" type="button">Europe PMC</button>
 <button class="pill-btn-sm" data-search-source="core" type="button">CORE</button>
 <button class="pill-btn-sm" data-search-source="arxiv" type="button">arXiv</button>
-</div><small class="subtle">Used by Search papers and the Concepts method. Available full-text links appear with results.</small></div>
+</div><small class="subtle">Used by concept search (Enter in the search bar) and the Concepts method. Available full-text links appear with results.</small></div>
 <span class="ribbon-v-divider" aria-hidden="true"></span> <div class="ribbon-group">
 <span class="ribbon-label">Citation depth</span> <div class="ribbon-pills">
 <button class="pill-btn-sm active" data-depth="1" type="button">Direct <small>1-hop</small></button>
@@ -81,15 +81,14 @@
 <label for="discoveryGraphFocusInput">Map focus<input id="discoveryGraphFocusInput" placeholder="Keywords to highlight on the map" autocomplete="off"><small>Changes the map focus, not the search results.</small></label>
 </div></details>
 <label class="discovery-diversify"><input id="discoveryDiversify" type="checkbox" checked> Include varied perspectives <small>Reduce near-identical results at the top.</small></label>
-<label class="discovery-diversify"><input id="discoveryBridgeMode" type="checkbox"> Find bridge papers <small>Select 2–8 Library table rows or a graph link; prioritise papers connecting those seeds.</small></label>
+<label class="discovery-diversify"><input id="discoveryBridgeMode" type="checkbox"> Find bridge papers <small>Select 2–8 papers (box-select on the map, or Library table rows) or a graph link; searches for what they share and prioritises papers connecting them.</small></label>
 <label class="discovery-diversify"><input id="discoveryFullTextSearch" type="checkbox"> Search full-text library <small>Include passages from retrieved PMC articles and imported S2ORC records.</small></label>
 <label class="discovery-diversify"><input id="discoveryAiTriage" type="checkbox"> AI relevance review <small>Review a shortlist locally; uncertain results stay available.</small></label>
 <label class="discovery-diversify"><input id="discoveryFastEmbed" type="checkbox" checked> Fast embedding (all-minilm) <small>Uses all-minilm for faster embedding; slightly less accurate.</small></label>
-<div class="discovery-popup-footer"><span>Sources, filters and ranking preferences also apply to Search papers.</span><button id="discoveryOptionsDone" type="button">Done</button></div>
+<div class="discovery-popup-footer"><span>Sources, filters and ranking preferences also apply to concept search.</span><button id="discoveryOptionsDone" type="button">Done</button></div>
 </div></div>
-<label class="discovery-question" for="discoveryResearchQuestion"><span class="sr-only">Concept, key phrases or research question</span><input id="discoveryResearchQuestion" type="search" maxlength="1000" placeholder="Search a concept, key phrases or question…" autocomplete="off" title="Search papers with AI-assisted keywords, or use this phrase to focus Discover related."></label>
+<label class="discovery-question" for="discoveryResearchQuestion"><span class="sr-only">Concept, key phrases or research question</span><input id="discoveryResearchQuestion" type="search" maxlength="1000" placeholder="Search a concept, key phrases or question, then press Enter…" autocomplete="off" title="Press Enter to search papers with AI-assisted keywords. The phrase also focuses Discover related." enterkeyhint="search"></label>
 <label class="ribbon-result-limit" for="discoveryResultLimit"><span>Results</span><select id="discoveryResultLimit" aria-label="Discovery result limit"><option value="50">Up to 50</option><option value="100">Up to 100</option><option value="200" selected>Up to 200</option><option value="500">Up to 500</option><option value="1000">Up to 1,000</option><option value="2000">Up to 2,000</option></select></label>
-<button id="ribbonConceptSearchButton" class="ribbon-discover-button" type="button" title="Search your concept with AI-assisted keywords. No seed paper needed." disabled>Search papers</button>
 <button id="ribbonDiscoverButton" class="ribbon-discover-button secondary" type="button" title="Discover papers related to your selected paper">Discover related</button>
 <button id="discoveryViewResults" class="ribbon-review-button" type="button" hidden>Review results</button>
 <div id="discoveryRunProgress" class="discovery-run-progress" role="status" aria-live="polite" hidden><progress id="discoveryProgressBar" max="100" value="0" aria-label="Discovery progress"></progress><span id="discoveryProgressText">Searching…</span><button id="discoveryCancelSearch" type="button">Cancel</button></div>
@@ -130,6 +129,7 @@
 <div class="map-viewport" aria-label="Map canvas — drop paper files here">
 <button id="inspectorReopen" class="inspector-reopen inspector-panel-button" type="button" aria-label="Show paper details" title="Show paper details" aria-controls="details" aria-expanded="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M11 9l-3 3 3 3"></path></svg></button>
 <div id="mapDropOverlay" class="map-drop-overlay" hidden><div><strong>Drop papers onto your map</strong><span>PDF, BibTeX, RIS, JSON and text files</span></div></div> <svg id="map" class="map" role="img" aria-label="A linkage map of related papers"></svg>
+<div id="mapSelectionBar" class="map-selection-bar" role="toolbar" aria-label="Selected papers" hidden><span id="mapSelectionCount" class="map-selection-count">0 selected</span><button id="mapSelectionBridge" class="map-selection-primary" type="button" title="Search for what the selected papers share and find papers connecting them">Find bridges</button><button id="mapSelectionClear" type="button">Clear</button></div>
 <div id="tableView" class="table-view" hidden></div>
 <section id="timelineView" class="timeline-view" aria-label="Papers in chronological order" hidden></section>
 <!-- EMPTY STATE -->
@@ -151,6 +151,8 @@
 </div>
 <div class="dock-row dock-row-bottom">
 <div class="dock-threshold-control"><label for="threshold">Threshold</label><input id="threshold" type="range" min="1" max="75" value="5"><span id="thresholdValue" class="dock-pill-value">5%</span></div>
+<span class="dock-divider" aria-hidden="true"></span>
+<div class="dock-mode-toggle" role="group" aria-label="Map pointer mode"><button id="mapModePan" class="dock-icon-btn is-active" type="button" aria-pressed="true" title="Pan the map (hold Shift to drag a selection box)"><span data-feather="move"></span><span class="sr-only">Pan</span></button><button id="mapModeSelect" class="dock-icon-btn" type="button" aria-pressed="false" title="Drag a box to select papers (⇧-click adds or removes one)"><span data-feather="box-select"></span><span class="sr-only">Box select</span></button></div>
 <span class="dock-divider" aria-hidden="true"></span>
 <div class="dock-tools-group">
 <button id="blowUpButton" class="dock-icon-btn" type="button" aria-label="Blow up map" title="Blow up map (⌘+)"><span data-feather="maximize-2"></span></button>
@@ -477,22 +479,23 @@
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your computer until you import them. PDFs and full paper text are not uploaded.</small></p>
 <details id="mendeleyDeveloperSettings" hidden><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this computer's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261012-dbef-scale"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261013-map"></script>
 <script src="js/map-tabs.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/paper-links.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_02.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/part_02.js?v=ui-20261013-map2"></script>
 <script src="js/part_03.js?v=ui-20261011-171"></script>
 <script src="js/part_04.js?v=ui-20261011-2"></script>
 <script src="js/part_05.js?v=ui-20261011-2"></script>
 <script src="js/part_06.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_07.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_08.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_09.js?v=ui-20261010-2"></script>
-<script src="js/part_10.js?v=ui-20261010-2"></script>
-<script src="js/part_11.js?v=ui-20261010-2"></script>
-<script src="js/part_12.js?v=ui-20261010-2"></script>
+<script src="js/part_09.js?v=ui-20261013-map2"></script>
+<script src="js/part_10.js?v=ui-20261013-map"></script>
+<script src="js/part_11.js?v=ui-20261013-map2"></script>
+<script src="js/part_12.js?v=ui-20261013-map2"></script>
 <script src="js/part_13.js?v=ui-20261011-9"></script>
-<script src="js/part_14.js?v=ui-20261011-10"></script>
+<script src="js/part_14.js?v=ui-20261013-map"></script>
+<script src="js/map-interactions.js?v=ui-20261013-map3"></script>
 <script src="js/part_15.js?v=ui-20261010-2"></script>
 <script src="js/part_23.js?v=ui-20261011-1"></script>
 <script src="js/mendeley-sync.js?v=ui-20261010-2"></script>
@@ -501,10 +504,10 @@
 <script src="js/publication-status.js?v=ui-20261012-evidence"></script>
 <script src="js/inspector.js?v=ui-20261011-11"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
 <script src="js/part_17.js?v=ui-20261011-5"></script>
-<script src="js/part_18.js?v=ui-20261011-171"></script>
+<script src="js/part_18.js?v=ui-20261013-map2"></script>
 <script src="js/discovery-review.js?v=ui-20261012-bridges-passages"></script>
 <script src="js/part_19.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/citation-lookup.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_20.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/part_20.js?v=ui-20261013-map"></script>
 <script src="js/timeline.js?v=ui-20261011-9"></script>
 <script src="js/part_21.js?v=ui-20261012-dbef-scale"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>

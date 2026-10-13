@@ -273,6 +273,7 @@
           }
         });
       });
+      if (typeof renderMultiSelection === 'function') renderMultiSelection();
     }
 
     function connectionStrengthLabel(score) {

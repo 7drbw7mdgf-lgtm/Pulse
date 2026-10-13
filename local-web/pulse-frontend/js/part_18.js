@@ -121,7 +121,7 @@
       if (options.branches.lexicalSearch && !Object.values(options.searchSources).some(Boolean) && !options.fullTextSearch && !['citationGraph','citationNetwork','citationCoCitation','semanticSearch'].some(method=>options.branches[method])) { showToast('Choose at least one search source.'); return; }
       const key = conceptMode?'concept::'+JSON.stringify(options):recommendationKey(seeds);
       const displaySeed=conceptMode?{title:query,isConceptQuery:true}:seeds[0];
-      const runContext={researchQuestion:options.researchQuestion,seedPapers:seeds.map(citationPaperPayload),searchMode:conceptMode?'concept':'related'};
+      const runContext={researchQuestion:options.researchQuestion,seedPapers:seeds.map(citationPaperPayload),searchMode:conceptMode?'concept':'related',bridgeMode:Boolean(!conceptMode&&options.bridgeMode&&seeds.length>1)};
       state.discoveryLoading = true;
       state.recommendationLoadingKey = key;
       state.discoveryJobId=null;state.discoveryCancelRequested=false;state.discoveryStopReview=false;state.discoveryProgressText=conceptMode?'Preparing search keywords…':'Searching your selected sources…';state.discoveryProgressPercent=0;
@@ -145,7 +145,7 @@
         state.discoveryJobId=data.id||null;
         if(state.discoveryCancelRequested&&data.id)await cancelDiscoverySearch();
         while(data.id&&data.status==='running'){
-          state.discoveryProgressText=data.stage==='keywords'?'Preparing search keywords…':(data.stage==='refining'||data.stage==='ranking')?'Refining…':!data.total?'Preparing searches…':`${data.completed||0} of ${data.total} searches complete · ${(data.recommendations||[]).length} candidates`;
+          state.discoveryProgressText=data.stage==='keywords'?(data.searchMode==='bridge'?'Finding what the selected papers share…':'Preparing search keywords…'):(data.stage==='refining'||data.stage==='ranking')?'Refining…':!data.total?'Preparing searches…':`${data.completed||0} of ${data.total} searches complete · ${(data.recommendations||[]).length} candidates`;
           state.discoveryProgressPercent=(data.stage==='refining'||data.stage==='ranking')?95:Math.min(85,85*(data.completed||0)/Math.max(1,data.total||1));syncDiscoveryControls();
           if((data.recommendations||[]).length)partial=data;
           if(typeof updateDiscoverySearching==='function')updateDiscoverySearching(data);

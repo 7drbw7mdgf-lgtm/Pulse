@@ -289,7 +289,7 @@ html[data-theme="dark"] .theme-switch .theme-moon { display:block; }
 }
 
 /* Research intent, lightweight progress and readable result review. */
-.discovery-question { flex: 1; min-width: 170px; max-width: 470px; }
+.discovery-question { flex: 1 1 420px; min-width: 240px; max-width: none; }
 .discovery-question input { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; box-sizing: border-box; }
 .discovery-question input:focus { outline: 2px solid #6366f1; outline-offset: 2px; }
 .pulse-ribbon-panel { position: relative; }

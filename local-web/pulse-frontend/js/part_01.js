@@ -315,7 +315,9 @@ const state = {
       'chevron-left': '<polyline points="15 18 9 12 15 6"></polyline>',
       'chevron-right': '<polyline points="9 18 15 12 9 6"></polyline>',
       'arrow-up': '<line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline>',
-      'arrow-down': '<line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>'
+      'arrow-down': '<line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>',
+      move: '<polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line>',
+      'box-select': '<rect x="3" y="3" width="14" height="14" rx="1.5" stroke-dasharray="3 2.5"></rect><path d="M12 12l8 3.5-3.4 1.1-1.1 3.4z"></path>'
     };
 
     function featherSvg(name) {

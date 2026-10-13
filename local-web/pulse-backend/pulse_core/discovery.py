@@ -16,7 +16,7 @@ from pulse_core.concept_search import validate_discovery_request, prepare_concep
 from pulse_core.discovery_semantics import semantic_scores, pre_embed_papers
 from pulse_core.discovery_crossencoder import crossencoder_scores, pre_score_crossencoder
 from pulse_core.discovery_feedback import feedback_for_context
-from pulse_core.discovery_bridges import bridge_queries, distinct_seeds
+from pulse_core.discovery_bridges import bridge_queries, distinct_seeds, prepare_bridge_concept
 from pulse_core.research_models import triage
 from pulse_core.passages import search_fulltext_library
 from pulse_core.paper_identity import confident_candidate
@@ -577,6 +577,13 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
     if concept_query:
         if on_progress: on_progress({'stage':'keywords', 'searchMode':'concept', 'searchQuery':concept_query})
         concept_search = prepare_concept_search(concept_query, settings, cancel_event)
+    bridge_concept = None
+    if payload.get('bridgeMode') and not concept_query:
+        # Bridging searches for what the selected papers share, as a concept.
+        if on_progress: on_progress({'stage':'keywords', 'searchMode':'bridge'})
+        bridge_concept = prepare_bridge_concept(seed_papers, settings, cancel_event)
+        if bridge_concept and not str(payload.get('researchQuestion') or '').strip():
+            payload = dict(payload, researchQuestion=bridge_concept['query'])
     api_key = resolve_semantic_scholar_api_key(settings)
     branches = payload.get("branches") or {}
     if concept_query:
@@ -584,6 +591,8 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
     steer_keywords = steering_terms(payload.get("steerKeywords") or payload.get("keywords") or [])
     if concept_search:
         steer_keywords = steering_terms(concept_search['keywords'] + steer_keywords)
+    if bridge_concept:
+        steer_keywords = steering_terms(bridge_concept['keywords'] + steer_keywords)
     exclude_keywords = steering_terms(payload.get("excludeKeywords") or [])
     limit = discovery_limit(payload.get("limit"))
     include_iterative = bool(payload.get("includeIterativeChase", False))
@@ -628,7 +637,14 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
         query_plan = concept_query_plan(concept_search, payload.get('steerKeywords'), feedback) if concept_search else build_query_plan(seed_papers,steer_keywords,str(payload.get('researchQuestion') or '')[:1000],feedback)
         if payload.get('bridgeMode'):
             focused = bridge_queries(seed_papers)
-            query_plan = focused + query_plan
+            shared = concept_query_plan(bridge_concept, payload.get('steerKeywords'), feedback) if bridge_concept else []
+            for query in shared: query['id'] = 'bridge-concept:' + query['id']
+            combined, seen_text = [], set()
+            for query in shared + focused + query_plan:
+                key = str(query.get('text') or '').casefold()
+                if key and key not in seen_text:
+                    seen_text.add(key); combined.append(query)
+            query_plan = combined[:14]
         if sources.get("semanticScholar", True):
             tasks["lexicalConceptual"] = lambda: search_query_plan(query_plan,'semanticScholar',s2_paper_search,retrieval_limit,api_key=api_key)
         def public_search(provider, searcher, **kwargs):
@@ -794,7 +810,7 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
         if citation_branches and citation_finished and settled_updates[0] >= 2 and len(tasks) > len(completed) + len(errors):
             return True
     if on_progress:
-        on_progress({"total": len(tasks), "stage":"collecting", "conceptSearch":concept_search})
+        on_progress({"total": len(tasks), "stage":"collecting", "conceptSearch":concept_search, "bridgeConcept":bridge_concept})
     try:
         results, executed, errors = parallel_branches(tasks, progress, cancel_event)
     finally:
@@ -861,6 +877,7 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
         "searchMode": "concept" if concept_query else "related",
         "searchQuery": concept_query,
         "conceptSearch": concept_search,
+        "bridgeConcept": bridge_concept,
         "stage":"complete",
         "rankingNotice": options.get('_rankingNotice'),
         "queryPlan": query_plan,
