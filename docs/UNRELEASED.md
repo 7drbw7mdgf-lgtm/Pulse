@@ -15,6 +15,6 @@
 - Added persistent on-disk SQLite HTTP cache in `http-cache.sqlite3` with 24-hour TTL for immutable work/citation queries and 15-minute TTL for free-text search queries, bounded to 200 MB with LRU eviction and credential exclusion.
 - Added keyless arXiv public provider for out-of-the-box literature search alongside Europe PMC and OpenAlex.
 
-## Pulse 1.8.1 (packaged, not yet published)
+## Pulse 1.8.1 and 1.8.2 (published)
 
-See [the 1.8.1 notes](releases/1.8.1.md): cross-encoder stall fix, exact-shortlist background pre-computation, persistent ranker protocol with single-shot fallback, OpenAlex-first citations with OpenCitations fallback, two-phase results, selection pre-warm, compressed 1 GB cache and a fixed Allow helper.
+See [the 1.8.1 notes](releases/1.8.1.md): cross-encoder stall fix, exact-shortlist background pre-computation, persistent ranker protocol with single-shot fallback, OpenAlex-first citations with OpenCitations fallback, two-phase results, selection pre-warm, compressed 1 GB cache and a fixed Allow helper. 1.8.2 rebuilds the Mac ranker with the persistent protocol; see [the 1.8.2 notes](releases/1.8.2.md).
