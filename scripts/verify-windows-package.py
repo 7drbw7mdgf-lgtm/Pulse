@@ -86,6 +86,8 @@ def main():
         assert diagnostic.returncode == 0, diagnostic.stdout + diagnostic.stderr
         report['bundledBackend'] = json.loads(diagnostic.stdout.strip().splitlines()[-1])
         assert report['bundledBackend']['ok']
+        assert report['bundledBackend'].get('localOcr'), 'Installed OCR verification is required'
+        assert report['bundledBackend'].get('offlinePairwiseRanker'), 'Installed offline ranking verification is required'
         native_log = (root / 'native.log').open('w')
         application = subprocess.Popen([str(native)], env=environment, stdout=native_log, stderr=native_log)
         backend_pid = None

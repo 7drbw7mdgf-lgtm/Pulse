@@ -1,4 +1,4 @@
-# Release-only runtime build; CPU wheels support macOS 11 with standalone Python 3.11.
+# Release-only runtime build: macOS 11+ Python 3.11 or Windows x64 Python 3.12.
 PyInstaller==6.22.3
 onnxruntime==1.18.1
 numpy==1.26.4
