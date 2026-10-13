@@ -49,7 +49,7 @@ const state = {
       discoveryJudgements: [],
       discoveryFullTextOnly: false,
       discoveryRunInfo: new Map(),
-      discoverySearchSources: {semanticScholar:true,europePmc:true,core:true},
+      discoverySearchSources: {semanticScholar:false,europePmc:true,core:false,arxiv:true},
       discoverySearchErrors: new Map(),
       discoveryLoading: false,
       discoveryResults: [],

@@ -57,7 +57,7 @@ def openalex_work_for_paper(paper):
     doi = normalize_doi(paper.get("doi") or "")
     if doi:
         try:
-            work = fetch_json(f"https://api.openalex.org/works/{urllib.parse.quote('https://doi.org/' + doi, safe='')}")
+            work = fetch_json(f"https://api.openalex.org/works/{urllib.parse.quote('https://doi.org/' + doi, safe='')}?select={OPENALEX_WORK_SELECT}")
             if confident_candidate(paper,[openalex_to_metadata(work)]): return work
         except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
         except Exception:
@@ -65,7 +65,7 @@ def openalex_work_for_paper(paper):
     title = (paper.get("title") or "").strip()
     if title:
         try:
-            params = urllib.parse.urlencode({"search": title, "per-page": 5})
+            params = urllib.parse.urlencode({"search": title, "per-page": 5, "select": OPENALEX_WORK_SELECT})
             data = fetch_json(f"https://api.openalex.org/works?{params}")
             results = data.get("results") or []
             metadata = [dict(openalex_to_metadata(work), _work=work) for work in results]
@@ -81,7 +81,7 @@ def fetch_openalex_work_by_id(work_id):
     normalized = openalex_work_id(work_id)
     if not normalized:
         raise ClientError(400, "No OpenAlex work ID was provided.")
-    return fetch_json(f"https://api.openalex.org/works/{urllib.parse.quote(normalized, safe='')}")
+    return fetch_json(f"https://api.openalex.org/works/{urllib.parse.quote(normalized, safe='')}?select={OPENALEX_WORK_SELECT}")
 
 
 def warm_paper_discovery(paper):
@@ -396,7 +396,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_cand
     if concept_query:
         # Topic searches have no synthetic seed, citation links or seed exclusions.
         payload = dict(payload, researchQuestion=concept_query, bridgeMode=False)
-        if not any((payload.get('searchSources') or {}).get(name, True) for name in ('semanticScholar','europePmc','core')) and not payload.get('fullTextSearch'):
+        if not any((payload.get('searchSources') or {}).get(name, True) for name in ('semanticScholar','europePmc','core')) and not (payload.get('searchSources') or {}).get('arxiv', False) and not payload.get('fullTextSearch'):
             raise ClientError(400, 'Choose at least one source for concept search.')
     if payload.get('bridgeMode') and len(distinct_seeds(seed_papers)) < 2:
         raise ClientError(400, 'Select at least two different seed papers to find bridge papers.')
@@ -444,7 +444,7 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_cand
             tasks["lexicalConceptual"] = lambda: search_query_plan(query_plan,'semanticScholar',s2_paper_search,retrieval_limit,api_key=api_key)
         def public_search(provider, searcher, **kwargs):
             previous_deadline = getattr(REQUEST_CONTEXT, 'deadline', None)
-            if provider in ('core', 'europePmc'):
+            if provider in ('core', 'europePmc', 'arxiv'):
                 deadline = time.monotonic() + 8
                 REQUEST_CONTEXT.deadline = min(previous_deadline, deadline) if previous_deadline else deadline
             try:
@@ -459,6 +459,9 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_cand
             tasks["europePmc"] = lambda: public_search("europePmc",_core.search_europe_pmc)
         if sources.get("core", True):
             tasks["core"] = lambda: public_search("core",_core.search_core, api_key=resolve_core_api_key(settings))
+        if sources.get("arxiv", False):
+            from pulse_core.arxiv_search import search_arxiv
+            tasks["arxiv"] = lambda: public_search("arxiv", search_arxiv)
     options = {
         "steerKeywords": steer_keywords,
         "excludeKeywords": exclude_keywords,
@@ -471,6 +474,10 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_cand
         "impactTilt": payload.get("impactTilt") or 0,
         "citationVelocityPrior": payload.get("citationVelocityPrior", True),
         "foundationalPrior": payload.get("foundationalPrior", True),
+        "citationLinkBonus": payload.get("citationLinkBonus", True),
+        "citationLinkGate": payload.get("citationLinkGate", 0.3),
+        "citationLinkMode": payload.get("citationLinkMode", "velocity"),
+        "citationLinkWeight": payload.get("citationLinkWeight", 0.2),
         "impute_missing_graph":payload.get('impute_missing_graph','median'),
         "graph_imputation_shrink":payload.get('graph_imputation_shrink',.5),
         "limit": limit,

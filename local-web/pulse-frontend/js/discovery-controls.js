@@ -6,7 +6,7 @@ let ribbonCollapsed = false;
 function discoveryConfiguration() {
   const branches = Object.fromEntries(Object.values(discoveryMethodKeys).map(key => [key,state.discoveryBranches?.[key] !== false]));
   const depth = branches.citationGraph && ['1','2','3','iterative'].includes(String(state.discoveryDepth)) ? String(state.discoveryDepth) : '1';
-  const searchSources=Object.fromEntries(['semanticScholar','europePmc','core'].map(key=>[key,state.discoverySearchSources?.[key] !== false]));
+  const searchSources=Object.fromEntries(['semanticScholar','europePmc','core','arxiv'].map(key=>[key,state.discoverySearchSources?.[key] !== false]));
   const limit=[50,100,200,500,1000,2000].includes(Number(state.discoveryLimit))?Number(state.discoveryLimit):200;
   return {branches,searchSources,depth,limit,bridgeMode:Boolean(state.discoveryBridgeMode),aiTriage:Boolean(state.discoveryAiTriage),fastEmbed:Boolean(state.discoveryFastEmbed),fullTextSearch:Boolean(state.discoveryFullTextSearch),researchQuestion:String(state.discoveryResearchQuestion||'').trim(),strictExcludeKeywords:[...(state.discoveryStrictExclusions||[])],diversify:state.discoveryDiversify!==false,includeIterativeChase:depth !== '1',
     steerKeywords:[...(state.recommendationSteerKeywords || [])],excludeKeywords:[...(state.recommendationExcludeKeywords || [])],
@@ -14,7 +14,7 @@ function discoveryConfiguration() {
 }
 function discoveryConfigurationKey() {
   const options=discoveryConfiguration();
-  return 'dbef-seed-scale-v2::'+Object.values(options.branches).map(Boolean).join('_')+'::'+options.depth+'::'+options.limit+'::'+Object.values(options.searchSources).map(Boolean).join('_')+'::'+JSON.stringify([options.researchQuestion,options.strictExcludeKeywords,options.diversify,options.bridgeMode,options.aiTriage,options.fastEmbed,options.fullTextSearch]);
+  return 'citation-bonus-v1::'+Object.values(options.branches).map(Boolean).join('_')+'::'+options.depth+'::'+options.limit+'::'+Object.values(options.searchSources).map(Boolean).join('_')+'::'+JSON.stringify([options.researchQuestion,options.strictExcludeKeywords,options.diversify,options.bridgeMode,options.aiTriage,options.fastEmbed,options.fullTextSearch]);
 }
 function discoveryOptionsLabel() {
   const options=discoveryConfiguration(),enabled=Object.keys(discoveryMethodKeys).filter(method=>options.branches[discoveryMethodKeys[method]]);

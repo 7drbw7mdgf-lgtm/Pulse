@@ -5,7 +5,7 @@ const ids={};for(const id of ['discoveryOptionsPopup','discoveryOptionsButton','
 ids.discoveryOptionsPopup.hidden=true;
 ids.workspaceRibbon=node('workspaceRibbon');
 const methods=['citations','network','cocitation','semantic','concepts'].map(method=>node('',{method})),depths=['1','2','3','iterative'].map(depth=>node('',{depth})),specials=['seminal','recent'].map(special=>node('',{special})),summary=node('summary');
-const sources=['semanticScholar','europePmc','core'].map(searchSource=>node('',{searchSource}));
+const sources=['semanticScholar','europePmc','core','arxiv'].map(searchSource=>node('',{searchSource}));
 ids.discoveryOptionsPopup.querySelectorAll=s=>s==='[data-method]'?methods:s==='[data-depth]'?depths:s==='[data-special]'?specials:s==='[data-search-source]'?sources:[];ids.discoveryOptionsPopup.querySelector=()=>methods[0];
 const state={discoveryBranches:{citationGraph:true,citationNetwork:true,semanticSearch:true,lexicalSearch:true},discoveryDepth:'2',recommendationSteerKeywords:[],recommendationExcludeKeywords:[],recommendationAuthors:[],recommendationJournals:[],graphSteerKeywords:[],recommendationRecencyTilt:0,recommendationImpactTilt:0,recommendations:new Map(),discoveryResults:[]};
 let seeds=[{id:'one',title:'Synthetic retrieval paper'}],requests=[],opened=[],saved=0;
@@ -14,7 +14,7 @@ vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(frontend,'di
 const helpers=fs.readFileSync(path.join(frontend,'part_13.js'),'utf8');vm.runInContext(helpers.slice(0,helpers.indexOf('    function setRecommendationSteerOpen')),context);
 const pipeline=fs.readFileSync(path.join(frontend,'part_18.js'),'utf8');vm.runInContext(pipeline.slice(pipeline.indexOf('    async function runDiscoveryPipeline'),pipeline.indexOf('    function addSeminalPaperToMap')),context);
 context.initDiscoveryControls();assert.equal(summary.textContent,'All methods · 2-hop');
-assert(context.discoveryConfigurationKey().startsWith('dbef-seed-scale-v2::'),'Old ranking caches must be bypassed');
+assert(context.discoveryConfigurationKey().startsWith('citation-bonus-v1::'),'Old ranking caches must be bypassed');
 assert.equal(ids.discoveryResultLimit.value,'200','New workspaces default to 200 results');
 ids.ribbonReferencesTab.click();assert.equal(ids.ribbonDiscoveryPanel.hidden,true);assert.equal(ids.ribbonReferencesPanel.hidden,false);assert.equal(ids.ribbonReferencesTab.attributes['aria-selected'],'true');assert.equal(requests.length,0,'Tabs only change the visible tools');
 ids.ribbonReferencesTab.click();assert.equal(ids.ribbonReferencesPanel.hidden,true,'Pressing the active tab again collapses its tools');assert.equal(ids.ribbonDiscoveryPanel.hidden,true);assert.equal(ids.ribbonReferencesTab.attributes['aria-selected'],'true');assert.equal(ids.ribbonReferencesTab.attributes['aria-expanded'],'false');assert(ids.workspaceRibbon.classList.contains('is-collapsed'));
@@ -35,10 +35,10 @@ context.setDiscoveryOptionsOpen(true,false,'inspectorDiscoveryOptions');assert.e
 (async()=>{
  const savedDepth=state.discoveryDepth;delete state.discoveryDepth;assert.equal(context.discoveryConfiguration().depth,'1');state.discoveryDepth='invalid';assert.equal(context.discoveryConfiguration().depth,'1');state.discoveryDepth=savedDepth;
  await context.runDiscoveryPipeline();const first=requests[0];assert.equal(first.limit,1000);assert.equal(first.depth,'3');assert.equal(first.includeIterativeChase,true);assert.equal(first.branches.citationNetwork,false);assert.equal(first.recencyTilt,2);assert.equal(first.impactTilt,2);assert.deepEqual(first.steerKeywords,['retrieval','Graph']);assert.deepEqual(first.excludeKeywords,['finance']);assert.equal(first.seedPapers.length,1);assert.equal(first.seedPapers[0].id,'one');assert.equal(opened.length,1);
- assert.deepEqual(first.searchSources,{semanticScholar:true,europePmc:true,core:true});
+ assert.deepEqual(first.searchSources,{semanticScholar:true,europePmc:true,core:true,arxiv:true});
  const sourceKey=context.recommendationKey(seeds);sources[0].click();assert.notEqual(context.recommendationKey(seeds),sourceKey);assert.equal(requests.length,1,'Changing sources must not execute a search');
  depths[0].click();await context.runDiscoveryPipeline();assert.equal(requests[1].depth,'1');assert.equal(requests[1].includeIterativeChase,false);
- assert.equal(requests[1].searchSources.semanticScholar,false);assert.equal(requests[1].searchSources.europePmc,true);assert.equal(requests[1].searchSources.core,true);
+ assert.equal(requests[1].searchSources.semanticScholar,false);assert.equal(requests[1].searchSources.europePmc,true);assert.equal(requests[1].searchSources.core,true);assert.equal(requests[1].searchSources.arxiv,true);
  for(const method of methods)if(state.discoveryBranches[({citations:'citationGraph',network:'citationNetwork',cocitation:'citationCoCitation',semantic:'semanticSearch',concepts:'lexicalSearch'})[method.dataset.method]])method.click();
  await context.runDiscoveryPipeline();assert.equal(requests.length,2,'No methods must not silently run all methods');
  methods[0].click();let finish;

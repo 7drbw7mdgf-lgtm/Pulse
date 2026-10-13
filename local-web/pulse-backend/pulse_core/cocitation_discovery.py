@@ -18,7 +18,7 @@ def fetch_cocitation_branch(seed_papers,api_key=None,limit=500):
         unknown=[ident for ident in ids if ident not in metadata]
         for start in range(0,len(unknown),100):
             check_cancelled()
-            query=urllib.parse.urlencode({'filter':'openalex_id:'+'|'.join(unknown[start:start+100]),'per-page':100})
+            query=urllib.parse.urlencode({'filter':'openalex_id:'+'|'.join(unknown[start:start+100]),'per-page':100,'select':'id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language'})
             works=core.fetch_json('https://api.openalex.org/works?'+query).get('results') or []
             metadata.update({work_id(work.get('id')):work for work in works})
             update_result(ids)

@@ -281,7 +281,9 @@ def search_metadata(expected):
     if not exact:
         try:
             term = title if meaningful_title(title) else clean(' '.join(filter(None, [expected.get('abstract'), expected.get('keywords')])) or query, 700)
-            data = fetch_json('https://api.openalex.org/works?' + urllib.parse.urlencode({'search': term, 'per-page': 10}))
+            data = fetch_json('https://api.openalex.org/works?' + urllib.parse.urlencode({
+                'search': term, 'per-page': 10,
+                'select': 'id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language'}))
             candidates += [openalex_to_metadata(item) for item in data.get('results') or []]
         except (DiscoveryCancelled,DiscoveryBudgetExceeded):
             raise

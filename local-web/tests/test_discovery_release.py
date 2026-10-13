@@ -187,7 +187,7 @@ class StrongMatchTests(unittest.TestCase):
             self.assertEqual([row['rank'] for row in found if row['matchLabel']=='Explore'], list(range(7,16)))
             self.assertTrue(all(row['matchPoolSize']==30 for row in found))
             self.assertTrue(all(row['matchDisplaySize']==15 for row in found))
-            self.assertTrue(all(row['matchStrengthVersion']=='evidence-v5-dbef-seed-scale' for row in found))
+            self.assertTrue(all(row['matchStrengthVersion']=='evidence-v6-citation-bonus' for row in found))
 
     def test_provider_mirrors_and_query_variants_are_not_independent(self):
         evidence = [{'channel':'concepts:q1','provider':'CORE'}, {'channel':'concepts:q1','provider':'Semantic Scholar'}, {'channel':'concepts:q2','provider':'Europe PMC'}]

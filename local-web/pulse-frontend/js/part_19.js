@@ -197,7 +197,7 @@
       state.recommendationJournals = parseSteerList(listText(data.recommendationJournals), 10);
       state.graphSteerKeywords = parseSteerList(listText(data.graphSteerKeywords), 12);
       state.discoveryBranches = Object.fromEntries(['citationGraph','citationNetwork','citationCoCitation','semanticSearch','lexicalSearch'].map(key => [key,data.discoveryBranches?.[key] !== false]));
-      state.discoverySearchSources = Object.fromEntries(['semanticScholar','europePmc','core'].map(key => [key,data.discoverySearchSources?.[key] !== false]));
+      state.discoverySearchSources = Object.fromEntries(['semanticScholar','europePmc','core','arxiv'].map(key => [key,data.discoverySearchSources?.[key] !== false]));
       state.discoveryDepth = ['1','2','3','iterative'].includes(String(data.discoveryDepth)) ? String(data.discoveryDepth) : '1';
       state.discoveryLimit = [50,100,200,500,1000,2000].includes(Number(data.discoveryLimit)) ? Number(data.discoveryLimit) : 200;
       state.discoveryResearchQuestion = String(data.discoveryResearchQuestion || '').slice(0,1000);

@@ -318,6 +318,7 @@ const discoveryBoundCheckboxes=new WeakSet();
         if (options.searchSources?.semanticScholar !== false) planned.push('lexicalConceptual');
         if (options.searchSources?.europePmc) planned.push('europePmc');
         if (options.searchSources?.core) planned.push('core');
+        if (options.searchSources?.arxiv) planned.push('arxiv');
       }
       return planned;
     }

@@ -84,12 +84,12 @@ def _openalex_snapshot(paper):
         if not doi and not re.fullmatch(r'W\d+', ident):
             ident = ''
         if ident:
-            item = fetch_json('https://api.openalex.org/works/' + urllib.parse.quote(ident, safe=''), cache=False)
+            item = fetch_json('https://api.openalex.org/works/' + urllib.parse.quote(ident, safe='') + '?select=id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language', cache=False)
             if item and same_paper(paper, openalex_to_metadata(item)):
                 return snapshot('OpenAlex', item['id'].rsplit('/', 1)[-1], item, openalex_to_metadata(item))
             if doi:
                 return None
-    data = fetch_json('https://api.openalex.org/works?' + urllib.parse.urlencode({'search': paper.get('title', ''), 'per_page': 5}), cache=False)
+    data = fetch_json('https://api.openalex.org/works?' + urllib.parse.urlencode({'search': paper.get('title', ''), 'per_page': 5, 'select': 'id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language'}), cache=False)
     items = (data or {}).get('results') or []
     chosen = choose_candidate(paper, [openalex_to_metadata(item) for item in items])
     if chosen:
@@ -164,7 +164,8 @@ def paper_relations(payload):
     elif kind == 'references':
         ids = metrics['referenceIds'][offset:offset + 100]
         data = fetch_json('https://api.openalex.org/works?' + urllib.parse.urlencode({
-            'filter': 'openalex:' + '|'.join(x.rsplit('/', 1)[-1] for x in ids), 'per_page': 100})) if ids else {}
+            'filter': 'openalex:' + '|'.join(x.rsplit('/', 1)[-1] for x in ids), 'per_page': 100,
+            'select': 'id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language'})) if ids else {}
         records = {x['id']: x for x in data.get('results') or []}
         items = [dict(openalex_to_metadata(records[x]), url=x) for x in ids if x in records]
         unresolved = len(ids) - len(items)
@@ -174,7 +175,8 @@ def paper_relations(payload):
         cursor = str(payload.get('cursor') or '*')
         if len(cursor) > 4096: raise ClientError(400, 'Invalid citation cursor.')
         data = fetch_json('https://api.openalex.org/works?' + urllib.parse.urlencode({
-            'filter': 'cites:' + metrics['identifier'], 'per_page': 100, 'cursor': cursor}))
+            'filter': 'cites:' + metrics['identifier'], 'per_page': 100, 'cursor': cursor,
+            'select': 'id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language'}))
         items = [dict(openalex_to_metadata(item), url=item.get('id')) for item in data.get('results') or []]
         unresolved = 0
         total = data.get('meta', {}).get('count', metrics['citationCount'])

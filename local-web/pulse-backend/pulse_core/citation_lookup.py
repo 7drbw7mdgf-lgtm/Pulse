@@ -79,7 +79,8 @@ def search_citation(group, context=''):
         # Work search indexes titles rather than surnames; use the author-name
         # filter directly so a name absent from the title still retrieves papers.
         safe_name = re.sub(r'[^\w\s\-’\']', ' ', group['authors'][0])
-        params = {'filter': f'publication_year:{year},raw_author_name.search:{safe_name}', 'per-page': 50}
+        params = {'filter': f'publication_year:{year},raw_author_name.search:{safe_name}', 'per-page': 50,
+                  'select': 'id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language'}
         if context:
             params['search'] = context
         data = fetch_json('https://api.openalex.org/works?' + urllib.parse.urlencode(params))

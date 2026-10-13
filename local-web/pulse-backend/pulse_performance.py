@@ -1,10 +1,12 @@
 """Bounded discovery jobs, provider requests, and persistent embedding reuse."""
+import gzip
 import hashlib
 import copy
 from email.utils import parsedate_to_datetime
 import json
 import os
 import queue
+import re
 import sqlite3
 import threading
 import time
@@ -59,6 +61,7 @@ def _urlopen_persistent(request, timeout=14):
     headers = dict(request.header_items()) if hasattr(request, 'header_items') else {}
     if not any(k.lower() == 'connection' for k in headers): headers['Connection'] = 'keep-alive'
     if not any(k.lower() == 'host' for k in headers): headers['Host'] = parsed.netloc
+    if not any(k.lower() == 'accept-encoding' for k in headers): headers['Accept-Encoding'] = 'gzip'
     method = request.get_method() if hasattr(request, 'get_method') else ('POST' if getattr(request, 'data', None) else 'GET')
     data = getattr(request, 'data', None)
     now = time.monotonic()
@@ -93,6 +96,11 @@ def _urlopen_persistent(request, timeout=14):
         conn.request(method, path, body=data, headers=headers)
         resp = conn.getresponse()
     body = resp.read()
+    if resp.getheader('content-encoding', '').lower() == 'gzip':
+        try:
+            body = gzip.decompress(body)
+        except Exception:
+            pass
     status = resp.status
     keep = 'close' not in resp.getheader('connection', '').lower()
     if keep:
@@ -183,18 +191,138 @@ def request_json(request, timeout=14, cache=True):
         if error: raise error
 
 
+def _disk_http_cache_key(request):
+    url = request.full_url if hasattr(request, 'full_url') else str(request)
+    headers = dict(request.header_items()) if hasattr(request, 'header_items') else {}
+    relevant = {k.lower(): v for k, v in sorted(headers.items()) if k.lower() in ('accept', 'content-type')}
+    data = getattr(request, 'data', None) or b''
+    return hashlib.sha256(url.encode('utf-8') + b'\0' + json.dumps(relevant).encode('utf-8') + b'\0' + data).hexdigest()
+
+
+def _disk_http_cache_ttl(url):
+    u = url.lower()
+    if ('cites:' in u or 'cited_by:' in u or
+        re.search(r'/works/(?:w\d+|https%3a|https://)', u) or
+        re.search(r'/paper/[a-zA-Z0-9]+', u) or
+        re.search(r'/(?:citations|references)', u)):
+        return 86400.0  # 24 hours
+    return 900.0  # 15 minutes
+
+
+def _disk_http_cache_skippable(request):
+    headers = dict(request.header_items()) if hasattr(request, 'header_items') else {}
+    for k, v in headers.items():
+        kl = k.lower()
+        if kl in ('authorization', 'x-api-key', 'api-key') or 'bearer' in str(v).lower():
+            return True
+    return False
+
+
+def _disk_http_cache_get(key, request):
+    if _disk_http_cache_skippable(request):
+        return None
+    check_cancelled()
+    conn = None
+    try:
+        from pulse_core.platform_support import config_directory
+        cfg = config_directory()
+        db_path = cfg / 'http-cache.sqlite3'
+        if not db_path.is_file():
+            return None
+        conn = sqlite3.connect(str(db_path), timeout=2)
+        check_cancelled()
+        row = conn.execute('SELECT body, expires_at FROM http_cache WHERE key = ?', (key,)).fetchone()
+        if row:
+            body, expires_at = row
+            now = time.time()
+            if expires_at > now:
+                conn.execute('UPDATE http_cache SET used = ? WHERE key = ?', (now, key))
+                conn.commit()
+                return json.loads(body)
+            else:
+                conn.execute('DELETE FROM http_cache WHERE key = ?', (key,))
+                conn.commit()
+    except Exception:
+        pass
+    finally:
+        if conn:
+            try: conn.close()
+            except Exception: pass
+    return None
+
+
+def _disk_http_cache_set(key, url, headers, data, status=200):
+    if status >= 400:
+        return
+    conn = None
+    try:
+        body = json.dumps(data)
+        size = len(body.encode('utf-8'))
+        if size > 25_000_000:
+            return
+        ttl = _disk_http_cache_ttl(url)
+        now = time.time()
+        expires_at = now + ttl
+        from pulse_core.platform_support import config_directory
+        cfg = config_directory()
+        cfg.mkdir(parents=True, exist_ok=True)
+        db_path = cfg / 'http-cache.sqlite3'
+        conn = sqlite3.connect(str(db_path), timeout=2)
+        os.chmod(db_path, 0o600)
+        conn.execute('''CREATE TABLE IF NOT EXISTS http_cache (
+            key TEXT PRIMARY KEY,
+            url TEXT NOT NULL,
+            headers TEXT NOT NULL,
+            body TEXT NOT NULL,
+            status INTEGER NOT NULL,
+            expires_at REAL NOT NULL,
+            used REAL NOT NULL,
+            size INTEGER NOT NULL
+        )''')
+        conn.execute('''INSERT OR REPLACE INTO http_cache
+            (key, url, headers, body, status, expires_at, used, size)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+            (key, url, json.dumps(headers), body, status, expires_at, now, size))
+        total = conn.execute('SELECT SUM(size) FROM http_cache').fetchone()[0] or 0
+        if total > 200 * 1024 * 1024:
+            conn.execute('DELETE FROM http_cache WHERE expires_at < ?', (now,))
+            total = conn.execute('SELECT SUM(size) FROM http_cache').fetchone()[0] or 0
+            if total > 180 * 1024 * 1024:
+                conn.execute('''DELETE FROM http_cache WHERE key IN (
+                    SELECT key FROM http_cache ORDER BY used ASC LIMIT 200
+                )''')
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        if conn:
+            try: conn.close()
+            except Exception: pass
+
+
 def _request_json_once(request, timeout=14, cache=True):
     """Cache successful responses, bound per-host concurrency, and honor Retry-After."""
     check_cancelled()
     url = request.full_url
     key = hashlib.sha256((url + repr(request.header_items())).encode() + (request.data or b'')).hexdigest()
+    disk_key = _disk_http_cache_key(request)
     host = urllib.parse.urlparse(url).hostname or ''
     with _CACHE_LOCK:
         entry = _JSON_CACHE.get(key)
         if cache and entry and time.monotonic() - entry[0] < 600:
             _JSON_CACHE.move_to_end(key)
             return json.loads(entry[1])
-        limit = 10 if 'openalex.org' in host else 2
+    if cache:
+        disk_val = _disk_http_cache_get(disk_key, request)
+        if disk_val is not None:
+            with _CACHE_LOCK:
+                _JSON_CACHE[key] = (time.monotonic(), json.dumps(disk_val))
+                _JSON_CACHE.move_to_end(key)
+            return disk_val
+    if hasattr(request, 'add_unredirected_header') and not any(k.lower() == 'accept-encoding' for k, _ in request.header_items()):
+        request.add_unredirected_header('Accept-Encoding', 'gzip')
+    limit = 10 if 'openalex.org' in host else 2
+    with _CACHE_LOCK:
         gate = _PROVIDER_GATES.setdefault(host, threading.BoundedSemaphore(limit))
     check_source(request)
     while not gate.acquire(timeout=.1):
@@ -214,12 +342,22 @@ def _request_json_once(request, timeout=14, cache=True):
                 try:
                     with _urlopen_persistent(request, timeout=request_timeout) as response:
                         raw = response.read()
+                        if (isinstance(raw, bytes) and raw.startswith(b'\x1f\x8b')) or (getattr(response, 'headers', None) and getattr(response.headers, 'get', lambda k, d='': d)('content-encoding', '').lower() == 'gzip'):
+                            try:
+                                raw = gzip.decompress(raw)
+                            except Exception:
+                                pass
                         data = json.loads(raw.decode('utf-8') if isinstance(raw, bytes) else raw)
                 except (urllib.error.HTTPError, DiscoveryCancelled, DiscoveryBudgetExceeded, ProviderCooldown):
                     raise
                 except Exception:
                     with urllib.request.urlopen(request, timeout=request_timeout) as response:
                         raw = response.read()
+                        if (isinstance(raw, bytes) and raw.startswith(b'\x1f\x8b')) or (getattr(response, 'headers', None) and getattr(response.headers, 'get', lambda k, d='': d)('content-encoding', '').lower() == 'gzip'):
+                            try:
+                                raw = gzip.decompress(raw)
+                            except Exception:
+                                pass
                         data = json.loads(raw.decode('utf-8') if isinstance(raw, bytes) else raw)
                 check_cancelled()
                 source_succeeded(request)
@@ -230,6 +368,9 @@ def _request_json_once(request, timeout=14, cache=True):
                         _JSON_CACHE.move_to_end(key)
                         while len(_JSON_CACHE) > 500 or sum(len(value[1]) for value in _JSON_CACHE.values()) > 16_000_000:
                             _JSON_CACHE.popitem(last=False)
+                if cache and not _disk_http_cache_skippable(request):
+                    req_hdrs = dict(request.header_items()) if hasattr(request, 'header_items') else {}
+                    _disk_http_cache_set(disk_key, url, req_hdrs, data, status=200)
                 return data
             except urllib.error.HTTPError as error:
                 source_failed(request,error)

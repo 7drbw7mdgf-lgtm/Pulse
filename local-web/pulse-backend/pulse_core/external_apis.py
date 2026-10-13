@@ -9,7 +9,7 @@ from pulse_performance import request_json, DiscoveryCancelled, DiscoveryBudgetE
 def fetch_json(url, cache=True):
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"},
+        headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json", "Accept-Encoding": "gzip"},
         method="GET",
     )
     try:

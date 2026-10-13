@@ -64,6 +64,92 @@ def foundational_support(record, relevance):
     return min(1.0, math.log1p(count) / math.log1p(5000)) * relevance
 
 
+def direct_citation_seeds(record):
+    seeds = set()
+    for ev in record.get('retrievalEvidence') or []:
+        ch = str(ev.get('channel') or '')
+        if ch.startswith('citations:'):
+            parts = ch.split(':')
+            if len(parts) >= 2 and parts[1].isdigit():
+                seeds.add(int(parts[1]))
+            else:
+                seeds.add(0)
+    return seeds
+
+
+def build_citation_link_context(records, seed_papers, options):
+    enabled = options.get('citationLinkBonus', True)
+    if enabled is False:
+        return {'enabled': False}
+    weight = float(enabled) if isinstance(enabled, (int, float)) and not isinstance(enabled, bool) else float(options.get('citationLinkWeight', 0.2))
+    gate = options.get('citationLinkGate', 0.3)
+    gate = float(gate) if gate is not None and gate is not False else None
+    mode = str(options.get('citationLinkMode') or 'velocity').lower()
+
+    today = datetime.date.today().year
+    def calc_velocity(r):
+        c = known_count(r)
+        if c is None: return None
+        c = max(0, c)
+        if mode == 'velocity':
+            y = str(r.get('year') or '')[:4]
+            age = max(1, today - int(y) + 1) if y.isdigit() and int(y) <= today else 1
+            return math.log1p(c / age)
+        return math.log1p(c)
+
+    seed_cohorts = collections.defaultdict(list)
+    for r in records:
+        v = calc_velocity(r)
+        if v is None: continue
+        d_seeds = direct_citation_seeds(r)
+        for s in d_seeds:
+            seed_cohorts[s].append(v)
+
+    for s in seed_cohorts:
+        seed_cohorts[s].sort()
+
+    return {
+        'enabled': True,
+        'weight': weight,
+        'gate': gate,
+        'mode': mode,
+        'seed_cohorts': dict(seed_cohorts),
+        'calc_velocity': calc_velocity,
+    }
+
+
+def citation_link_bonus(record, pool_context, topic=0.0):
+    if not pool_context or not pool_context.get('enabled'):
+        return 0.0
+    c = known_count(record)
+    if c is None:
+        return 0.0
+    d_seeds = direct_citation_seeds(record)
+    if not d_seeds:
+        return 0.0
+    v = pool_context['calc_velocity'](record)
+    if v is None:
+        return 0.0
+    seed_cohorts = pool_context.get('seed_cohorts') or {}
+    pcts = []
+    for s in d_seeds:
+        cohort = seed_cohorts.get(s)
+        if cohort:
+            p = sum(x <= v for x in cohort) / len(cohort)
+            pcts.append(p)
+    if not pcts:
+        return 0.0
+    P = max(pcts)
+    gate = pool_context.get('gate')
+    if gate is None or gate <= 0:
+        g = 1.0
+    else:
+        topic_val = max(0.0, float(topic or 0.0))
+        g = 1.0 if topic_val >= gate else (topic_val / gate)
+    return pool_context['weight'] * P * g
+
+
+
 def balanced_frontier(papers, seeds, count=4):
     # Half recent, half related; a citation total alone never chooses the frontier.
     queries = [text_for_paper(seed) for seed in seeds]
@@ -122,6 +208,8 @@ def why_found(record, seed_papers, options, relevance=0.0):
         why.append({'kind': 'cited-by-seed', 'label': 'Cited by your seed', 'detail': f'{seed_word[0].upper()}{seed_word[1:]} cites this paper'})
     if any(channel.startswith('citations:') and channel.endswith(':forward') for channel in channels):
         why.append({'kind': 'cites-seed', 'label': 'Cites your seed', 'detail': f'This paper cites {seed_word}'})
+    if (record.get('scoreBreakdown') or {}).get('citationLinkBonus', 0) > 0:
+        why.append({'kind': 'citation-link-bonus', 'label': 'Widely cited direct link', 'detail': 'Directly linked to your seed and widely cited'})
     def evidence_of(kind):
         found = next((ev for ev in evidence if kind in str(ev.get('subType') or '')), None)
         return found or (record if kind in str(record.get('subType') or '') else None)
@@ -325,11 +413,19 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         raw_rrf.append(sum((qualities[len(raw_rrf)] if channel=='dbef' or channel.startswith('dbef:') else 1)/(60+rank) for channel,rank in channels.items()))
     peak_rrf = max(base_rrf) or 1
     rejected = {paper_key(row['paper']) for row in options.get('relevanceFeedback') or [] if row['grade'] == 0}
-    prelim = [(.7*relevance[i]+.3*raw_rrf[i]/peak_rrf)/(.88 if graphs[i]['renormalize'] else 1) +
-              (.12*graphs[i]['prelim']) +
-              (.06*foundational_support(records[i], relevance[i])
-               if options.get('foundationalPrior', True) and paper_key(records[i]) not in rejected else 0)
-              for i in range(len(records))]
+    pool_context = build_citation_link_context(records, seed_papers, options)
+    prelim = []
+    for i in range(len(records)):
+        rec = records[i]
+        rel = relevance[i]
+        is_rej = paper_key(rec) in rejected
+        fp = (.06 * foundational_support(rec, rel)
+              if options.get('foundationalPrior', True) and not is_rej else 0.0)
+        cb = citation_link_bonus(rec, pool_context, topic=rel) if not is_rej else 0.0
+        comb_prior = min(cb + fp, max(cb, fp) + 0.03) if cb > 0 and fp > 0 else (cb + fp)
+        p_val = ((.7 * rel + .3 * raw_rrf[i] / peak_rrf) / (.88 if graphs[i]['renormalize'] else 1) +
+                 (.12 * graphs[i]['prelim']) + comb_prior)
+        prelim.append(p_val)
     indices = balanced_indices(records, prelim, MAX_CANDIDATE_POOL)
     records, relevance, raw_rrf, prelim, qualities = ([records[i] for i in indices], [relevance[i] for i in indices], [raw_rrf[i] for i in indices], [prelim[i] for i in indices], [qualities[i] for i in indices])
     graphs=[graphs[i] for i in indices]
@@ -403,7 +499,11 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         velocity_prior = .09*impact*topic_support if options.get('citationVelocityPrior', True) and grade != 0 and not record.get('dbef') else 0
         score += velocity_prior
         foundation_prior = .06*foundational_support(record, topic_support) if options.get('foundationalPrior', True) and grade != 0 else 0
-        score += foundation_prior
+        cit_bonus = citation_link_bonus(record, pool_context, topic_support) if grade != 0 else 0.0
+        if cit_bonus > 0 and foundation_prior > 0:
+            score += min(cit_bonus + foundation_prior, max(cit_bonus, foundation_prior) + 0.03)
+        else:
+            score += cit_bonus + foundation_prior
         score += .06*min(2,float(options.get('impactTilt') or 0))*impact*topic_support
         score += .05*min(2,float(options.get('recencyTilt') or 0))*recency*max(relevance[i],sem or 0)
         record['score'] = round(100*max(0,min(1,score)),3)
@@ -411,7 +511,8 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
             'dbef':record.get('dbef'),'dbefEvidenceQuality':qualities[i] if record.get('dbef') else None,'citationEvidence':round(graph,3),
             'networkStatus':record['networkStatus'],'graphImputed':graphs[i]['imputed'],'graphRenormalized':graphs[i]['renormalize'],
             'preliminaryScore':round(prelim[i],6),
-            'optionalImpact':round(impact,3),'citationVelocityPrior':round(velocity_prior,4),'foundationalPrior':round(foundation_prior,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
+            'optionalImpact':round(impact,3),'citationVelocityPrior':round(velocity_prior,4),'foundationalPrior':round(foundation_prior,4),
+            'citationLinkBonus':round(cit_bonus,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
         record['branchHits'] = {b:True for b in record['branches']}
         if any(b in record['branches'] for b in ('core','europePmc','fullText')): record['branchHits']['lexicalConceptual']=True
         explanations = []
@@ -438,7 +539,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         if profile.get('version') != 'evidence-v1' or profile.get('mode') != mode: profile = None
         record['matchMode'] = mode
         record['matchLabel'] = match_label(evidence, profile, grade)
-        record['matchStrengthVersion'] = 'evidence-v5-dbef-seed-scale'
+        record['matchStrengthVersion'] = 'evidence-v6-citation-bonus'
         if grade is not None:
             record['relevanceGrade'] = grade
             record['matchReasons'].insert(0, 'Marked relevant for this question' if grade > 0 else 'Marked not relevant for this question')

@@ -77,7 +77,7 @@ def lookup_doi_metadata(payload):
     except ClientError as error:
         errors.append(str(error))
     try:
-        openalex = fetch_json(f"https://api.openalex.org/works/{urllib.parse.quote('https://doi.org/' + doi, safe='')}")
+        openalex = fetch_json(f"https://api.openalex.org/works/{urllib.parse.quote('https://doi.org/' + doi, safe='')}?select=id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language")
         metadata = merge_metadata(metadata, openalex_to_metadata(openalex))
         sources.append("OpenAlex")
     except ClientError as error:
