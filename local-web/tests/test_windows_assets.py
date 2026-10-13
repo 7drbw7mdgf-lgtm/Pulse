@@ -42,6 +42,7 @@ class WindowsOfflineAssetsTests(unittest.TestCase):
                 source, destination = source.rsplit(':', 1)
                 shutil.copytree(source, internal / destination)
             with patch.object(discovery_crossencoder, '__file__', str(internal / 'pulse_core/discovery_crossencoder.py')), \
+                 patch.object(Path, 'home', return_value=root / 'fresh-profile'), \
                  patch.dict('os.environ', {'PULSE_CONFIG_DIR': str(root / 'fresh-profile')}, clear=True):
                 executable, model = discovery_crossencoder._find_search_runtime({})
             self.assertEqual(executable, (internal / '.search-runtime/bin/pulse-reranker/pulse-reranker.exe').resolve())
