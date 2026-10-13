@@ -3,8 +3,42 @@ import io
 import json
 import os
 import sqlite3
+import sys
 import tempfile
 from pathlib import Path
+
+
+def check_packaged_windows_assets():
+    """Exercise installed OCR and ranking, excluding user/developer runtimes."""
+    import hashlib
+    import math
+    import pymupdf
+    from pulse_core.pdf_utils import extract_document
+    from pulse_core.discovery_crossencoder import _find_search_runtime, crossencoder_scores
+    internal = Path(__file__).resolve().parent.parent
+    data = internal / 'ocr-data'
+    provenance = json.loads((data / 'provenance.json').read_text())
+    assert hashlib.sha256((data / 'eng.traineddata').read_bytes()).hexdigest() == provenance['sha256']
+    assert (data / 'LICENSE').is_file()
+    with pymupdf.open() as text_pdf, pymupdf.open() as scan_pdf:
+        page = text_pdf.new_page()
+        page.insert_text((72, 72), 'Synthetic bicycle transport study', fontsize=20)
+        scan = scan_pdf.new_page()
+        scan.insert_image(scan.rect, stream=page.get_pixmap(matrix=pymupdf.Matrix(2, 2)).tobytes('png'))
+        document = extract_document(scan_pdf.tobytes(), 'synthetic-scan.pdf')
+    assert document['bibliographyProvenance']['ocrPages'] == [1], document
+    assert 'bicycle' in document['text'].lower(), document
+    executable, model = _find_search_runtime({})
+    assert executable is not None and model is not None, 'Installed ranker unavailable'
+    executable.resolve().relative_to(internal / '.search-runtime')
+    model.resolve().relative_to(internal / '.search-runtime')
+    scores, notice = crossencoder_scores({}, ['Protected bicycle lanes and intersection safety'], [
+        {'title': 'Protected bicycle lanes reduce intersection injuries',
+         'abstract': 'A transport study of protected lanes and cycling safety.'},
+        {'title': 'Marine sediment chemistry', 'abstract': 'Mineral samples from the deep ocean.'}])
+    assert scores and len(scores) == 2 and all(math.isfinite(score) for score in scores), notice
+    assert scores[0] > scores[1], scores
+    return {'localOcr': True, 'offlinePairwiseRanker': True}
 
 
 def run():
@@ -43,7 +77,8 @@ def run():
         pass
     assert process_alive(os.getpid())
     assert (ROOT / 'index.html').is_file(), str(ROOT)
+    assets = check_packaged_windows_assets() if getattr(sys, 'frozen', False) and sys.platform == 'win32' else {}
     return {'ok': True, 'version': APP_VERSION, 'pdf': document['extractionSource'],
             'doiExtraction': True, 'sqliteFts5': True, 'fullTextPassages': True,
             'secretRoundTrip': True, 'managerLocks': True,
-            'mendeleySharedServiceConfigured': bool(registration.get('brokerUrl'))}
+            'mendeleySharedServiceConfigured': bool(registration.get('brokerUrl')), **assets}

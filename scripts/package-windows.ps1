@@ -14,8 +14,17 @@ function Invoke-Checked([string]$Program, [string[]]$Arguments) {
 Push-Location $Root
 try {
     Invoke-Checked python @("-m", "pip", "install", "-r", "scripts/requirements-windows-build.txt")
-    Invoke-Checked python @("scripts/stage-desktop.py")
-    Invoke-Checked python @("scripts/freeze-windows-backend.py", "--work-dir", (Join-Path $Output "backend-build"))
+    # Keep inference dependencies out of the main backend freeze. Both runtimes
+    # carry their own interpreter and work without a user Python installation.
+    $RankerVenv = Join-Path $Output "ranker-build-venv"
+    $SearchRuntime = Join-Path $Output "search-runtime"
+    if (Test-Path $SearchRuntime) { Remove-Item $SearchRuntime -Recurse -Force }
+    Invoke-Checked python @("-m", "venv", $RankerVenv)
+    $RankerPython = Join-Path $RankerVenv "Scripts/python.exe"
+    Invoke-Checked $RankerPython @("-m", "pip", "install", "-r", "scripts/requirements-search-runtime.txt")
+    Invoke-Checked $RankerPython @("scripts/build-search-runtime.py", "--output", $SearchRuntime)
+    Invoke-Checked python @("scripts/stage-desktop.py", "--search-runtime", $SearchRuntime)
+    Invoke-Checked python @("scripts/freeze-windows-backend.py", "--work-dir", (Join-Path $Output "backend-build"), "--search-runtime", $SearchRuntime)
     $Target = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path $Root "desktop/src-tauri/target" }
     $NsisDir = Join-Path $Target "x86_64-pc-windows-msvc/release/bundle/nsis"
     if (Test-Path $NsisDir) { Remove-Item (Join-Path $NsisDir "*.exe") -Force -ErrorAction SilentlyContinue }

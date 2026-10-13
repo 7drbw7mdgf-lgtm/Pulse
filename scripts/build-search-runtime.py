@@ -106,11 +106,17 @@ def build(output, reuse=None):
                             'abstract': 'A transport study of protected lanes and cycling safety.'},
                            {'title': 'Marine sediment chemistry', 'abstract': 'Mineral samples from the deep ocean.'}]}
     # No user-installed runtime, PATH Python or model cache is involved.
-    with tempfile.TemporaryDirectory(prefix='pulse-ranker-fresh-home-') as home:
+    with tempfile.TemporaryDirectory(prefix='pulse-ranker-fresh-profile-') as profile:
         env = {key: value for key, value in os.environ.items() if not key.startswith(('PULSE_', 'PYTHON', 'HF_'))}
-        env.update(HOME=home, PATH='/usr/bin:/bin', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1')
+        env.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1')
+        if sys.platform == 'win32':
+            env.update(USERPROFILE=profile, LOCALAPPDATA=str(Path(profile) / 'Local'),
+                       APPDATA=str(Path(profile) / 'Roaming'),
+                       PATH=str(Path(os.environ['SystemRoot']) / 'System32'))
+        else:
+            env.update(HOME=profile, PATH='/usr/bin:/bin')
         response = subprocess.run([str(output / executable)], input=json.dumps(payload), text=True,
-                                  capture_output=True, env=env, timeout=30, check=True)
+                                  capture_output=True, env=env, timeout=60, check=True)
         scores = json.loads(response.stdout)['scores']
         assert len(scores) == 2 and scores[0] > scores[1], 'Packaged ranker smoke check failed.'
         # Persistent mode: one process answers several JSON-lines requests by id.
