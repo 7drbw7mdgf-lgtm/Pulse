@@ -2,13 +2,13 @@
 
 ### A private, local-first workspace for scientific literature discovery and synthesis
 
-[![Release](https://img.shields.io/badge/release-v1.8.0-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.8.0)
+[![Release](https://img.shields.io/badge/release-v1.8.1-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.8.1)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases)
 
 ---
 
-**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.8.0.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
+**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.1/Pulse-1.8.1.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.8.0)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.8.1.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
 
 ---
 
@@ -21,6 +21,17 @@
 ---
 
 ![Pulse Discovery Review Workspace — synthetic example](docs/images/pulse-1.7.11-discovery.png)
+
+## What’s new in 1.8.1
+
+- **Steadier search times:** fixed a background-ranking stall that could add up to 12 seconds to a search. The slowest of five test searches fell from 22.8 s to 12.7 s; the typical first search stays about 11.5 s, now mostly time spent collecting from public services.
+- **Background work on the right papers:** while sources are still answering, Pulse prepares exactly the papers its final ranking will assess. The final order is unchanged.
+- **Citations from OpenAlex first,** with Semantic Scholar only when needed and OpenCitations as a keyless fallback.
+- **Results while ranking finishes:** a first ordering appears straight away. Once you start marking papers, your order is kept and **Apply refined order** is offered.
+- **Smaller cache:** compressed responses use about 18 MB for five searches instead of 107 MB.
+- **Fixed Allow helper** in the Mac DMG.
+
+1.8.0 added the direct-citation influence bonus, a persistent HTTP cache and keyless arXiv search; see the [1.8.0 notes](docs/releases/1.8.0.md). Full measurements and limits are in the [1.8.1 notes](docs/releases/1.8.1.md).
 
 ## What’s new in 1.7.12
 
@@ -91,7 +102,7 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 | **AI Summaries & Analysis** | Processed by local Ollama models on your GPU/CPU. |
 | **Concept Search Keywords** | Extracted by the configured AI, locally by default. If you configure cloud AI, your typed topic is sent to that provider. Extracted phrases and the original topic are sent to the selected scholarly indexes. |
 | **Accounts & Tracking** | None. No account required, no telemetry, no tracking cookies. |
-| **Scholarly Lookups** | Pulse sends public paper identifiers (DOIs, titles, search keywords) to open scholarly APIs (Crossref, OpenAlex, Europe PMC, Semantic Scholar, CORE) just like a web browser lookup. |
+| **Scholarly Lookups** | Pulse sends public paper identifiers (DOIs, titles, search keywords) to open scholarly APIs (Crossref, OpenAlex, OpenCitations, Europe PMC, arXiv, Semantic Scholar, CORE) just like a web browser lookup. Selecting a paper may prefetch its OpenAlex record so the next search starts faster; responses are cached on your computer for up to 24 hours. |
 
 ---
 
@@ -116,12 +127,12 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 ## Installation
 
 ### macOS (Apple Silicon, macOS 11+)
-1. Download **[Pulse-1.8.0.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0.dmg)**.
+1. Download **[Pulse-1.8.1.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.1/Pulse-1.8.1.dmg)**.
 2. Open the DMG and drag **Pulse.app** into your **Applications** folder.
 3. *Note:* Ensure you have Python 3.10+ installed (e.g. via Homebrew `brew install python`). Because Pulse is ad-hoc signed, if macOS blocks the first launch, right-click the app and choose **Open**, or run the `Allow-Pulse-Tauri.command` included in the DMG.
 
 ### Windows (Windows 10/11 x64)
-1. Download **[Pulse-1.8.0-Windows-x64-Setup.exe](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)**.
+1. Download **[Pulse-1.8.0-Windows-x64-Setup.exe](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)**. The Windows installer is version 1.8.0; the 1.8.1 changes are in the Mac installer and in source.
 2. Run the installer and follow the on-screen instructions. Python, PDF extraction, English OCR and the portable offline search ranker are bundled directly inside the Windows setup. [Installed-app verification](https://github.com/7drbw7mdgf-lgtm/Pulse/actions/runs/38360480575) checks these assets in an isolated profile.
 
 ---
