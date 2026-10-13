@@ -1,10 +1,10 @@
 #!/bin/bash
-# Allow a trusted Pulse 1.3.1 installation to open on this Mac.
+# Allow a trusted Pulse installation to open on this Mac.
 # This does not notarize Pulse or change system-wide security settings.
 set -euo pipefail
 
 expected_id='com.pulse.desktop'
-expected_version='1.3.1'
+expected_version='1.8.1'  # Set to the packaged version by scripts/package-desktop.sh.
 check_only=false
 confirmed=false
 app_path=''
@@ -18,7 +18,7 @@ Usage: bash Allow-Pulse-Tauri.command [--check | --yes] ["/Applications/Pulse.ap
   --help   Show this help.
 
 Without a path, checks /Applications/Pulse.app, then ~/Applications/Pulse.app.
-Only Pulse 1.3.1 with a valid bundle signature is accepted. This script removes
+Only the Pulse version this helper shipped with, with a valid bundle signature, is accepted. This script removes
 only com.apple.quarantine from that app. It never uses sudo, disables Gatekeeper,
 changes SIP, re-signs the app, downloads code or launches it automatically.
 HELP

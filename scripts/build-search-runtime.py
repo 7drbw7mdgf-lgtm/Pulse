@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -44,23 +45,47 @@ def verify_macos_dependencies(directory):
                 raise ValueError('Bundled native dependency refers to an external build path: ' + name)
 
 
-def build(output):
+def reuse_model(source, model):
+    """Copy the pinned model from an earlier verified runtime instead of downloading it."""
+    source = Path(source).resolve()
+    manifest = json.loads((source / 'manifest.json').read_text())
+    if manifest.get('model') != MODEL or manifest.get('revision') != REVISION:
+        raise ValueError('The runtime to reuse holds a different model or revision.')
+    expected = manifest.get('sha256') or {}
+    if set(expected) != set(FILES.values()):
+        raise ValueError('The runtime to reuse does not list checksums for every model file.')
+    hashes = {}
+    for local in FILES.values():
+        data = (source / manifest['modelDirectory'] / local).read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
+        if digest != expected[local]:
+            raise ValueError('Checksum mismatch for reused model file: ' + local)
+        (model / local).write_bytes(data)
+        hashes[local] = digest
+    shutil.copy2(source / manifest['modelDirectory'] / 'LICENSE.txt', model / 'LICENSE.txt')
+    return hashes
+
+
+def build(output, reuse=None):
     if output.exists(): raise ValueError('Use a fresh runtime directory.')
     output.mkdir(parents=True)
     model = output / 'model'
     model.mkdir()
     hashes = {}
-    for remote, local in FILES.items():
-        path = model / local
-        with urllib.request.urlopen(f'https://huggingface.co/{MODEL}/resolve/{REVISION}/{remote}', timeout=60) as response:
-            with path.open('wb') as target:
-                while True:
-                    chunk = response.read(1024*1024)
-                    if not chunk: break
-                    target.write(chunk)
-        hashes[local] = hashlib.sha256(path.read_bytes()).hexdigest()
-    with urllib.request.urlopen('https://www.apache.org/licenses/LICENSE-2.0.txt', timeout=30) as response:
-        (model / 'LICENSE.txt').write_bytes(response.read())
+    if reuse:
+        hashes = reuse_model(reuse, model)
+    else:
+        for remote, local in FILES.items():
+            path = model / local
+            with urllib.request.urlopen(f'https://huggingface.co/{MODEL}/resolve/{REVISION}/{remote}', timeout=60) as response:
+                with path.open('wb') as target:
+                    while True:
+                        chunk = response.read(1024*1024)
+                        if not chunk: break
+                        target.write(chunk)
+            hashes[local] = hashlib.sha256(path.read_bytes()).hexdigest()
+        with urllib.request.urlopen('https://www.apache.org/licenses/LICENSE-2.0.txt', timeout=30) as response:
+            (model / 'LICENSE.txt').write_bytes(response.read())
     with tempfile.TemporaryDirectory(prefix='pulse-freeze-ranker-') as temporary:
         command = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onedir',
                    '--name', 'pulse-reranker', '--distpath', str(output / 'bin'),
@@ -72,7 +97,7 @@ def build(output):
         subprocess.run(command, check=True)
     verify_macos_dependencies(output / 'bin')
     executable = 'bin/pulse-reranker/pulse-reranker' + ('.exe' if os.name == 'nt' else '')
-    manifest = {'format': 'onnx-executable-v1', 'model': MODEL, 'revision': REVISION,
+    manifest = {'format': 'onnx-executable-v1', 'protocol': 'jsonl-v1', 'model': MODEL, 'revision': REVISION,
                 'modelDirectory': 'model', 'executable': executable,
                 'platform': sys.platform, 'architecture': platform.machine(), 'sha256': hashes}
     (output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
@@ -88,10 +113,20 @@ def build(output):
                                   capture_output=True, env=env, timeout=30, check=True)
         scores = json.loads(response.stdout)['scores']
         assert len(scores) == 2 and scores[0] > scores[1], 'Packaged ranker smoke check failed.'
+        # Persistent mode: one process answers several JSON-lines requests by id.
+        lines = ''.join(json.dumps(dict(payload, id=f'smoke-{n}')) + '\n' for n in range(2))
+        response = subprocess.run([str(output / executable)], input=lines, text=True,
+                                  capture_output=True, env=env, timeout=60, check=True)
+        replies = [json.loads(line) for line in response.stdout.splitlines() if line.strip()]
+        assert [reply.get('id') for reply in replies] == ['smoke-0', 'smoke-1'], 'Persistent ranker protocol check failed.'
+        assert all(reply['scores'] == scores for reply in replies), 'Persistent ranker scores differ from single-shot scores.'
     print('Portable offline ranker verified:', output)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
-    build(parser.parse_args().output.resolve())
+    parser.add_argument('--reuse-model', type=Path,
+                        help='Copy the pinned model from an earlier runtime after verifying its manifest checksums.')
+    args = parser.parse_args()
+    build(args.output.resolve(), args.reuse_model)

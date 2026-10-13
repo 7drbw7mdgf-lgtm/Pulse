@@ -26,39 +26,43 @@ def paper(index, **fields):
 
 
 class CitationFallbackTests(unittest.TestCase):
-    def run_branch(self, references, citations, oa_references=None, oa_citations=None):
-        with patch.object(core, 's2_paper_id_for_paper', return_value='seed-id'), \
-             patch.object(core, 's2_fetch_references', side_effect=references if isinstance(references, Exception) else None, return_value=references), \
-             patch.object(core, 's2_fetch_citations', side_effect=citations if isinstance(citations, Exception) else None, return_value=citations), \
-             patch.object(core, 'openalex_work_for_paper', return_value={'id':'https://openalex.org/W1', 'referenced_works':['W2']}) as identify, \
-             patch.object(discovery, 'openalex_reference_works', side_effect=oa_references if isinstance(oa_references, Exception) else None, return_value=oa_references or [{'id':'W2','title':'A foundational transport paper','doi':'https://doi.org/10.1234/oa-ref'}]) as backward, \
-             patch.object(discovery, 'openalex_citing_works', side_effect=oa_citations if isinstance(oa_citations, Exception) else None, return_value=oa_citations or [{'id':'W3','title':'A later transport paper','doi':'https://doi.org/10.1234/oa-cite'}]) as forward:
+    def run_branch(self, oa_references, oa_citations, s2_references=None, s2_citations=None):
+        with patch.object(core, 'openalex_work_for_paper', return_value={'id':'https://openalex.org/W1', 'referenced_works':['W2']}) as identify, \
+             patch.object(discovery, 'openalex_reference_works', side_effect=oa_references if isinstance(oa_references, Exception) else None, return_value=oa_references if not isinstance(oa_references, Exception) else None) as backward, \
+             patch.object(discovery, 'openalex_citing_works', side_effect=oa_citations if isinstance(oa_citations, Exception) else None, return_value=oa_citations if not isinstance(oa_citations, Exception) else None) as forward, \
+             patch.object(core, 's2_paper_id_for_paper', return_value='seed-id') as s2_id, \
+             patch.object(core, 's2_fetch_references', side_effect=s2_references if isinstance(s2_references, Exception) else None, return_value=s2_references if not isinstance(s2_references, Exception) else None) as s2_refs, \
+             patch.object(core, 's2_fetch_citations', side_effect=s2_citations if isinstance(s2_citations, Exception) else None, return_value=s2_citations if not isinstance(s2_citations, Exception) else None) as s2_cites:
             result = discovery.fetch_citation_graph_branch([SEED], depth=1)
-        return result, identify, backward, forward
+        return result, identify, backward, forward, s2_refs, s2_cites
 
     def test_forward_failure_falls_back_even_when_backward_succeeds(self):
-        result, _, backward, forward = self.run_branch([paper('ref')], ClientError(429, 'Rate limited'))
+        result, _, backward, forward, s2_refs, s2_cites = self.run_branch([paper('ref')], ClientError(429, 'Rate limited'), s2_citations=[paper('s2-cite')])
         self.assertEqual(len(result), 2)
-        backward.assert_not_called(); forward.assert_called_once()
+        forward.assert_called_once(); backward.assert_called_once()
+        s2_refs.assert_not_called(); s2_cites.assert_called_once()
         self.assertEqual(result[-1]['subType'], 'Forward')
-        self.assertEqual(result[-1]['retrievalEvidence'][0]['provider'], 'OpenAlex')
+        self.assertEqual(result[-1]['retrievalEvidence'][0]['provider'], 'Semantic Scholar')
         self.assertEqual(result[-1]['hop'], 1)
 
     def test_backward_failure_does_not_repeat_successful_forward_search(self):
-        result, _, backward, forward = self.run_branch(ClientError(503, 'Unavailable'), [paper('cite')])
-        backward.assert_called_once(); forward.assert_not_called()
+        result, _, backward, forward, s2_refs, s2_cites = self.run_branch(ClientError(503, 'Unavailable'), [paper('cite')], s2_references=[paper('s2-ref')])
+        forward.assert_called_once(); backward.assert_called_once()
+        s2_refs.assert_called_once(); s2_cites.assert_not_called()
         self.assertEqual({row['subType'] for row in result}, {'Backward', 'Forward'})
 
-    def test_both_successful_directions_skip_openalex(self):
-        _, identify, backward, forward = self.run_branch([paper('ref')], [paper('cite')])
-        identify.assert_not_called(); backward.assert_not_called(); forward.assert_not_called()
+    def test_both_successful_directions_skip_s2(self):
+        _, identify, backward, forward, s2_refs, s2_cites = self.run_branch([paper('ref')], [paper('cite')])
+        identify.assert_called_once(); backward.assert_called_once(); forward.assert_called_once()
+        s2_refs.assert_not_called(); s2_cites.assert_not_called()
 
     def test_empty_forward_response_also_uses_fallback(self):
-        _, _, backward, forward = self.run_branch([paper('ref')], [])
-        backward.assert_not_called(); forward.assert_called_once()
+        _, _, backward, forward, s2_refs, s2_cites = self.run_branch([paper('ref')], [], s2_citations=[paper('s2-cite')])
+        backward.assert_called_once(); forward.assert_called_once()
+        s2_refs.assert_not_called(); s2_cites.assert_called_once()
 
     def test_openalex_backward_error_does_not_block_forward_fallback(self):
-        result, _, _, forward = self.run_branch([], [], oa_references=RuntimeError('Reference lookup failed'))
+        result, _, _, forward, _, _ = self.run_branch(RuntimeError('Reference lookup failed'), [paper('cite')])
         forward.assert_called_once()
         self.assertEqual(result[0]['subType'], 'Forward')
         self.assertIn('Reference lookup failed', result.warning)
@@ -99,12 +103,10 @@ class CitationFallbackTests(unittest.TestCase):
 
     def test_cancel_and_budget_exhaustion_do_not_start_fallback(self):
         for error in (DiscoveryCancelled(), DiscoveryBudgetExceeded('Budget exhausted')):
-            with patch.object(core, 's2_paper_id_for_paper', return_value='seed-id'), \
-                 patch.object(core, 's2_fetch_references', return_value=[paper('ref')]), \
-                 patch.object(core, 's2_fetch_citations', side_effect=error), \
-                 patch.object(core, 'openalex_work_for_paper') as lookup:
+            with patch.object(core, 'openalex_work_for_paper', side_effect=error), \
+                 patch.object(core, 's2_paper_id_for_paper') as s2_lookup:
                 with self.assertRaises(type(error)): discovery.fetch_citation_graph_branch([SEED], depth=1)
-                lookup.assert_not_called()
+                s2_lookup.assert_not_called()
 
 
 class DefaultVelocityTests(unittest.TestCase):

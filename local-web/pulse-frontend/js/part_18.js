@@ -145,8 +145,8 @@
         state.discoveryJobId=data.id||null;
         if(state.discoveryCancelRequested&&data.id)await cancelDiscoverySearch();
         while(data.id&&data.status==='running'){
-          state.discoveryProgressText=data.stage==='keywords'?'Preparing search keywords…':data.stage==='ranking'?'Assessing titles and abstracts…':!data.total?'Preparing searches…':`${data.completed||0} of ${data.total} searches complete · ${(data.recommendations||[]).length} candidates`;
-          state.discoveryProgressPercent=data.stage==='ranking'?95:Math.min(85,85*(data.completed||0)/Math.max(1,data.total||1));syncDiscoveryControls();
+          state.discoveryProgressText=data.stage==='keywords'?'Preparing search keywords…':(data.stage==='refining'||data.stage==='ranking')?'Refining…':!data.total?'Preparing searches…':`${data.completed||0} of ${data.total} searches complete · ${(data.recommendations||[]).length} candidates`;
+          state.discoveryProgressPercent=(data.stage==='refining'||data.stage==='ranking')?95:Math.min(85,85*(data.completed||0)/Math.max(1,data.total||1));syncDiscoveryControls();
           if((data.recommendations||[]).length)partial=data;
           if(typeof updateDiscoverySearching==='function')updateDiscoverySearching(data);
           await new Promise(resolve=>setTimeout(resolve,650));

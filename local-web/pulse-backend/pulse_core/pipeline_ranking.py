@@ -430,6 +430,13 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
     records, relevance, raw_rrf, prelim, qualities = ([records[i] for i in indices], [relevance[i] for i in indices], [raw_rrf[i] for i in indices], [prelim[i] for i in indices], [qualities[i] for i in indices])
     graphs=[graphs[i] for i in indices]
     options['_candidateCount'] = len(records)
+    if options.get('_shortlistProbe'):
+        # Background pre-computation fills caches for exactly the papers the
+        # foreground would assess. The pairwise set is a superset because the
+        # foreground order also depends on semantic scores not yet known.
+        probe_semantic = balanced_indices(records, prelim, SEMANTIC_SHORTLIST_LIMIT)
+        probe_pairwise = balanced_indices(records, prelim, PAIRWISE_SHORTLIST_LIMIT + 16)
+        options['_shortlistProbe']([records[i] for i in probe_semantic], [records[i] for i in probe_pairwise])
     semantic, pairwise = {}, {}
     options['_rankingNotice'] = 'Titles and abstracts ranked by text and citation evidence'
     if options.get('_semanticReranker'):

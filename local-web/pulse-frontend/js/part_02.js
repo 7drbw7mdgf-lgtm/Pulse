@@ -6,9 +6,25 @@ const discoveryBoundCheckboxes=new WeakSet();
       const keepSelected=continuing?new Set(state.discoverySelectedKeys||[]):new Set();
       const keepFocus=continuing&&state.discoveryFocusExplicit?state.discoveryFocusKey:null;
       if(state.discoveryResultKey!==key)state.discoveryRunContext=state.discoveryRunInfo?.get(key)?.runContext||null;
-      state.discoveryResultKey=key;state.discoverySearching=null;state.discoveryResults=results||[];
+      state.discoveryResultKey=key;state.discoverySearching=null;
+      if(continuing && state.discoveryUserTouchedRelevance && (state.discoveryResults||[]).length) {
+        // The reviewer has started marking papers: keep their order, refresh paper
+        // details in place, and offer the final ranking instead of reordering.
+        const incoming=new Map((results||[]).map(paper=>[discoveryPaperKey(paper),paper]));
+        const old=state.discoveryResults,keys=new Set(old.map(discoveryPaperKey));
+        state.discoveryResults=[...old.map(paper=>incoming.get(discoveryPaperKey(paper))||paper),...(results||[]).filter(paper=>!keys.has(discoveryPaperKey(paper)))];
+        state.discoveryPendingRefinedOrder=results||[];
+        state.discoveryPendingRefinedOrderKey=key;
+      } else {
+        state.discoveryResults=results||[];
+        state.discoveryPendingRefinedOrder=null;
+        state.discoveryPendingRefinedOrderKey=null;
+      }
       state.discoverySeed=seedPaper||state.papers.find(p=>p.id===state.selectedId)||state.papers[0];
       if(!continuing){
+        state.discoveryUserTouchedRelevance=false;
+        state.discoveryPendingRefinedOrder=null;
+        state.discoveryPendingRefinedOrderKey=null;
         Object.assign(state,{discoveryQueue:'review',discoveryWhyKinds:new Set(),discoveryHiddenStrengths:new Set(),discoveryShowExplore:false,
           discoveryMobilePane:'results',discoveryFiltersOpen:false,discoveryFilterText:'',discoveryFilterAuthor:'',discoveryFilterYear:'all',
           discoveryFilterBranch:'all',discoverySortBy:'score',discoveryQuickTag:'',discoveryFullTextOnly:false,discoveryExpandedAbstracts:new Set(),discoveryRenderLimit:100,discoveryPageSignature:''});
@@ -343,9 +359,14 @@ const discoveryBoundCheckboxes=new WeakSet();
       state.discoverySearching.job = job;
       if (!state.discoveryFocusExplicit) state.discoveryFocusKey = null;
       if (Array.isArray(job?.recommendations)) {
-        const incoming=new Map(job.recommendations.map(paper=>[discoveryPaperKey(paper),paper]));
-        const old=state.discoveryResults||[],keys=new Set(old.map(discoveryPaperKey));
-        state.discoveryResults=[...old.map(paper=>incoming.get(discoveryPaperKey(paper))||paper),...job.recommendations.filter(paper=>!keys.has(discoveryPaperKey(paper)))];
+        if (state.discoveryUserTouchedRelevance) {
+          state.discoveryPendingRefinedOrder = job.recommendations;
+          state.discoveryPendingRefinedOrderKey = state.discoverySearching.key;
+        } else {
+          const incoming=new Map(job.recommendations.map(paper=>[discoveryPaperKey(paper),paper]));
+          const old=state.discoveryResults||[],keys=new Set(old.map(discoveryPaperKey));
+          state.discoveryResults=[...old.map(paper=>incoming.get(discoveryPaperKey(paper))||paper),...job.recommendations.filter(paper=>!keys.has(discoveryPaperKey(paper)))];
+        }
       }
       if (els.discoveryModal && !els.discoveryModal.hidden) renderDiscoveryModal({preservePosition:true});
     }
@@ -575,14 +596,22 @@ const discoveryBoundCheckboxes=new WeakSet();
       }
       const progress = document.getElementById('discoveryProgressPanel');
       if (progress) {
-        progress.hidden = !searching;
-        progress.classList?.toggle('is-compact', Boolean(searching && totalItems.length));
-        if (searching) {
-          const job = searching.job || {};
-          const percent = job.stage === 'ranking' ? 95 : Math.round(85 * (job.completed || 0) / Math.max(1, job.total || rows.length || 1));
+        progress.hidden = !searching && !state.discoveryPendingRefinedOrder;
+        progress.classList?.toggle('is-compact', Boolean((searching || state.discoveryPendingRefinedOrder) && totalItems.length));
+        if (state.discoveryPendingRefinedOrder) {
           progress.innerHTML = `
             <div class="dv-progress-head">
-              <strong>${job.stage === 'keywords' ? 'Preparing search keywords…' : job.stage === 'ranking' ? 'Ranking results…' : `Searching ${rows.length || ''} source${rows.length === 1 ? '' : 's'}…`}</strong>
+              <strong>Refined ranking ready</strong>
+              <span>New AI-scored ranking available based on full candidate analysis.</span>
+              <button type="button" class="dv-btn primary" data-dv-action="apply-refined-order">Apply refined order</button>
+            </div>`;
+        } else if (searching) {
+          const job = searching.job || {};
+          const isRefining = job.stage === 'refining' || job.stage === 'ranking';
+          const percent = isRefining ? 95 : Math.round(85 * (job.completed || 0) / Math.max(1, job.total || rows.length || 1));
+          progress.innerHTML = `
+            <div class="dv-progress-head">
+              <strong>${job.stage === 'keywords' ? 'Preparing search keywords…' : isRefining ? 'Refining…' : `Searching ${rows.length || ''} source${rows.length === 1 ? '' : 's'}…`}</strong>
               <span>${job.total ? `${job.completed || 0} of ${job.total} done · ` : ''}${totalItems.length} candidates so far · ${discoveryElapsed(searching.startedAt)} elapsed</span>
               <span class="dv-progress-bar"><span style="width:${percent}%"></span></span>
               <button type="button" class="dv-btn dv-btn-stop-review" data-dv-action="stop-review">Stop and review</button>
@@ -702,6 +731,7 @@ const discoveryBoundCheckboxes=new WeakSet();
     function gradeFocusedDiscovery(grade) {
       const item = (state.discoveryResults || []).find(result => discoveryPaperKey(result) === state.discoveryFocusKey);
       if (!item || typeof labelDiscoveryPaper !== 'function') return;
+      state.discoveryUserTouchedRelevance = true;
       const before = getFilteredDiscoveryPapers();
       const index = before.findIndex(result => discoveryPaperKey(result) === state.discoveryFocusKey);
       labelDiscoveryPaper(item, discoveryRating(item) === grade ? undefined : grade);
@@ -746,7 +776,16 @@ const discoveryBoundCheckboxes=new WeakSet();
         }
         const action = target.dataset.dvAction;
         const item = (state.discoveryResults || []).find(result => discoveryPaperKey(result) === target.dataset.paperKey);
-        if(action==='load-more'){state.discoveryRenderLimit=(state.discoveryRenderLimit||100)+100;renderDiscoveryModal({preservePosition:true});}
+        if (action === 'apply-refined-order') {
+          if (state.discoveryPendingRefinedOrder) {
+            state.discoveryResults = state.discoveryPendingRefinedOrder;
+            state.discoveryPendingRefinedOrder = null;
+            state.discoveryPendingRefinedOrderKey = null;
+            state.discoveryUserTouchedRelevance = false;
+            renderDiscoveryModal({preservePosition: true});
+          }
+        }
+        else if(action==='load-more'){state.discoveryRenderLimit=(state.discoveryRenderLimit||100)+100;renderDiscoveryModal({preservePosition:true});}
         else if (action === 'toggle-filters') { state.discoveryFiltersOpen = !state.discoveryFiltersOpen; renderDiscoveryModal(); }
         else if (action === 'show-results') { state.discoveryMobilePane = 'results'; renderDiscoveryModal(); }
         else if (action === 'show-explore') { state.discoveryShowExplore = true; renderDiscoveryModal(); }
@@ -757,6 +796,7 @@ const discoveryBoundCheckboxes=new WeakSet();
         else if (action === 'stop-review' && typeof cancelDiscoverySearch === 'function') { state.discoveryStopReview = true; cancelDiscoverySearch(); }
         else if (action === 'open-settings' && typeof setSettingsOpen === 'function') setSettingsOpen(true);
         else if (action === 'bulk-relevant' || action === 'bulk-not') {
+          state.discoveryUserTouchedRelevance = true;
           selectedDiscoveryPapers().forEach(result => labelDiscoveryPaper(result, action === 'bulk-relevant' ? 2 : 0));
           state.discoverySelectedKeys.clear();
           renderDiscoveryModal();

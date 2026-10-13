@@ -8,11 +8,21 @@ import sys
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
 
-def run(payload):
+_CACHED_SESSION = None
+_CACHED_TOKENIZER = None
+_CACHED_INPUTS = None
+_CACHED_MODEL_ROOT = None
+
+
+def _get_resources(model_path):
+    global _CACHED_SESSION, _CACHED_TOKENIZER, _CACHED_INPUTS, _CACHED_MODEL_ROOT
+    root_str = str(Path(model_path).resolve())
+    if _CACHED_SESSION is not None and _CACHED_MODEL_ROOT == root_str:
+        return _CACHED_SESSION, _CACHED_TOKENIZER, _CACHED_INPUTS
     import numpy as np
     import onnxruntime as ort
     from tokenizers import Tokenizer
-    root = Path(payload['model'])
+    root = Path(model_path)
     tokenizer = Tokenizer.from_file(str(root / 'tokenizer.json'))
     tokenizer.no_truncation()
     tokenizer.no_padding()
@@ -22,6 +32,16 @@ def run(payload):
     session = ort.InferenceSession(str(root / 'model.onnx'), sess_options=options,
                                    providers=['CPUExecutionProvider'])
     inputs = {item.name for item in session.get_inputs()}
+    _CACHED_SESSION = session
+    _CACHED_TOKENIZER = tokenizer
+    _CACHED_INPUTS = inputs
+    _CACHED_MODEL_ROOT = root_str
+    return session, tokenizer, inputs
+
+
+def run(payload):
+    import numpy as np
+    session, tokenizer, inputs = _get_resources(payload['model'])
     queries = []
     for query in payload['queries'][:2]:
         ids = tokenizer.encode(str(query), add_special_tokens=False).ids[:192]
@@ -57,4 +77,26 @@ def run(payload):
 
 
 if __name__ == '__main__':
-    print(json.dumps(run(json.load(sys.stdin))))
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            payload = json.loads(line)
+        except Exception as e:
+            print(json.dumps({'error': f'Invalid JSON: {e}'}), flush=True)
+            continue
+        req_id = payload.get('id')
+        try:
+            res = run(payload)
+            if req_id is not None:
+                res['id'] = req_id
+                print(json.dumps(res), flush=True)
+            else:
+                print(json.dumps(res), flush=True)
+                break
+        except Exception as error:
+            if req_id is not None:
+                print(json.dumps({'id': req_id, 'error': str(error)}), flush=True)
+            else:
+                raise

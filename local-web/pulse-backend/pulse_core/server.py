@@ -456,6 +456,18 @@ def main():
     settings = load_settings()
     if resolve_ai_provider(settings) == "local":
         start_ollama_runtime_background()
+    def _warmup_background():
+        try:
+            from pulse_core.discovery_crossencoder import warmup_crossencoder
+            warmup_crossencoder(settings)
+        except Exception:
+            pass
+        try:
+            from pulse_core.discovery_semantics import warmup_embeddings
+            warmup_embeddings(settings)
+        except Exception:
+            pass
+    threading.Thread(target=_warmup_background, name="pulse-launch-warmup", daemon=True).start()
     start_parent_watchdog()
     print(f"Serving Pulse on http://127.0.0.1:{bound_port}/index.html", flush=True)
     try:

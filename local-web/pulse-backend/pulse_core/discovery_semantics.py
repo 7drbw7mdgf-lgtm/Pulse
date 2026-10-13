@@ -165,6 +165,23 @@ def pre_embed_papers(settings, records, cancel_event=None, fast_mode=False, quer
         pass
 
 
+def warmup_embeddings(settings):
+    """Background launch warmup of Ollama embedding model with 30m keep-alive."""
+    try:
+        endpoint, model = local_model(settings)
+        if not endpoint or not model:
+            return
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps({'model': model, 'input': ['Warmup embedding text'], 'truncate': True, 'keep_alive': '30m'}).encode(),
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        request_json(req, timeout=10, cache=False)
+    except Exception:
+        pass
+
+
 def semantic_scores(settings, queries, records, cancel_event=None, focus_first=False, fast_mode=False, feedback=None, feedback_scores=None):
     _check(cancel_event, None, float('inf'))
     endpoint, model = local_model(settings, fast_mode=fast_mode)

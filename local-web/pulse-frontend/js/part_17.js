@@ -270,19 +270,28 @@
     }
 
     let _warmPaperTimer = null;
+    let _warmPaperController = null;
     function warmDiscoveryForPaper(paper) {
-      if (!paper || state.discoveryLoading) return;
+      if (!paper || state.discoveryLoading || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+        clearTimeout(_warmPaperTimer);
+        if (_warmPaperController) { _warmPaperController.abort(); _warmPaperController = null; }
+        return;
+      }
       clearTimeout(_warmPaperTimer);
+      if (_warmPaperController) { _warmPaperController.abort(); _warmPaperController = null; }
       _warmPaperTimer = setTimeout(() => {
         try {
+          if (state.discoveryLoading || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
           if (typeof backendUrl !== 'function' || typeof apiHeaders !== 'function') return;
+          _warmPaperController = new AbortController();
           fetch(backendUrl('/api/discovery/warm'), {
             method: 'POST',
             headers: apiHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ paper: citationPaperPayload(paper) })
-          }).catch(() => {});
+            body: JSON.stringify({ paper: citationPaperPayload(paper) }),
+            signal: _warmPaperController.signal
+          }).catch(() => {}).finally(() => { _warmPaperController = null; });
         } catch (_) {}
-      }, 350);
+      }, 1500);
     }
 
     function applyCitationMetadata(paper, metadata = {}) {

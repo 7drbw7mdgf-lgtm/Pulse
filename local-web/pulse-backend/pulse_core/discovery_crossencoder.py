@@ -118,7 +118,7 @@ def _find_search_runtime(settings):
     return None, None
 
 
-def crossencoder_scores(settings, queries, records, cancel_event=None):
+def crossencoder_scores(settings, queries, records, cancel_event=None, nonblocking=False):
     if cancel_event and cancel_event.is_set():raise DiscoveryCancelled()
     if not records:return [], 'No papers require pairwise ranking.'
     python, model = _find_search_runtime(settings)
@@ -131,9 +131,13 @@ def crossencoder_scores(settings, queries, records, cancel_event=None):
     except OSError:return None,'Pairwise ranking unavailable; using text, meaning and citation evidence.'
     keys=[hashlib.sha256(json.dumps([fingerprint,queries[:2],paper,'single-window-v1'],ensure_ascii=False).encode()).hexdigest() for paper in prepared]
     started=time.monotonic()
-    while not _inference_lock.acquire(timeout=.05):
-        if cancel_event and cancel_event.is_set():raise DiscoveryCancelled()
-        if time.monotonic()-started>12:return None,'Pairwise ranking time budget reached; showing collected results.'
+    if nonblocking:
+        # Background pre-scoring never waits behind foreground ranking.
+        if not _inference_lock.acquire(blocking=False):return None,'Pairwise ranking busy.'
+    else:
+        while not _inference_lock.acquire(timeout=.05):
+            if cancel_event and cancel_event.is_set():raise DiscoveryCancelled()
+            if time.monotonic()-started>12:return None,'Pairwise ranking time budget reached; showing collected results.'
     try:
         cfg_dir = config_directory()
         with _cache_lock:
@@ -148,9 +152,9 @@ def crossencoder_scores(settings, queries, records, cancel_event=None):
         if not missing:
             with _cache_lock:return [_score_cache[key] for key in keys], 'Titles and abstracts assessed together with your research question.'
         positions={key:index for index,key in enumerate(keys)}
-        payload = json.dumps({'model': str(model.resolve()), 'queries': queries[:2],
-            'records':[prepared[positions[key]] for key in missing], 'maxWindows':1}, ensure_ascii=False)
-        scores,notice=_infer(python,worker,payload,len(missing),cancel_event,max(1,12-(time.monotonic()-started)))
+        payload_data = {'model': str(model.resolve()), 'queries': queries[:2],
+            'records':[prepared[positions[key]] for key in missing], 'maxWindows':1}
+        scores,notice=_infer(python,worker,payload_data,len(missing),cancel_event,max(1,12-(time.monotonic()-started)))
         if scores is None:return None,notice
         with _cache_lock:
             for key,score in zip(missing,scores):
@@ -162,47 +166,265 @@ def crossencoder_scores(settings, queries, records, cancel_event=None):
     finally:_inference_lock.release()
 
 
+PRE_SCORE_BATCH = 16
+
+
 def pre_score_crossencoder(settings, queries, records, cancel_event=None, stop_event=None):
-    """Warm up and pre-score leading candidates in background during collection."""
-    if not records or (cancel_event and cancel_event.is_set()): return
-    if stop_event and stop_event.is_set(): return
+    """Fill the score cache for likely shortlist papers while collection continues.
+
+    Batches stay small so foreground ranking waits at most one short batch, and
+    the inference lock is taken only inside crossencoder_scores (it is not
+    re-entrant). Results are cache entries only; ranking is unchanged.
+    """
+    if not records: return
     python, model = _find_search_runtime(settings)
     if not python or not model: return
-    if not _inference_lock.acquire(blocking=False): return
-    try:
+    for offset in range(0, len(records), PRE_SCORE_BATCH):
         if (cancel_event and cancel_event.is_set()) or (stop_event and stop_event.is_set()): return
-        crossencoder_scores(settings, queries, records[:24], cancel_event=cancel_event)
-    except Exception:
+        try:
+            scores, _ = crossencoder_scores(settings, queries, records[offset:offset + PRE_SCORE_BATCH],
+                                            cancel_event=cancel_event, nonblocking=True)
+        except Exception:
+            return
+        if scores is None: return
+
+
+import atexit
+import queue
+import uuid
+
+_WORKER_PROC = None
+_WORKER_LOCK = threading.Lock()
+_WORKER_KEY = None
+
+
+def _stop_worker():
+    global _WORKER_PROC, _WORKER_KEY
+    with _WORKER_LOCK:
+        if _WORKER_PROC is not None:
+            try:
+                if _WORKER_PROC.poll() is None:
+                    _WORKER_PROC.kill()
+                # The reader thread owns stdout, so wait rather than communicate().
+                _WORKER_PROC.wait(timeout=0.5)
+                if _WORKER_PROC.stdin: _WORKER_PROC.stdin.close()
+            except Exception:
+                pass
+            _WORKER_PROC = None
+            _WORKER_KEY = None
+
+atexit.register(_stop_worker)
+
+
+def _get_worker(python, worker):
+    global _WORKER_PROC, _WORKER_KEY
+    current_key = (str(python.resolve()), str(worker.resolve()))
+    with _WORKER_LOCK:
+        if _WORKER_PROC is not None:
+            if _WORKER_PROC.poll() is None and _WORKER_KEY == current_key:
+                return _WORKER_PROC
+            try:
+                if _WORKER_PROC.poll() is None:
+                    _WORKER_PROC.kill()
+            except Exception:
+                pass
+            _WORKER_PROC = None
+
+        command = [str(python)] if python.name in ('pulse-reranker', 'pulse-reranker.exe') else [str(python), str(worker)]
+        proc = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            bufsize=1,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+        )
+        proc._pulse_lines = queue.Queue()
+        threading.Thread(target=_pump_worker_output, args=(proc,), name='pulse-reranker-reader', daemon=True).start()
+        _WORKER_PROC = proc
+        _WORKER_KEY = current_key
+        return _WORKER_PROC
+
+
+def _pump_worker_output(process):
+    """Move worker output lines into a queue so reads honour deadlines on every platform."""
+    lines = process._pulse_lines
+    try:
+        for line in process.stdout:
+            lines.put(line)
+    except (OSError, ValueError):
         pass
     finally:
-        _inference_lock.release()
+        lines.put('')  # End of stream: the worker exited or its pipe closed.
 
 
+def _read_worker_line(process, cancel_event, deadline):
+    """Next worker output line; None at the deadline, '' when the worker has exited."""
+    lines = getattr(process, '_pulse_lines', None)
+    if lines is None:
+        return process.stdout.readline()
+    while True:
+        if cancel_event and cancel_event.is_set():
+            raise DiscoveryCancelled()
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        try:
+            return lines.get(timeout=min(0.1, remaining))
+        except queue.Empty:
+            continue
 
-def _infer(python,worker,payload,count,cancel_event,timeout):
+
+PERSISTENT_PROTOCOL = 'jsonl-v1'
+_protocol_cache = {}
+
+
+def _supports_persistent(python):
+    """Source workers in this checkout speak JSON lines; a frozen runtime must declare it.
+
+    Runtimes frozen before the persistent protocol read one JSON document until
+    end of input, so they are driven in single-shot mode instead.
+    """
+    if python.name not in ('pulse-reranker', 'pulse-reranker.exe'):
+        return True
+    key = str(python)
+    if key not in _protocol_cache:
+        supported = False
+        for parent in python.parents:
+            manifest = parent / 'manifest.json'
+            if manifest.is_file():
+                try:
+                    supported = json.loads(manifest.read_text()).get('protocol') == PERSISTENT_PROTOCOL
+                except (OSError, ValueError):
+                    supported = False
+                break
+        _protocol_cache[key] = supported
+    return _protocol_cache[key]
+
+
+def _validated_scores(scores, count):
+    if not isinstance(scores, list) or len(scores) != count:
+        return None
+    if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not 0 <= v <= 1 for v in scores):
+        return None
+    return scores
+
+
+def _infer_single_shot(python, worker, payload_dict, count, cancel_event, timeout):
+    """One process per request: write the payload, close input, read one result."""
+    unavailable = 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
     try:
         command = [str(python)] if python.name in ('pulse-reranker', 'pulse-reranker.exe') else [str(python), str(worker)]
-        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                   text=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except OSError:
-        return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
+        return None, unavailable
+    payload = json.dumps(payload_dict, ensure_ascii=False)
     started = time.monotonic()
     try:
         sent = False
         while True:
             if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
-            if time.monotonic()-started > timeout: return None, 'Pairwise ranking time budget reached; showing collected results.'
+            if time.monotonic() - started > timeout:
+                return None, 'Pairwise ranking time budget reached; showing collected results.'
             try:
                 output, _ = process.communicate(payload if not sent else None, timeout=.15)
                 break
             except subprocess.TimeoutExpired:
                 sent = True
-        if process.returncode: return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
-        scores = json.loads(output)['scores']
-        if len(scores) != count or any(isinstance(v,bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not 0 <= v <= 1 for v in scores): raise ValueError('Invalid pairwise scores')
+        if process.returncode: return None, unavailable
+        scores = _validated_scores(json.loads(output).get('scores'), count)
+        if scores is None: return None, unavailable
         return scores, 'Titles and abstracts assessed together with your research question.'
-    except DiscoveryCancelled: raise
-    except (ValueError, KeyError, OSError):
-        return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
+    except DiscoveryCancelled:
+        raise
+    except (ValueError, KeyError, OSError, AttributeError):
+        return None, unavailable
     finally:
         if process.poll() is None: process.kill()
-        process.communicate()
+        try: process.communicate(timeout=1)
+        except Exception: pass
+
+
+def _infer(python, worker, payload_dict, count, cancel_event, timeout):
+    if not _supports_persistent(python):
+        return _infer_single_shot(python, worker, payload_dict, count, cancel_event, timeout)
+    deadline = time.monotonic() + timeout
+    req_id = str(uuid.uuid4())
+    req_payload = dict(payload_dict, id=req_id)
+    raw_json = json.dumps(req_payload, ensure_ascii=False) + '\n'
+
+    for attempt in range(2):
+        if cancel_event and cancel_event.is_set():
+            raise DiscoveryCancelled()
+        if time.monotonic() >= deadline:
+            return None, 'Pairwise ranking time budget reached; showing collected results.'
+        try:
+            process = _get_worker(python, worker)
+        except OSError:
+            return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
+
+        try:
+            process.stdin.write(raw_json)
+            process.stdin.flush()
+        except (BrokenPipeError, OSError):
+            _stop_worker()
+            if attempt == 0:
+                continue
+            return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
+
+        line = _read_worker_line(process, cancel_event, deadline)
+        if line is None:
+            _stop_worker()
+            return None, 'Pairwise ranking time budget reached; showing collected results.'
+        if not line:
+            _stop_worker()
+            if attempt == 0:
+                continue
+            return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
+
+        try:
+            resp = json.loads(line)
+        except Exception:
+            _stop_worker()
+            return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
+
+        if resp.get('id') != req_id:
+            _stop_worker()
+            return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
+
+        if 'error' in resp:
+            return None, f"Pairwise ranking error: {resp['error']}"
+
+        scores = resp.get('scores')
+        if not isinstance(scores, list) or len(scores) != count:
+            return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
+        if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not 0 <= v <= 1 for v in scores):
+            return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
+        return scores, 'Titles and abstracts assessed together with your research question.'
+
+    return None, 'Pairwise ranking unavailable; using text, meaning and citation evidence.'
+
+
+def warmup_crossencoder(settings):
+    """Background warmup of persistent worker process and model."""
+    python, model = _find_search_runtime(settings)
+    if not python or not model or not _supports_persistent(python):
+        return  # A single-shot runtime starts per request, so there is nothing to keep warm.
+    worker = Path(__file__).with_name('reranker_worker.py')
+    dummy_payload = {
+        'model': str(model.resolve()),
+        'queries': ['warmup query'],
+        'records': [{'title': 'Warmup Title', 'abstract': 'Warmup abstract'}],
+        'maxWindows': 1
+    }
+    if not _inference_lock.acquire(blocking=False):
+        return
+    try:
+        _infer(python, worker, dummy_payload, 1, None, timeout=15)
+    except Exception:
+        pass
+    finally:
+        _inference_lock.release()
+

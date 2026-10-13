@@ -13,6 +13,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 from collections import OrderedDict
 import collections
 import http.client
@@ -238,6 +239,11 @@ def _disk_http_cache_get(key, request):
             if expires_at > now:
                 conn.execute('UPDATE http_cache SET used = ? WHERE key = ?', (now, key))
                 conn.commit()
+                if isinstance(body, bytes):
+                    try:
+                        return json.loads(zlib.decompress(body).decode('utf-8'))
+                    except Exception:
+                        return json.loads(body.decode('utf-8'))
                 return json.loads(body)
             else:
                 conn.execute('DELETE FROM http_cache WHERE key = ?', (key,))
@@ -256,8 +262,9 @@ def _disk_http_cache_set(key, url, headers, data, status=200):
         return
     conn = None
     try:
-        body = json.dumps(data)
-        size = len(body.encode('utf-8'))
+        raw_json = json.dumps(data)
+        compressed = zlib.compress(raw_json.encode('utf-8'), level=6)
+        size = len(compressed)
         if size > 25_000_000:
             return
         ttl = _disk_http_cache_ttl(url)
@@ -273,7 +280,7 @@ def _disk_http_cache_set(key, url, headers, data, status=200):
             key TEXT PRIMARY KEY,
             url TEXT NOT NULL,
             headers TEXT NOT NULL,
-            body TEXT NOT NULL,
+            body BLOB NOT NULL,
             status INTEGER NOT NULL,
             expires_at REAL NOT NULL,
             used REAL NOT NULL,
@@ -282,12 +289,12 @@ def _disk_http_cache_set(key, url, headers, data, status=200):
         conn.execute('''INSERT OR REPLACE INTO http_cache
             (key, url, headers, body, status, expires_at, used, size)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-            (key, url, json.dumps(headers), body, status, expires_at, now, size))
+            (key, url, json.dumps(headers), compressed, status, expires_at, now, size))
         total = conn.execute('SELECT SUM(size) FROM http_cache').fetchone()[0] or 0
-        if total > 200 * 1024 * 1024:
+        if total > 1024 * 1024 * 1024:
             conn.execute('DELETE FROM http_cache WHERE expires_at < ?', (now,))
             total = conn.execute('SELECT SUM(size) FROM http_cache').fetchone()[0] or 0
-            if total > 180 * 1024 * 1024:
+            if total > 900 * 1024 * 1024:
                 conn.execute('''DELETE FROM http_cache WHERE key IN (
                     SELECT key FROM http_cache ORDER BY used ASC LIMIT 200
                 )''')
