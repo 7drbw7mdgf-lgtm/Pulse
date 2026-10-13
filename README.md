@@ -8,7 +8,7 @@
 
 ---
 
-**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.7.6)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.8.0.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
+**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.8.0.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
 
 ---
 
@@ -121,8 +121,8 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 3. *Note:* Ensure you have Python 3.10+ installed (e.g. via Homebrew `brew install python`). Because Pulse is ad-hoc signed, if macOS blocks the first launch, right-click the app and choose **Open**, or run the `Allow-Pulse-Tauri.command` included in the DMG.
 
 ### Windows (Windows 10/11 x64)
-1. Download **[Pulse-1.7.6-Windows-x64-Setup.exe](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.7.6/Pulse-1.7.6-Windows-x64-Setup.exe)**. This Windows installer is version 1.7.6; current Windows source builds in CI.
-2. Run the installer and follow the on-screen instructions. Python and PDF extraction engines are bundled directly inside the Windows setup.
+1. Download **[Pulse-1.8.0-Windows-x64-Setup.exe](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)**.
+2. Run the installer and follow the on-screen instructions. Python, PDF extraction, English OCR and the portable offline search ranker are bundled directly inside the Windows setup. [Installed-app verification](https://github.com/7drbw7mdgf-lgtm/Pulse/actions/runs/38360480575) checks these assets in an isolated profile.
 
 ---
 
@@ -180,7 +180,7 @@ python3 /path/to/Pulse/local-web/pulse-backend/pulse_mcp.py
 - **Europe PMC time budget:** Europe PMC now shares CORE's eight-second collection cap, including retries and socket waits. Completed results survive with a partial-result notice.
 - **Clear performance measurements:** API timings separate collection, embedding, cross-encoder and total ranking time, with counts for papers actually assessed. Neural budgets and cancellation also apply while waiting for ongoing embedding work.
 
-The offline Mac ranker, visible result bands, citation-hop cap and CORE recovery from 1.7.7 remain in place. The Mac release includes these changes; the linked Windows installer remains 1.7.6 and current Windows source is built in CI. See the [1.7.8 release notes](docs/releases/1.7.8.md). Timing measurements use synthetic inputs on the test Mac and do not establish live search latency or real-world recall.
+The offline ranker, visible result bands, citation-hop cap and CORE recovery from 1.7.7 remain in place. Both desktop installers now include the portable offline ranker. See the [1.7.8 release notes](docs/releases/1.7.8.md). Timing measurements use synthetic inputs on the test Mac and do not establish live search latency or real-world recall.
 
 ---
 
