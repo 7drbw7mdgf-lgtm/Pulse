@@ -89,7 +89,11 @@ const {chromium}=require('playwright');
     for(const size of [{width:1547,height:1031},{width:1024,height:720},{width:600,height:720}]){
       await page.setViewportSize(size);
       assert.equal(await page.locator('#discoveryResearchQuestion').isVisible(),true);
-      if(size.width>=1500)assert.ok((await page.locator('#discoveryResearchQuestion').boundingBox()).width>470,'The search bar uses the freed space');
+      if(size.width>=1500){
+        const widths=await page.evaluate(()=>{const input=document.getElementById('discoveryResearchQuestion');const row=input.closest('label').parentElement;
+          return {bar:input.getBoundingClientRect().width,others:[...row.children].filter(child=>!child.contains(input)).map(child=>child.getBoundingClientRect().width)};});
+        assert.ok(widths.bar>=Math.max(...widths.others),'The search bar uses the freed space and is the widest ribbon control');
+      }
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Search controls must fit the viewport');
     }
     if(process.env.PULSE_UI_SCREENSHOT_DIR){await page.setViewportSize({width:1547,height:1031});
