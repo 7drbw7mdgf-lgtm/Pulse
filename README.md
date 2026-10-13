@@ -79,7 +79,7 @@ Repeated equivalent provider queries and concurrent identical metadata requests 
 
 **Find a paper from an in-text citation:** paste `(Martín-González et al., 2026)` or `Smith & Lee (2024)` into **Add paper**. Pulse searches Crossref and OpenAlex by author and year, shows possible titles and indexed DOIs, and lets you choose the paper. Accents, compound surnames, grouped citations and year suffixes are supported; optional title words refine ambiguous searches. Short citations never become placeholder papers or silently select the first result.
 
-Discovery now defaults to **500 results**, with **1,000** and **2,000** options. The collection deadlines and 75-paper cross-encoder budget remain bounded; a requested count is a maximum, not a guarantee of that many matches. Old workspaces saved at 200 results move to 500.
+1.7.10 raised the default to **500 results**, with **1,000** and **2,000** options; 1.7.12 returned the default to **200** for faster searches, and larger counts remain available. A requested count is a maximum, not a guarantee of that many matches.
 
 ![In-text citation lookup — synthetic example](docs/images/pulse-1.7.11-citation-lookup.png)
 

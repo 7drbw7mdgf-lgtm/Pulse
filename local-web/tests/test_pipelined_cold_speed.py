@@ -16,6 +16,7 @@ import time
 import unittest
 from unittest.mock import patch, MagicMock
 import zlib
+from contextlib import closing
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'pulse-backend'))
 
@@ -48,7 +49,7 @@ class CompressedHttpCacheTests(unittest.TestCase):
 
         # Verify underlying SQLite storage is actually compressed
         db_path = Path(self.temp_dir.name) / 'http-cache.sqlite3'
-        with sqlite3.connect(str(db_path)) as conn:
+        with closing(sqlite3.connect(str(db_path))) as conn:
             row = conn.execute("SELECT body FROM http_cache WHERE key = ?", (key,)).fetchone()
             self.assertIsNotNone(row)
             raw_blob = row[0]
@@ -72,7 +73,7 @@ class CompressedHttpCacheTests(unittest.TestCase):
         db_path = Path(self.temp_dir.name) / 'http-cache.sqlite3'
         # Manually store uncompressed utf-8 bytes into http_cache
         uncompressed_bytes = json.dumps(payload).encode('utf-8')
-        with sqlite3.connect(str(db_path)) as conn:
+        with closing(sqlite3.connect(str(db_path))) as conn:
             conn.execute(
                 "UPDATE http_cache SET body = ? WHERE key = ?",
                 (uncompressed_bytes, key)
@@ -348,6 +349,7 @@ class FrozenRuntimeProtocolTests(unittest.TestCase):
         (root / 'manifest.json').write_text(json.dumps(manifest))
         return exe
 
+    @unittest.skipIf(os.name == 'nt', 'The fake frozen runtime is a #! script, which Windows cannot execute directly.')
     def test_old_runtime_without_protocol_uses_single_shot(self):
         exe = self.frozen({'format': 'onnx-executable-v1'})
         self.assertFalse(dce._supports_persistent(exe))

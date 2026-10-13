@@ -36,7 +36,7 @@ const {chromium} = require('playwright');
         {index,verified:true,metadata:{...paper,journal:'Retrieval Studies',volume:'2',pages:'1-9',metadataVerification:{verified:true},doiVerified:true},verification:{verified:true,checkedAt:new Date().toISOString()}})}});
     });
     await page.goto(url); await page.waitForFunction(() => state.autosaveReady);
-    assert.equal(await page.locator('#discoveryResultLimit').inputValue(),'500');
+    assert.equal(await page.locator('#discoveryResultLimit').inputValue(),'200');
     await page.locator('#discoveryResultLimit').selectOption('2000');
     assert.equal(await page.evaluate(()=>discoveryConfiguration().limit),2000);
     await page.locator('#railAddButton').click();await page.locator('#quickSearchInput').fill('(Martín-González et al., 2026)');await page.locator('#quickSearchInput').press('Enter');
