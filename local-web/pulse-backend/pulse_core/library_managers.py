@@ -89,7 +89,17 @@ def request(url, method='GET', data=None, headers=None, timeout=10, envelope=Fal
                     following = target.path + ('?' + target.query if target.query else '')
             return {'data': result, 'next': following}
     except urllib.error.HTTPError as error:
-        raise ClientError(error.code, f'{"Zotero" if url.startswith(ZOTERO) else "Mendeley"} returned HTTP {error.code}.')
+        detail = ''
+        try:
+            body = error.read(65536)
+            if body:
+                data = json.loads(body)
+                detail = data.get('error_description') or data.get('message') or data.get('error') or ''
+        except Exception:
+            pass
+        msg = f'{"Zotero" if url.startswith(ZOTERO) else "Mendeley"} returned HTTP {error.code}'
+        if detail: msg += f': {detail}'
+        raise ClientError(error.code, msg)
     except (OSError, ValueError) as error:
         raise ClientError(502, f'{"Zotero" if url.startswith(ZOTERO) else "Mendeley"} is unavailable. Check the connection and try again.') from error
 
@@ -134,6 +144,7 @@ def token_exchange(config, fields):
     if config.get('clientSecret'):
         basic = base64.b64encode((config['clientId'] + ':' + config['clientSecret']).encode()).decode()
         headers['Authorization'] = 'Basic ' + basic
+        fields.pop('code_verifier', None)
     elif config.get('authFlow') == 'pkce' and config.get('pkceVerified') is True:
         fields['client_id'] = config['clientId']
     else:
@@ -149,7 +160,7 @@ def token_exchange(config, fields):
         if not 1 <= lifetime <= 86400: raise ValueError()
     except (ValueError, TypeError, OverflowError):
         raise ClientError(502, 'Mendeley returned an invalid token expiry.')
-    profile = request(MENDELEY + '/profiles/v2/me', headers={'Authorization': 'Bearer ' + token})
+    profile = request(MENDELEY + '/profiles/v2/me', headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/json'})
     if not isinstance(profile, dict) or not profile.get('id'):
         raise ClientError(502, 'Mendeley did not confirm the account connection.')
     with config_lock():
