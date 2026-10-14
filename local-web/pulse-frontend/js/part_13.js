@@ -46,10 +46,13 @@
     }
 
     function svgPoint(event) {
+      if (!els.map?.getScreenCTM) return { x: event.clientX || 0, y: event.clientY || 0 };
+      const ctm = els.map.getScreenCTM();
+      if (!ctm) return { x: event.clientX || 0, y: event.clientY || 0 };
       const point = els.map.createSVGPoint();
       point.x = event.clientX;
       point.y = event.clientY;
-      return point.matrixTransform(els.map.getScreenCTM().inverse());
+      return point.matrixTransform(ctm.inverse());
     }
 
     function renderEdgesOnly() {
