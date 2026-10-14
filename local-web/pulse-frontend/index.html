@@ -347,10 +347,11 @@
 <p class="subtle">Public search works without account setup. Choose your sources in Discovery options. A CORE API key is optional and can provide a higher search allowance.</p>
 <div class="mac-form-row"><label class="mac-form-label" for="coreKeyInput">CORE API key</label><div class="mac-form-control"><input id="coreKeyInput" class="mac-input" type="password" autocomplete="off" placeholder="Optional"><small id="coreSearchStatus" class="subtle">Public search</small></div></div>
 <div class="mac-form-actions"><button id="clearCoreKeyButton" class="mac-btn" type="button">Remove key</button><button class="mac-btn primary" data-save-settings type="button">Save</button></div>
+<p class="subtle"><a href="https://core.ac.uk/services/api" target="_blank" rel="noreferrer">Get a CORE API key ↗</a></p></div>
 <div class="mac-group-card"><div class="mac-group-title">OpenAlex</div>
-<p class="subtle">Public citation and work searches work keyless. To avoid rate limits or daily quotas, you can provide an OpenAlex API key (100 req/s) or a polite-pool contact email.</p>
-<div class="mac-form-row"><label class="mac-form-label" for="openAlexApiKeyInput">OpenAlex API key</label><div class="mac-form-control"><input id="openAlexApiKeyInput" class="mac-input" type="password" autocomplete="off" placeholder="Optional"><small id="openAlexKeyStatus" class="subtle">Keyless rate limit (10 req/s)</small></div></div>
-<div class="mac-form-row"><label class="mac-form-label" for="pulseContactEmailInput">Polite pool email</label><div class="mac-form-control"><input id="pulseContactEmailInput" class="mac-input" type="email" autocomplete="off" placeholder="Optional (e.g. name@institution.edu)"><small class="subtle">Sent with keyless requests to join OpenAlex polite pool</small></div></div>
+<p class="subtle">Citation and work searches work without a key. An OpenAlex API key raises the daily allowance; a contact email joins OpenAlex’s polite pool.</p>
+<div class="mac-form-row"><label class="mac-form-label" for="openAlexApiKeyInput">OpenAlex API key</label><div class="mac-form-control"><input id="openAlexApiKeyInput" class="mac-input" type="password" autocomplete="off" placeholder="Optional"><small id="openAlexKeyStatus" class="subtle">Free daily allowance</small></div></div>
+<div class="mac-form-row"><label class="mac-form-label" for="pulseContactEmailInput">Polite pool email</label><div class="mac-form-control"><input id="pulseContactEmailInput" class="mac-input" type="email" autocomplete="off" placeholder="Optional (e.g. name@institution.edu)"><small class="subtle">Sent to OpenAlex only, to join its polite pool</small></div></div>
 <div class="mac-form-actions"><button id="clearOpenAlexKeyButton" class="mac-btn" type="button">Remove key</button><button class="mac-btn primary" data-save-settings type="button">Save</button></div>
 <p class="subtle"><a href="https://openalex.org" target="_blank" rel="noreferrer">Get an OpenAlex API key ↗</a></p></div>
 </section>
@@ -397,6 +398,7 @@
 <div id="openAlexLimitBanner" class="dv-notice dv-limit-banner" role="status" hidden>
 <span class="dv-limit-text">OpenAlex limit reached — citation results may be incomplete until <strong id="openAlexLimitTime">--:--</strong>. Other sources continue.</span>
 <button type="button" class="dv-btn small dv-limit-btn" data-dv-action="open-openalex-settings">Add OpenAlex API key</button>
+</div>
 </div>
 <p id="discoverySourceNotice" class="dv-notice" role="status" hidden></p>
 <div class="dv-body">
@@ -492,7 +494,7 @@
 <script src="js/paper-links.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_02.js?v=ui-1.9-optimisation2"></script>
 <script src="js/part_03.js?v=ui-20261011-171"></script>
-<script src="js/part_04.js?v=ui-1.9-openalex"></script>
+<script src="js/part_04.js?v=ui-1.9-openalex2"></script>
 <script src="js/part_05.js?v=ui-1.9-openalex"></script>
 <script src="js/part_06.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_07.js?v=ui-20261012-dbef-scale"></script>
