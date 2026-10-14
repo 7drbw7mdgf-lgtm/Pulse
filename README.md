@@ -2,13 +2,13 @@
 
 ### A private, local-first workspace for scientific literature discovery and synthesis
 
-[![Release](https://img.shields.io/badge/release-v1.8.4-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.8.4)
+[![Release](https://img.shields.io/badge/release-v1.8.5-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.8.5)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases)
 
 ---
 
-**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.4/Pulse-1.8.4.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.8.0)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.8.4.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
+**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.5/Pulse-1.8.5.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.8.0)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.8.5.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
 
 ---
 
@@ -21,6 +21,14 @@
 ---
 
 ![Pulse Discovery Review Workspace — synthetic example](docs/images/pulse-1.7.11-discovery.png)
+
+## What’s new in 1.8.5
+
+- **Mendeley sign-in and sync fixed:** connecting no longer fails with "Could not finish Mendeley sign-in", and the whole library imports, with duplicate copies merged. Repeat syncs bring in only what changed in Mendeley and keep your edits.
+- **Mendeley connection settings** are available under Settings → Mendeley & Zotero.
+- Fixed a topic-cluster map crash after large imports.
+
+See the [1.8.5 notes](docs/releases/1.8.5.md).
 
 ## What’s new in 1.8.4
 
@@ -110,7 +118,7 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 4. **Triage Without Noise:** Results are neatly categorized into **Strong matches** (evidence-backed results in the top 10% of the displayed list and full pool), **Related** (the top 40% of the displayed list), and **Explore**. Clear badges explain *why* each paper was suggested (e.g. citation links, co-authors, or shared topics).
 5. **Bridge Literature:** Select 2 to 8 papers to uncover "bridge papers"—cross-disciplinary work connecting different fields or ideas.
 6. **Local AI Assistant:** Run synthesis reports and section summaries directly on your machine using local [Ollama](https://ollama.com) models. No external API keys required, no subscription fees, and no data leaves your device.
-7. **Reference Manager Sync:** Seamlessly send papers and metadata to Zotero Desktop or export citation bundles in RIS format for Mendeley.
+7. **Reference Manager Sync:** Send papers and metadata to Zotero Desktop, export RIS files, or connect Mendeley to import and keep your Mendeley library in sync.
 
 ---
 
@@ -124,6 +132,7 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 | **Concept Search Keywords** | Extracted by the configured AI, locally by default. If you configure cloud AI, your typed topic is sent to that provider. Extracted phrases and the original topic are sent to the selected scholarly indexes. |
 | **Accounts & Tracking** | None. No account required, no telemetry, no tracking cookies. |
 | **Scholarly Lookups** | Pulse sends public paper identifiers (DOIs, titles, search keywords) to open scholarly APIs (Crossref, OpenAlex, OpenCitations, Europe PMC, NIH iCite, arXiv, Semantic Scholar, CORE) just like a web browser lookup. Keeping a paper selected for 1.5 s may run that paper's search lookups in the background (pre-warm, at most 10 per hour) so the next search starts faster. Responses are cached on your computer: stable lookups for up to 7 days, free-text searches for 15 minutes. An optional OpenAlex API key is sent only to OpenAlex and is never stored in the cache. |
+| **Reference Managers (optional)** | Only when you connect them. Zotero is reached on your computer through Zotero Desktop. Mendeley sign-in goes to Mendeley; Pulse then reads your Mendeley library to import it and sends only the papers you choose to send (bibliographic details and abstract, never PDFs). Mendeley tokens are stored encrypted on your computer. |
 
 ---
 
@@ -148,12 +157,12 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 ## Installation
 
 ### macOS (Apple Silicon, macOS 11+)
-1. Download **[Pulse-1.8.4.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.4/Pulse-1.8.4.dmg)**.
+1. Download **[Pulse-1.8.5.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.5/Pulse-1.8.5.dmg)**.
 2. Open the DMG and drag **Pulse.app** into your **Applications** folder.
 3. *Note:* Ensure you have Python 3.10+ installed (e.g. via Homebrew `brew install python`). Because Pulse is ad-hoc signed, if macOS blocks the first launch, right-click the app and choose **Open**, or run the `Allow-Pulse-Tauri.command` included in the DMG.
 
 ### Windows (Windows 10/11 x64)
-1. Download **[Pulse-1.8.0-Windows-x64-Setup.exe](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)**. The Windows installer is version 1.8.0; the 1.8.1–1.8.4 changes are in the Mac installer and in source.
+1. Download **[Pulse-1.8.0-Windows-x64-Setup.exe](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)**. The Windows installer is version 1.8.0; the 1.8.1–1.8.5 changes are in the Mac installer and in source.
 2. Run the installer and follow the on-screen instructions. Python, PDF extraction, English OCR and the portable offline search ranker are bundled directly inside the Windows setup. [Installed-app verification](https://github.com/7drbw7mdgf-lgtm/Pulse/actions/runs/38360480575) checks these assets in an isolated profile.
 
 ---
