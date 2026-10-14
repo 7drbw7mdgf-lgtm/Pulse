@@ -33,27 +33,40 @@ class SpeedAndCacheTests(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_http_cache_ttl_rules(self):
-        # 24h for single work and cites/cited_by queries
-        self.assertEqual(_disk_http_cache_ttl('https://api.openalex.org/works/W12345'), 86400.0)
-        self.assertEqual(_disk_http_cache_ttl('https://api.openalex.org/works?filter=cites:W12345'), 86400.0)
-        self.assertEqual(_disk_http_cache_ttl('https://api.openalex.org/works?filter=cited_by:W12345'), 86400.0)
-        self.assertEqual(_disk_http_cache_ttl('https://api.semanticscholar.org/graph/v1/paper/abc/citations'), 86400.0)
-        self.assertEqual(_disk_http_cache_ttl('https://api.semanticscholar.org/graph/v1/paper/abc/references'), 86400.0)
+        # 7 days (604800.0s) for single work and cites/cited_by queries
+        self.assertEqual(_disk_http_cache_ttl('https://api.openalex.org/works/W12345'), 604800.0)
+        self.assertEqual(_disk_http_cache_ttl('https://api.openalex.org/works?filter=cites:W12345'), 604800.0)
+        self.assertEqual(_disk_http_cache_ttl('https://api.openalex.org/works?filter=cited_by:W12345'), 604800.0)
+        self.assertEqual(_disk_http_cache_ttl('https://api.semanticscholar.org/graph/v1/paper/abc/citations'), 604800.0)
+        self.assertEqual(_disk_http_cache_ttl('https://api.semanticscholar.org/graph/v1/paper/abc/references'), 604800.0)
+        self.assertEqual(_disk_http_cache_ttl('https://europepmc.org/RestPortal/v1/MED/12345/citations'), 604800.0)
+        self.assertEqual(_disk_http_cache_ttl('https://icite.od.nih.gov/api/pubs?pmids=12345'), 604800.0)
+        self.assertEqual(_disk_http_cache_ttl('https://api.opencitations.net/index/v2/citations/doi:10.1234/test'), 604800.0)
         
         # 15 min for free-text search queries
         self.assertEqual(_disk_http_cache_ttl('https://api.openalex.org/works?search=machine+learning'), 900.0)
         self.assertEqual(_disk_http_cache_ttl('https://api.crossref.org/works?query=neural+networks'), 900.0)
 
     def test_disk_cache_skips_credentials_and_errors(self):
-        # Authenticated requests with credentials are not cached on disk
+        # Private authenticated requests with credentials are not cached on disk
         req_auth = urllib.request.Request('https://api.example.com/test', headers={'Authorization': 'Bearer secret123'})
         self.assertTrue(_disk_http_cache_skippable(req_auth))
         
         req_key = urllib.request.Request('https://api.example.com/test', headers={'x-api-key': 'key_abc'})
         self.assertTrue(_disk_http_cache_skippable(req_key))
         
+        # OpenAlex and public academic APIs share the disk cache even with api_key header
         req_clean = urllib.request.Request('https://api.openalex.org/works/W123', headers={'Accept': 'application/json'})
         self.assertFalse(_disk_http_cache_skippable(req_clean))
+        req_oa_key = urllib.request.Request('https://api.openalex.org/works/W123', headers={'Accept': 'application/json', 'api_key': 'secret_key'})
+        self.assertFalse(_disk_http_cache_skippable(req_oa_key))
+
+        # API key and mailto query parameters are stripped before computing cache key
+        req_param_key = urllib.request.Request('https://api.openalex.org/works/W123?api_key=my_openalex_secret', headers={'Accept': 'application/json'})
+        req_param_mail = urllib.request.Request('https://api.openalex.org/works/W123?mailto=researcher@univ.edu', headers={'Accept': 'application/json'})
+        self.assertEqual(_disk_http_cache_key(req_clean), _disk_http_cache_key(req_param_key))
+        self.assertEqual(_disk_http_cache_key(req_clean), _disk_http_cache_key(req_param_mail))
+        self.assertEqual(_disk_http_cache_key(req_clean), _disk_http_cache_key(req_oa_key))
 
         # Status >= 400 is never written to disk cache
         key = _disk_http_cache_key(req_clean)

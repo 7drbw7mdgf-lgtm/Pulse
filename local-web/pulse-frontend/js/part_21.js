@@ -78,6 +78,7 @@
     els.clearDimensionsKeyButton?.addEventListener('click', () => saveBackendSettings({ clearDimensionsApiKey: true }));
     els.clearSemanticScholarKeyButton?.addEventListener('click', () => saveBackendSettings({ clearSemanticScholarApiKey: true }));
     els.clearCoreKeyButton?.addEventListener('click', () => saveBackendSettings({ clearCoreApiKey: true }));
+    els.clearOpenAlexKeyButton?.addEventListener('click', () => saveBackendSettings({ clearOpenAlexApiKey: true }));
     els.clearButton?.addEventListener('click', () => {
       const menu = document.getElementById('libraryActionsMenu');
       if (menu) menu.open = false;

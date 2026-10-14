@@ -10,7 +10,7 @@ from email.utils import parsedate_to_datetime
 _LOCK = threading.Lock()
 _STATES = {}
 LABELS = {'api.openalex.org':'OpenAlex','api.crossref.org':'Crossref','api.semanticscholar.org':'Semantic Scholar',
-          'api.core.ac.uk':'CORE','www.ebi.ac.uk':'Europe PMC'}
+          'api.core.ac.uk':'CORE','www.ebi.ac.uk':'Europe PMC','europepmc.org':'Europe PMC','icite.od.nih.gov':'iCite'}
 
 
 class ProviderCooldown(Exception):
@@ -76,6 +76,13 @@ def cooldowns():
             if seconds>0 and host in LABELS:
                 result[LABELS[host]]={'retryInSeconds':seconds,'reason':state.get('reason') or 'Source unavailable'}
     return result
+
+
+def clear_source(target):
+    with _LOCK:
+        keys_to_del = [k for k in _STATES if k[0] == target or LABELS.get(k[0]) == target]
+        for k in keys_to_del:
+            _STATES.pop(k, None)
 
 
 def clear():

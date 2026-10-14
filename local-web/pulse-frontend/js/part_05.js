@@ -3,10 +3,12 @@
       const clearDimensionsApiKey = Boolean(options.clearDimensionsApiKey);
       const clearSemanticScholarApiKey = Boolean(options.clearSemanticScholarApiKey);
       const clearCoreApiKey = Boolean(options.clearCoreApiKey);
+      const clearOpenAlexApiKey = Boolean(options.clearOpenAlexApiKey);
       els.saveSettingsButton.disabled = true;
       if (els.clearDimensionsKeyButton) els.clearDimensionsKeyButton.disabled = true;
       if (els.clearSemanticScholarKeyButton) els.clearSemanticScholarKeyButton.disabled = true;
       if (els.clearCoreKeyButton) els.clearCoreKeyButton.disabled = true;
+      if (els.clearOpenAlexKeyButton) els.clearOpenAlexKeyButton.disabled = true;
       try {
         const response = await fetch(backendUrl('/api/settings'), {
           method: 'POST',
@@ -23,6 +25,9 @@
             clearSemanticScholarApiKey,
             coreApiKey: clearCoreApiKey ? '' : (els.coreKeyInput?.value.trim() || ''),
             clearCoreApiKey,
+            openAlexApiKey: clearOpenAlexApiKey ? '' : (els.openAlexApiKeyInput ? els.openAlexApiKeyInput.value.trim() : ''),
+            clearOpenAlexApiKey,
+            contactEmail: els.pulseContactEmailInput ? els.pulseContactEmailInput.value.trim() : '',
             gemmaModel: els.gemmaModelInput.value.trim() || 'gemma3:4b',
             embeddingModel: els.embeddingModelInput.value.trim() || 'nomic-embed-text',
             triageModel: document.getElementById('triageModelInput')?.value.trim() || 'llama3.2:3b',
@@ -35,8 +40,11 @@
         if (els.dimensionsKeyInput) els.dimensionsKeyInput.value = '';
         if (els.semanticScholarKeyInput) els.semanticScholarKeyInput.value = '';
         if (els.coreKeyInput) els.coreKeyInput.value = '';
+        if (els.openAlexApiKeyInput) els.openAlexApiKeyInput.value = '';
+        if (els.openAlexLimitBanner) els.openAlexLimitBanner.hidden = true;
         renderBackendStatus(settings, 'Settings saved.');
         if (clearCoreApiKey) showToast('CORE key removed.');
+        else if (clearOpenAlexApiKey) showToast('OpenAlex key removed.');
         else if (clearSemanticScholarApiKey) showToast('Semantic Scholar key cleared.');
         else if (clearDimensionsApiKey) showToast('Dimensions key cleared.');
         else showToast('Backend settings saved.');
@@ -48,6 +56,8 @@
         els.saveSettingsButton.disabled = false;
         if (els.clearDimensionsKeyButton) els.clearDimensionsKeyButton.disabled = false;
         if (els.clearSemanticScholarKeyButton) els.clearSemanticScholarKeyButton.disabled = false;
+        if (els.clearCoreKeyButton) els.clearCoreKeyButton.disabled = false;
+        if (els.clearOpenAlexKeyButton) els.clearOpenAlexKeyButton.disabled = false;
       }
     }
 

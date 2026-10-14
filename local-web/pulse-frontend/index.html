@@ -1,6 +1,6 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.8.3 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261013-map">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai https://europepmc.org https://icite.od.nih.gov; frame-ancestors 'none'; object-src 'none';">
+<title>Pulse v1.8.3 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-1.9-openalex">
 <link rel="icon" type="image/png" href="favicon.png?v=1.8.3"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
@@ -347,7 +347,12 @@
 <p class="subtle">Public search works without account setup. Choose your sources in Discovery options. A CORE API key is optional and can provide a higher search allowance.</p>
 <div class="mac-form-row"><label class="mac-form-label" for="coreKeyInput">CORE API key</label><div class="mac-form-control"><input id="coreKeyInput" class="mac-input" type="password" autocomplete="off" placeholder="Optional"><small id="coreSearchStatus" class="subtle">Public search</small></div></div>
 <div class="mac-form-actions"><button id="clearCoreKeyButton" class="mac-btn" type="button">Remove key</button><button class="mac-btn primary" data-save-settings type="button">Save</button></div>
-<p class="subtle"><a href="https://core.ac.uk/services/api" target="_blank" rel="noreferrer">Get a CORE API key ↗</a></p></div>
+<div class="mac-group-card"><div class="mac-group-title">OpenAlex</div>
+<p class="subtle">Public citation and work searches work keyless. To avoid rate limits or daily quotas, you can provide an OpenAlex API key (100 req/s) or a polite-pool contact email.</p>
+<div class="mac-form-row"><label class="mac-form-label" for="openAlexApiKeyInput">OpenAlex API key</label><div class="mac-form-control"><input id="openAlexApiKeyInput" class="mac-input" type="password" autocomplete="off" placeholder="Optional"><small id="openAlexKeyStatus" class="subtle">Keyless rate limit (10 req/s)</small></div></div>
+<div class="mac-form-row"><label class="mac-form-label" for="pulseContactEmailInput">Polite pool email</label><div class="mac-form-control"><input id="pulseContactEmailInput" class="mac-input" type="email" autocomplete="off" placeholder="Optional (e.g. name@institution.edu)"><small class="subtle">Sent with keyless requests to join OpenAlex polite pool</small></div></div>
+<div class="mac-form-actions"><button id="clearOpenAlexKeyButton" class="mac-btn" type="button">Remove key</button><button class="mac-btn primary" data-save-settings type="button">Save</button></div>
+<p class="subtle"><a href="https://openalex.org" target="_blank" rel="noreferrer">Get an OpenAlex API key ↗</a></p></div>
 </section>
 <section data-settings-pane="storage" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card">
@@ -389,6 +394,9 @@
 </div>
 <button id="discoverySearchDetailsBtn" class="dv-details-btn" type="button">Search details</button>
 <details id="discoverySearchDetails" class="dv-details" hidden><summary class="sr-only">Search details</summary><div id="discoverySearchDetailsContent"></div><p id="discoveryRankingNotice"></p></details>
+<div id="openAlexLimitBanner" class="dv-notice dv-limit-banner" role="status" hidden>
+<span class="dv-limit-text">OpenAlex limit reached — citation results may be incomplete until <strong id="openAlexLimitTime">--:--</strong>. Other sources continue.</span>
+<button type="button" class="dv-btn small dv-limit-btn" data-dv-action="open-openalex-settings">Add OpenAlex API key</button>
 </div>
 <p id="discoverySourceNotice" class="dv-notice" role="status" hidden></p>
 <div class="dv-body">
@@ -479,13 +487,13 @@
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your computer until you import them. PDFs and full paper text are not uploaded.</small></p>
 <details id="mendeleyDeveloperSettings" hidden><summary>Advanced connection settings</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this computer's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261013-map"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-1.9-openalex"></script>
 <script src="js/map-tabs.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/paper-links.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_02.js?v=ui-20261013-map2"></script>
+<script src="js/part_02.js?v=ui-1.9-openalex"></script>
 <script src="js/part_03.js?v=ui-20261011-171"></script>
-<script src="js/part_04.js?v=ui-20261011-2"></script>
-<script src="js/part_05.js?v=ui-20261011-2"></script>
+<script src="js/part_04.js?v=ui-1.9-openalex"></script>
+<script src="js/part_05.js?v=ui-1.9-openalex"></script>
 <script src="js/part_06.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_07.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_08.js?v=ui-20261012-dbef-scale"></script>
@@ -510,4 +518,4 @@
 <script src="js/citation-lookup.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_20.js?v=ui-20261013-map"></script>
 <script src="js/timeline.js?v=ui-20261011-9"></script>
-<script src="js/part_21.js?v=ui-20261012-dbef-scale"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>
+<script src="js/part_21.js?v=ui-1.9-openalex"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>
