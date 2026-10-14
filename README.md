@@ -26,7 +26,8 @@
 
 - **Mendeley sign-in and sync fixed:** connecting no longer fails with "Could not finish Mendeley sign-in", and the whole library imports, with duplicate copies merged. Repeat syncs bring in only what changed in Mendeley and keep your edits.
 - **Mendeley connection settings** are available under Settings → Mendeley & Zotero.
-- Fixed a topic-cluster map crash after large imports.
+- **Clear map** button unticks every paper on the current map (with Undo), and **dragging a paper onto the map** adds it and focuses the map on it.
+- Fixed two map crashes when papers were not on the active map.
 
 See the [1.8.5 notes](docs/releases/1.8.5.md).
 
