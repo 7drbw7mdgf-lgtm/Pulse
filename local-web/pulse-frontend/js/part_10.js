@@ -73,16 +73,21 @@
       const linkMarkup = sortedLinks.map(link => {
         const source = state.papers.find(paper => paper.id === link.source);
         const target = state.papers.find(paper => paper.id === link.target);
+        if (!source || !target) return '';
+        const sx = Number.isFinite(source.x) ? source.x : (width / 2);
+        const sy = Number.isFinite(source.y) ? source.y : (safeHeight / 2);
+        const tx = Number.isFinite(target.x) ? target.x : (width / 2);
+        const ty = Number.isFinite(target.y) ? target.y : (safeHeight / 2);
         const sourceMatches = !hasFilter || (source && paperMatchesFilters(source));
         const targetMatches = !hasFilter || (target && paperMatchesFilters(target));
         const filterDimmed = hasFilter && (!sourceMatches || !targetMatches) ? ' is-filter-dimmed' : '';
         const opacity = Math.min(0.72, 0.18 + link.score * 0.48);
-        const width = (0.55 + link.score * 3.15) * (state.graphStyle.edgeScale || 0.65);
+        const widthVal = (0.55 + link.score * 3.15) * (state.graphStyle.edgeScale || 0.65);
         const id = linkId(link);
         const selected = state.selectedLinkId === id ? ' is-selected' : '';
         const label = linkLabel(link);
-        return `<line class="edge${selected}${filterDimmed}" data-type="${escapeHtml(link.type || 'similarity')}" data-link="${id}" data-source="${link.source}" data-target="${link.target}" x1="${source.x}" y1="${source.y}" x2="${target.x}" y2="${target.y}" stroke-width="${selected ? (width + 2.4).toFixed(2) : width.toFixed(2)}" opacity="${selected ? '1' : opacity.toFixed(2)}"><title>${escapeHtml(label)}</title></line>
-          <line class="edge-hit" data-link="${id}" data-source="${link.source}" data-target="${link.target}" x1="${source.x}" y1="${source.y}" x2="${target.x}" y2="${target.y}" stroke-width="20" stroke="transparent" stroke-linecap="round"><title>${escapeHtml(label)}</title></line>`;
+        return `<line class="edge${selected}${filterDimmed}" data-type="${escapeHtml(link.type || 'similarity')}" data-link="${id}" data-source="${link.source}" data-target="${link.target}" x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${tx.toFixed(1)}" y2="${ty.toFixed(1)}" stroke-width="${selected ? (widthVal + 2.4).toFixed(2) : widthVal.toFixed(2)}" opacity="${selected ? '1' : opacity.toFixed(2)}"><title>${escapeHtml(label)}</title></line>
+          <line class="edge-hit" data-link="${id}" data-source="${link.source}" data-target="${link.target}" x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${tx.toFixed(1)}" y2="${ty.toFixed(1)}" stroke-width="20" stroke="transparent" stroke-linecap="round"><title>${escapeHtml(label)}</title></line>`;
       }).join('');
 
       const nodeMarkup = visiblePapers.map((paper, idx) => {
@@ -94,6 +99,9 @@
         const matchesFilter = !hasFilter || paperMatchesFilters(paper);
         const filterClass = hasFilter ? (matchesFilter ? ' is-filter-match' : ' is-filter-dimmed') : '';
 
+        const px = Number.isFinite(paper.x) ? paper.x : (width / 2);
+        const py = Number.isFinite(paper.y) ? paper.y : (safeHeight / 2);
+
         // Check neighboring nodes within proximity to avoid label collisions
         let labelPos = 'bottom';
         let neighborBelow = false;
@@ -101,10 +109,12 @@
         for (let j = 0; j < visiblePapers.length; j++) {
           if (j === idx) continue;
           const other = visiblePapers[j];
-          const dist = Math.hypot(paper.x - other.x, paper.y - other.y);
+          const ox = Number.isFinite(other.x) ? other.x : (width / 2);
+          const oy = Number.isFinite(other.y) ? other.y : (safeHeight / 2);
+          const dist = Math.hypot(px - ox, py - oy);
           if (dist < radius * 2.6 + 36) {
-            if (other.y > paper.y) neighborBelow = true;
-            if (other.y < paper.y) neighborAbove = true;
+            if (oy > py) neighborBelow = true;
+            if (oy < py) neighborAbove = true;
           }
         }
         if (neighborBelow && !neighborAbove) {
@@ -134,7 +144,7 @@
           <circle class="bounce-ripple bounce-ripple-2" r="${radius}" fill="none" stroke="var(--accent)" stroke-width="2.5"></circle>
         ` : '';
 
-        return `<g class="node${selected}${linked}${centered}${filterClass}${bouncingClass}" data-id="${paper.id}" transform="translate(${paper.x.toFixed(1)},${paper.y.toFixed(1)})">
+        return `<g class="node${selected}${linked}${centered}${filterClass}${bouncingClass}" data-id="${paper.id}" transform="translate(${px.toFixed(1)},${py.toFixed(1)})">
           ${rippleSvg}
           <circle class="node-main-circle" r="${radius}" fill="${color}"></circle>
           ${labelSvg}

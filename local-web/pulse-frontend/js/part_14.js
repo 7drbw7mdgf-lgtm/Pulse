@@ -38,8 +38,10 @@
       const paperHeaderMarkup = paper => {
         const match = paperMatchScore(paper);
         const publication = [paper.journal, paper.year || paper.date].filter(Boolean).join(' · ');
+        const isOnActive = typeof isPaperOnActiveMap === 'function' ? isPaperOnActiveMap(paper) : paper.selected !== false;
         return `
           <div class="paper-card-top">
+            <input type="checkbox" class="paper-chk" ${isOnActive ? 'checked' : ''} data-action="toggle-paper-active" title="Toggle paper on active map" aria-label="Toggle paper on active map">
             <span class="paper-swatch" style="background:${escapeHtml(paperColor(paper, clusterByPaper))}"></span>
             <span class="paper-publication">${escapeHtml(publication || paperDomainLabel(paper))}</span>
             ${match ? `<span class="paper-badge match" title="Strongest link to another paper">${match}%</span>` : ''}
@@ -248,6 +250,9 @@
       });
 
       els.paperList.querySelectorAll('[data-action="toggle-paper-active"]').forEach(chk => {
+        chk.addEventListener('click', event => {
+          event.stopPropagation();
+        });
         chk.addEventListener('change', event => {
           event.stopPropagation();
           const card = event.target.closest('[data-paper]');

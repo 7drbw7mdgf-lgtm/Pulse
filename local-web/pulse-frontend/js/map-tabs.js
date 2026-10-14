@@ -40,17 +40,18 @@
   }
 
   function setPaperOnMap(paper, mapId, add) {
-    if (!paper || !mapId) return;
     initMapState();
+    const targetMapId = mapId || state.activeMapId || (state.maps && state.maps[0] && state.maps[0].id) || 'map-1';
+    if (!paper || !targetMapId) return;
     let current = Array.isArray(paper.mapIds)
       ? [...paper.mapIds]
       : paper.mapId
         ? [paper.mapId]
         : (paper.selected !== false ? [state.maps[0].id] : []);
     if (add) {
-      if (!current.includes(mapId)) current.push(mapId);
+      if (!current.includes(targetMapId)) current.push(targetMapId);
     } else {
-      current = current.filter(id => id !== mapId);
+      current = current.filter(id => id !== targetMapId);
     }
     paper.mapIds = current;
     paper.selected = isPaperOnActiveMap(paper);
