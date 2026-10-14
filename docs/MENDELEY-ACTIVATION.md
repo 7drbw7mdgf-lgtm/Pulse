@@ -1,4 +1,8 @@
-# Mendeley activation — Pulse 1.5.8
+# Mendeley activation
+
+**Recommended (free, no server to run):** deploy the token-exchange service in [`auth-service/cloudflare`](../auth-service/cloudflare/README.md) with one script, then set its address as `exchangeUrl` in `local-web/pulse-backend/pulse_core/mendeley-client.json`. Every Pulse install can then connect Mendeley with no developer settings. The rest of this page describes the older Docker service, which stores tokens on the server.
+
+## Docker service (Pulse 1.5.8)
 
 Pulse now includes a shared confidential sign-in service and an account-bound library sync implementation. Ordinary users will click **Connect Mendeley**, sign in or create an account in Mendeley's browser page, approve access and return to Pulse. A new device creates its own session; it does not need a new developer application.
 

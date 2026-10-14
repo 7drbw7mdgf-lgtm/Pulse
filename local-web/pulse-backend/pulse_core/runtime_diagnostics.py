@@ -81,4 +81,4 @@ def run():
     return {'ok': True, 'version': APP_VERSION, 'pdf': document['extractionSource'],
             'doiExtraction': True, 'sqliteFts5': True, 'fullTextPassages': True,
             'secretRoundTrip': True, 'managerLocks': True,
-            'mendeleySharedServiceConfigured': bool(registration.get('brokerUrl')), **assets}
+            'mendeleySharedServiceConfigured': bool(registration.get('exchangeUrl') or registration.get('brokerUrl')), **assets}

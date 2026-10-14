@@ -1,1 +1,1 @@
-{"brokerUrl":"","clientId":"","redirectUri":"http://127.0.0.1:8765/mendeley/callback","authFlow":"pkce","pkceVerified":false}
+{"exchangeUrl": "", "brokerUrl": "", "clientId": "", "redirectUri": "http://127.0.0.1:8765/mendeley/callback", "authFlow": "pkce", "pkceVerified": false}

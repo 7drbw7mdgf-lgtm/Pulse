@@ -38,7 +38,10 @@ def read_config():
     registration = Path(__file__).with_name('mendeley-client.json')
     if not data.get('clientId') and registration.exists():
         public = json.loads(registration.read_text())
-        if public.get('brokerUrl'):
+        if public.get('exchangeUrl'):
+            from pulse_core.mendeley_broker import origin
+            data.update(exchangeUrl=origin(public['exchangeUrl']),authFlow='exchange',sharedRegistration=True)
+        elif public.get('brokerUrl'):
             from pulse_core.mendeley_broker import origin
             data.update(brokerUrl=origin(public['brokerUrl']),authFlow='broker',sharedRegistration=True)
         elif public.get('clientId'):
@@ -135,7 +138,7 @@ def configure_mendeley(payload):
 def public_config():
     with config_lock(): config = read_config()
     return {'clientId': config.get('clientId', ''), 'redirectUri': config.get('redirectUri', 'http://127.0.0.1:8765/mendeley/callback'),
-            'hasClientSecret': bool(config.get('clientSecret')), 'configured': bool((config.get('authFlow')=='broker' and config.get('brokerUrl')) or config.get('clientId') and ((config.get('authFlow', 'code') == 'code' and config.get('clientSecret')) or (config.get('authFlow') == 'pkce' and config.get('pkceVerified') is True))),
+            'hasClientSecret': bool(config.get('clientSecret')), 'configured': bool((config.get('authFlow')=='broker' and config.get('brokerUrl')) or (config.get('authFlow')=='exchange' and config.get('exchangeUrl')) or config.get('clientId') and ((config.get('authFlow', 'code') == 'code' and config.get('clientSecret')) or (config.get('authFlow') == 'pkce' and config.get('pkceVerified') is True))),
             'sharedRegistration': bool(config.get('sharedRegistration')), 'authFlow': config.get('authFlow', 'code'),
             'developerSettingsAvailable': os.environ.get('PULSE_MENDELEY_ADMIN')=='1' or not bool(config.get('sharedRegistration'))}
 
@@ -143,7 +146,11 @@ def token_exchange(config, fields):
     import base64
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     fields = dict(fields)
-    if config.get('clientSecret'):
+    if config.get('authFlow') == 'exchange':
+        # Pulse's sign-in service adds the application secret; tokens come back here.
+        from pulse_core.mendeley_exchange import tokens
+        result = tokens(config, fields)
+    elif config.get('clientSecret'):
         basic = base64.b64encode((config['clientId'] + ':' + config['clientSecret']).encode()).decode()
         headers['Authorization'] = 'Basic ' + basic
         fields.pop('code_verifier', None)
@@ -151,7 +158,8 @@ def token_exchange(config, fields):
         fields['client_id'] = config['clientId']
     else:
         raise ClientError(400, 'Mendeley application activation is incomplete.')
-    result = request(MENDELEY + '/oauth/token', 'POST', urllib.parse.urlencode(fields).encode(), headers)
+    if config.get('authFlow') != 'exchange':
+        result = request(MENDELEY + '/oauth/token', 'POST', urllib.parse.urlencode(fields).encode(), headers)
     token = result.get('access_token')
     if (not isinstance(token, str) or not 1 <= len(token) <= 8192 or
         any(ord(char) < 33 or ord(char) > 126 for char in token) or
@@ -168,7 +176,8 @@ def token_exchange(config, fields):
         raise ClientError(502, 'Mendeley did not confirm the account connection.')
     with config_lock():
         current = read_config()
-        if (current.get('clientId') != config['clientId'] or current.get('clientSecret') != config.get('clientSecret') or
+        if (current.get('clientId') != config.get('clientId') or current.get('clientSecret') != config.get('clientSecret') or
+            current.get('exchangeUrl') != config.get('exchangeUrl') or
             current.get('authGeneration', 0) != config.get('authGeneration', 0) or current.get('redirectUri') != config.get('redirectUri') or current.get('authFlow', 'code') != config.get('authFlow', 'code')):
             raise ClientError(409, 'Mendeley configuration changed. Connect again.')
         current.update(accessToken=result['access_token'], refreshToken=result.get('refresh_token') or config.get('refreshToken', ''),
@@ -183,7 +192,9 @@ def access_token():
     if config.get('accessToken') and config.get('expiresAt', 0) > time.time() + 60:
         return config['accessToken']
     if config.get('refreshToken'):
-        return token_exchange(config, {'grant_type': 'refresh_token', 'refresh_token': config['refreshToken'], 'redirect_uri': config['redirectUri']})
+        fields = {'grant_type': 'refresh_token', 'refresh_token': config['refreshToken']}
+        if config.get('redirectUri'): fields['redirect_uri'] = config['redirectUri']
+        return token_exchange(config, fields)
     raise ClientError(401, 'Connect your Mendeley account first.')
 
 def mendeley_request(path, method='GET', data=None):

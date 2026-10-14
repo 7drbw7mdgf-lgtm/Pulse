@@ -50,27 +50,35 @@ def start_oauth(payload=None):
         return start(config)
     if flow == 'implicit':
         raise ClientError(400, 'This older Mendeley sign-in is disabled. Activate an authorization-code connection.')
+    exchange = flow == 'exchange'
     public_pkce = flow == 'pkce' and config.get('pkceVerified') is True
-    if not config.get('clientId') or not (public_pkce or (flow == 'code' and config.get('clientSecret'))):
+    if exchange:
+        if not config.get('exchangeUrl'): raise ClientError(400, 'Pulse’s Mendeley sign-in service is not configured.')
+    elif not config.get('clientId') or not (public_pkce or (flow == 'code' and config.get('clientSecret'))):
         raise ClientError(400, 'Pulse’s Mendeley connection needs its one-time application activation and provider verification.')
-    redirect = validate_redirect(config.get('redirectUri', ''))
     cancel_oauth()
-    parsed = urllib.parse.urlsplit(redirect)
-    state = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(64)
+    if exchange:
+        # Pulse's sign-in service redirects back to this computer on a free port; the code is
+        # useless to anything else without this app's verifier.
+        redirect, listen_port, state = None, 0, None
+    else:
+        redirect = validate_redirect(config.get('redirectUri', ''))
+        listen_port, state = urllib.parse.urlsplit(redirect).port, secrets.token_urlsafe(32)
+    expected = {'path': '/mendeley/callback', 'host': ''}
     pending = {'state':state, 'expires':time.time() + 600, 'cancelled':False, 'used':False}
     class Callback(BaseHTTPRequestHandler):
         def log_message(self, *args): pass
         def do_GET(self):
             target = urllib.parse.urlsplit(self.path)
-            if target.path != parsed.path or self.headers.get('Host') != parsed.netloc:
+            if target.path != expected['path'] or self.headers.get('Host') != expected['host']:
                 self.reply(400, 'This connection request is invalid.'); return
             params = urllib.parse.parse_qs(target.query, keep_blank_values=True)
             supplied = params.get('state', [])
             with _LOCK:
                 valid = (_PENDING is pending and not pending['cancelled'] and not pending['used'] and
                          pending['expires'] > time.time() and len(supplied) == 1 and
-                         hmac.compare_digest(supplied[0].encode(), state.encode()))
+                         hmac.compare_digest(supplied[0].encode(), pending['state'].encode()))
                 if valid: pending['used'] = True
             if not valid:
                 self.reply(400, 'This connection request is invalid or expired. Start again in Pulse.'); return
@@ -79,7 +87,9 @@ def start_oauth(payload=None):
                 codes = params.get('code', [])
                 if len(codes) != 1 or not 1 <= len(codes[0]) <= 4096 or any(ord(c) < 33 or ord(c) > 126 for c in codes[0]):
                     raise ClientError(400, 'Mendeley did not return a valid sign-in response.')
-                token_exchange(config, {'grant_type':'authorization_code', 'code':codes[0], 'redirect_uri':redirect, 'code_verifier':verifier})
+                fields = {'grant_type':'authorization_code', 'code':codes[0], 'code_verifier':verifier}
+                fields.update({'state':pending['state']} if exchange else {'redirect_uri':redirect})
+                token_exchange(config, fields)
                 code, message = 200, 'Mendeley connected. Return to Pulse to send your chosen citations.'
             except ClientError as error:
                 code, message = 400, f'Could not finish Mendeley sign-in: {str(error)}. Return to Pulse and connect again.'
@@ -105,9 +115,20 @@ def start_oauth(payload=None):
             connection, address = super().get_request()
             connection.settimeout(5)
             return connection, address
-    try: server = Listener(('127.0.0.1', parsed.port), Callback)
+    try: server = Listener(('127.0.0.1', listen_port), Callback)
     except OSError as error: raise ClientError(409, 'The Mendeley connection port is busy. Close the previous sign-in and try again.') from error
     server.timeout = .5
+    port = server.server_address[1] if exchange else listen_port
+    expected['host'] = f'127.0.0.1:{port}' if exchange else urllib.parse.urlsplit(redirect).netloc
+    if exchange:
+        from pulse_core.mendeley_exchange import start as exchange_start
+        try: authorization_url, pending['state'] = exchange_start(config, pkce_challenge(verifier), port)
+        except BaseException:
+            server.server_close(); raise
+    else:
+        authorization_url = 'https://api.mendeley.com/oauth/authorize?' + urllib.parse.urlencode(
+            {'client_id':config['clientId'], 'redirect_uri':redirect, 'response_type':'code', 'scope':'all', 'state':state,
+             'code_challenge':pkce_challenge(verifier), 'code_challenge_method':'S256'})
     with _LOCK:
         _PENDING = pending
         _STATUS.update(pending=True, authorizationMessage='Waiting for Mendeley sign-in…')
@@ -122,6 +143,4 @@ def start_oauth(payload=None):
     worker = threading.Thread(target=listen, daemon=True)
     pending['worker'] = worker
     worker.start()
-    return {'ok':True, 'authorizationUrl':'https://api.mendeley.com/oauth/authorize?' + urllib.parse.urlencode(
-        {'client_id':config['clientId'], 'redirect_uri':redirect, 'response_type':'code', 'scope':'all', 'state':state,
-         'code_challenge':pkce_challenge(verifier), 'code_challenge_method':'S256'})}
+    return {'ok':True, 'authorizationUrl':authorization_url}
