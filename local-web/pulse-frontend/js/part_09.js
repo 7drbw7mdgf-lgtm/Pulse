@@ -28,14 +28,16 @@
 
       if (state.mode === 'clusters') {
         const clusterRadius = Math.max(65, Math.min(width, height) * 0.18 * spacing);
+        // Clusters cover the whole library; lay out only the papers on the active map.
+        const activePapers = new Map(papers.map(paper => [paper.id, paper]));
         state.clusters.forEach((cluster, clusterIndex) => {
           const angle = (Math.PI * 2 * clusterIndex) / Math.max(state.clusters.length, 1) - Math.PI / 2;
           const cx = centerX + Math.cos(angle) * radius * 0.72;
           const cy = centerY + Math.sin(angle) * radius * 0.72;
-          cluster.forEach((id, index) => {
-            const paper = papers.find(item => item.id === id);
-            const localAngle = (Math.PI * 2 * index) / Math.max(cluster.length, 1);
-            const cDist = Math.min(clusterRadius, 60 + cluster.length * 18);
+          const members = cluster.map(id => activePapers.get(id)).filter(Boolean);
+          members.forEach((paper, index) => {
+            const localAngle = (Math.PI * 2 * index) / Math.max(members.length, 1);
+            const cDist = Math.min(clusterRadius, 60 + members.length * 18);
             paper.x = cx + Math.cos(localAngle) * cDist;
             paper.y = cy + Math.sin(localAngle) * cDist;
           });
