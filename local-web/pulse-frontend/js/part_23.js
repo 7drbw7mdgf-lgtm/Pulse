@@ -159,7 +159,7 @@ function updateManagers() {
   document.getElementById('mendeleyHowTo').textContent=mendeley?.connected ? 'Send your chosen citations directly to your Mendeley library.' : mendeley?.configured ? 'Sign in to send citations directly, or export a file for Mendeley.' : 'Export your chosen citations, then import the file into Mendeley.';
   document.getElementById('mendeleyImportHelp').hidden=Boolean(mendeley?.connected);
   document.getElementById('mendeleyConnect').textContent='Connect Mendeley';
-  document.getElementById('mendeleyDeveloperSettings').hidden=!mendeley?.developerSettingsAvailable;
+  document.getElementById('mendeleyDeveloperSettings').hidden=Boolean(mendeley?.sharedRegistration && mendeley?.configured && !mendeley?.developerSettingsAvailable);
   document.getElementById('mendeleyConnect').disabled=!mendeley?.configured || managerUi.connecting || Boolean(managerUi.status?.mendeley?.pending);
   document.getElementById('mendeleyConnect').hidden=Boolean(managerUi.status?.mendeley?.connected);
   document.getElementById('mendeleyDisconnect').hidden=!managerUi.status?.mendeley?.connected;
@@ -168,6 +168,24 @@ function updateManagers() {
   document.getElementById('mendeleySyncNow').disabled=Boolean(managerUi.syncing) || !mendeley?.connected;
   document.getElementById('mendeleySyncStatus').textContent=managerUi.syncMessage || (state.mendeleySyncPaused ? 'Automatic sync paused after clearing. Choose Sync now or enable sync.' : mendeley?.lastSyncedAt ? 'Last synced '+new Date(mendeley.lastSyncedAt).toLocaleString() : 'Ready to import your Mendeley library.');
   document.getElementById('mendeleyAuthorizationNote').textContent=managerUi.status?.mendeley?.authorizationMessage || '';
+}
+function syncMendeleyConfigInputs(config) {
+  if (!config) return;
+  const clientId = config.clientId || '';
+  const redirectUri = config.redirectUri || 'http://127.0.0.1:8765/mendeley/callback';
+  const secretPlaceholder = config.hasClientSecret ? 'Saved securely; leave blank to keep' : 'Your registered client secret';
+  for (const id of ['mendeleyClientId', 'settingsMendeleyClientId']) {
+    const el = document.getElementById(id);
+    if (el) el.value = clientId;
+  }
+  for (const id of ['mendeleyRedirect', 'settingsMendeleyRedirect']) {
+    const el = document.getElementById(id);
+    if (el) el.value = redirectUri;
+  }
+  for (const id of ['mendeleyClientSecret', 'settingsMendeleyClientSecret']) {
+    const el = document.getElementById(id);
+    if (el) el.placeholder = secretPlaceholder;
+  }
 }
 async function refreshManagers() {
   document.getElementById('managerRefresh').disabled=true;
@@ -179,9 +197,7 @@ async function openManagers() {
   if(!managerDialog.open) managerDialog.showModal();
   updateManagers();
   try {const config=await pulseRecordsRequest('/api/managers/config');
-    document.getElementById('mendeleyClientId').value=config.clientId;
-    document.getElementById('mendeleyRedirect').value=config.redirectUri;
-    document.getElementById('mendeleyClientSecret').placeholder=config.hasClientSecret ? 'Saved securely; leave blank to keep' : 'Your registered client secret';
+    syncMendeleyConfigInputs(config);
   } catch(error) {document.getElementById('managerFeedback').textContent=error.message;}
   await refreshManagers();
 }
@@ -198,7 +214,9 @@ document.getElementById('mendeleySettingsForm').addEventListener('submit',async 
   event.preventDefault();const button=document.getElementById('mendeleySaveSettings');button.disabled=true;
   try {await pulseRecordsRequest('/api/managers/config',{clientId:document.getElementById('mendeleyClientId').value,
     clientSecret:document.getElementById('mendeleyClientSecret').value,redirectUri:document.getElementById('mendeleyRedirect').value});
-    document.getElementById('mendeleyClientSecret').value='';document.getElementById('managerFeedback').textContent='Application settings saved. Connect your Mendeley account next.';await refreshManagers();
+    document.getElementById('mendeleyClientSecret').value='';document.getElementById('managerFeedback').textContent='Application settings saved. Connect your Mendeley account next.';
+    const config=await pulseRecordsRequest('/api/managers/config');syncMendeleyConfigInputs(config);
+    await refreshManagers();
   } catch(error) {document.getElementById('managerFeedback').textContent=error.message;} finally {button.disabled=false;}
 });
 async function connectMendeley() {
@@ -249,4 +267,51 @@ for (const provider of ['zotero','mendeley']) document.getElementById(provider+'
   finally {managerUi.busy=false;updateManagers();}
 });
 managerDialog.addEventListener('close',()=>{if(!managerUi.status?.mendeley?.pending) clearInterval(managerUi.timer);});
-document.addEventListener('DOMContentLoaded',()=>refreshManagers());
+document.getElementById('mendeleyConfigureBtn')?.addEventListener?.('click', () => {
+  const details = document.getElementById('mendeleyDeveloperSettings');
+  if (details) {
+    details.hidden = false;
+    details.open = !details.open;
+    if (details.open) {
+      document.getElementById('mendeleyClientId')?.focus?.();
+      details.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+});
+document.getElementById('settingsSaveMendeleyButton')?.addEventListener?.('click', async () => {
+  const btn = document.getElementById('settingsSaveMendeleyButton');
+  const feedback = document.getElementById('settingsMendeleyFeedback');
+  if (btn) btn.disabled = true;
+  if (feedback) feedback.textContent = 'Saving settings…';
+  try {
+    const clientId = document.getElementById('settingsMendeleyClientId')?.value?.trim();
+    const clientSecret = document.getElementById('settingsMendeleyClientSecret')?.value?.trim();
+    const redirectUri = document.getElementById('settingsMendeleyRedirect')?.value?.trim();
+    await pulseRecordsRequest('/api/managers/config', { clientId, clientSecret, redirectUri });
+    const config = await pulseRecordsRequest('/api/managers/config');
+    syncMendeleyConfigInputs(config);
+    if (document.getElementById('settingsMendeleyClientSecret')) document.getElementById('settingsMendeleyClientSecret').value = '';
+    if (feedback) feedback.textContent = 'Application settings saved. Connect your Mendeley account next.';
+    await refreshManagers();
+    if (typeof showToast === 'function') showToast('Mendeley application settings saved.');
+  } catch (error) {
+    if (feedback) feedback.textContent = error.message;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+});
+document.getElementById('settingsOpenMendeleyDialogButton')?.addEventListener?.('click', () => {
+  const panel = document.getElementById('settingsPanel');
+  if (panel) panel.hidden = true;
+  openManagers();
+});
+document.getElementById('settingsOpenZoteroDialogButton')?.addEventListener?.('click', () => {
+  const panel = document.getElementById('settingsPanel');
+  if (panel) panel.hidden = true;
+  openManagers();
+});
+document.addEventListener?.('DOMContentLoaded', () => {
+  refreshManagers();
+  pulseRecordsRequest('/api/managers/config').then(syncMendeleyConfigInputs).catch(() => {});
+});
+

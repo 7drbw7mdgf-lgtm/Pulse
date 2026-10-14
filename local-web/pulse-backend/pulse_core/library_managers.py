@@ -125,7 +125,7 @@ def public_config():
     return {'clientId': config.get('clientId', ''), 'redirectUri': config.get('redirectUri', 'http://127.0.0.1:8765/mendeley/callback'),
             'hasClientSecret': bool(config.get('clientSecret')), 'configured': bool((config.get('authFlow')=='broker' and config.get('brokerUrl')) or config.get('clientId') and ((config.get('authFlow', 'code') == 'code' and config.get('clientSecret')) or (config.get('authFlow') == 'pkce' and config.get('pkceVerified') is True))),
             'sharedRegistration': bool(config.get('sharedRegistration')), 'authFlow': config.get('authFlow', 'code'),
-            'developerSettingsAvailable': os.environ.get('PULSE_MENDELEY_ADMIN')=='1'}
+            'developerSettingsAvailable': os.environ.get('PULSE_MENDELEY_ADMIN')=='1' or not bool(config.get('sharedRegistration'))}
 
 def token_exchange(config, fields):
     import base64
