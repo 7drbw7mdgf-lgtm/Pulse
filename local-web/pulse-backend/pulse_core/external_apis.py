@@ -13,14 +13,17 @@ def fetch_json(url, cache=True):
             from pulse_core.storage import load_settings
             from pulse_core.config_resolvers import resolve_openalex_api_key, resolve_contact_email
             settings = load_settings()
+            # OpenAlex reads both from the query string; the disk cache strips them from keys and stored URLs.
+            extra = {}
             oa_key = resolve_openalex_api_key(settings)
-            if oa_key:
-                headers["api_key"] = oa_key
-            else:
-                email = resolve_contact_email(settings)
-                if email and "mailto=" not in url:
-                    sep = "&" if "?" in url else "?"
-                    url = f"{url}{sep}mailto={urllib.parse.quote(email)}"
+            if oa_key and "api_key=" not in url:
+                extra["api_key"] = oa_key
+            email = resolve_contact_email(settings)
+            if email and "mailto=" not in url:
+                extra["mailto"] = email
+            if extra:
+                sep = "&" if "?" in url else "?"
+                url = f"{url}{sep}{urllib.parse.urlencode(extra)}"
         except Exception:
             pass
     request = urllib.request.Request(

@@ -218,7 +218,8 @@ def _disk_http_cache_ttl(url):
     u = url.lower()
     # Free-text searches have 15-minute TTL
     if 'search=' in u or 'query=' in u:
-        if not ('ext_id:' in u or 'doi:' in u or 'src:med' in u):
+        # Identifier lookups (DOI or PMID queries) are stable; topic searches are not.
+        if not ('ext_id:' in u or 'doi:' in u or 'doi%3a' in u or 'src:med' in u):
             return 900.0  # 15 minutes
     if ('cites:' in u or 'cited_by:' in u or
         'openalex_id:' in u or 'doi:' in u or
@@ -228,7 +229,7 @@ def _disk_http_cache_ttl(url):
         re.search(r'/fields/[a-zA-Z0-9]+', u) or
         re.search(r'/concepts/[a-zA-Z0-9]+', u) or
         'icite.od.nih.gov' in u or
-        'europepmc.org' in u or
+        'europepmc.org' in u or 'ebi.ac.uk/europepmc' in u or
         'opencitations.net' in u):
         return 604800.0  # 7 days
     return 900.0  # 15 minutes
@@ -342,6 +343,26 @@ def _disk_http_cache_set(key, url, headers, data, status=200):
             except Exception: pass
 
 
+_OPENALEX_ALLOWANCE = {'remaining': None, 'at': 0.0}
+
+
+def _note_openalex_allowance(headers):
+    """Remember OpenAlex's reported remaining daily allowance (X-RateLimit-Remaining)."""
+    try:
+        value = headers.get('x-ratelimit-remaining') if headers is not None else None
+        if value is not None:
+            _OPENALEX_ALLOWANCE.update(remaining=int(value), at=time.monotonic())
+    except (TypeError, ValueError, AttributeError):
+        pass
+
+
+def openalex_allowance_remaining(max_age=3600):
+    """Last reported OpenAlex allowance, or None when unknown or older than max_age seconds."""
+    if _OPENALEX_ALLOWANCE['remaining'] is None or time.monotonic() - _OPENALEX_ALLOWANCE['at'] > max_age:
+        return None
+    return _OPENALEX_ALLOWANCE['remaining']
+
+
 def _request_json_once(request, timeout=14, cache=True):
     """Cache successful responses, bound per-host concurrency, and honor Retry-After."""
     check_cancelled()
@@ -363,10 +384,7 @@ def _request_json_once(request, timeout=14, cache=True):
             return disk_val
     if hasattr(request, 'add_unredirected_header') and not any(k.lower() == 'accept-encoding' for k, _ in request.header_items()):
         request.add_unredirected_header('Accept-Encoding', 'gzip')
-    has_oa_key = any(k.lower() in ('api_key', 'api-key') for k, _ in request.header_items()) if hasattr(request, 'header_items') else False
-    if 'api_key=' in url.lower() or 'api-key=' in url.lower():
-        has_oa_key = True
-    limit = 50 if (has_oa_key and 'openalex.org' in host) else (10 if 'openalex.org' in host else 2)
+    limit = 10 if 'openalex.org' in host else 2  # OpenAlex allows 10 requests/second, with or without a key
     with _CACHE_LOCK:
         gate = _PROVIDER_GATES.setdefault(host, threading.BoundedSemaphore(limit))
     check_source(request)
@@ -392,6 +410,7 @@ def _request_json_once(request, timeout=14, cache=True):
                 request_timeout = min(timeout, max(.1, remaining)) if remaining is not None else timeout
                 try:
                     with _urlopen_persistent(request, timeout=request_timeout) as response:
+                        if 'openalex.org' in host: _note_openalex_allowance(getattr(response, 'headers', None))
                         raw = response.read()
                         if (isinstance(raw, bytes) and raw.startswith(b'\x1f\x8b')) or (getattr(response, 'headers', None) and getattr(response.headers, 'get', lambda k, d='': d)('content-encoding', '').lower() == 'gzip'):
                             try:

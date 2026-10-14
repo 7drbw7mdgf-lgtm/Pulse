@@ -363,7 +363,10 @@ const discoveryBoundCheckboxes=new WeakSet();
           state.discoveryPendingRefinedOrder = job.recommendations;
           state.discoveryPendingRefinedOrderKey = state.discoverySearching.key;
         } else {
-          state.discoveryResults = job.recommendations;
+          // Show the latest ranked order, but keep papers already on screen that
+          // dropped out of the newest top 100, so nothing vanishes while reading.
+          const latest=new Set(job.recommendations.map(discoveryPaperKey));
+          state.discoveryResults=[...job.recommendations,...(state.discoveryResults||[]).filter(paper=>!latest.has(discoveryPaperKey(paper)))];
         }
       }
       if (els.discoveryModal && !els.discoveryModal.hidden) renderDiscoveryModal({preservePosition:true});

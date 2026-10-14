@@ -94,122 +94,49 @@ _ACTIVE_SEARCHES = [0]
 _ACTIVE_LOCK = threading.Lock()
 
 
-PREWARM_REQUEST_CAP = 12
+PREWARM_MAX_PER_HOUR = 10
+# Keep this much of the OpenAlex daily allowance for searches the user actually runs.
+PREWARM_MIN_OPENALEX_ALLOWANCE = 300
+_PREWARM_TIMES = collections.deque()
 
 
-def warm_paper_discovery(paper):
-    """Quietly pre-warm OpenAlex work, top references, citing works, DBEF pivots, co-citations, and keyword queries."""
-    if not paper or not isinstance(paper, dict): return
+def warm_paper_discovery(paper, options=None):
+    """Run a search's collection step in the background for a selected paper.
+
+    Pre-warm uses exactly the requests the real search will make (same seeds,
+    options and query plan), so a search started a few seconds later is served
+    from the HTTP cache, and the embedding and cross-encoder caches are filled
+    for the same shortlist. It never runs during a live search, is skipped
+    while OpenAlex is rate-limited, and is capped per hour so browsing papers
+    cannot exhaust the daily OpenAlex allowance.
+    """
+    if not paper or not isinstance(paper, dict): return False
     with _ACTIVE_LOCK:
-        if _ACTIVE_SEARCHES[0]: return
+        if _ACTIVE_SEARCHES[0]: return False
+    if cooldowns().get('OpenAlex'): return False
+    from pulse_performance import openalex_allowance_remaining
+    allowance = openalex_allowance_remaining()
+    if allowance is not None and allowance < PREWARM_MIN_OPENALEX_ALLOWANCE: return False
+    now = time.monotonic()
+    with _ACTIVE_LOCK:
+        while _PREWARM_TIMES and now - _PREWARM_TIMES[0] > 3600: _PREWARM_TIMES.popleft()
+        if len(_PREWARM_TIMES) >= PREWARM_MAX_PER_HOUR: return False
     if not _WARM_LOCK.acquire(blocking=False):
-        return
+        return False
     _WARM_CANCEL.clear()
-    counter = {'remaining': PREWARM_REQUEST_CAP, 'lock': threading.Lock()}
-    REQUEST_CONTEXT.request_counter = counter
-    REQUEST_CONTEXT.cancel_event = _WARM_CANCEL
     try:
-        work = openalex_work_for_paper(paper)
-        if not work or _WARM_CANCEL.is_set(): return
-        work_id_clean = openalex_work_id(work.get('id'))
-        refs = work.get('referenced_works') or []
-        ref_works = []
-        if refs and not _WARM_CANCEL.is_set():
-            ref_works = fetch_openalex_works_batch(refs[:50], select=OPENALEX_WORK_SELECT)
-        cite_works = []
-        if work_id_clean and not _WARM_CANCEL.is_set():
-            cite_works = openalex_discovery_works(f"cites:{work_id_clean}", 25, sort="cited_by_count:desc")
-
-        # Pre-fetch DBEF pivots (top cited references)
-        pivot_works = []
-        if refs and not _WARM_CANCEL.is_set():
-            pivot_ids = []
-            if ref_works:
-                sorted_refs = sorted(ref_works, key=lambda w: w.get('cited_by_count') or 0, reverse=True)
-                pivot_ids = [openalex_work_id(w.get('id')) for w in sorted_refs[:4] if openalex_work_id(w.get('id'))]
-            if not pivot_ids:
-                pivot_ids = [openalex_work_id(r) for r in refs[:4] if openalex_work_id(r)]
-            if pivot_ids and not _WARM_CANCEL.is_set():
-                pivot_works = openalex_discovery_works(f"cites:{'|'.join(pivot_ids)}", 50, sort="cited_by_count:desc")
-
-        # Pre-fetch co-citation lookups (works co-cited with seed by citing papers)
-        co_cite_works = []
-        if cite_works and not _WARM_CANCEL.is_set():
-            co_ref_counts = collections.Counter()
-            seed_clean = work_id_clean
-            for cw in cite_works:
-                for r in (cw.get('referenced_works') or []):
-                    rid = openalex_work_id(r)
-                    if rid and rid != seed_clean:
-                        co_ref_counts[rid] += 1
-            top_co_refs = [rid for rid, _ in co_ref_counts.most_common(25)]
-            if top_co_refs and not _WARM_CANCEL.is_set():
-                co_cite_works = fetch_openalex_works_batch(top_co_refs, select=OPENALEX_WORK_SELECT)
-
-        # Pre-fetch first-page keyword queries for enabled sources
-        keyword_records = []
-        settings = _core.load_settings()
-        search_sources = settings.get("searchSources") or {}
-        if not _WARM_CANCEL.is_set() and any(search_sources.get(k, True) for k in ('semanticScholar', 'europePmc', 'core', 'arxiv')):
-            plan = build_query_plan([paper], [], '')
-            if plan:
-                first_plan = plan[:1]
-                expected_quota = max(20, min(2000, (candidate_limit(200) + max(1, len(plan)) - 1) // max(1, len(plan))))
-                if search_sources.get("semanticScholar", True) and not _WARM_CANCEL.is_set():
-                    api_key = resolve_semantic_scholar_api_key(settings)
-                    try:
-                        keyword_records.extend(search_query_plan(first_plan, 'semanticScholar', s2_paper_search, expected_quota, api_key=api_key))
-                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                    except Exception: pass
-                if search_sources.get("europePmc", True) and not _WARM_CANCEL.is_set():
-                    try:
-                        keyword_records.extend(search_query_plan(first_plan, 'europePmc', _core.search_europe_pmc, expected_quota, structured=True))
-                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                    except Exception: pass
-                if search_sources.get("core", False) and not _WARM_CANCEL.is_set():
-                    core_key = resolve_core_api_key(settings)
-                    if core_key:
-                        try:
-                            keyword_records.extend(search_query_plan(first_plan, 'core', _core.search_core, expected_quota, structured=True, api_key=core_key))
-                        except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                        except Exception: pass
-                if search_sources.get("arxiv", False) and not _WARM_CANCEL.is_set():
-                    try:
-                        from pulse_core.arxiv_search import search_arxiv
-                        keyword_records.extend(search_query_plan(first_plan, 'arxiv', search_arxiv, expected_quota, structured=True))
-                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                    except Exception: pass
-
-        # Pre-compute neural scores for likely shortlist
-        candidates = []
-        seen_identities = set()
-        for w in (ref_works + list(cite_works) + list(pivot_works) + list(co_cite_works)):
-            if not isinstance(w, dict): continue
-            ident = w.get('id') or w.get('doi') or w.get('title')
-            if ident and ident not in seen_identities:
-                seen_identities.add(ident)
-                rec = recommendation_record(*openalex_recommendation_item(w), source="Pre-warm")
-                candidates.append(rec)
-        for rec in keyword_records:
-            ident = rec.get('doi') or rec.get('openalexId') or rec.get('paperId') or rec.get('title')
-            if ident and ident not in seen_identities:
-                seen_identities.add(ident)
-                candidates.append(rec)
-
-        if candidates and not _WARM_CANCEL.is_set():
-            seed_text = text_for_paper(paper)
-            pre_embed_papers(settings, candidates[:64], cancel_event=_WARM_CANCEL, queries=[seed_text])
-            if not _WARM_CANCEL.is_set():
-                pair_queries = [str(paper.get('title') or '') + ' ' + ' '.join(paper.get('paperKeywords') or [])]
-                pre_score_crossencoder(settings, pair_queries, candidates[:32], cancel_event=_WARM_CANCEL)
-    except (DiscoveryCancelled, DiscoveryBudgetExceeded):
-        pass
+        with _ACTIVE_LOCK: _PREWARM_TIMES.append(now)
+        payload = {key: value for key, value in (options or {}).items()
+                   if key not in ('seedPapers', 'papers', 'searchMode', 'query', '_collectOnly')}
+        # A single selected paper: bridge searches need two or more seeds.
+        payload.update(seedPapers=[paper], bridgeMode=False, _collectOnly=True)
+        _run_discovery_pipeline(payload, cancel_event=_WARM_CANCEL)
+        return True
     except Exception:
-        pass
+        return False
     finally:
-        REQUEST_CONTEXT.request_counter = None
-        REQUEST_CONTEXT.cancel_event = None
         _WARM_LOCK.release()
+
 
 
 OPENALEX_WORK_SELECT = 'id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language'
@@ -398,18 +325,22 @@ def openalex_discovery_works(work_filter, limit, sort='cited_by_count:desc', max
     return gathered
 
 
+# Europe PMC's documented REST API (europepmc.org/RestPortal answers 403).
+EUROPE_PMC_REST = 'https://www.ebi.ac.uk/europepmc/webservices/rest'
+
+
 def europepmc_pmid_for_doi(doi):
     doi_clean = normalize_doi(doi or "")
     if not doi_clean:
         return None
-    url = f"https://europepmc.org/RestPortal/v1/search?query=ext_id:{urllib.parse.quote(doi_clean, safe='')}+src:med&format=json"
+    url = f"{EUROPE_PMC_REST}/search?" + urllib.parse.urlencode({"query": f'DOI:"{doi_clean}"', "format": "json", "pageSize": 5})
     req = urllib.request.Request(url, headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"}, method="GET")
     try:
         from pulse_performance import request_json
         data = request_json(req, timeout=8, cache=True)
         results = (data.get("resultList") or {}).get("result") or []
         for r in results:
-            pmid = str(r.get("pmid") or r.get("id") or "").strip()
+            pmid = str(r.get("pmid") or "").strip()  # non-MEDLINE ids are not PMIDs
             if pmid:
                 return pmid
     except (DiscoveryCancelled, DiscoveryBudgetExceeded):
@@ -449,7 +380,7 @@ def europepmc_citing_papers(pmid, limit=30):
     if not pmid_clean:
         return []
     limit = discovery_limit(limit)
-    url = f"https://europepmc.org/RestPortal/v1/MED/{urllib.parse.quote(pmid_clean, safe='')}/citations?format=json&pageSize={min(limit, 100)}"
+    url = f"{EUROPE_PMC_REST}/MED/{urllib.parse.quote(pmid_clean, safe='')}/citations?format=json&pageSize={min(limit, 100)}"
     req = urllib.request.Request(url, headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"}, method="GET")
     try:
         from pulse_performance import request_json
@@ -467,7 +398,7 @@ def europepmc_reference_papers(pmid, limit=30):
     if not pmid_clean:
         return []
     limit = discovery_limit(limit)
-    url = f"https://europepmc.org/RestPortal/v1/MED/{urllib.parse.quote(pmid_clean, safe='')}/references?format=json&pageSize={min(limit, 100)}"
+    url = f"{EUROPE_PMC_REST}/MED/{urllib.parse.quote(pmid_clean, safe='')}/references?format=json&pageSize={min(limit, 100)}"
     req = urllib.request.Request(url, headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"}, method="GET")
     try:
         from pulse_performance import request_json
@@ -523,7 +454,7 @@ def icite_citing_papers(pmid, limit=30):
         rows = data.get("data") or []
         if not rows:
             return []
-        citations = rows[0].get("citations") or []
+        citations = rows[0].get("cited_by") or []  # iCite lists citing PMIDs under cited_by
         if not citations:
             return []
         batch_pmids = [str(c) for c in citations[:limit] if c]
@@ -559,7 +490,7 @@ def resolve_works_by_dois(dois):
     # Fallback to Europe PMC
     for doi in clean[:30]:
         check_cancelled()
-        url = f"https://europepmc.org/RestPortal/v1/search?query=ext_id:{urllib.parse.quote(doi, safe='')}&format=json"
+        url = f"{EUROPE_PMC_REST}/search?" + urllib.parse.urlencode({"query": f'DOI:"{doi}"', "format": "json", "pageSize": 1})
         req = urllib.request.Request(url, headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"}, method="GET")
         try:
             from pulse_performance import request_json
@@ -1121,7 +1052,7 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
             else:
                 queue_embeddings(ranked[:SEMANTIC_SHORTLIST_LIMIT])
         if on_progress:
-            payload = {
+            update = {
                 "availableCount": sum(len(rows) for rows in ordered.values()),
                 "branchesExecuted": [name for name in tasks if name in completed],
                 "errors": source_errors(results, errors),
@@ -1134,11 +1065,15 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
                 "total": total,
             }
             if ranked is not None:
-                payload["recommendations"] = ranked[:min(limit, 100)]
+                update["recommendations"] = ranked[:min(limit, 100)]
             if citation_finished:
-                payload["stage"] = "refining"
-                payload["rankingPhase"] = "refining"
-            on_progress(payload)
+                # Citation-based results are ready while slower sources continue.
+                # The stage stays "collecting" until every source has answered.
+                update["rankingPhase"] = "preliminary"
+            on_progress(update)
+        # Stop waiting for long-tail sources once the citation-led top 50 has settled.
+        if citation_branches and citation_finished and settled_updates[0] >= 2 and len(tasks) > len(completed) + len(errors):
+            return True
     if on_progress:
         on_progress({"total": len(tasks), "stage":"collecting", "conceptSearch":concept_search, "bridgeConcept":bridge_concept})
     try:
@@ -1153,6 +1088,20 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
     ordered = {name: results.get(name, []) for name in tasks}
     if on_candidates:on_candidates(ordered,seed_papers,options)
     if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
+    if payload.get('_collectOnly'):
+        # Pre-warm: responses are cached; also cache AI scores for the shortlist
+        # the final ranking will choose from this same pool, then stop.
+        shortlists = []
+        merge_and_rank_pipeline_candidates(ordered, seed_papers, dict(options, limit=min(limit, 150),
+            _shortlistProbe=lambda semantic_rows, pairwise_rows: shortlists.append((semantic_rows, pairwise_rows))))
+        if shortlists:
+            semantic_rows, pairwise_rows = shortlists[-1]
+            if semantic_enabled and not (cancel_event and cancel_event.is_set()):
+                pre_embed_papers(settings, semantic_rows, cancel_event, fast_mode=fast_mode, queries=embed_queries)
+            if pairwise_enabled and not (cancel_event and cancel_event.is_set()):
+                pre_score_crossencoder(settings, pair_queries, pairwise_rows, cancel_event=cancel_event)
+        return {'ok': True, 'prewarmed': True, 'candidateCount': sum(len(rows) for rows in ordered.values()),
+                'timings': {'retrievalSeconds': round(retrieval_seconds, 3)}}
     # Two-phase display: the text-and-citation order is shown while neural
     # ranking runs. It runs beside the final ranking (which mostly waits on
     # the embedding and cross-encoder processes) and only when a UI listens.

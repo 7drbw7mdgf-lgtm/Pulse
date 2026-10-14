@@ -27,8 +27,22 @@ from pulse_core.external_apis import fetch_json
 from pulse_source_health import cooldowns, clear, clear_source, failed
 
 
+def block_external_network(testcase):
+    """Unit tests must not reach live services (results vary and API quotas are spent)."""
+    import socket
+    real = socket.create_connection
+    def guarded(address, *args, **kwargs):
+        if str(address[0]) in ('127.0.0.1', 'localhost', '::1'):
+            return real(address, *args, **kwargs)
+        raise OSError('External network access is disabled in unit tests')
+    blocker = patch('socket.create_connection', guarded)
+    blocker.start()
+    testcase.addCleanup(blocker.stop)
+
+
 class OpenAlexResilienceTests(unittest.TestCase):
     def setUp(self):
+        block_external_network(self)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.orig_config_dir = os.environ.get('PULSE_CONFIG_DIR')
         self.orig_config_path = _core.CONFIG_PATH
@@ -90,7 +104,7 @@ class OpenAlexResilienceTests(unittest.TestCase):
         save_settings({"openAlexApiKey": "new_oa_key_999"})
         self.assertNotIn("OpenAlex", cooldowns())
 
-    def test_fetch_json_injects_openalex_api_key_header(self):
+    def test_fetch_json_sends_openalex_api_key_as_query_parameter(self):
         save_settings({"openAlexApiKey": "secret_oa_token_777"})
         captured_requests = []
 
@@ -102,8 +116,13 @@ class OpenAlexResilienceTests(unittest.TestCase):
             fetch_json("https://api.openalex.org/works/W12345", cache=False)
 
         self.assertEqual(len(captured_requests), 1)
-        headers = dict(captured_requests[0].header_items())
-        self.assertEqual(headers.get("Api_key"), "secret_oa_token_777")
+        request = captured_requests[0]
+        self.assertIn("api_key=secret_oa_token_777", request.full_url)
+        self.assertNotIn("Api_key", dict(request.header_items()))
+        from pulse_performance import _disk_http_cache_key, _strip_cache_params
+        self.assertNotIn("secret_oa_token_777", _strip_cache_params(request.full_url))
+        plain = urllib.request.Request("https://api.openalex.org/works/W12345", headers=dict(request.header_items()))
+        self.assertEqual(_disk_http_cache_key(request), _disk_http_cache_key(plain))
 
     def test_fetch_json_injects_polite_pool_email_when_no_key(self):
         save_settings({"contactEmail": "scholar@institute.org"})
@@ -118,9 +137,7 @@ class OpenAlexResilienceTests(unittest.TestCase):
 
         self.assertEqual(len(captured_requests), 1)
         self.assertIn("mailto=scholar%40institute.org", captured_requests[0].full_url)
-        # No api_key header injected
-        headers = dict(captured_requests[0].header_items())
-        self.assertNotIn("Api_key", headers)
+        self.assertNotIn("api_key=", captured_requests[0].full_url)
 
     def test_europepmc_pmid_resolution_and_citations(self):
         doi = "10.1038/s41586-020-2003-7"
@@ -162,7 +179,7 @@ class OpenAlexResilienceTests(unittest.TestCase):
             "data": [
                 {
                     "pmid": 32015507,
-                    "citations": [34000001, 34000002],
+                    "cited_by": [34000001, 34000002],
                 }
             ]
         }

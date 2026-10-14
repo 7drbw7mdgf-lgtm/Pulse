@@ -25,7 +25,26 @@ def paper(index, **fields):
                 doi=f'10.1234/result-{index}', **fields)
 
 
+def block_external_network(testcase):
+    """Unit tests must not reach live services: a real 429 would put OpenAlex into cooldown for later tests."""
+    import socket
+    real = socket.create_connection
+    def guarded(address, *args, **kwargs):
+        if str(address[0]) in ('127.0.0.1', 'localhost', '::1'):
+            return real(address, *args, **kwargs)
+        raise OSError('External network access is disabled in unit tests')
+    blocker = patch('socket.create_connection', guarded)
+    blocker.start()
+    testcase.addCleanup(blocker.stop)
+
+
 class CitationFallbackTests(unittest.TestCase):
+    def setUp(self):
+        import pulse_source_health
+        block_external_network(self)
+        pulse_source_health.clear()
+        self.addCleanup(pulse_source_health.clear)
+
     def run_branch(self, oa_references, oa_citations, s2_references=None, s2_citations=None):
         with patch.object(core, 'openalex_work_for_paper', return_value={'id':'https://openalex.org/W1', 'referenced_works':['W2']}) as identify, \
              patch.object(discovery, 'openalex_reference_works', side_effect=oa_references if isinstance(oa_references, Exception) else None, return_value=oa_references if not isinstance(oa_references, Exception) else None) as backward, \
@@ -69,7 +88,8 @@ class CitationFallbackTests(unittest.TestCase):
 
     def test_citations_fetched_before_references_in_s2_and_openalex(self):
         call_order = []
-        with patch.object(core, 's2_paper_id_for_paper', return_value='seed-id'), \
+        with patch.object(core, 'openalex_work_for_paper', return_value=None), \
+             patch.object(core, 's2_paper_id_for_paper', return_value='seed-id'), \
              patch.object(core, 's2_fetch_citations', side_effect=lambda *args, **kwargs: call_order.append('s2_cites') or [paper('c1')]), \
              patch.object(core, 's2_fetch_references', side_effect=lambda *args, **kwargs: call_order.append('s2_refs') or [paper('r1')]):
             discovery.fetch_citation_graph_branch([SEED], depth=1)

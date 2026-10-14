@@ -22,15 +22,29 @@ import pulse_core as _core
 from pulse_core import discovery
 from pulse_core.discovery import (
     warm_paper_discovery,
-    PREWARM_REQUEST_CAP,
+    PREWARM_MAX_PER_HOUR,
     run_discovery_pipeline,
 )
 from pulse_core.pipeline_ranking import merge_and_rank_pipeline_candidates
 from pulse_performance import REQUEST_CONTEXT, DiscoveryBudgetExceeded, DiscoveryCancelled
 
 
+def block_external_network(testcase):
+    """Unit tests must not reach live services (results vary and API quotas are spent)."""
+    import socket
+    real = socket.create_connection
+    def guarded(address, *args, **kwargs):
+        if str(address[0]) in ('127.0.0.1', 'localhost', '::1'):
+            return real(address, *args, **kwargs)
+        raise OSError('External network access is disabled in unit tests')
+    blocker = patch('socket.create_connection', guarded)
+    blocker.start()
+    testcase.addCleanup(blocker.stop)
+
+
 class FasterFirstResultsTests(unittest.TestCase):
     def setUp(self):
+        block_external_network(self)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.orig_config_dir = os.environ.get('PULSE_CONFIG_DIR')
         os.environ['PULSE_CONFIG_DIR'] = self.temp_dir.name
@@ -51,86 +65,72 @@ class FasterFirstResultsTests(unittest.TestCase):
             os.environ.pop('PULSE_CONFIG_DIR', None)
         self.temp_dir.cleanup()
 
-    def test_prewarm_request_cap_enforced(self):
-        """Pre-warm enforces PREWARM_REQUEST_CAP so it cannot exhaust API credits."""
-        requests_made = []
+    def test_prewarm_runs_the_real_collection_with_search_options(self):
+        """Pre-warm makes the same requests as the later search: same options, one seed, collect only."""
+        discovery._PREWARM_TIMES.clear()
+        with patch('pulse_core.discovery._run_discovery_pipeline', return_value={'ok': True}) as run:
+            self.assertTrue(warm_paper_discovery(self.seed, {'limit': 200, 'depth': '1', 'bridgeMode': True,
+                                                             'searchMode': 'concept', 'seedPapers': ['ignored']}))
+        payload = run.call_args.args[0]
+        self.assertEqual(payload['seedPapers'], [self.seed])
+        self.assertTrue(payload['_collectOnly'])
+        self.assertFalse(payload['bridgeMode'], 'one selected paper cannot be bridged')
+        self.assertNotIn('searchMode', payload)
+        self.assertEqual((payload['limit'], payload['depth']), (200, '1'))
+        self.assertIs(run.call_args.kwargs['cancel_event'], discovery._WARM_CANCEL)
 
-        def counting_fetch(url):
-            counter = getattr(REQUEST_CONTEXT, 'request_counter', None)
-            if counter:
-                with counter['lock']:
-                    if counter['remaining'] <= 0:
-                        raise DiscoveryBudgetExceeded("Budget exceeded")
-                    counter['remaining'] -= 1
-            requests_made.append(url)
-            return {'results': []}
+    def test_prewarm_is_skipped_when_it_would_waste_requests(self):
+        import pulse_source_health
+        discovery._PREWARM_TIMES.clear()
+        with patch('pulse_core.discovery._run_discovery_pipeline', return_value={'ok': True}) as run:
+            with discovery._ACTIVE_LOCK: discovery._ACTIVE_SEARCHES[0] += 1
+            try:
+                self.assertFalse(warm_paper_discovery(self.seed), 'never during a live search')
+            finally:
+                with discovery._ACTIVE_LOCK: discovery._ACTIVE_SEARCHES[0] -= 1
+            with patch('pulse_core.discovery.cooldowns', return_value={'OpenAlex': {'retryInSeconds': 600}}):
+                self.assertFalse(warm_paper_discovery(self.seed), 'not while OpenAlex is rate-limited')
+            import pulse_performance
+            pulse_performance._note_openalex_allowance({'x-ratelimit-remaining': '120'})
+            self.assertFalse(warm_paper_discovery(self.seed), 'keep the remaining OpenAlex allowance for real searches')
+            pulse_performance._note_openalex_allowance({'x-ratelimit-remaining': '900'})
+            for _ in range(PREWARM_MAX_PER_HOUR):
+                self.assertTrue(warm_paper_discovery(self.seed))
+            self.assertFalse(warm_paper_discovery(self.seed), 'hourly cap protects the daily OpenAlex allowance')
+            self.assertEqual(run.call_count, PREWARM_MAX_PER_HOUR)
+        discovery._PREWARM_TIMES.clear()
 
-        with patch('pulse_core.discovery.openalex_work_for_paper', return_value={'id': 'W100', 'referenced_works': [f'W{i}' for i in range(50)]}), \
-             patch('pulse_core.discovery.fetch_json', side_effect=counting_fetch), \
-             patch('pulse_core.discovery.s2_paper_search', return_value=[]), \
-             patch('pulse_core.discovery.pre_embed_papers') as mock_embed, \
-             patch('pulse_core.discovery.pre_score_crossencoder') as mock_ce:
-            warm_paper_discovery(self.seed)
-            self.assertLessEqual(len(requests_made), PREWARM_REQUEST_CAP)
-
-    def test_prewarm_fetches_all_five_facets(self):
-        """Pre-warm pre-fetches citing works, references, DBEF pivots, co-citations, and keyword queries."""
-        work_obj = {
-            'id': 'https://openalex.org/W100',
-            'title': self.seed['title'],
-            'referenced_works': ['https://openalex.org/W201', 'https://openalex.org/W202'],
-        }
-        ref_works = [
-            {'id': 'https://openalex.org/W201', 'title': 'Ref 1', 'cited_by_count': 150},
-            {'id': 'https://openalex.org/W202', 'title': 'Ref 2', 'cited_by_count': 80},
-        ]
-        cite_works = [
-            {'id': 'https://openalex.org/W301', 'title': 'Citing Paper 1', 'cited_by_count': 40,
-             'referenced_works': ['https://openalex.org/W100', 'https://openalex.org/W401']},
-        ]
-        pivot_works = [
-            {'id': 'https://openalex.org/W501', 'title': 'DBEF Pivot Result', 'cited_by_count': 30},
-        ]
-        co_cite_works = [
-            {'id': 'https://openalex.org/W401', 'title': 'Co-cited Work 1', 'cited_by_count': 60},
-        ]
-
-        def fake_discovery_works(query, limit, sort='cited_by_count:desc', **kw):
-            if query == 'cites:W100':
-                return cite_works
-            if 'W201' in query or 'W202' in query:
-                return pivot_works
-            return []
-
-        def fake_batch(ids, select=None):
-            if any('W201' in i or 'W202' in i for i in ids):
-                return ref_works
-            if any('W401' in i for i in ids):
-                return co_cite_works
-            return []
-
-        mock_s2 = MagicMock(return_value=[{'title': 'S2 Keyword Match', 'doi': '10.1000/s2_1'}])
-
-        with patch('pulse_core.discovery.openalex_work_for_paper', return_value=work_obj), \
-             patch('pulse_core.discovery.fetch_openalex_works_batch', side_effect=fake_batch), \
-             patch('pulse_core.discovery.openalex_discovery_works', side_effect=fake_discovery_works), \
-             patch('pulse_core.discovery.s2_paper_search', mock_s2), \
-             patch('pulse_core.discovery.pre_embed_papers') as mock_embed, \
-             patch('pulse_core.discovery.pre_score_crossencoder') as mock_ce:
-            warm_paper_discovery(self.seed)
-
-            # Neural pre-computation received candidate shortlist
-            mock_embed.assert_called_once()
-            embedded_candidates = mock_embed.call_args[0][1]
-            self.assertGreaterEqual(len(embedded_candidates), 1)
-
-            mock_ce.assert_called_once()
-            ce_candidates = mock_ce.call_args[0][2]
-            self.assertGreaterEqual(len(ce_candidates), 1)
+    def test_collect_only_caches_the_final_shortlist_and_skips_ranking(self):
+        """Collect-only fills embedding / cross-encoder caches for exactly the shortlist the final ranking uses."""
+        rows = [{'doi': f'10.1000/pool_{i}', 'title': f'Vesicle pool paper {i}', 'year': 2015 + i % 8,
+                 'abstract': f'Outer membrane vesicles study {i}.', 'citationCount': (i * 13) % 300,
+                 'retrievalEvidence': [{'channel': 'citations:0:forward' if i % 2 else 'concepts:q1', 'rank': i + 1, 'provider': 'OpenAlex'}]}
+                for i in range(120)]
+        pool = {'citationGraph': [r for r in rows if r['retrievalEvidence'][0]['channel'].startswith('citations')],
+                'europePmc': [r for r in rows if not r['retrievalEvidence'][0]['channel'].startswith('citations')]}
+        base = {'seedPapers': [self.seed], 'limit': 200,
+                'branches': {'citationGraph': True, 'citationNetwork': False, 'citationCoCitation': False,
+                             'semanticSearch': False, 'lexicalSearch': True},
+                'searchSources': {'europePmc': True, 'semanticScholar': False, 'core': False}}
+        fake_branches = lambda tasks, on_progress, cancel_event: (pool, list(pool), {})
+        embedded, scored, assessed = [], [], []
+        with patch('pulse_core.discovery.parallel_branches', side_effect=fake_branches), \
+             patch.object(_core, 'openalex_work_for_paper', return_value=None), \
+             patch('pulse_core.discovery.pre_embed_papers', side_effect=lambda s, records, *a, **k: embedded.append([r['doi'] for r in records])), \
+             patch('pulse_core.discovery.pre_score_crossencoder', side_effect=lambda s, q, records, **k: scored.append([r['doi'] for r in records])), \
+             patch('pulse_core.discovery.semantic_scores', side_effect=lambda s, q, records, *a, **k: (assessed.extend(r['doi'] for r in records), (None, 'off'))[1]), \
+             patch('pulse_core.discovery.crossencoder_scores', return_value=(None, 'off')):
+            warm = discovery._run_discovery_pipeline(dict(base, _collectOnly=True))
+            self.assertTrue(warm['prewarmed'])
+            self.assertNotIn('recommendations', warm, 'no final ranking during pre-warm')
+            final = run_discovery_pipeline(dict(base))
+        self.assertTrue(final['recommendations'])
+        self.assertIn(assessed, embedded, 'pre-warm embedded exactly the shortlist the final ranking assessed')
+        self.assertTrue(scored)
 
     def test_earlier_preliminary_results_when_citation_branches_finish(self):
-        """Preliminary results are emitted with stage 'refining' as soon as citation branches finish,
-        even while slower keyword sources are still running."""
+        """Preliminary results are emitted as soon as citation branches finish, even while slower
+        keyword sources are still running. They are marked preliminary; the stage stays 'collecting'."""
         progress_events = []
 
         cit_rows = [
@@ -180,12 +180,12 @@ class FasterFirstResultsTests(unittest.TestCase):
              patch('pulse_core.discovery.parallel_branches', side_effect=fake_parallel_branches):
             res = run_discovery_pipeline(payload, on_progress=progress_events.append)
 
-        # Check that the first event after citation completion has stage 'refining' and recommendations
-        refining_events = [e for e in progress_events if e.get('stage') == 'refining' and e.get('recommendations')]
+        # The first update after the citation branches finish carries preliminary recommendations.
+        refining_events = [e for e in progress_events if e.get('rankingPhase') == 'preliminary' and e.get('recommendations')]
         self.assertGreaterEqual(len(refining_events), 1)
 
         first_refining = refining_events[0]
-        self.assertEqual(first_refining.get('rankingPhase'), 'refining')
+        self.assertNotEqual(first_refining.get('stage'), 'refining', 'sources are still being collected')
         self.assertGreaterEqual(len(first_refining['recommendations']), 5)
         # Branches executed at first preliminary emission should be only citation branches
         self.assertEqual(
@@ -196,6 +196,33 @@ class FasterFirstResultsTests(unittest.TestCase):
         # Final result has full pool from both citations and Europe PMC
         self.assertEqual(res['completed'], 4)
         self.assertEqual(len(res['recommendations']), 20)
+
+    def test_collection_stops_once_citation_led_top50_settles(self):
+        """Early settling (since 1.7.12): once citation branches finish and the top 50 is unchanged
+        across refreshes, collection stops waiting for long-tail sources."""
+        cit_rows = [{'doi': f'10.1000/settle_{i}', 'title': f'Settled citation paper {i}', 'year': 2020,
+                     'retrievalEvidence': [{'channel': 'citations:0:forward', 'rank': i + 1, 'provider': 'OpenAlex'}]}
+                    for i in range(12)]
+        decisions = []
+
+        def fake_parallel_branches(tasks, on_progress, cancel_event):
+            results = {'citationGraph': cit_rows[:6], 'citationNetwork': cit_rows[6:9], 'citationCoCitation': cit_rows[9:]}
+            completed = ['citationGraph', 'citationNetwork', 'citationCoCitation']
+            clock = [1000.0]
+            with patch('pulse_core.discovery.time.monotonic', side_effect=lambda: clock[0]):
+                for _ in range(5):
+                    clock[0] += 4.0  # past the refresh throttle, so every update re-ranks
+                    decisions.append(on_progress(dict(results), list(completed), {}, len(tasks)))
+            return results, completed, {}
+
+        payload = {'seedPapers': [self.seed], 'limit': 50, 'semanticRerank': False, 'pairwiseRerank': False,
+                   'branches': {'citationGraph': True, 'citationNetwork': True, 'citationCoCitation': True,
+                                'semanticSearch': False, 'lexicalSearch': True},
+                   'searchSources': {'europePmc': True, 'semanticScholar': False, 'core': False}}
+        with patch.object(_core, 'openalex_work_for_paper', return_value={'id': 'W100', 'title': self.seed['title']}), \
+             patch('pulse_core.discovery.parallel_branches', side_effect=fake_parallel_branches):
+            run_discovery_pipeline(payload, on_progress=lambda update: None)
+        self.assertIn(True, decisions, 'a settled top 50 must stop collection while Europe PMC is still pending')
 
     def test_ranking_equivalence_with_and_without_preliminary_emission(self):
         """Final ranking on the candidate pool is identical regardless of intermediate preliminary updates."""
