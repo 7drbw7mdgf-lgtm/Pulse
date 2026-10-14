@@ -97,8 +97,8 @@ class HttpTests(unittest.TestCase):
         provider.assert_not_called()
     def test_profile_uses_json_accept(self):
         session=self.auth()
-        with patch('broker.call',return_value=({'id':'me'},None)) as provider:self.service.library(session,'/profiles/v2/me')
-        self.assertEqual(provider.call_args[0][3]['Accept'],'application/json')
+        with patch('broker.call',return_value=({'id':'me'},None)) as provider:self.service.library(session,'/profiles/me')
+        self.assertEqual(provider.call_args[0][3]['Accept'],'application/vnd.mendeley-profiles.1+json')
     def test_callback_with_wrong_cookie_does_not_exchange_code(self):
         _,_,raw=self.send('/start','POST',{'challenge':challenge('v'*64)});identity=json.loads(raw)['requestId'];_,headers,_=self.send('/authorize?request='+identity)
         state=urllib.parse.parse_qs(urllib.parse.urlsplit(headers['Location']).query)['state'][0]

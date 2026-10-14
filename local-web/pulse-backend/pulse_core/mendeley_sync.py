@@ -10,8 +10,9 @@ def validate_page(path):
     if not isinstance(path,str) or len(path)>4096 or '\\' in path: raise ClientError(400,'Invalid library page.')
     target=urllib.parse.urlsplit(path)
     fields=urllib.parse.parse_qs(target.query,keep_blank_values=True)
-    if target.scheme or target.netloc or target.fragment or target.path!='/documents' or set(fields)-{'view','limit','marker','order','sort','modified_since'} or any(len(v)!=1 for v in fields.values()):
+    if target.scheme or target.netloc or target.fragment or target.path!='/documents' or set(fields)-{'view','limit','marker','reverse','order','sort','modified_since'} or any(len(v)!=1 for v in fields.values()):
         raise ClientError(400,'Invalid library page.')
+    if fields.get('reverse',['false'])[0] not in {'true','false'}: raise ClientError(400,'Invalid library page.')
     if fields.get('view',['all'])[0] not in {'all','client'}: raise ClientError(400,'Use JSON library records.')
     try: valid=1<=int(fields.get('limit',['100'])[0])<=100
     except ValueError: valid=False
@@ -26,7 +27,8 @@ def connected_config():
         return config
     access=managers.access_token()
     if not config.get('mendeleyAccountId'):
-        profile=managers.request(managers.MENDELEY+'/profiles/v2/me',headers={'Authorization':'Bearer '+access})
+        profile=managers.request(managers.MENDELEY+'/profiles/me',headers={'Authorization':'Bearer '+access,
+            'Accept':'application/vnd.mendeley-profiles.1+json'})
         if not isinstance(profile,dict) or not isinstance(profile.get('id'),str) or not profile['id']: raise ClientError(502,'The account could not be confirmed.')
         with managers.config_lock():
             current=managers.read_config()
@@ -57,7 +59,8 @@ def page(payload):
         from pulse_core.mendeley_broker import library
         envelope=library(path,config=config)
     else:
-        envelope=managers.request(managers.MENDELEY+path,headers={'Authorization':'Bearer '+managers.access_token()},envelope=True)
+        envelope=managers.request(managers.MENDELEY+path,headers={'Authorization':'Bearer '+managers.access_token(),
+            'Accept':'application/vnd.mendeley-document.1+json'},envelope=True)
     with managers.config_lock(): current=managers.read_config()
     if current.get('authGeneration',0)!=config.get('authGeneration',0) or current.get('mendeleyAccountId')!=account:
         raise ClientError(409,'Your Mendeley account changed. Start sync again.')

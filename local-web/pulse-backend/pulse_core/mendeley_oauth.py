@@ -82,7 +82,7 @@ def start_oauth(payload=None):
                 token_exchange(config, {'grant_type':'authorization_code', 'code':codes[0], 'redirect_uri':redirect, 'code_verifier':verifier})
                 code, message = 200, 'Mendeley connected. Return to Pulse to send your chosen citations.'
             except ClientError as error:
-                code, message = 400, f'Could not finish Mendeley sign-in: {error.message}. Return to Pulse and connect again.'
+                code, message = 400, f'Could not finish Mendeley sign-in: {str(error)}. Return to Pulse and connect again.'
             with _LOCK:
                 if _PENDING is pending: _STATUS.update(pending=False, authorizationMessage=message)
             self.reply(code, message)

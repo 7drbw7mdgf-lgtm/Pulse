@@ -11,7 +11,7 @@ import urllib.request
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
-from pulse_core.constants import CONFIG_DIR, ClientError
+from pulse_core.constants import APP_VERSION, CONFIG_DIR, ClientError
 from pulse_core.doi_utils import normalize_doi
 from pulse_core.security import encrypt_secret, decrypt_secret
 from pulse_core.platform_support import exclusive_file_lock
@@ -67,6 +67,8 @@ def request(url, method='GET', data=None, headers=None, timeout=10, envelope=Fal
     if not (url.startswith(ZOTERO + '/') or url.startswith(MENDELEY + '/')):
         raise ClientError(400, 'Unsupported library service address.')
     h = {'Accept': 'application/json', **(headers or {})}
+    if url.startswith(MENDELEY + '/'):
+        h.setdefault('User-Agent', f'Pulse/{APP_VERSION} (Mendeley OAuth)')
     if data is not None and not isinstance(data, bytes):
         data = json.dumps(data).encode()
         h.setdefault('Content-Type', 'application/json')
@@ -160,7 +162,8 @@ def token_exchange(config, fields):
         if not 1 <= lifetime <= 86400: raise ValueError()
     except (ValueError, TypeError, OverflowError):
         raise ClientError(502, 'Mendeley returned an invalid token expiry.')
-    profile = request(MENDELEY + '/profiles/v2/me', headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/json'})
+    profile = request(MENDELEY + '/profiles/me', headers={'Authorization': 'Bearer ' + token,
+                      'Accept': 'application/vnd.mendeley-profiles.1+json'})
     if not isinstance(profile, dict) or not profile.get('id'):
         raise ClientError(502, 'Mendeley did not confirm the account connection.')
     with config_lock():
@@ -207,13 +210,13 @@ def manager_status():
     with config_lock(): private = read_config()
     if private.get('brokerSession'):
         try:
-            mendeley_request('/profiles/v2/me')
+            mendeley_request('/profiles/me')
             mendeley.update(connected=True,label='Connected',destination='Your Mendeley library')
         except ClientError as error: mendeley['message']=str(error)
     elif private.get('accessToken') or private.get('refreshToken'):
         try:
-            request(MENDELEY + '/profiles/v2/me', headers={'Authorization': 'Bearer ' + access_token(),
-                    'Accept': 'application/json'}, timeout=5)
+            request(MENDELEY + '/profiles/me', headers={'Authorization': 'Bearer ' + access_token(),
+                    'Accept': 'application/vnd.mendeley-profiles.1+json'}, timeout=5)
             mendeley.update(connected=True, label='Connected', destination='Your Mendeley library')
         except ClientError as error:
             mendeley['message'] = str(error)
