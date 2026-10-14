@@ -36,7 +36,8 @@ def read_config():
         if data.get(key): data[key] = decrypt_secret(data[key])
     # Public application registration ships only an ID and redirect URL, never a secret.
     registration = Path(__file__).with_name('mendeley-client.json')
-    if not data.get('clientId') and registration.exists():
+    # Only a Mac without its own application or service settings uses the shipped registration.
+    if not data.get('clientId') and not data.get('brokerUrl') and registration.exists():
         public = json.loads(registration.read_text())
         if public.get('exchangeUrl'):
             from pulse_core.mendeley_broker import origin

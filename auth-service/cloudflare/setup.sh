@@ -6,9 +6,14 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 WRANGLER=(npx --yes wrangler@4.20.0)
+export WRANGLER_SEND_METRICS=false
 
 echo "1/4  Signing in to Cloudflare (a browser window opens)…"
-"${WRANGLER[@]}" whoami >/dev/null 2>&1 || "${WRANGLER[@]}" login
+# `wrangler whoami` exits 0 even when signed out, so check what it says.
+if ! "${WRANGLER[@]}" whoami 2>&1 | grep -q "You are logged in"; then
+  "${WRANGLER[@]}" login
+  "${WRANGLER[@]}" whoami 2>&1 | grep -q "You are logged in" || { echo "Cloudflare sign-in did not complete." >&2; exit 1; }
+fi
 
 echo "2/4  Deploying the sign-in service…"
 deploy_log=$("${WRANGLER[@]}" deploy 2>&1 | tee /dev/stderr)

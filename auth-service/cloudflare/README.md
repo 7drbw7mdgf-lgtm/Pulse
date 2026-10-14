@@ -21,7 +21,9 @@ The service stores nothing: no database, no user tokens, no logs of codes. Sign-
 4. Paste the application ID and secret when the script asks. The script also generates the signing key. Everything goes only to Cloudflare as encrypted Worker secrets.
 5. The script checks `https://…workers.dev/health` and prints the address to put in `local-web/pulse-backend/pulse_core/mendeley-client.json` as `"exchangeUrl"`. Rebuild Pulse.
 
-Your own application settings (Settings → Mendeley & Zotero) still take priority on a Mac where you entered them.
+To change or rotate the application secret later: `bash auth-service/cloudflare/set-mendeley-secrets.sh <application ID>`.
+
+Pulse's live service is `https://pulse-mendeley.7drbw7mdgf.workers.dev` (Mendeley application 26261). Your own application settings (Settings → Mendeley & Zotero) still take priority on a Mac where you entered them.
 
 ## Tests
 
