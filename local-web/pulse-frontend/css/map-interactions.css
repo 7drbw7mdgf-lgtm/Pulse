@@ -7,7 +7,7 @@
 .map.is-select-mode .node { cursor: pointer; }
 .map .selection-box { fill: rgba(79, 70, 229, 0.08); stroke: #4f46e5; stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
 .node.is-multi-selected circle { stroke: #4f46e5; stroke-width: 3.5; stroke-dasharray: 4 3; }
-.pulse-paper-card.is-multi-selected, .library-table-row.is-multi-selected { box-shadow: inset 3px 0 0 #4f46e5; }
+.pulse-paper-card.is-multi-selected, .paper-card.is-multi-selected, .library-table-row.is-multi-selected { box-shadow: inset 3px 0 0 #4f46e5; }
 
 .map-selection-bar { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12); font-size: 12px; color: var(--ink); }
 .map-selection-bar[hidden] { display: none; }
@@ -19,8 +19,11 @@
 .map-selection-bar .map-selection-primary:hover:not(:disabled) { background: #4338ca; }
 .map-selection-bar button:disabled { opacity: .5; cursor: default; }
 
+.pulse-paper-card, .paper-card, .library-table-row { user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
+.paper-card input, .paper-card textarea, .library-table-row input { user-select: text; -webkit-user-select: text; }
+
 body.is-dragging-paper, body.is-dragging-paper * { user-select: none; -webkit-user-select: none; cursor: grabbing !important; }
 .map-viewport.is-paper-drop-target { outline: 2px dashed #4f46e5; outline-offset: -4px; background-color: rgba(79, 70, 229, 0.04); }
 .map-drag-ghost { position: fixed; z-index: 1000; pointer-events: none; max-width: 260px; padding: 7px 10px; border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 12px; font-weight: 600; box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translate(12px, 12px); }
 .map-drag-ghost small { display: block; font-weight: 400; color: var(--muted); }
-.pulse-paper-card.is-drag-source, .library-table-row.is-drag-source { opacity: .55; }
+.pulse-paper-card.is-drag-source, .paper-card.is-drag-source, .library-table-row.is-drag-source { opacity: .55; }

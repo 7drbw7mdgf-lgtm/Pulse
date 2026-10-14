@@ -5,16 +5,38 @@ const path = require('path');
 
 const source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/map-interactions.js'), 'utf8');
 
-function element(id) {
+function element(id, tagName = 'div') {
   const classes = new Set();
-  return {
-    id, hidden: false, textContent: '', disabled: false, title: '', dataset: {}, attributes: {}, style: {}, children: [],
-    classList: { toggle(name, on) { if (on === undefined ? !classes.has(name) : on) classes.add(name); else classes.delete(name); }, add(name) { classes.add(name); }, remove(name) { classes.delete(name); }, contains: name => classes.has(name) },
+  const el = {
+    id, tagName: tagName.toUpperCase(), hidden: false, textContent: '', disabled: false, title: '', dataset: {}, attributes: {}, style: {}, children: [], parentNode: null,
+    classList: {
+      toggle(name, on) { if (on === undefined ? !classes.has(name) : on) classes.add(name); else classes.delete(name); },
+      add(name) { classes.add(name); },
+      remove(name) { classes.delete(name); },
+      contains: name => classes.has(name)
+    },
     setAttribute(name, value) { this.attributes[name] = String(value); },
     getAttribute(name) { return this.attributes[name]; },
-    addEventListener() {}, appendChild(child) { this.children.push(child); child.parentNode = this; },
-    querySelectorAll() { return []; }, setPointerCapture() {}, remove() { this.removed = true; }
+    addEventListener() {},
+    appendChild(child) { this.children.push(child); child.parentNode = this; return child; },
+    querySelectorAll() { return []; },
+    setPointerCapture(id) { this.capturedPointer = id; },
+    releasePointerCapture(id) { if (this.capturedPointer === id) this.capturedPointer = null; },
+    remove() { this.removed = true; if (this.parentNode) { this.parentNode.children = this.parentNode.children.filter(c => c !== this); } },
+    closest(selector) {
+      const parts = selector.split(',').map(s => s.trim());
+      let cur = this;
+      while (cur) {
+        for (const p of parts) {
+          if (p.startsWith('.') && cur.classList.contains(p.slice(1))) return cur;
+          if (p.toLowerCase() === (cur.tagName || '').toLowerCase()) return cur;
+        }
+        cur = cur.parentNode;
+      }
+      return null;
+    }
   };
+  return el;
 }
 
 function sandbox() {
@@ -25,13 +47,24 @@ function sandbox() {
     { id: 'a', title: 'Paper A', x: 10, y: 10 }, { id: 'b', title: 'Paper B', x: 50, y: 40 },
     { id: 'c', title: 'Paper C', x: 300, y: 300 }, { id: 'd', title: 'Paper D', x: 60, y: 20, offMap: true }
   ];
+  const listeners = new Map();
+  const addListener = (target, type, fn) => {
+    const key = `${target}:${type}`;
+    if (!listeners.has(key)) listeners.set(key, []);
+    listeners.get(key).push(fn);
+  };
+  const dispatch = (target, type, event) => {
+    (listeners.get(`${target}:${type}`) || []).forEach(fn => fn(event));
+  };
+  const mapViewport = element('mapViewport');
+  mapViewport.classList.add('map-viewport');
   const context = {
     state: { papers, librarySelectedIds: new Set(), maps: [{ id: 'map-1', name: 'Map 1' }], activeMapId: 'map-1', mapPointerMode: 'pan' },
     els: { map: get('map'), paperList: get('paperList') },
     document: {
-      getElementById: get, querySelectorAll: () => [], addEventListener() {},
+      getElementById: get, querySelectorAll: () => [], addEventListener(type, fn) { addListener('document', type, fn); },
       createElementNS: (ns, tag) => element(tag), createElement: tag => element(tag), body: element('body'),
-      elementFromPoint: () => null
+      elementFromPoint: (x, y) => mapViewport
     },
     window: {},
     svgPoint: event => ({ x: event.clientX, y: event.clientY }),
@@ -43,13 +76,16 @@ function sandbox() {
     areaForPoint: () => null,
     render: () => { calls.renders += 1; }, renderDetails() {}, renderPapers() {}, scheduleAutosave() {}, syncDiscoveryControls() {},
     runDiscoveryPipeline: () => { calls.runs += 1; },
-    showToast: message => calls.toasts.push(message)
+    showToast: message => calls.toasts.push(message),
+    setTimeout: global.setTimeout,
+    clearTimeout: global.clearTimeout
   };
+  context.els.paperList.addEventListener = (type, fn) => addListener('paperList', type, fn);
   context.globalThis = context;
   context.window = context;  // In a page, window is the global object.
   vm.createContext(context);
   vm.runInContext(source, context);
-  return { context, get, calls, papers };
+  return { context, get, calls, papers, dispatch, mapViewport };
 }
 
 // Geometry helpers.
@@ -136,4 +172,104 @@ function sandbox() {
   assert.strictEqual(context.dropPaperOnMap('missing', 0, 0), false);
 }
 
-console.log('PASS: map pointer modes, box selection, bridge seeds and Library-to-map dropping');
+// Interactive pointer drag-and-drop: Compact card (.pulse-paper-card)
+{
+  const { context, calls, papers, dispatch } = sandbox();
+  context.bindMapInteractions();
+
+  const card = element('card-d', 'article');
+  card.classList.add('pulse-paper-card');
+  card.dataset.paper = 'd';
+  const title = element('title-d', 'div');
+  title.classList.add('pulse-paper-title');
+  card.appendChild(title);
+
+  // 1. Pointer down on title inside compact card
+  dispatch('paperList', 'pointerdown', { button: 0, pointerId: 10, clientX: 50, clientY: 50, target: title });
+
+  // 2. Small move (< DRAG_THRESHOLD 6px) does not start drag
+  dispatch('document', 'pointermove', { pointerId: 10, clientX: 52, clientY: 52, preventDefault() {} });
+  assert.strictEqual(card.classList.contains('is-drag-source'), false);
+
+  // 3. Move >= DRAG_THRESHOLD starts drag
+  dispatch('document', 'pointermove', { pointerId: 10, clientX: 200, clientY: 300, preventDefault() {} });
+  assert.strictEqual(card.classList.contains('is-drag-source'), true);
+  assert.strictEqual(card.capturedPointer, 10, 'pointer capture was acquired');
+
+  // 4. Pointer up over map drops and places the paper
+  dispatch('document', 'pointerup', { type: 'pointerup', pointerId: 10, clientX: 200, clientY: 300 });
+  const paper = papers.find(p => p.id === 'd');
+  assert.strictEqual(paper.x, 200);
+  assert.strictEqual(paper.y, 300);
+  assert.strictEqual(paper.pinnedPosition, true);
+  assert.strictEqual(card.classList.contains('is-drag-source'), false);
+  assert.strictEqual(card.capturedPointer, null, 'pointer capture was released');
+  assert.match(calls.toasts.at(-1), /Added "Paper D" to Map 1/);
+}
+
+// Interactive pointer drag-and-drop: Expanded card (.paper-card)
+{
+  const { context, calls, papers, dispatch } = sandbox();
+  context.bindMapInteractions();
+
+  const card = element('expanded-d', 'article');
+  card.classList.add('paper-card');
+  card.dataset.paper = 'd';
+  const title = element('exp-title-d', 'div');
+  title.classList.add('paper-title');
+  card.appendChild(title);
+
+  // Pointer down on title inside expanded card
+  dispatch('paperList', 'pointerdown', { button: 0, pointerId: 11, clientX: 40, clientY: 40, target: title });
+  dispatch('document', 'pointermove', { pointerId: 11, clientX: 180, clientY: 220, preventDefault() {} });
+  assert.strictEqual(card.classList.contains('is-drag-source'), true, 'expanded card is recognized as drag source');
+
+  dispatch('document', 'pointerup', { type: 'pointerup', pointerId: 11, clientX: 180, clientY: 220 });
+  const paper = papers.find(p => p.id === 'd');
+  assert.strictEqual(paper.x, 180);
+  assert.strictEqual(paper.y, 220);
+  assert.strictEqual(paper.pinnedPosition, true);
+}
+
+// Interactive pointer drag-and-drop: Table row title button (.library-title-button inside .library-table-row)
+{
+  const { context, calls, papers, dispatch } = sandbox();
+  context.bindMapInteractions();
+
+  const row = element('row-d', 'tr');
+  row.classList.add('library-table-row');
+  row.dataset.paper = 'd';
+  const cell = element('cell-d', 'td');
+  cell.classList.add('library-title-cell');
+  const btn = element('btn-title-d', 'button');
+  btn.classList.add('library-title-button');
+  cell.appendChild(btn);
+  row.appendChild(cell);
+
+  dispatch('paperList', 'pointerdown', { button: 0, pointerId: 12, clientX: 30, clientY: 30, target: btn });
+  dispatch('document', 'pointermove', { pointerId: 12, clientX: 250, clientY: 350, preventDefault() {} });
+  assert.strictEqual(row.classList.contains('is-drag-source'), true, 'table title button is allowed to drag row');
+
+  dispatch('document', 'pointerup', { type: 'pointerup', pointerId: 12, clientX: 250, clientY: 350 });
+  const paper = papers.find(p => p.id === 'd');
+  assert.strictEqual(paper.x, 250);
+  assert.strictEqual(paper.y, 350);
+}
+
+// Checkboxes and form inputs inside cards do NOT start drag
+{
+  const { context, dispatch } = sandbox();
+  context.bindMapInteractions();
+
+  const card = element('card-chk', 'article');
+  card.classList.add('paper-card');
+  card.dataset.paper = 'd';
+  const chk = element('chk-d', 'input');
+  card.appendChild(chk);
+
+  dispatch('paperList', 'pointerdown', { button: 0, pointerId: 13, clientX: 20, clientY: 20, target: chk });
+  dispatch('document', 'pointermove', { pointerId: 13, clientX: 100, clientY: 100, preventDefault() {} });
+  assert.strictEqual(card.classList.contains('is-drag-source'), false, 'input click does not start drag');
+}
+
+console.log('PASS: map pointer modes, box selection, bridge seeds and Library-to-map dropping (compact, expanded, table)');

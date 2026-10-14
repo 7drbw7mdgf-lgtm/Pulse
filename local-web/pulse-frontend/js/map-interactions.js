@@ -77,7 +77,7 @@
   function renderMultiSelection() {
     const selected = selectionIds();
     els.map?.querySelectorAll('.node').forEach(node => node.classList.toggle('is-multi-selected', selected.has(node.dataset.id)));
-    document.querySelectorAll('.pulse-paper-card, .library-table-row').forEach(card => {
+    document.querySelectorAll('.pulse-paper-card, .paper-card, .library-table-row').forEach(card => {
       card.classList.toggle('is-multi-selected', selected.has(card.dataset.paper));
     });
     renderSelectionBar();
@@ -163,8 +163,9 @@
 
   function dragSourceFor(target) {
     if (!target?.closest) return null;
-    if (target.closest('button, a, input, select, textarea, label, .compact-chip, [contenteditable="true"]')) return null;
-    return target.closest('.pulse-paper-card, .library-table-row');
+    const interactive = target.closest('button, a, input, select, textarea, label, .compact-chip, [contenteditable="true"]');
+    if (interactive && !interactive.classList.contains('library-title-button')) return null;
+    return target.closest('.pulse-paper-card, .paper-card, .library-table-row');
   }
 
   function viewportUnder(clientX, clientY) {
@@ -186,6 +187,9 @@
     const paper = state.papers.find(item => item.id === paperDrag.id);
     if (!paper) { paperDrag = null; return; }
     paperDrag.active = true;
+    try {
+      paperDrag.source.setPointerCapture?.(paperDrag.pointerId);
+    } catch (_) {}
     const ghost = document.createElement('div');
     ghost.className = 'map-drag-ghost';
     const title = typeof compactTitle === 'function' ? compactTitle(paper.title) : String(paper.title || 'Paper');
@@ -220,6 +224,9 @@
     const drag = paperDrag;
     paperDrag = null;
     if (!drag.active) return;
+    try {
+      drag.source.releasePointerCapture?.(drag.pointerId);
+    } catch (_) {}
     drag.ghost?.remove();
     drag.source.classList.remove('is-drag-source');
     drag.viewport?.classList.remove('is-paper-drop-target');
@@ -234,13 +241,16 @@
   function dropPaperOnMap(paperId, clientX, clientY) {
     const paper = state.papers.find(item => item.id === paperId);
     if (!paper) return false;
+    const mapId = state.activeMapId || (state.maps && state.maps[0]?.id) || 'map-1';
     const wasOnMap = typeof isPaperOnActiveMap === 'function' ? isPaperOnActiveMap(paper) : paper.selected !== false;
-    if (typeof setPaperOnMap === 'function') setPaperOnMap(paper, state.activeMapId, true);
+    if (typeof setPaperOnMap === 'function') setPaperOnMap(paper, mapId, true);
     else paper.selected = true;
     const point = svgPoint({ clientX, clientY });
-    paper.x = point.x;
-    paper.y = point.y;
-    paper.pinnedPosition = true;
+    if (Number.isFinite(point.x) && Number.isFinite(point.y)) {
+      paper.x = point.x;
+      paper.y = point.y;
+      paper.pinnedPosition = true;
+    }
     const area = typeof areaForPoint === 'function' ? areaForPoint(paper.x, paper.y) : null;
     if (area) paper.areaId = area.id;
     state.selectedId = paper.id;
@@ -250,7 +260,7 @@
     if (typeof scheduleAutosave === 'function') scheduleAutosave();
     if (typeof showToast === 'function') {
       const title = typeof compactTitle === 'function' ? compactTitle(paper.title) : paper.title;
-      const mapName = (state.maps || []).find(map => map.id === state.activeMapId)?.name || 'the map';
+      const mapName = (state.maps || []).find(map => map.id === mapId)?.name || 'the map';
       showToast(wasOnMap ? `Moved "${title}".` : `Added "${title}" to ${mapName}.`);
     }
     return true;
