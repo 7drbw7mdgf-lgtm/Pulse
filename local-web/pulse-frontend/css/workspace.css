@@ -176,6 +176,42 @@ button:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
 .library-table-row.is-selected:not(.is-bulk-selected) { background:var(--surface); }
 .library-table-row.is-selected .library-title-button { color:var(--accent); }
 .library-table-row.is-bulk-selected td:first-child { box-shadow:inset 3px 0 var(--accent); }
+.pulse-paper-badge-group, .paper-group-badge, .library-group-pill {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  line-height: 1.4;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+.group-color-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.library-group-cell {
+  white-space: nowrap;
+  width: 95px;
+}
+.library-bulk-color-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--ink);
+}
+#libraryBulkColor {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+}
 .library-recovery-dialog { width:min(620px, calc(100vw - 40px)); max-height:80vh; }
 .library-recovery-list { max-height:45vh; overflow:auto; margin-bottom:20px; }
 .library-recovery-item { display:flex; gap:16px; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--line); font-size:13px; }

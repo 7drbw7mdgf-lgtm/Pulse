@@ -1,6 +1,6 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.8.3 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261014-drag">
+<title>Pulse v1.8.3 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261014-groupcolor">
 <link rel="icon" type="image/png" href="favicon.png?v=1.8.3"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
@@ -115,7 +115,7 @@
 <span id="libraryBulkCount" role="status">0 selected</span><button id="libraryBulkDeselect" class="button small secondary" type="button">Deselect</button>
 <select id="libraryBulkMapTabSelect" class="library-bulk-map-select" hidden aria-label="Add selected to map tab"><option value="">Add to map…</option></select>
 <label class="sr-only" for="libraryBulkFormat">Export format</label><select id="libraryBulkFormat" aria-label="Export format"><option value="ris">RIS</option><option value="csv">CSV</option><option value="json">JSON</option></select>
-<button id="libraryBulkExport" class="button small secondary" type="button">Export selected</button><button id="libraryBulkTag" class="button small secondary" type="button">Tag selected</button><button id="libraryBulkTransfer" class="button small secondary" type="button">Transfer selected</button><button id="libraryBulkRemove" class="button small secondary danger" type="button">Remove selected</button>
+<button id="libraryBulkExport" class="button small secondary" type="button">Export selected</button><button id="libraryBulkTag" class="button small secondary" type="button">Tag selected</button><label class="library-bulk-color-label" title="Colour code selected papers" aria-label="Colour code selected papers"><input type="color" id="libraryBulkColor" value="#4f46e5" aria-label="Colour code selected papers"></label><button id="libraryBulkColorBtn" class="button small secondary" type="button" title="Colour code selected papers">Colour selected</button><button id="libraryBulkTransfer" class="button small secondary" type="button">Transfer selected</button><button id="libraryBulkRemove" class="button small secondary danger" type="button">Remove selected</button>
 </div>
 <div id="activeTagFiltersList" class="active-tag-chips"></div> <div id="tagFilterDropdown" class="tag-filter-dropdown" hidden>
 <div id="libraryTagCloud" class="library-tag-cloud"></div> </div>
@@ -490,19 +490,19 @@
 <script src="js/part_07.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_08.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_09.js?v=ui-20261014-ticked"></script>
-<script src="js/part_10.js?v=ui-20261014-ticked"></script>
+<script src="js/part_10.js?v=ui-20261014-groupcolor"></script>
 <script src="js/part_11.js?v=ui-20261013-map2"></script>
 <script src="js/part_12.js?v=ui-20261013-map2"></script>
 <script src="js/part_13.js?v=ui-20261014-drag"></script>
-<script src="js/part_14.js?v=ui-20261014-ticked"></script>
+<script src="js/part_14.js?v=ui-20261014-groupcolor"></script>
 <script src="js/map-interactions.js?v=ui-20261014-drag"></script>
 <script src="js/part_15.js?v=ui-20261010-2"></script>
 <script src="js/part_23.js?v=ui-20261011-1"></script>
 <script src="js/mendeley-sync.js?v=ui-20261010-2"></script>
-<script src="js/part_24.js?v=ui-20261010-2"></script>
+<script src="js/part_24.js?v=ui-20261014-groupcolor"></script>
 <script src="js/discovery-controls.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/publication-status.js?v=ui-20261012-evidence"></script>
-<script src="js/inspector.js?v=ui-20261011-11"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
+<script src="js/inspector.js?v=ui-20261014-groupcolor"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
 <script src="js/part_17.js?v=ui-20261011-5"></script>
 <script src="js/part_18.js?v=ui-20261013-map2"></script>
 <script src="js/discovery-review.js?v=ui-20261012-bridges-passages"></script>

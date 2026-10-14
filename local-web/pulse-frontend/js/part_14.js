@@ -15,11 +15,14 @@
       };
       const clusterByPaper = new Map();
       state.clusters.forEach((cluster, index) => cluster.forEach(id => clusterByPaper.set(id, index)));
-      const paperOrganizeMarkup = paper => `
+      const paperOrganizeMarkup = paper => {
+        const group = typeof paperGroupInfo === 'function' ? paperGroupInfo(paper, clusterByPaper) : { color: paperColor(paper, clusterByPaper), name: '' };
+        return `
         <div class="paper-organize">
-          <label class="paper-control paper-color" title="Node colour">
-            <input type="color" value="${escapeHtml(paper.color || paperColor(paper, clusterByPaper))}" data-field="color" aria-label="Node colour">
+          <label class="paper-control paper-color" title="Paper colour">
+            <input type="color" value="${escapeHtml(paper.color || group.color)}" data-field="color" aria-label="Paper colour">
           </label>
+          <button type="button" class="button small secondary group-color-btn" data-action="color-group" data-paper="${paper.id}" title="Apply this colour to all papers in this group${group.name ? ` (${escapeHtml(group.name)})` : ''}">Colour group</button>
           <label class="paper-control paper-area" title="Map area">
             <select data-field="areaId" aria-label="Map area">${areaOptions(paper)}</select>
           </label>
@@ -35,14 +38,17 @@
           </div>
         </div>
       `;
+      };
       const paperHeaderMarkup = paper => {
         const match = paperMatchScore(paper);
         const publication = [paper.journal, paper.year || paper.date].filter(Boolean).join(' · ');
         const isOnActive = typeof isPaperOnActiveMap === 'function' ? isPaperOnActiveMap(paper) : paper.selected !== false;
+        const group = typeof paperGroupInfo === 'function' ? paperGroupInfo(paper, clusterByPaper) : { color: paperColor(paper, clusterByPaper), name: '' };
         return `
           <div class="paper-card-top">
             <input type="checkbox" class="paper-chk" ${isOnActive ? 'checked' : ''} data-action="toggle-paper-active" title="Toggle paper on active map" aria-label="Toggle paper on active map">
-            <span class="paper-swatch" style="background:${escapeHtml(paperColor(paper, clusterByPaper))}"></span>
+            <span class="paper-swatch" style="background:${escapeHtml(group.color)}" title="${escapeHtml(group.name ? group.name + ' (' + group.color + ')' : group.color)}"></span>
+            ${group.name ? `<span class="paper-group-badge" style="background:${escapeHtml(group.color)}20; color:${escapeHtml(group.color)}; border:1px solid ${escapeHtml(group.color)}55;" title="Group: ${escapeHtml(group.name)}">${escapeHtml(group.name)}</span>` : ''}
             <span class="paper-publication">${escapeHtml(publication || paperDomainLabel(paper))}</span>
             ${match ? `<span class="paper-badge match" title="Strongest link to another paper">${match}%</span>` : ''}
           </div>
@@ -57,15 +63,17 @@
         ].filter(Boolean);
         return `<div class="paper-facts">${facts.map(fact => `<span class="paper-fact">${escapeHtml(fact)}</span>`).join('')}</div>`;
       };
-      const renderCompactPaper = paper => `
-        <article class="pulse-paper-card${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${paper.id}" tabindex="0" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
+      const renderCompactPaper = paper => {
+        const group = typeof paperGroupInfo === 'function' ? paperGroupInfo(paper, clusterByPaper) : { color: paperColor(paper, clusterByPaper), name: '' };
+        return `
+        <article class="pulse-paper-card${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${paper.id}" tabindex="0" style="border-left: 3.5px solid ${escapeHtml(group.color)};" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
           <input type="checkbox" class="paper-chk" ${typeof isPaperOnActiveMap === 'function' ? (isPaperOnActiveMap(paper) ? 'checked' : '') : (paper.selected !== false ? 'checked' : '')} data-action="toggle-paper-active" title="Toggle paper on active map">
           <div class="pulse-paper-card-body">
-            <div class="pulse-paper-title">${escapeHtml(paper.title || 'Untitled paper')}</div>
-            <div class="pulse-paper-meta" title="${escapeHtml([paperAuthorSummary(paper), paper.year, paper.journal].filter(Boolean).join(' · '))}">
+            <div class="pulse-paper-title"><span class="paper-swatch" style="background:${escapeHtml(group.color)}; display:inline-block; vertical-align:middle; margin-right:4px;" title="${escapeHtml(group.name ? group.name + ' (' + group.color + ')' : group.color)}"></span>${escapeHtml(paper.title || 'Untitled paper')}</div>
+            <div class="pulse-paper-meta" title="${escapeHtml([paperAuthorSummary(paper), paper.year, paper.journal, group.name].filter(Boolean).join(' · '))}">
               <span class="pulse-paper-author">${escapeHtml(paperAuthors(paper).length > 1 ? paperAuthors(paper)[0] + ' et al.' : paperAuthorSummary(paper))}</span>
               <span>· ${escapeHtml(paper.year || 'No year')}</span>
-
+              ${group.name ? `<span class="pulse-paper-badge-group" style="background:${escapeHtml(group.color)}20; color:${escapeHtml(group.color)}; border:1px solid ${escapeHtml(group.color)}55;" title="Group: ${escapeHtml(group.name)}">${escapeHtml(group.name)}</span>` : ''}
               ${paperCitationCount(paper) !== null ? `<span class="pulse-paper-badge-cit" title="${escapeHtml(paper.citationMetrics.source)} citations">★ ${paperCitationCount(paper)}</span>` : ''}
               ${paper.doi ? `<span class="pulse-paper-badge-doi" title="${escapeHtml(paper.doi)}">DOI</span>` : ''}
               ${state.maps && state.maps.length > 1 ? `
@@ -78,8 +86,11 @@
           </div>
         </article>
       `;
-      const renderExpandedPaper = paper => `
-        <article class="paper-card${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${paper.id}" tabindex="0" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
+      };
+      const renderExpandedPaper = paper => {
+        const group = typeof paperGroupInfo === 'function' ? paperGroupInfo(paper, clusterByPaper) : { color: paperColor(paper, clusterByPaper), name: '' };
+        return `
+        <article class="paper-card${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${paper.id}" tabindex="0" style="border-left: 3.5px solid ${escapeHtml(group.color)};" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
           ${paperHeaderMarkup(paper)}
           <div class="paper-title">${escapeHtml(paper.title || 'Untitled paper')}</div>
           <div class="paper-authors">${escapeHtml(paperAuthorSummary(paper))}</div>
@@ -124,17 +135,20 @@
           ${paperOrganizeMarkup(paper)}
         </article>
       `;
+      };
       const renderLibraryTable = papers => {
-        const columns = [['title', 'Paper'], ['authors', 'Authors'], ['year', 'Year'], ['journal', 'Journal'], ['citations', 'Citations']];
+        const columns = [['title', 'Paper'], ['group', 'Group'], ['authors', 'Authors'], ['year', 'Year'], ['journal', 'Journal'], ['citations', 'Citations']];
         const headers = columns.map(([key, label]) => `<th scope="col" aria-sort="${state.librarySortKey === key ? (state.librarySortAsc ? 'ascending' : 'descending') : 'none'}"><button type="button" data-table-sort="${key}">${label}${state.librarySortKey === key ? (state.librarySortAsc ? ' ↑' : ' ↓') : ''}</button></th>`).join('');
         const showMapCol = Boolean(state.maps && state.maps.length > 1);
         return `<table class="library-table"><caption class="sr-only">Papers in your library. Select a paper to open its inspector.</caption><thead><tr><th scope="col" class="library-select-column"><input id="librarySelectVisible" type="checkbox" aria-label="Select all visible papers"></th><th scope="col" class="library-map-column">On map</th>${showMapCol ? '<th scope="col" class="library-maptab-column">Map Tab</th>' : ''}${headers}<th scope="col">DOI</th><th scope="col">Tags</th></tr></thead><tbody>${papers.map(paper => {
           const count = paperCitationCount(paper);
           const isOnActive = typeof isPaperOnActiveMap === 'function' ? isPaperOnActiveMap(paper) : paper.selected !== false;
-          return `<tr class="library-table-row${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${escapeHtml(paper.id)}" tabindex="0" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
+          const group = typeof paperGroupInfo === 'function' ? paperGroupInfo(paper, clusterByPaper) : { color: paperColor(paper, clusterByPaper), name: '' };
+          return `<tr class="library-table-row${state.selectedId === paper.id ? ' is-selected' : ''}" data-paper="${escapeHtml(paper.id)}" tabindex="0" style="box-shadow: inset 3.5px 0 0 ${escapeHtml(group.color)};" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
           <td class="library-select-column"><input type="checkbox" data-action="select-library-row" ${state.librarySelectedIds.has(paper.id) ? 'checked' : ''} aria-label="Select ${escapeHtml(paper.title || 'Untitled paper')} for bulk actions"></td><td class="library-map-column"><input type="checkbox" data-action="toggle-paper-active" ${isOnActive ? 'checked' : ''} aria-label="Show ${escapeHtml(paper.title || 'Untitled paper')} on map"></td>
           ${showMapCol ? `<td><select class="table-map-tab-select" data-action="set-paper-map-tab" data-paper="${paper.id}" aria-label="Assign to map tab">${typeof mapTabOptionsMarkup === 'function' ? mapTabOptionsMarkup(paper) : ''}</select></td>` : ''}
-          <td class="library-title-cell"><button type="button" data-action="focus" class="library-title-button">${escapeHtml(paper.title || 'Untitled paper')}</button></td>
+          <td class="library-title-cell"><span class="paper-swatch" style="background:${escapeHtml(group.color)}; display:inline-block; vertical-align:middle; margin-right:6px;" title="${escapeHtml(group.name ? group.name + ' (' + group.color + ')' : group.color)}"></span><button type="button" data-action="focus" class="library-title-button">${escapeHtml(paper.title || 'Untitled paper')}</button></td>
+          <td class="library-group-cell">${group.name ? `<span class="library-group-pill" style="color:${escapeHtml(group.color)}; border:1px solid ${escapeHtml(group.color)}55; background:${escapeHtml(group.color)}18;" title="Group: ${escapeHtml(group.name)}"><span class="paper-swatch" style="background:${escapeHtml(group.color)}; width:6px; height:6px; display:inline-block; vertical-align:middle; margin-right:4px;"></span>${escapeHtml(group.name)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
           <td>${escapeHtml(paperAuthors(paper).join(', ') || '—')}</td><td class="library-year-cell">${escapeHtml(paper.year || '—')}</td>
           <td>${escapeHtml(paper.journal || '—')}</td><td class="library-citations-cell" title="${escapeHtml(count !== null ? 'Verified from ' + paper.citationMetrics.source : 'Citation count not checked')}">${count !== null ? count.toLocaleString() : '—'}</td>
           <td class="library-doi-cell">${paper.doi ? `<a href="${escapeHtml((typeof paperOpenUrl === 'function' ? paperOpenUrl(paper) : '') || safePaperUrl('https://doi.org/' + paper.doi))}" target="_blank" rel="noreferrer">${escapeHtml(paper.doi)}</a>` : '—'}</td><td><div class="library-table-tags">${paperMetaChips(paper)}</div></td></tr>`;
@@ -171,7 +185,7 @@
       renderLibraryBulkActions(displayPapers);
       els.paperList.querySelectorAll('[data-table-sort]').forEach(button => button.addEventListener('click', () => {
         const key = button.dataset.tableSort;
-        state.librarySortAsc = state.librarySortKey === key ? !state.librarySortAsc : ['title', 'authors', 'journal'].includes(key);
+        state.librarySortAsc = state.librarySortKey === key ? !state.librarySortAsc : ['title', 'authors', 'journal', 'group'].includes(key);
         state.librarySortKey = key;
         renderPapers();
       }));
@@ -276,6 +290,40 @@
           if (paperId && typeof setPaperMapTab === 'function') {
             setPaperMapTab(paperId, event.target.value);
           }
+        });
+      });
+
+      els.paperList.querySelectorAll('[data-action="color-group"]').forEach(btn => {
+        btn.addEventListener('click', event => {
+          event.stopPropagation();
+          const card = event.target.closest('[data-paper]');
+          const paper = state.papers.find(p => p.id === card?.dataset.paper);
+          if (!paper) return;
+          const chosenColor = paper.color || (typeof paperColor === 'function' ? paperColor(paper, clusterByPaper) : '#4f46e5');
+          const clusterIndex = clusterByPaper.get(paper.id);
+          let count = 0;
+          if (paper.areaId) {
+            const area = state.areas.find(a => a.id === paper.areaId);
+            if (area) area.color = chosenColor;
+            state.papers.forEach(p => {
+              if (p.areaId === paper.areaId) {
+                p.color = chosenColor;
+                count++;
+              }
+            });
+          } else if (clusterIndex !== undefined) {
+            state.papers.forEach(p => {
+              if (clusterByPaper.get(p.id) === clusterIndex) {
+                p.color = chosenColor;
+                count++;
+              }
+            });
+          } else {
+            paper.color = chosenColor;
+            count = 1;
+          }
+          render();
+          showToast(`Applied colour to ${count} grouped paper${count === 1 ? '' : 's'}.`);
         });
       });
       if (typeof renderMultiSelection === 'function') renderMultiSelection();

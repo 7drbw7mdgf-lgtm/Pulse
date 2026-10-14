@@ -10,7 +10,10 @@ function renderLibraryBulkActions(visiblePapers = state.papers.filter(paperMatch
   const bar = document.getElementById('libraryBulkBar');
   bar.hidden = !state.libraryFullscreen;
   document.getElementById('libraryBulkCount').textContent = `${count} selected${count > shown ? ` · ${count - shown} outside this filter` : ''}`;
-  for (const id of ['libraryBulkDeselect','libraryBulkExport','libraryBulkTag','libraryBulkTransfer','libraryBulkRemove']) document.getElementById(id).disabled = !count || state.libraryMutation;
+  for (const id of ['libraryBulkDeselect','libraryBulkExport','libraryBulkTag','libraryBulkColorBtn','libraryBulkTransfer','libraryBulkRemove']) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !count || state.libraryMutation;
+  }
   document.getElementById('libraryUndo').disabled = !state.libraryUndoId || state.libraryMutation;
   const selectAll = document.getElementById('librarySelectVisible');
   if (selectAll) {
@@ -135,7 +138,24 @@ function tagLibrarySelection(value) {
   render();
   return true;
 }
+function colorLibrarySelection(chosenColor) {
+  const papers = libraryBulkPapers();
+  if (!papers.length || !chosenColor) return false;
+  for (const paper of papers) {
+    paper.color = chosenColor;
+  }
+  render();
+  showToast(`Coloured ${papers.length} selected paper${papers.length === 1 ? '' : 's'}.`);
+  return true;
+}
 document.getElementById('libraryBulkDeselect').addEventListener('click', () => {state.librarySelectedIds.clear(); renderPapers();});
+document.getElementById('libraryBulkColorBtn')?.addEventListener?.('click', () => {
+  const input = document.getElementById('libraryBulkColor');
+  if (input) colorLibrarySelection(input.value);
+});
+document.getElementById('libraryBulkColor')?.addEventListener?.('change', event => {
+  colorLibrarySelection(event.target.value);
+});
 document.getElementById('libraryBulkExport').addEventListener('click', () => exportLibrarySelection(document.getElementById('libraryBulkFormat').value));
 document.getElementById('libraryBulkTransfer').addEventListener('click', () => {document.getElementById('managerScope').value = 'bulk'; openManagers();});
 document.getElementById('libraryBulkTag').addEventListener('click', () => {document.getElementById('libraryBulkTags').value=''; document.getElementById('libraryTagDialog').showModal(); document.getElementById('libraryBulkTags').focus();});

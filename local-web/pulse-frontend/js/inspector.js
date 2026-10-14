@@ -131,6 +131,12 @@ function libraryDisplayPapers() {
       valA = (paperCitationCount(a) ?? -1);
       valB = (paperCitationCount(b) ?? -1);
       return isAsc ? valA - valB : valB - valA;
+    } else if (sortKey === 'group') {
+      const clusterByPaper = new Map();
+      (state.clusters || []).forEach((c, idx) => c.forEach(id => clusterByPaper.set(id, idx)));
+      const groupA = typeof paperGroupInfo === 'function' ? paperGroupInfo(a, clusterByPaper).name : '';
+      const groupB = typeof paperGroupInfo === 'function' ? paperGroupInfo(b, clusterByPaper).name : '';
+      return isAsc ? groupA.localeCompare(groupB) : groupB.localeCompare(groupA);
     } else if (sortKey === 'year') {
       valA = String(valA);
       valB = String(valB);

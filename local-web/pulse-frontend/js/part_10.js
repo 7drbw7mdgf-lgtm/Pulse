@@ -11,10 +11,45 @@
     }
 
     function paperColor(paper, clusterByPaper) {
+      if (!paper) return palette[0];
       if (paper.color) return paper.color;
-      const area = state.areas.find(item => item.id === paper.areaId);
+      const area = state.areas?.find(item => item.id === paper.areaId);
       if (area?.color) return area.color;
+      if (!clusterByPaper) {
+        clusterByPaper = new Map();
+        (state.clusters || []).forEach((cluster, index) => cluster.forEach(id => clusterByPaper.set(id, index)));
+      }
       return palette[(clusterByPaper.get(paper.id) || 0) % palette.length];
+    }
+
+    function paperGroupInfo(paper, clusterByPaper) {
+      if (!paper) return { color: palette[0], name: '', clusterIndex: -1, areaId: '', hasGroup: false };
+      if (!clusterByPaper) {
+        clusterByPaper = new Map();
+        (state.clusters || []).forEach((cluster, index) => cluster.forEach(id => clusterByPaper.set(id, index)));
+      }
+      const color = paperColor(paper, clusterByPaper);
+      const area = state.areas?.find(item => item.id === paper.areaId);
+      const clusterIdx = clusterByPaper.get(paper.id);
+      let name = '';
+      if (area?.name) {
+        name = area.name;
+      } else if (clusterIdx !== undefined && state.clusters && state.clusters.length > 1) {
+        name = `Group ${clusterIdx + 1}`;
+      } else if (paper.color) {
+        name = 'Custom';
+      }
+      return {
+        color,
+        name,
+        areaId: area?.id || '',
+        clusterIndex: clusterIdx !== undefined ? clusterIdx : -1,
+        hasGroup: Boolean(area || (clusterIdx !== undefined && state.clusters && state.clusters.length > 1) || paper.color)
+      };
+    }
+    if (typeof window !== 'undefined') {
+      window.paperColor = paperColor;
+      window.paperGroupInfo = paperGroupInfo;
     }
 
     function render() {
