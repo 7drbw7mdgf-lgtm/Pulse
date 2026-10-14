@@ -321,6 +321,184 @@ def openalex_discovery_works(work_filter, limit, sort='cited_by_count:desc', max
     return gathered
 
 
+def europepmc_pmid_for_doi(doi):
+    doi_clean = normalize_doi(doi or "")
+    if not doi_clean:
+        return None
+    url = f"https://europepmc.org/RestPortal/v1/search?query=ext_id:{urllib.parse.quote(doi_clean, safe='')}+src:med&format=json"
+    req = urllib.request.Request(url, headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"}, method="GET")
+    try:
+        from pulse_performance import request_json
+        data = request_json(req, timeout=8, cache=True)
+        results = (data.get("resultList") or {}).get("result") or []
+        for r in results:
+            pmid = str(r.get("pmid") or r.get("id") or "").strip()
+            if pmid:
+                return pmid
+    except (DiscoveryCancelled, DiscoveryBudgetExceeded):
+        raise
+    except Exception:
+        pass
+    return None
+
+
+def europepmc_to_metadata(item):
+    from pulse_core.metadata_utils import clean_crossref_text
+    title = clean_crossref_text(item.get("title") or "")
+    author_string = item.get("authorString") or ""
+    authors = [a.strip() for a in author_string.split(",") if a.strip()] if author_string else []
+    year = str(item.get("pubYear") or "")
+    doi = normalize_doi(item.get("doi") or "")
+    pmid = str(item.get("pmid") or item.get("id") or "")
+    journal = item.get("journalTitle") or ""
+    citation_count = None
+    if item.get("citedByCount") is not None:
+        try: citation_count = int(item.get("citedByCount"))
+        except (ValueError, TypeError): pass
+    return {
+        "title": title,
+        "authors": authors,
+        "year": year,
+        "journal": journal,
+        "doi": doi,
+        "pmid": pmid,
+        "citationCount": citation_count,
+        "metadataSource": "Europe PMC",
+    }
+
+
+def europepmc_citing_papers(pmid, limit=30):
+    pmid_clean = str(pmid or "").strip()
+    if not pmid_clean:
+        return []
+    limit = discovery_limit(limit)
+    url = f"https://europepmc.org/RestPortal/v1/MED/{urllib.parse.quote(pmid_clean, safe='')}/citations?format=json&pageSize={min(limit, 100)}"
+    req = urllib.request.Request(url, headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"}, method="GET")
+    try:
+        from pulse_performance import request_json
+        data = request_json(req, timeout=10, cache=True)
+        items = (data.get("citationList") or {}).get("citation") or []
+        return items[:limit]
+    except (DiscoveryCancelled, DiscoveryBudgetExceeded):
+        raise
+    except Exception:
+        return []
+
+
+def europepmc_reference_papers(pmid, limit=30):
+    pmid_clean = str(pmid or "").strip()
+    if not pmid_clean:
+        return []
+    limit = discovery_limit(limit)
+    url = f"https://europepmc.org/RestPortal/v1/MED/{urllib.parse.quote(pmid_clean, safe='')}/references?format=json&pageSize={min(limit, 100)}"
+    req = urllib.request.Request(url, headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"}, method="GET")
+    try:
+        from pulse_performance import request_json
+        data = request_json(req, timeout=10, cache=True)
+        items = (data.get("referenceList") or {}).get("reference") or []
+        return items[:limit]
+    except (DiscoveryCancelled, DiscoveryBudgetExceeded):
+        raise
+    except Exception:
+        return []
+
+
+def icite_to_metadata(item):
+    from pulse_core.metadata_utils import clean_crossref_text
+    title = clean_crossref_text(item.get("title") or "")
+    authors_raw = item.get("authors") or ""
+    if isinstance(authors_raw, list):
+        authors = [str(a).strip() for a in authors_raw if str(a).strip()]
+    elif isinstance(authors_raw, str):
+        authors = [a.strip() for a in authors_raw.split(",") if a.strip()]
+    else:
+        authors = []
+    year = str(item.get("year") or "")
+    doi = normalize_doi(item.get("doi") or "")
+    pmid = str(item.get("pmid") or "")
+    journal = item.get("journal") or ""
+    citation_count = None
+    if item.get("citation_count") is not None:
+        try: citation_count = int(item.get("citation_count"))
+        except (ValueError, TypeError): pass
+    return {
+        "title": title,
+        "authors": authors,
+        "year": year,
+        "journal": journal,
+        "doi": doi,
+        "pmid": pmid,
+        "citationCount": citation_count,
+        "metadataSource": "iCite",
+    }
+
+
+def icite_citing_papers(pmid, limit=30):
+    pmid_clean = str(pmid or "").strip()
+    if not pmid_clean:
+        return []
+    limit = discovery_limit(limit)
+    url = f"https://icite.od.nih.gov/api/pubs?pmids={urllib.parse.quote(pmid_clean, safe='')}"
+    req = urllib.request.Request(url, headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"}, method="GET")
+    try:
+        from pulse_performance import request_json
+        data = request_json(req, timeout=10, cache=True)
+        rows = data.get("data") or []
+        if not rows:
+            return []
+        citations = rows[0].get("citations") or []
+        if not citations:
+            return []
+        batch_pmids = [str(c) for c in citations[:limit] if c]
+        if not batch_pmids:
+            return []
+        batch_url = f"https://icite.od.nih.gov/api/pubs?pmids={','.join(batch_pmids)}"
+        batch_req = urllib.request.Request(batch_url, headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"}, method="GET")
+        batch_data = request_json(batch_req, timeout=12, cache=True)
+        return (batch_data.get("data") or [])[:limit]
+    except (DiscoveryCancelled, DiscoveryBudgetExceeded):
+        raise
+    except Exception:
+        return []
+
+
+def resolve_works_by_dois(dois):
+    """Resolve DOIs using OpenAlex if available, falling back to Europe PMC."""
+    clean = list(dict.fromkeys(d for d in (normalize_doi(value or '').lower() for value in dois) if d))
+    if not clean:
+        return []
+    recs = []
+    if not cooldowns().get('OpenAlex'):
+        try:
+            works = openalex_works_by_dois(clean)
+            if works:
+                for item in works:
+                    recs.append(recommendation_record(*openalex_recommendation_item(item), source="OpenAlex"))
+                return recs
+        except (DiscoveryCancelled, DiscoveryBudgetExceeded):
+            raise
+        except Exception:
+            pass
+    # Fallback to Europe PMC
+    for doi in clean[:30]:
+        check_cancelled()
+        url = f"https://europepmc.org/RestPortal/v1/search?query=ext_id:{urllib.parse.quote(doi, safe='')}&format=json"
+        req = urllib.request.Request(url, headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json"}, method="GET")
+        try:
+            from pulse_performance import request_json
+            data = request_json(req, timeout=6, cache=True)
+            results = (data.get("resultList") or {}).get("result") or []
+            if results:
+                meta = europepmc_to_metadata(results[0])
+                rec = recommendation_record(meta, {"score": 1.0, "reason": "DOI resolution"}, source="Europe PMC")
+                recs.append(rec)
+        except (DiscoveryCancelled, DiscoveryBudgetExceeded):
+            raise
+        except Exception:
+            pass
+    return recs
+
+
 def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_chase=False, limit=30, depth=None, seed_works=None):
     gathered = SearchResults()
     hop1_references = []
@@ -328,61 +506,168 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
     per_seed = max(10, math.ceil(limit/max(1,len(seed_papers))))
     for seed_index, paper in enumerate(seed_papers[:24]):
         refs, cites = [], []
-        # 1. OpenAlex first
+        # 1. OpenAlex first (if not in cooldown)
         work = None
-        if seed_works and seed_index < len(seed_works):
-            work = seed_works[seed_index]
-        if not work:
-            try:
-                work = _core.openalex_work_for_paper(paper)
-            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-            except Exception as error:
-                gathered.warning = str(error)
-                work = None
-
-        if work:
-            work_id_clean = openalex_work_id(work.get("id"))
-            citing_works, ref_works = [], []
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                cite_fut = executor.submit(openalex_citing_works, work_id_clean, limit=per_seed)
-                ref_fut = executor.submit(openalex_reference_works, work_id_clean, limit=per_seed, referenced_works=work.get("referenced_works") or [])
-                try: citing_works = cite_fut.result()
+        if not cooldowns().get('OpenAlex'):
+            if seed_works and seed_index < len(seed_works):
+                work = seed_works[seed_index]
+            if not work:
+                try:
+                    work = _core.openalex_work_for_paper(paper)
                 except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                except Exception as error: gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex citing papers: ' + str(error)]))
-                try: ref_works = ref_fut.result()
-                except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                except Exception as error: gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex references: ' + str(error)]))
+                except Exception as error:
+                    gathered.warning = str(error)
+                    work = None
 
-            if citing_works:
-                if getattr(citing_works, "warning", ""):
-                    gathered.warning = ' · '.join(filter(None, [gathered.warning, citing_works.warning]))
-                for rank, item in enumerate(citing_works, 1):
-                    record = recommendation_record(*openalex_recommendation_item(item), source="OpenAlex citing papers")
-                    record.update(branch="citationGraph", subType="Forward", hop=1,
-                                  retrievalEvidence=[{"channel":f"citations:{seed_index}:forward","rank":rank,"provider":"OpenAlex"}],
-                                  reason="Forward citation: downstream paper citing seed paper.")
-                    cites.append(record)
-                    gathered.append(record)
-                    hop1_citations.append(record)
-                publish_partial(copy.deepcopy(gathered))
+            if work:
+                work_id_clean = openalex_work_id(work.get("id"))
+                citing_works, ref_works = [], []
+                with ThreadPoolExecutor(max_workers=2) as executor:
+                    cite_fut = executor.submit(openalex_citing_works, work_id_clean, limit=per_seed)
+                    ref_fut = executor.submit(openalex_reference_works, work_id_clean, limit=per_seed, referenced_works=work.get("referenced_works") or [])
+                    try: citing_works = cite_fut.result()
+                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                    except Exception as error: gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex citing papers: ' + str(error)]))
+                    try: ref_works = ref_fut.result()
+                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                    except Exception as error: gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex references: ' + str(error)]))
 
-            if ref_works:
-                if getattr(ref_works, "warning", ""):
-                    gathered.warning = ' · '.join(filter(None, [gathered.warning, ref_works.warning]))
-                for rank, ref_work in enumerate(ref_works, 1):
-                    record = recommendation_record(*openalex_recommendation_item(ref_work), source="OpenAlex references")
-                    record.update(branch="citationGraph", subType="Backward", hop=1,
-                                  retrievalEvidence=[{"channel":f"citations:{seed_index}:backward","rank":rank,"provider":"OpenAlex"}],
-                                  reason="Backward citation: foundational reference cited by seed paper.")
-                    refs.append(record)
-                    gathered.append(record)
-                    hop1_references.append(record)
-                publish_partial(copy.deepcopy(gathered))
+                if citing_works:
+                    if getattr(citing_works, "warning", ""):
+                        gathered.warning = ' · '.join(filter(None, [gathered.warning, citing_works.warning]))
+                    for rank, item in enumerate(citing_works, 1):
+                        record = recommendation_record(*openalex_recommendation_item(item), source="OpenAlex citing papers")
+                        record.update(branch="citationGraph", subType="Forward", hop=1, provider="OpenAlex",
+                                      retrievalEvidence=[{"channel":f"citations:{seed_index}:forward","rank":rank,"provider":"OpenAlex"}],
+                                      reason="Forward citation: downstream paper citing seed paper.")
+                        cites.append(record)
+                        gathered.append(record)
+                        hop1_citations.append(record)
+                    publish_partial(copy.deepcopy(gathered))
+
+                if ref_works:
+                    if getattr(ref_works, "warning", ""):
+                        gathered.warning = ' · '.join(filter(None, [gathered.warning, ref_works.warning]))
+                    for rank, ref_work in enumerate(ref_works, 1):
+                        record = recommendation_record(*openalex_recommendation_item(ref_work), source="OpenAlex references")
+                        record.update(branch="citationGraph", subType="Backward", hop=1, provider="OpenAlex",
+                                      retrievalEvidence=[{"channel":f"citations:{seed_index}:backward","rank":rank,"provider":"OpenAlex"}],
+                                      reason="Backward citation: foundational reference cited by seed paper.")
+                        refs.append(record)
+                        gathered.append(record)
+                        hop1_references.append(record)
+                    publish_partial(copy.deepcopy(gathered))
 
         need_citations = not cites or bool(getattr(cites, 'warning', ''))
         need_references = not refs or bool(getattr(refs, 'warning', ''))
 
-        # 2. Semantic Scholar second (skipped if in cooldown)
+        # Resolve PMID for biomedical citation fallbacks (Europe PMC, NIH iCite)
+        resolved_pmid = str(paper.get('pmid') or '').strip() or None
+        seed_doi = normalize_doi(paper.get('doi') or '')
+        if (need_citations or need_references) and not resolved_pmid and seed_doi and not cooldowns().get('Europe PMC'):
+            try:
+                resolved_pmid = europepmc_pmid_for_doi(seed_doi)
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+            except Exception: pass
+
+        # 2. Europe PMC second
+        if (need_citations or need_references) and resolved_pmid and not cooldowns().get('Europe PMC'):
+            if need_citations:
+                try:
+                    epmc_cites = europepmc_citing_papers(resolved_pmid, limit=per_seed)
+                    for rank, item in enumerate(epmc_cites, 1):
+                        meta = europepmc_to_metadata(item)
+                        record = recommendation_record(meta, {"score": 1.0, "reason": "Forward citation: downstream paper citing seed paper via Europe PMC."}, source="Europe PMC citing papers")
+                        record.update(branch="citationGraph", subType="Forward", hop=1, provider="Europe PMC",
+                                      retrievalEvidence=[{"channel": f"citations:{seed_index}:forward", "rank": rank, "provider": "Europe PMC"}],
+                                      reason="Forward citation: downstream paper citing seed paper via Europe PMC.")
+                        cites.append(record)
+                        gathered.append(record)
+                        hop1_citations.append(record)
+                    if cites:
+                        publish_partial(copy.deepcopy(gathered))
+                except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                except Exception: pass
+
+            if need_references:
+                try:
+                    epmc_refs = europepmc_reference_papers(resolved_pmid, limit=per_seed)
+                    for rank, item in enumerate(epmc_refs, 1):
+                        meta = europepmc_to_metadata(item)
+                        record = recommendation_record(meta, {"score": 1.0, "reason": "Backward citation: foundational reference cited by seed paper via Europe PMC."}, source="Europe PMC references")
+                        record.update(branch="citationGraph", subType="Backward", hop=1, provider="Europe PMC",
+                                      retrievalEvidence=[{"channel": f"citations:{seed_index}:backward", "rank": rank, "provider": "Europe PMC"}],
+                                      reason="Backward citation: foundational reference cited by seed paper via Europe PMC.")
+                        refs.append(record)
+                        gathered.append(record)
+                        hop1_references.append(record)
+                    if refs:
+                        publish_partial(copy.deepcopy(gathered))
+                except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                except Exception: pass
+
+        need_citations = not cites or bool(getattr(cites, 'warning', ''))
+        need_references = not refs or bool(getattr(refs, 'warning', ''))
+
+        # 3. NIH iCite third (citing papers fallback)
+        if need_citations and resolved_pmid and not cooldowns().get('iCite'):
+            try:
+                icite_cites = icite_citing_papers(resolved_pmid, limit=per_seed)
+                for rank, item in enumerate(icite_cites, 1):
+                    meta = icite_to_metadata(item)
+                    record = recommendation_record(meta, {"score": 1.0, "reason": "Forward citation: downstream paper citing seed paper via NIH iCite."}, source="NIH iCite citing papers")
+                    record.update(branch="citationGraph", subType="Forward", hop=1, provider="iCite",
+                                  retrievalEvidence=[{"channel": f"citations:{seed_index}:forward", "rank": rank, "provider": "iCite"}],
+                                  reason="Forward citation: downstream paper citing seed paper via NIH iCite.")
+                    cites.append(record)
+                    gathered.append(record)
+                    hop1_citations.append(record)
+                if cites:
+                    publish_partial(copy.deepcopy(gathered))
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+            except Exception: pass
+
+        need_citations = not cites or bool(getattr(cites, 'warning', ''))
+        need_references = not refs or bool(getattr(refs, 'warning', ''))
+
+        # 4. OpenCitations fourth
+        if (need_citations or need_references) and seed_doi:
+            if need_citations:
+                try:
+                    oc_cites = opencitations_citing_dois(seed_doi, limit=per_seed)
+                    if oc_cites:
+                        oc_records = resolve_works_by_dois(oc_cites[:per_seed])
+                        for rank, record in enumerate(oc_records, 1):
+                            record.update(branch="citationGraph", subType="Forward", hop=1, provider="OpenCitations",
+                                          retrievalEvidence=[{"channel":f"citations:{seed_index}:forward","rank":rank,"provider":"OpenCitations"}],
+                                          reason="Forward citation: downstream paper citing seed paper via OpenCitations.")
+                            cites.append(record)
+                            gathered.append(record)
+                            hop1_citations.append(record)
+                        publish_partial(copy.deepcopy(gathered))
+                except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                except Exception: pass
+
+            if need_references:
+                try:
+                    oc_refs = opencitations_referenced_dois(seed_doi, limit=per_seed)
+                    if oc_refs:
+                        oc_records = resolve_works_by_dois(oc_refs[:per_seed])
+                        for rank, record in enumerate(oc_records, 1):
+                            record.update(branch="citationGraph", subType="Backward", hop=1, provider="OpenCitations",
+                                          retrievalEvidence=[{"channel":f"citations:{seed_index}:backward","rank":rank,"provider":"OpenCitations"}],
+                                          reason="Backward citation: foundational reference cited by seed paper via OpenCitations.")
+                            refs.append(record)
+                            gathered.append(record)
+                            hop1_references.append(record)
+                        publish_partial(copy.deepcopy(gathered))
+                except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                except Exception: pass
+
+        need_citations = not cites or bool(getattr(cites, 'warning', ''))
+        need_references = not refs or bool(getattr(refs, 'warning', ''))
+
+        # 5. Semantic Scholar fifth (skipped if in cooldown)
         if (need_citations or need_references) and not cooldowns().get('Semantic Scholar'):
             s2_id = None
             try:
@@ -395,7 +680,7 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                         s2_cites = _core.s2_fetch_citations(s2_id, api_key=api_key, limit=per_seed)
                         s2_cites = copy.deepcopy(s2_cites)
                         for rank, item in enumerate(s2_cites, 1):
-                            item.update(hop=1, branch='citationGraph', subType='Forward',
+                            item.update(hop=1, branch='citationGraph', subType='Forward', provider='Semantic Scholar',
                                         retrievalEvidence=[{'channel':f'citations:{seed_index}:forward','rank':rank,'provider':'Semantic Scholar'}])
                         if s2_cites:
                             cites = s2_cites
@@ -410,7 +695,7 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                         s2_refs = _core.s2_fetch_references(s2_id, api_key=api_key, limit=per_seed)
                         s2_refs = copy.deepcopy(s2_refs)
                         for rank, item in enumerate(s2_refs, 1):
-                            item.update(hop=1, branch='citationGraph', subType='Backward',
+                            item.update(hop=1, branch='citationGraph', subType='Backward', provider='Semantic Scholar',
                                         retrievalEvidence=[{'channel':f'citations:{seed_index}:backward','rank':rank,'provider':'Semantic Scholar'}])
                         if s2_refs:
                             refs = s2_refs
@@ -419,45 +704,6 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                             publish_partial(copy.deepcopy(gathered))
                     except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
                     except Exception: pass
-
-        # 3. OpenCitations fallback if still missing
-        need_citations = not cites or bool(getattr(cites, 'warning', ''))
-        need_references = not refs or bool(getattr(refs, 'warning', ''))
-        seed_doi = normalize_doi(paper.get('doi') or '')
-        if (need_citations or need_references) and seed_doi:
-            if need_citations:
-                try:
-                    oc_cites = opencitations_citing_dois(seed_doi, limit=per_seed)
-                    if oc_cites:
-                        oc_works = openalex_works_by_dois(oc_cites[:per_seed])
-                        for rank, item in enumerate(oc_works, 1):
-                            record = recommendation_record(*openalex_recommendation_item(item), source="OpenCitations citing papers")
-                            record.update(branch="citationGraph", subType="Forward", hop=1,
-                                          retrievalEvidence=[{"channel":f"citations:{seed_index}:forward","rank":rank,"provider":"OpenCitations"}],
-                                          reason="Forward citation: downstream paper citing seed paper via OpenCitations.")
-                            cites.append(record)
-                            gathered.append(record)
-                            hop1_citations.append(record)
-                        publish_partial(copy.deepcopy(gathered))
-                except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                except Exception: pass
-
-            if need_references:
-                try:
-                    oc_refs = opencitations_referenced_dois(seed_doi, limit=per_seed)
-                    if oc_refs:
-                        oc_works = openalex_works_by_dois(oc_refs[:per_seed])
-                        for rank, item in enumerate(oc_works, 1):
-                            record = recommendation_record(*openalex_recommendation_item(item), source="OpenCitations references")
-                            record.update(branch="citationGraph", subType="Backward", hop=1,
-                                          retrievalEvidence=[{"channel":f"citations:{seed_index}:backward","rank":rank,"provider":"OpenCitations"}],
-                                          reason="Backward citation: foundational reference cited by seed paper via OpenCitations.")
-                            refs.append(record)
-                            gathered.append(record)
-                            hop1_references.append(record)
-                        publish_partial(copy.deepcopy(gathered))
-                except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                except Exception: pass
 
     max_depth = 4 if str(depth) == "iterative" else max(1, min(int(depth or (2 if include_iterative_chase else 1)), 3))
     if max_depth == 1:

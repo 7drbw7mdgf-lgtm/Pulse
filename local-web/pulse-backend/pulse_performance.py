@@ -192,29 +192,58 @@ def request_json(request, timeout=14, cache=True):
         if error: raise error
 
 
+def _strip_cache_params(url):
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        if not parsed.query:
+            return url
+        qs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        filtered = sorted([(k, v) for k, v in qs if k.lower() not in ('api_key', 'api-key', 'mailto')])
+        new_query = urllib.parse.urlencode(filtered)
+        return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, new_query, parsed.fragment))
+    except Exception:
+        return url
+
+
 def _disk_http_cache_key(request):
     url = request.full_url if hasattr(request, 'full_url') else str(request)
+    clean_url = _strip_cache_params(url)
     headers = dict(request.header_items()) if hasattr(request, 'header_items') else {}
     relevant = {k.lower(): v for k, v in sorted(headers.items()) if k.lower() in ('accept', 'content-type')}
     data = getattr(request, 'data', None) or b''
-    return hashlib.sha256(url.encode('utf-8') + b'\0' + json.dumps(relevant).encode('utf-8') + b'\0' + data).hexdigest()
+    return hashlib.sha256(clean_url.encode('utf-8') + b'\0' + json.dumps(relevant).encode('utf-8') + b'\0' + data).hexdigest()
 
 
 def _disk_http_cache_ttl(url):
     u = url.lower()
+    # Free-text searches have 15-minute TTL
+    if 'search=' in u or 'query=' in u:
+        if not ('ext_id:' in u or 'doi:' in u or 'src:med' in u):
+            return 900.0  # 15 minutes
     if ('cites:' in u or 'cited_by:' in u or
-        re.search(r'/works/(?:w\d+|https%3a|https://)', u) or
+        'openalex_id:' in u or 'doi:' in u or
+        re.search(r'/works/(?:w\d+|https%3a|https://|doi:)', u) or
         re.search(r'/paper/[a-zA-Z0-9]+', u) or
-        re.search(r'/(?:citations|references)', u)):
-        return 86400.0  # 24 hours
+        re.search(r'/(?:citations|references)', u) or
+        re.search(r'/fields/[a-zA-Z0-9]+', u) or
+        re.search(r'/concepts/[a-zA-Z0-9]+', u) or
+        'icite.od.nih.gov' in u or
+        'europepmc.org' in u or
+        'opencitations.net' in u):
+        return 604800.0  # 7 days
     return 900.0  # 15 minutes
 
 
 def _disk_http_cache_skippable(request):
+    url = request.full_url if hasattr(request, 'full_url') else str(request)
+    host = urllib.parse.urlsplit(url).hostname or ''
+    # Public academic APIs with rate-limit API keys share the disk cache
+    if 'openalex.org' in host or 'semanticscholar.org' in host:
+        return False
     headers = dict(request.header_items()) if hasattr(request, 'header_items') else {}
     for k, v in headers.items():
         kl = k.lower()
-        if kl in ('authorization', 'x-api-key', 'api-key') or 'bearer' in str(v).lower():
+        if kl in ('authorization', 'x-api-key') or 'bearer' in str(v).lower():
             return True
     return False
 
@@ -257,6 +286,10 @@ def _disk_http_cache_get(key, request):
     return None
 
 
+_NCBI_LOCK = threading.Lock()
+_NCBI_LAST_TIME = [0.0]
+
+
 def _disk_http_cache_set(key, url, headers, data, status=200):
     if status >= 400:
         return
@@ -286,10 +319,12 @@ def _disk_http_cache_set(key, url, headers, data, status=200):
             used REAL NOT NULL,
             size INTEGER NOT NULL
         )''')
+        clean_url = _strip_cache_params(url)
+        clean_headers = {k: v for k, v in headers.items() if k.lower() not in ('api_key', 'api-key', 'authorization', 'x-api-key')}
         conn.execute('''INSERT OR REPLACE INTO http_cache
             (key, url, headers, body, status, expires_at, used, size)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-            (key, url, json.dumps(headers), compressed, status, expires_at, now, size))
+            (key, clean_url, json.dumps(clean_headers), compressed, status, expires_at, now, size))
         total = conn.execute('SELECT SUM(size) FROM http_cache').fetchone()[0] or 0
         if total > 1024 * 1024 * 1024:
             conn.execute('DELETE FROM http_cache WHERE expires_at < ?', (now,))
@@ -328,12 +363,21 @@ def _request_json_once(request, timeout=14, cache=True):
             return disk_val
     if hasattr(request, 'add_unredirected_header') and not any(k.lower() == 'accept-encoding' for k, _ in request.header_items()):
         request.add_unredirected_header('Accept-Encoding', 'gzip')
-    limit = 10 if 'openalex.org' in host else 2
+    has_oa_key = any(k.lower() in ('api_key', 'api-key') for k, _ in request.header_items()) if hasattr(request, 'header_items') else False
+    if 'api_key=' in url.lower() or 'api-key=' in url.lower():
+        has_oa_key = True
+    limit = 50 if (has_oa_key and 'openalex.org' in host) else (10 if 'openalex.org' in host else 2)
     with _CACHE_LOCK:
         gate = _PROVIDER_GATES.setdefault(host, threading.BoundedSemaphore(limit))
     check_source(request)
     while not gate.acquire(timeout=.1):
         check_cancelled()
+    if 'nih.gov' in host:
+        with _NCBI_LOCK:
+            elapsed = time.monotonic() - _NCBI_LAST_TIME[0]
+            if elapsed < 0.34:
+                time.sleep(0.34 - elapsed)
+            _NCBI_LAST_TIME[0] = time.monotonic()
     try:
         for attempt in range(3):
             check_cancelled()

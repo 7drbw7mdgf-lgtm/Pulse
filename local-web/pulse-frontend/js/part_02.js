@@ -599,6 +599,19 @@ const discoveryBoundCheckboxes=new WeakSet();
         notice.hidden = !(stopped.length || problems.length) || Boolean(searching);
         notice.textContent = stopped.length ? 'Search stopped. You can review the results collected so far.' : problems.length ? `Partial results · ${problems.map(row => row.name).join(', ')} unavailable or limited. See search details.` : '';
       }
+      const openAlexCooldown = runInfo?.sourceCooldowns?.OpenAlex || searching?.job?.sourceCooldowns?.OpenAlex;
+      const limitBanner = document.getElementById('openAlexLimitBanner');
+      if (limitBanner) {
+        if (openAlexCooldown && openAlexCooldown.retryInSeconds > 0) {
+          const timeEl = document.getElementById('openAlexLimitTime');
+          const expireTime = new Date(Date.now() + openAlexCooldown.retryInSeconds * 1000);
+          const timeStr = expireTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          if (timeEl) timeEl.textContent = timeStr;
+          limitBanner.hidden = false;
+        } else {
+          limitBanner.hidden = true;
+        }
+      }
       const progress = document.getElementById('discoveryProgressPanel');
       if (progress) {
         progress.hidden = !searching && !state.discoveryPendingRefinedOrder;
@@ -798,8 +811,12 @@ const discoveryBoundCheckboxes=new WeakSet();
         else if (action === 'read-passages' && item) readDiscoveryPassages(item);
         else if (action === 'more-like' && item && typeof steerFromRecommendation === 'function') steerFromRecommendation((state.discoveryResults || []).indexOf(item), 'more');
         else if (action === 'less-like' && item && typeof steerFromRecommendation === 'function') steerFromRecommendation((state.discoveryResults || []).indexOf(item), 'less');
-        else if (action === 'stop-review' && typeof cancelDiscoverySearch === 'function') { state.discoveryStopReview = true; cancelDiscoverySearch(); }
         else if (action === 'open-settings' && typeof setSettingsOpen === 'function') setSettingsOpen(true);
+        else if (action === 'open-openalex-settings') {
+          if (typeof setSettingsOpen === 'function') setSettingsOpen(true);
+          if (typeof setSettingsTab === 'function') setSettingsTab('search');
+          setTimeout(() => document.getElementById('openAlexApiKeyInput')?.focus(), 100);
+        }
         else if (action === 'bulk-relevant' || action === 'bulk-not') {
           state.discoveryUserTouchedRelevance = true;
           selectedDiscoveryPapers().forEach(result => labelDiscoveryPaper(result, action === 'bulk-relevant' ? 2 : 0));
