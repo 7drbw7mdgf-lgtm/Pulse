@@ -188,8 +188,11 @@ class SearchImprovementsTests(unittest.TestCase):
              patch('pulse_core.discovery.fetch_openalex_works_batch') as mock_batch, \
              patch('pulse_core.discovery.openalex_discovery_works') as mock_disc:
             discovery.warm_paper_discovery({'title': 'Test Paper', 'doi': '10.1234/test'})
-            mock_batch.assert_called_once()
-            mock_disc.assert_called_once()
+            mock_batch.assert_called()
+            self.assertGreaterEqual(mock_disc.call_count, 2)
+            calls = [c[0][0] for c in mock_disc.call_args_list]
+            self.assertIn('cites:W12345', calls)
+            self.assertIn('cites:W999', calls)
 
     def test_reranker_worker_window_cap(self):
         from pulse_core import reranker_worker

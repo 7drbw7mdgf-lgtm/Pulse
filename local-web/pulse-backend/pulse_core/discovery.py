@@ -1,4 +1,5 @@
 from pulse_source_health import cooldowns
+import collections
 import pulse_core as _core
 import re
 import copy
@@ -93,45 +94,121 @@ _ACTIVE_SEARCHES = [0]
 _ACTIVE_LOCK = threading.Lock()
 
 
+PREWARM_REQUEST_CAP = 12
+
+
 def warm_paper_discovery(paper):
-    """Quietly pre-warm OpenAlex work, top references, direct citations and neural caches for a selected paper."""
+    """Quietly pre-warm OpenAlex work, top references, citing works, DBEF pivots, co-citations, and keyword queries."""
     if not paper or not isinstance(paper, dict): return
     with _ACTIVE_LOCK:
         if _ACTIVE_SEARCHES[0]: return
     if not _WARM_LOCK.acquire(blocking=False):
         return
     _WARM_CANCEL.clear()
+    counter = {'remaining': PREWARM_REQUEST_CAP, 'lock': threading.Lock()}
+    REQUEST_CONTEXT.request_counter = counter
+    REQUEST_CONTEXT.cancel_event = _WARM_CANCEL
     try:
         work = openalex_work_for_paper(paper)
         if not work or _WARM_CANCEL.is_set(): return
         work_id_clean = openalex_work_id(work.get('id'))
         refs = work.get('referenced_works') or []
         ref_works = []
-        if refs:
+        if refs and not _WARM_CANCEL.is_set():
             ref_works = fetch_openalex_works_batch(refs[:50], select=OPENALEX_WORK_SELECT)
         cite_works = []
-        if work_id_clean:
+        if work_id_clean and not _WARM_CANCEL.is_set():
             cite_works = openalex_discovery_works(f"cites:{work_id_clean}", 25, sort="cited_by_count:desc")
-        # Pre-compute neural scores for up to 30 direct neighbours
-        direct_neighbours = []
+
+        # Pre-fetch DBEF pivots (top cited references)
+        pivot_works = []
+        if refs and not _WARM_CANCEL.is_set():
+            pivot_ids = []
+            if ref_works:
+                sorted_refs = sorted(ref_works, key=lambda w: w.get('cited_by_count') or 0, reverse=True)
+                pivot_ids = [openalex_work_id(w.get('id')) for w in sorted_refs[:4] if openalex_work_id(w.get('id'))]
+            if not pivot_ids:
+                pivot_ids = [openalex_work_id(r) for r in refs[:4] if openalex_work_id(r)]
+            if pivot_ids and not _WARM_CANCEL.is_set():
+                pivot_works = openalex_discovery_works(f"cites:{'|'.join(pivot_ids)}", 50, sort="cited_by_count:desc")
+
+        # Pre-fetch co-citation lookups (works co-cited with seed by citing papers)
+        co_cite_works = []
+        if cite_works and not _WARM_CANCEL.is_set():
+            co_ref_counts = collections.Counter()
+            seed_clean = work_id_clean
+            for cw in cite_works:
+                for r in (cw.get('referenced_works') or []):
+                    rid = openalex_work_id(r)
+                    if rid and rid != seed_clean:
+                        co_ref_counts[rid] += 1
+            top_co_refs = [rid for rid, _ in co_ref_counts.most_common(25)]
+            if top_co_refs and not _WARM_CANCEL.is_set():
+                co_cite_works = fetch_openalex_works_batch(top_co_refs, select=OPENALEX_WORK_SELECT)
+
+        # Pre-fetch first-page keyword queries for enabled sources
+        keyword_records = []
+        settings = _core.load_settings()
+        search_sources = settings.get("searchSources") or {}
+        if not _WARM_CANCEL.is_set() and any(search_sources.get(k, True) for k in ('semanticScholar', 'europePmc', 'core', 'arxiv')):
+            plan = build_query_plan([paper], [], '')
+            if plan:
+                first_plan = plan[:1]
+                expected_quota = max(20, min(2000, (candidate_limit(200) + max(1, len(plan)) - 1) // max(1, len(plan))))
+                if search_sources.get("semanticScholar", True) and not _WARM_CANCEL.is_set():
+                    api_key = resolve_semantic_scholar_api_key(settings)
+                    try:
+                        keyword_records.extend(search_query_plan(first_plan, 'semanticScholar', s2_paper_search, expected_quota, api_key=api_key))
+                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                    except Exception: pass
+                if search_sources.get("europePmc", True) and not _WARM_CANCEL.is_set():
+                    try:
+                        keyword_records.extend(search_query_plan(first_plan, 'europePmc', _core.search_europe_pmc, expected_quota, structured=True))
+                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                    except Exception: pass
+                if search_sources.get("core", False) and not _WARM_CANCEL.is_set():
+                    core_key = resolve_core_api_key(settings)
+                    if core_key:
+                        try:
+                            keyword_records.extend(search_query_plan(first_plan, 'core', _core.search_core, expected_quota, structured=True, api_key=core_key))
+                        except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                        except Exception: pass
+                if search_sources.get("arxiv", False) and not _WARM_CANCEL.is_set():
+                    try:
+                        from pulse_core.arxiv_search import search_arxiv
+                        keyword_records.extend(search_query_plan(first_plan, 'arxiv', search_arxiv, expected_quota, structured=True))
+                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                    except Exception: pass
+
+        # Pre-compute neural scores for likely shortlist
+        candidates = []
         seen_identities = set()
-        for w in (ref_works + list(cite_works)):
+        for w in (ref_works + list(cite_works) + list(pivot_works) + list(co_cite_works)):
+            if not isinstance(w, dict): continue
             ident = w.get('id') or w.get('doi') or w.get('title')
             if ident and ident not in seen_identities:
                 seen_identities.add(ident)
                 rec = recommendation_record(*openalex_recommendation_item(w), source="Pre-warm")
-                direct_neighbours.append(rec)
-            if len(direct_neighbours) >= 30:
-                break
-        if direct_neighbours and not _WARM_CANCEL.is_set():
-            settings = _core.load_settings()
+                candidates.append(rec)
+        for rec in keyword_records:
+            ident = rec.get('doi') or rec.get('openalexId') or rec.get('paperId') or rec.get('title')
+            if ident and ident not in seen_identities:
+                seen_identities.add(ident)
+                candidates.append(rec)
+
+        if candidates and not _WARM_CANCEL.is_set():
             seed_text = text_for_paper(paper)
-            pre_embed_papers(settings, direct_neighbours, cancel_event=_WARM_CANCEL, queries=[seed_text])
-            pair_queries = [str(paper.get('title') or '') + ' ' + ' '.join(paper.get('paperKeywords') or [])]
-            pre_score_crossencoder(settings, pair_queries, direct_neighbours[:16], cancel_event=_WARM_CANCEL)
+            pre_embed_papers(settings, candidates[:64], cancel_event=_WARM_CANCEL, queries=[seed_text])
+            if not _WARM_CANCEL.is_set():
+                pair_queries = [str(paper.get('title') or '') + ' ' + ' '.join(paper.get('paperKeywords') or [])]
+                pre_score_crossencoder(settings, pair_queries, candidates[:32], cancel_event=_WARM_CANCEL)
+    except (DiscoveryCancelled, DiscoveryBudgetExceeded):
+        pass
     except Exception:
         pass
     finally:
+        REQUEST_CONTEXT.request_counter = None
+        REQUEST_CONTEXT.cancel_event = None
         _WARM_LOCK.release()
 
 
@@ -1001,6 +1078,7 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
     ranked_after_citations=set()
     last_top50_keys=[None]
     settled_updates=[0]
+    last_preliminary_time=[0.0]
     def source_errors(results, errors):
         return {**errors, **{name: records.warning for name, records in results.items() if getattr(records, "warning", "")}}
     def source_notices(results):
@@ -1010,21 +1088,26 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
             return
         ordered = {name: results.get(name, []) for name in tasks}
         now=time.monotonic()
+        citation_branches = [name for name in tasks if name in ('citationGraph', 'citationNetwork', 'citationCoCitation')]
+        citation_finished = bool(citation_branches) and all(name in completed or name in errors for name in citation_branches)
         finished_citations={name for name in ('citationGraph','citationNetwork','citationCoCitation') if name in completed or name in errors}
         # Citation results decide most of the neural shortlist, so refresh as
         # soon as one finishes (at most once a second), otherwise every 3 s.
         citation_arrived=bool(finished_citations-ranked_after_citations) and now-last_progress_rank[0]>=1.0
-        should_rank=last_progress_rank[0]==0 or now-last_progress_rank[0]>=3.0 or citation_arrived
+        # Preliminary results: emit as soon as all citation branches finish,
+        # and keep refreshing as slower keyword sources arrive (throttled to at most once per second).
+        preliminary_due = citation_finished and (last_preliminary_time[0] == 0.0 or (now - last_preliminary_time[0] >= 1.0 and len(completed) + len(errors) > last_progress_rank[1]))
+        should_rank=last_progress_rank[0]==0 or now-last_progress_rank[0]>=3.0 or citation_arrived or preliminary_due
         shortlists=[]
         rank_options=dict(options,limit=min(limit,150))
         if embed_thread and embed_thread.is_alive():
             rank_options['_shortlistProbe']=lambda semantic_rows,pairwise_rows: shortlists.append((semantic_rows,pairwise_rows))
         ranked=merge_and_rank_pipeline_candidates(ordered,seed_papers,rank_options) if should_rank else None
         if should_rank:
+            if preliminary_due:
+                last_preliminary_time[0] = now
             ranked_after_citations.update(finished_citations)
             last_progress_rank[:]=[now,len(completed)+len(errors)]
-            citation_branches = [name for name in tasks if name in ('citationGraph', 'citationNetwork', 'citationCoCitation')]
-            citation_finished = all(name in completed or name in errors for name in citation_branches)
             if citation_branches and citation_finished and ranked:
                 top50_keys = tuple(str(p.get('doi') or p.get('openalexId') or p.get('paperId') or p.get('title') or '') for p in ranked[:50])
                 if top50_keys == last_top50_keys[0]:
@@ -1038,8 +1121,7 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
             else:
                 queue_embeddings(ranked[:SEMANTIC_SHORTLIST_LIMIT])
         if on_progress:
-            on_progress({
-                **({"recommendations":ranked[:min(limit,100)]} if ranked is not None else {}),
+            payload = {
                 "availableCount": sum(len(rows) for rows in ordered.values()),
                 "branchesExecuted": [name for name in tasks if name in completed],
                 "errors": source_errors(results, errors),
@@ -1050,11 +1132,13 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
                 "dbef": getattr(results.get('citationNetwork'), 'dbef_summary', {}),
                 "completed": len(completed) + len(errors),
                 "total": total,
-            })
-        citation_branches = [name for name in tasks if name in ('citationGraph', 'citationNetwork', 'citationCoCitation')]
-        citation_finished = all(name in completed or name in errors for name in citation_branches)
-        if citation_branches and citation_finished and settled_updates[0] >= 2 and len(tasks) > len(completed) + len(errors):
-            return True
+            }
+            if ranked is not None:
+                payload["recommendations"] = ranked[:min(limit, 100)]
+            if citation_finished:
+                payload["stage"] = "refining"
+                payload["rankingPhase"] = "refining"
+            on_progress(payload)
     if on_progress:
         on_progress({"total": len(tasks), "stage":"collecting", "conceptSearch":concept_search, "bridgeConcept":bridge_concept})
     try:
