@@ -155,6 +155,7 @@
 <div class="dock-mode-toggle" role="group" aria-label="Map pointer mode"><button id="mapModePan" class="dock-icon-btn is-active" type="button" aria-pressed="true" title="Pan the map (hold Shift to drag a selection box)"><span data-feather="move"></span><span class="sr-only">Pan</span></button><button id="mapModeSelect" class="dock-icon-btn" type="button" aria-pressed="false" title="Drag a box to select papers (⇧-click adds or removes one)"><span data-feather="box-select"></span><span class="sr-only">Box select</span></button></div>
 <span class="dock-divider" aria-hidden="true"></span>
 <div class="dock-tools-group">
+<button id="mapClearAll" class="dock-icon-btn dock-clear-btn" type="button" aria-label="Clear map" title="Clear map (untick all papers)"><span data-feather="x-circle"></span><span class="dock-btn-label">Clear</span></button>
 <button id="blowUpButton" class="dock-icon-btn" type="button" aria-label="Blow up map" title="Blow up map (⌘+)"><span data-feather="maximize-2"></span></button>
 <button id="compressButton" class="dock-icon-btn" type="button" aria-label="Compress map" title="Compress map (⌘-)"><span data-feather="minimize-2"></span></button>
 <button id="graphButton" class="dock-icon-btn" type="button" aria-label="Graph style" title="Graph style"><span data-feather="sliders"></span></button>
@@ -504,7 +505,7 @@
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your computer until you import them. PDFs and full paper text are not uploaded.</small></p>
 <details id="mendeleyDeveloperSettings" hidden><summary id="mendeleySettingsSummary">Mendeley connection settings (Client ID, Secret, Redirect URL)</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this computer's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-1.9-openalex"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-1.8.5-clear"></script>
 <script src="js/map-tabs.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/paper-links.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_02.js?v=ui-1.9-optimisation2"></script>
@@ -514,13 +515,13 @@
 <script src="js/part_06.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_07.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_08.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_09.js?v=ui-20261014-clusters"></script>
+<script src="js/part_09.js?v=ui-1.8.5-links"></script>
 <script src="js/part_10.js?v=ui-20261013-map"></script>
 <script src="js/part_11.js?v=ui-20261013-map2"></script>
 <script src="js/part_12.js?v=ui-20261013-map2"></script>
 <script src="js/part_13.js?v=ui-20261014-drag"></script>
 <script src="js/part_14.js?v=ui-20261013-map"></script>
-<script src="js/map-interactions.js?v=ui-20261014-drag"></script>
+<script src="js/map-interactions.js?v=ui-1.8.5-clear"></script>
 <script src="js/part_15.js?v=ui-20261010-2"></script>
 <script src="js/part_23.js?v=ui-20261014-mendeley"></script>
 <script src="js/mendeley-sync.js?v=ui-20261014-merge3"></script>

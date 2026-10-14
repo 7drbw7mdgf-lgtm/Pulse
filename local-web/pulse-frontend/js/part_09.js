@@ -88,6 +88,7 @@
         state.links.forEach(link => {
           const a = papers.find(paper => paper.id === link.source);
           const b = papers.find(paper => paper.id === link.target);
+          if (!a || !b) return;  // A link can outlive a paper just taken off the active map.
           const dx = b.x - a.x;
           const dy = b.y - a.y;
           const distance = Math.max(1, Math.hypot(dx, dy));

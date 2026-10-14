@@ -193,7 +193,7 @@
     const ghost = document.createElement('div');
     ghost.className = 'map-drag-ghost';
     const title = typeof compactTitle === 'function' ? compactTitle(paper.title) : String(paper.title || 'Paper');
-    ghost.innerHTML = `${escapeHtml(title)}<small>Drop on the map to place it</small>`;
+    ghost.innerHTML = `${escapeHtml(title)}<small>Drop on the map to add and focus it</small>`;
     document.body.appendChild(ghost);
     paperDrag.ghost = ghost;
     paperDrag.source.classList.add('is-drag-source');
@@ -249,21 +249,89 @@
     if (Number.isFinite(point.x) && Number.isFinite(point.y)) {
       paper.x = point.x;
       paper.y = point.y;
-      paper.pinnedPosition = true;
     }
     const area = typeof areaForPoint === 'function' ? areaForPoint(paper.x, paper.y) : null;
     if (area) paper.areaId = area.id;
+    // The dropped paper becomes the map's focus (as when double-clicking a node) and its details open.
+    paper.pinnedPosition = false;
     state.selectedId = paper.id;
     state.selectedLinkId = null;
-    if (typeof render === 'function') render();
-    if (typeof renderDetails === 'function') renderDetails();
+    if (typeof centerGraphOnPaper === 'function') centerGraphOnPaper(paper.id, true);
+    else if (typeof render === 'function') render();
+    if (typeof inspectPaper === 'function') inspectPaper(paper.id);
+    else if (typeof renderDetails === 'function') renderDetails();
+    if (typeof renderMapTabs === 'function') renderMapTabs();
     if (typeof scheduleAutosave === 'function') scheduleAutosave();
     if (typeof showToast === 'function') {
       const title = typeof compactTitle === 'function' ? compactTitle(paper.title) : paper.title;
       const mapName = (state.maps || []).find(map => map.id === mapId)?.name || 'the map';
-      showToast(wasOnMap ? `Moved "${title}".` : `Added "${title}" to ${mapName}.`);
+      showToast(wasOnMap ? `Focused on "${title}".` : `Added "${title}" to ${mapName} and focused on it.`);
     }
     return true;
+  }
+
+  // ---- Clear map: untick every paper on the active map (papers stay in the Library) ----
+
+  let clearMapUndo = null;
+
+  function setClearMapButton(undoing) {
+    const button = document.getElementById('mapClearAll');
+    if (!button) return;
+    button.classList.toggle('is-undo', undoing);
+    button.title = undoing ? 'Undo clear map' : 'Clear map (untick all papers)';
+    button.setAttribute('aria-label', undoing ? 'Undo clear map' : 'Clear map');
+    const label = button.querySelector?.('.dock-btn-label');
+    if (label) label.textContent = undoing ? 'Undo' : 'Clear';
+  }
+
+  function refreshAfterMapChange() {
+    if (typeof render === 'function') render();
+    if (typeof renderMapTabs === 'function') renderMapTabs();
+    if (typeof renderDetails === 'function') renderDetails();
+    if (typeof scheduleAutosave === 'function') scheduleAutosave();
+  }
+
+  function clearActiveMap() {
+    const mapId = state.activeMapId || (state.maps && state.maps[0]?.id) || 'map-1';
+    const onMap = (state.papers || []).filter(paper => typeof isPaperOnMap === 'function' ? isPaperOnMap(paper, mapId) : paper.selected !== false);
+    if (!onMap.length) {
+      if (typeof showToast === 'function') showToast('This map is already empty.');
+      return 0;
+    }
+    const previous = onMap.map(paper => ({ paper, mapIds: Array.isArray(paper.mapIds) ? [...paper.mapIds] : undefined, mapId: paper.mapId, selected: paper.selected }));
+    for (const paper of onMap) {
+      if (typeof setPaperOnMap === 'function') setPaperOnMap(paper, mapId, false);
+      else paper.selected = false;
+    }
+    if (state.selectedId && onMap.some(paper => paper.id === state.selectedId)) state.selectedId = null;
+    if (onMap.some(paper => paper.id === state.centerId)) state.centerId = null;
+    clearTimeout(clearMapUndo?.timer);
+    clearMapUndo = { mapId, previous, timer: setTimeout(() => { clearMapUndo = null; setClearMapButton(false); }, 10000) };
+    setClearMapButton(true);
+    refreshAfterMapChange();
+    if (typeof showToast === 'function') showToast(`Cleared ${onMap.length} paper${onMap.length === 1 ? '' : 's'} from the map. They stay in your Library.`);
+    return onMap.length;
+  }
+
+  function undoClearActiveMap() {
+    if (!clearMapUndo) return false;
+    clearTimeout(clearMapUndo.timer);
+    for (const { paper, mapIds, mapId, selected } of clearMapUndo.previous) {
+      if (mapIds === undefined) delete paper.mapIds; else paper.mapIds = mapIds;
+      if (mapId === undefined) delete paper.mapId; else paper.mapId = mapId;
+      paper.selected = typeof isPaperOnActiveMap === 'function' ? isPaperOnActiveMap(paper) : selected;
+    }
+    const count = clearMapUndo.previous.length;
+    clearMapUndo = null;
+    setClearMapButton(false);
+    refreshAfterMapChange();
+    if (typeof showToast === 'function') showToast(`Restored ${count} paper${count === 1 ? '' : 's'} to the map.`);
+    return true;
+  }
+
+  function onClearMapClick() {
+    if (clearMapUndo) undoClearActiveMap();
+    else clearActiveMap();
   }
 
   function onLibraryClickCapture(event) {
@@ -285,6 +353,7 @@
     document.getElementById('mapModeSelect')?.addEventListener('click', () => setMapPointerMode('select'));
     document.getElementById('mapSelectionBridge')?.addEventListener('click', findBridgesForSelection);
     document.getElementById('mapSelectionClear')?.addEventListener('click', clearMapMultiSelection);
+    document.getElementById('mapClearAll')?.addEventListener('click', onClearMapClick);
     els.paperList?.addEventListener('pointerdown', onLibraryPointerDown);
     els.paperList?.addEventListener('click', onLibraryClickCapture, true);
     document.addEventListener('pointermove', onDocumentPointerMove, { passive: false });
@@ -297,6 +366,6 @@
   Object.assign(root, {
     normalizedBox, papersInBox, mapPointerMode, setMapPointerMode, toggleMapMultiSelection,
     clearMapMultiSelection, renderMultiSelection, findBridgesForSelection, beginMapBoxSelection,
-    updateMapBoxSelection, finishMapBoxSelection, dropPaperOnMap, bindMapInteractions
+    updateMapBoxSelection, finishMapBoxSelection, dropPaperOnMap, clearActiveMap, undoClearActiveMap, bindMapInteractions
   });
 })(typeof window !== 'undefined' ? window : globalThis);

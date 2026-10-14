@@ -27,3 +27,7 @@ body.is-dragging-paper, body.is-dragging-paper * { user-select: none; -webkit-us
 .map-drag-ghost { position: fixed; z-index: 1000; pointer-events: none; max-width: 260px; padding: 7px 10px; border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 12px; font-weight: 600; box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translate(12px, 12px); }
 .map-drag-ghost small { display: block; font-weight: 400; color: var(--muted); }
 .pulse-paper-card.is-drag-source, .paper-card.is-drag-source, .library-table-row.is-drag-source { opacity: .55; }
+
+.dock-clear-btn { width: auto; gap: 4px; padding: 0 8px; font-size: 11.5px; font-weight: 600; }
+.dock-clear-btn .dock-btn-label { line-height: 1; }
+.dock-clear-btn.is-undo { color: #4f46e5; background: rgba(79, 70, 229, 0.1); }

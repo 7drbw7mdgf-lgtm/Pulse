@@ -75,6 +75,8 @@ function sandbox() {
     setPaperOnMap: (paper, mapId, add) => { calls.onMap.push([paper.id, mapId, add]); paper.offMap = !add; },
     areaForPoint: () => null,
     render: () => { calls.renders += 1; }, renderDetails() {}, renderPapers() {}, scheduleAutosave() {}, syncDiscoveryControls() {},
+    centerGraphOnPaper: id => { calls.focused = id; }, inspectPaper: id => { calls.inspected = id; },
+    isPaperOnMap: paper => !paper.offMap,
     runDiscoveryPipeline: () => { calls.runs += 1; },
     showToast: message => calls.toasts.push(message),
     setTimeout: global.setTimeout,
@@ -156,7 +158,7 @@ function sandbox() {
   assert.strictEqual(get('mapSelectionBar').hidden, true);
 }
 
-// Dropping a Library paper onto the map adds it to the active map at the drop point.
+// Dropping a Library paper onto the map adds it to the active map and focuses the map on it.
 {
   const { context, calls, papers } = sandbox();
   const paper = papers.find(item => item.id === 'd');
@@ -164,11 +166,13 @@ function sandbox() {
   assert.deepStrictEqual(calls.onMap.at(-1), ['d', 'map-1', true]);
   assert.strictEqual(paper.x, 123);
   assert.strictEqual(paper.y, 456);
-  assert.strictEqual(paper.pinnedPosition, true);
+  assert.strictEqual(paper.pinnedPosition, false, 'the focused paper is placed by the focus layout');
   assert.strictEqual(context.state.selectedId, 'd');
-  assert.match(calls.toasts.at(-1), /Added "Paper D" to Map 1/);
+  assert.strictEqual(calls.focused, 'd', 'the map focuses on the dropped paper');
+  assert.strictEqual(calls.inspected, 'd', 'its details open');
+  assert.match(calls.toasts.at(-1), /Added "Paper D" to Map 1 and focused on it/);
   context.dropPaperOnMap('d', 10, 10);
-  assert.match(calls.toasts.at(-1), /Moved "Paper D"/);
+  assert.match(calls.toasts.at(-1), /Focused on "Paper D"/);
   assert.strictEqual(context.dropPaperOnMap('missing', 0, 0), false);
 }
 
@@ -201,7 +205,7 @@ function sandbox() {
   const paper = papers.find(p => p.id === 'd');
   assert.strictEqual(paper.x, 200);
   assert.strictEqual(paper.y, 300);
-  assert.strictEqual(paper.pinnedPosition, true);
+  assert.strictEqual(calls.focused, 'd');
   assert.strictEqual(card.classList.contains('is-drag-source'), false);
   assert.strictEqual(card.capturedPointer, null, 'pointer capture was released');
   assert.match(calls.toasts.at(-1), /Added "Paper D" to Map 1/);
@@ -228,7 +232,7 @@ function sandbox() {
   const paper = papers.find(p => p.id === 'd');
   assert.strictEqual(paper.x, 180);
   assert.strictEqual(paper.y, 220);
-  assert.strictEqual(paper.pinnedPosition, true);
+  assert.strictEqual(calls.focused, 'd', 'the map focuses on the dropped paper');
 }
 
 // Interactive pointer drag-and-drop: Table row title button (.library-title-button inside .library-table-row)
@@ -272,4 +276,32 @@ function sandbox() {
   assert.strictEqual(card.classList.contains('is-drag-source'), false, 'input click does not start drag');
 }
 
-console.log('PASS: map pointer modes, box selection, bridge seeds and Library-to-map dropping (compact, expanded, table)');
+// Clear map unticks every paper on the active map; the same button undoes it.
+{
+  const { context, calls, papers, get } = sandbox();
+  // Membership as the app stores it: per-paper map ids (map-tabs.js).
+  papers.forEach(p => { p.mapIds = p.offMap ? ['map-2'] : ['map-1', 'map-2']; delete p.offMap; });
+  context.isPaperOnMap = (p, mapId) => (p.mapIds || []).includes(mapId);
+  context.isPaperOnActiveMap = p => context.isPaperOnMap(p, 'map-1');
+  context.setPaperOnMap = (p, mapId, add) => { calls.onMap.push([p.id, mapId, add]); p.mapIds = add ? [...new Set([...(p.mapIds || []), mapId])] : (p.mapIds || []).filter(id => id !== mapId); };
+  Object.defineProperty(papers[0], 'offMap', { get() { return !this.mapIds.includes('map-1'); }, set() {}, configurable: true });
+  papers.slice(1).forEach(p => Object.defineProperty(p, 'offMap', { get() { return !p.mapIds.includes('map-1'); }, set(v) { p.mapIds = v ? p.mapIds.filter(id => id !== 'map-1') : [...p.mapIds, 'map-1']; }, configurable: true }));
+  context.state.selectedId = 'a'; context.state.centerId = 'b';
+  assert.strictEqual(context.clearActiveMap(), 3, 'three papers were on the map');
+  assert.deepStrictEqual(papers.map(p => !!p.offMap), [true, true, true, true]);
+  assert.deepStrictEqual(papers.map(p => p.mapIds), [['map-2'], ['map-2'], ['map-2'], ['map-2']], 'other maps keep their papers');
+  assert.deepStrictEqual(calls.onMap.slice(-3), [['a', 'map-1', false], ['b', 'map-1', false], ['c', 'map-1', false]]);
+  assert.strictEqual(context.state.selectedId, null); assert.strictEqual(context.state.centerId, null);
+  assert.strictEqual(papers.length, 4, 'papers stay in the Library');
+  assert.match(calls.toasts.at(-1), /Cleared 3 papers from the map/);
+  assert.strictEqual(get('mapClearAll').classList.contains('is-undo'), true);
+  assert.strictEqual(context.undoClearActiveMap(), true);
+  assert.deepStrictEqual(papers.map(p => !!p.offMap), [false, false, false, true], 'undo restores exactly the cleared papers');
+  assert.strictEqual(get('mapClearAll').classList.contains('is-undo'), false);
+  assert.strictEqual(context.undoClearActiveMap(), false);
+  papers.forEach(p => { p.mapIds = ['map-2']; });
+  assert.strictEqual(context.clearActiveMap(), 0);
+  assert.match(calls.toasts.at(-1), /already empty/);
+}
+
+console.log('PASS: map pointer modes, box selection, bridge seeds, Library-to-map dropping with focus (compact, expanded, table) and Clear map with undo');
