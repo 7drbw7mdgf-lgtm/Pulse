@@ -358,14 +358,12 @@ const discoveryBoundCheckboxes=new WeakSet();
       if (!state.discoverySearching) return;
       state.discoverySearching.job = job;
       if (!state.discoveryFocusExplicit) state.discoveryFocusKey = null;
-      if (Array.isArray(job?.recommendations)) {
+      if (Array.isArray(job?.recommendations) && job.recommendations.length > 0) {
         if (state.discoveryUserTouchedRelevance) {
           state.discoveryPendingRefinedOrder = job.recommendations;
           state.discoveryPendingRefinedOrderKey = state.discoverySearching.key;
         } else {
-          const incoming=new Map(job.recommendations.map(paper=>[discoveryPaperKey(paper),paper]));
-          const old=state.discoveryResults||[],keys=new Set(old.map(discoveryPaperKey));
-          state.discoveryResults=[...old.map(paper=>incoming.get(discoveryPaperKey(paper))||paper),...job.recommendations.filter(paper=>!keys.has(discoveryPaperKey(paper)))];
+          state.discoveryResults = job.recommendations;
         }
       }
       if (els.discoveryModal && !els.discoveryModal.hidden) renderDiscoveryModal({preservePosition:true});
