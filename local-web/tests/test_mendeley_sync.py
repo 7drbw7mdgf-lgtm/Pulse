@@ -5,7 +5,7 @@ import sys
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, Mock, patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'pulse-backend'))
 os.environ.setdefault('PULSE_CONFIG_DIR',tempfile.mkdtemp(prefix='pulse-sync-tests-'))
 from pulse_core.constants import ClientError
@@ -78,5 +78,58 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(cr['date'],'2025-06-05');self.assertEqual(cr['articleNumber'],'e100');self.assertEqual(cr['publisher'],'Test Press')
         oa=openalex_to_metadata({'biblio':{'first_page':'20','last_page':'29'},'publication_date':'2025-06-05'})
         self.assertEqual(oa['pages'],'20-29')
+    def test_direct_first_and_subsequent_pages_request_document_media_type(self):
+        direct=dict(CONFIG,authFlow='code',clientId='test-client',accessToken='test-access',expiresAt=time.time()+3600)
+        direct.pop('brokerSession');managers.write_config(direct)
+        next_page='/documents?view=all&marker=next&limit=100&reverse=false&order=asc'
+        urls=[]
+        def fetch(url,headers=None,envelope=False,**kwargs):
+            urls.append(url)
+            if not headers or headers.get('Accept')!='application/vnd.mendeley-document.1+json':
+                raise ClientError(406,'Synthetic unacceptable document media type')
+            self.assertTrue(envelope)
+            self.assertEqual(headers['Authorization'],'Bearer test-access')
+            if url==managers.MENDELEY+'/documents?view=all&limit=100':
+                return {'data':[DOCUMENT],'next':next_page}
+            self.assertEqual(url,managers.MENDELEY+next_page)
+            return {'data':[dict(DOCUMENT,id='doc-two')],'next':None}
+        with patch.object(managers,'request',side_effect=fetch):
+            first=sync.page({})
+            second=sync.page({'page':first['next'],'accountId':'account-one'})
+        self.assertEqual(first['items'][0]['remoteId'],'doc-one')
+        self.assertEqual(second['items'][0]['remoteId'],'doc-two')
+        self.assertIsNone(second['next']);self.assertEqual(len(urls),2)
+    def test_direct_sync_confirms_account_with_profile_media_type(self):
+        direct=dict(CONFIG,authFlow='code',clientId='test-client',accessToken='test-access',expiresAt=time.time()+3600)
+        direct.pop('brokerSession');direct.pop('mendeleyAccountId');managers.write_config(direct)
+        with patch.object(managers,'request',return_value={'id':'confirmed-account'}) as request:
+            result=sync.connected_config()
+        self.assertEqual(result['mendeleyAccountId'],'confirmed-account')
+        self.assertEqual(request.call_args.args[0],managers.MENDELEY+'/profiles/me')
+        self.assertEqual(request.call_args.kwargs['headers']['Accept'],'application/vnd.mendeley-profiles.1+json')
+    def test_broker_sync_does_not_make_direct_provider_request(self):
+        with patch.object(broker,'library',return_value={'data':[DOCUMENT],'next':None,'accountId':'account-one'}) as broker_request,patch.object(managers,'request') as request:
+            result=sync.page({})
+        self.assertEqual(len(result['items']),1)
+        request.assert_not_called()
+        broker_request.assert_called_once_with('/documents?view=all&limit=100',config=managers.read_config())
+    def test_pagination_reverse_accepts_only_single_boolean_value(self):
+        for reverse in ['true','false']:
+            path='/documents?view=all&marker=next&limit=100&reverse='+reverse+'&order=asc'
+            with self.subTest(reverse=reverse):self.assertEqual(sync.validate_page(path),path)
+        for suffix in ['reverse=','reverse=True','reverse=0','reverse=anything','reverse=true&reverse=false','reverse=false&reverse=false']:
+            with self.subTest(suffix=suffix),self.assertRaises(ClientError):sync.validate_page('/documents?limit=100&'+suffix)
+    def test_provider_link_retains_reverse_and_rejects_foreign_host(self):
+        next_path='/documents?view=all&marker=next&limit=100&reverse=false&order=asc'
+        response=MagicMock();response.__enter__.return_value=response;response.read.return_value=b'[]'
+        opener=Mock();opener.open.return_value=response
+        response.headers={'Link':'<'+managers.MENDELEY+next_path+'>; rel="next"'}
+        with patch.object(managers.urllib.request,'build_opener',return_value=opener):
+            envelope=managers.request(managers.MENDELEY+'/documents?view=all&limit=100',headers={'Accept':'application/vnd.mendeley-document.1+json'},envelope=True)
+            self.assertEqual(envelope['next'],next_path)
+            self.assertEqual(sync.validate_page(envelope['next']),next_path)
+            response.headers={'Link':'<https://foreign.example'+next_path+'>; rel="next"'}
+            with self.assertRaises(ClientError):
+                managers.request(managers.MENDELEY+'/documents?view=all&limit=100',headers={'Accept':'application/vnd.mendeley-document.1+json'},envelope=True)
 
 if __name__=='__main__':unittest.main()
