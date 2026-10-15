@@ -47,6 +47,39 @@ class _ResponseWrapper:
         pass
 
 
+def _request_origin(url):
+    try:
+        target = urllib.parse.urlsplit(url)
+        if target.username is not None or target.password is not None or not target.hostname:
+            return None
+        port = target.port
+        if port is None: port = 443 if target.scheme.lower() == 'https' else 80
+        return target.scheme.lower(), target.hostname.lower(), port
+    except ValueError:
+        return None
+
+
+class _OriginRestrictedRedirect(urllib.request.HTTPRedirectHandler):
+    def __init__(self, origin):
+        self.origin = _request_origin(origin)
+
+    def redirect_request(self, request, fp, code, message, headers, new_url):
+        if self.origin is None or _request_origin(new_url) != self.origin:
+            raise urllib.error.HTTPError(request.full_url, 502, 'API redirect blocked', headers,
+                io.BytesIO(b'The API redirected to an unsupported service address.'))
+        redirected = super().redirect_request(request, fp, code, message, headers, new_url)
+        if redirected is not None:
+            redirected.pulse_redirect_origin = request.pulse_redirect_origin
+        return redirected
+
+
+def _urlopen_fallback(request, timeout=14):
+    origin = getattr(request, 'pulse_redirect_origin', None)
+    if origin:
+        return urllib.request.build_opener(_OriginRestrictedRedirect(origin)).open(request, timeout=timeout)
+    return urllib.request.urlopen(request, timeout=timeout)
+
+
 def _urlopen_persistent(request, timeout=14):
     if hasattr(urllib.request.urlopen, 'mock_calls') or type(urllib.request.urlopen).__module__.startswith('unittest.mock'):
         return urllib.request.urlopen(request, timeout=timeout)
@@ -192,29 +225,59 @@ def request_json(request, timeout=14, cache=True):
         if error: raise error
 
 
+def _strip_cache_params(url):
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        if not parsed.query:
+            return url
+        qs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        filtered = sorted([(k, v) for k, v in qs if k.lower() not in ('api_key', 'api-key', 'mailto')])
+        new_query = urllib.parse.urlencode(filtered)
+        return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, new_query, parsed.fragment))
+    except Exception:
+        return url
+
+
 def _disk_http_cache_key(request):
     url = request.full_url if hasattr(request, 'full_url') else str(request)
+    clean_url = _strip_cache_params(url)
     headers = dict(request.header_items()) if hasattr(request, 'header_items') else {}
     relevant = {k.lower(): v for k, v in sorted(headers.items()) if k.lower() in ('accept', 'content-type')}
     data = getattr(request, 'data', None) or b''
-    return hashlib.sha256(url.encode('utf-8') + b'\0' + json.dumps(relevant).encode('utf-8') + b'\0' + data).hexdigest()
+    return hashlib.sha256(clean_url.encode('utf-8') + b'\0' + json.dumps(relevant).encode('utf-8') + b'\0' + data).hexdigest()
 
 
 def _disk_http_cache_ttl(url):
     u = url.lower()
+    # Free-text searches have 15-minute TTL
+    if 'search=' in u or 'query=' in u:
+        # Identifier lookups (DOI or PMID queries) are stable; topic searches are not.
+        if not ('ext_id:' in u or 'doi:' in u or 'doi%3a' in u or 'src:med' in u):
+            return 900.0  # 15 minutes
     if ('cites:' in u or 'cited_by:' in u or
-        re.search(r'/works/(?:w\d+|https%3a|https://)', u) or
+        'openalex_id:' in u or 'doi:' in u or
+        re.search(r'/works/(?:w\d+|https%3a|https://|doi:)', u) or
         re.search(r'/paper/[a-zA-Z0-9]+', u) or
-        re.search(r'/(?:citations|references)', u)):
-        return 86400.0  # 24 hours
+        re.search(r'/(?:citations|references)', u) or
+        re.search(r'/fields/[a-zA-Z0-9]+', u) or
+        re.search(r'/concepts/[a-zA-Z0-9]+', u) or
+        'icite.od.nih.gov' in u or
+        'europepmc.org' in u or 'ebi.ac.uk/europepmc' in u or
+        'opencitations.net' in u):
+        return 604800.0  # 7 days
     return 900.0  # 15 minutes
 
 
 def _disk_http_cache_skippable(request):
+    url = request.full_url if hasattr(request, 'full_url') else str(request)
+    host = urllib.parse.urlsplit(url).hostname or ''
+    # Public academic APIs with rate-limit API keys share the disk cache
+    if 'openalex.org' in host or 'semanticscholar.org' in host:
+        return False
     headers = dict(request.header_items()) if hasattr(request, 'header_items') else {}
     for k, v in headers.items():
         kl = k.lower()
-        if kl in ('authorization', 'x-api-key', 'api-key') or 'bearer' in str(v).lower():
+        if kl in ('authorization', 'x-api-key') or 'bearer' in str(v).lower():
             return True
     return False
 
@@ -257,6 +320,10 @@ def _disk_http_cache_get(key, request):
     return None
 
 
+_NCBI_LOCK = threading.Lock()
+_NCBI_LAST_TIME = [0.0]
+
+
 def _disk_http_cache_set(key, url, headers, data, status=200):
     if status >= 400:
         return
@@ -286,10 +353,12 @@ def _disk_http_cache_set(key, url, headers, data, status=200):
             used REAL NOT NULL,
             size INTEGER NOT NULL
         )''')
+        clean_url = _strip_cache_params(url)
+        clean_headers = {k: v for k, v in headers.items() if k.lower() not in ('api_key', 'api-key', 'authorization', 'x-api-key')}
         conn.execute('''INSERT OR REPLACE INTO http_cache
             (key, url, headers, body, status, expires_at, used, size)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-            (key, url, json.dumps(headers), compressed, status, expires_at, now, size))
+            (key, clean_url, json.dumps(clean_headers), compressed, status, expires_at, now, size))
         total = conn.execute('SELECT SUM(size) FROM http_cache').fetchone()[0] or 0
         if total > 1024 * 1024 * 1024:
             conn.execute('DELETE FROM http_cache WHERE expires_at < ?', (now,))
@@ -305,6 +374,26 @@ def _disk_http_cache_set(key, url, headers, data, status=200):
         if conn:
             try: conn.close()
             except Exception: pass
+
+
+_OPENALEX_ALLOWANCE = {'remaining': None, 'at': 0.0}
+
+
+def _note_openalex_allowance(headers):
+    """Remember OpenAlex's reported remaining daily allowance (X-RateLimit-Remaining)."""
+    try:
+        value = headers.get('x-ratelimit-remaining') if headers is not None else None
+        if value is not None:
+            _OPENALEX_ALLOWANCE.update(remaining=int(value), at=time.monotonic())
+    except (TypeError, ValueError, AttributeError):
+        pass
+
+
+def openalex_allowance_remaining(max_age=3600):
+    """Last reported OpenAlex allowance, or None when unknown or older than max_age seconds."""
+    if _OPENALEX_ALLOWANCE['remaining'] is None or time.monotonic() - _OPENALEX_ALLOWANCE['at'] > max_age:
+        return None
+    return _OPENALEX_ALLOWANCE['remaining']
 
 
 def _request_json_once(request, timeout=14, cache=True):
@@ -328,12 +417,18 @@ def _request_json_once(request, timeout=14, cache=True):
             return disk_val
     if hasattr(request, 'add_unredirected_header') and not any(k.lower() == 'accept-encoding' for k, _ in request.header_items()):
         request.add_unredirected_header('Accept-Encoding', 'gzip')
-    limit = 10 if 'openalex.org' in host else 2
+    limit = 10 if 'openalex.org' in host else 2  # OpenAlex allows 10 requests/second, with or without a key
     with _CACHE_LOCK:
         gate = _PROVIDER_GATES.setdefault(host, threading.BoundedSemaphore(limit))
     check_source(request)
     while not gate.acquire(timeout=.1):
         check_cancelled()
+    if 'nih.gov' in host:
+        with _NCBI_LOCK:
+            elapsed = time.monotonic() - _NCBI_LAST_TIME[0]
+            if elapsed < 0.34:
+                time.sleep(0.34 - elapsed)
+            _NCBI_LAST_TIME[0] = time.monotonic()
     try:
         for attempt in range(3):
             check_cancelled()
@@ -348,6 +443,7 @@ def _request_json_once(request, timeout=14, cache=True):
                 request_timeout = min(timeout, max(.1, remaining)) if remaining is not None else timeout
                 try:
                     with _urlopen_persistent(request, timeout=request_timeout) as response:
+                        if 'openalex.org' in host: _note_openalex_allowance(getattr(response, 'headers', None))
                         raw = response.read()
                         if (isinstance(raw, bytes) and raw.startswith(b'\x1f\x8b')) or (getattr(response, 'headers', None) and getattr(response.headers, 'get', lambda k, d='': d)('content-encoding', '').lower() == 'gzip'):
                             try:
@@ -358,7 +454,7 @@ def _request_json_once(request, timeout=14, cache=True):
                 except (urllib.error.HTTPError, DiscoveryCancelled, DiscoveryBudgetExceeded, ProviderCooldown):
                     raise
                 except Exception:
-                    with urllib.request.urlopen(request, timeout=request_timeout) as response:
+                    with _urlopen_fallback(request, timeout=request_timeout) as response:
                         raw = response.read()
                         if (isinstance(raw, bytes) and raw.startswith(b'\x1f\x8b')) or (getattr(response, 'headers', None) and getattr(response.headers, 'get', lambda k, d='': d)('content-encoding', '').lower() == 'gzip'):
                             try:

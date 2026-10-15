@@ -1,0 +1,7 @@
+name = "pulse-mendeley"
+main = "worker.mjs"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+# Set with: npx wrangler secret put MENDELEY_CLIENT_ID (and MENDELEY_CLIENT_SECRET, STATE_KEY).
+# Never put secrets in this file.

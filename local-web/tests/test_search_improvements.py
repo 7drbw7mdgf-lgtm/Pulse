@@ -184,15 +184,15 @@ class SearchImprovementsTests(unittest.TestCase):
         self.assertIn('fast', executed)
 
     def test_warm_paper_discovery(self):
-        with patch('pulse_core.discovery.openalex_work_for_paper', return_value={'id': 'W12345', 'referenced_works': ['W999']}), \
-             patch('pulse_core.discovery.fetch_openalex_works_batch') as mock_batch, \
-             patch('pulse_core.discovery.openalex_discovery_works') as mock_disc:
-            discovery.warm_paper_discovery({'title': 'Test Paper', 'doi': '10.1234/test'})
-            mock_batch.assert_called()
-            self.assertGreaterEqual(mock_disc.call_count, 2)
-            calls = [c[0][0] for c in mock_disc.call_args_list]
-            self.assertIn('cites:W12345', calls)
-            self.assertIn('cites:W999', calls)
+        # Pre-warm runs the search's own collection step, so later searches hit the same cache entries.
+        discovery._PREWARM_TIMES.clear()
+        with patch('pulse_core.discovery._run_discovery_pipeline', return_value={'ok': True}) as run, \
+             patch('pulse_core.discovery.cooldowns', return_value={}):
+            self.assertTrue(discovery.warm_paper_discovery({'title': 'Test Paper', 'doi': '10.1234/test'}))
+        payload = run.call_args.args[0]
+        self.assertTrue(payload['_collectOnly'])
+        self.assertEqual(payload['seedPapers'], [{'title': 'Test Paper', 'doi': '10.1234/test'}])
+        discovery._PREWARM_TIMES.clear()
 
     def test_reranker_worker_window_cap(self):
         from pulse_core import reranker_worker

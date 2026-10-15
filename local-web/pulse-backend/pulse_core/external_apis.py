@@ -7,9 +7,28 @@ from pulse_core.constants import ClientError, APP_VERSION
 from pulse_performance import request_json, DiscoveryCancelled, DiscoveryBudgetExceeded
 
 def fetch_json(url, cache=True):
+    headers = {"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json", "Accept-Encoding": "gzip"}
+    if "api.openalex.org" in url:
+        try:
+            from pulse_core.storage import load_settings
+            from pulse_core.config_resolvers import resolve_openalex_api_key, resolve_contact_email
+            settings = load_settings()
+            # OpenAlex reads both from the query string; the disk cache strips them from keys and stored URLs.
+            extra = {}
+            oa_key = resolve_openalex_api_key(settings)
+            if oa_key and "api_key=" not in url:
+                extra["api_key"] = oa_key
+            email = resolve_contact_email(settings)
+            if email and "mailto=" not in url:
+                extra["mailto"] = email
+            if extra:
+                sep = "&" if "?" in url else "?"
+                url = f"{url}{sep}{urllib.parse.urlencode(extra)}"
+        except Exception:
+            pass
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json", "Accept-Encoding": "gzip"},
+        headers=headers,
         method="GET",
     )
     try:

@@ -34,6 +34,8 @@ from pulse_core.config_resolvers import (
     resolve_ollama_tags_endpoint,
     resolve_semantic_scholar_api_key,
     resolve_core_api_key,
+    resolve_openalex_api_key,
+    resolve_contact_email,
 )
 from pulse_core.security import SENSITIVE_SETTING_KEYS, decrypt_secret, encrypt_secret
 from pulse_performance import LIBRARY_WRITE_LOCK
@@ -300,18 +302,41 @@ def save_settings(payload):
         settings["semanticScholarApiKey"] = s2_key.strip()
     elif payload.get("clearSemanticScholarApiKey"):
         settings["semanticScholarApiKey"] = ""
+    if (isinstance(s2_key, str) and s2_key.strip()) or payload.get("clearSemanticScholarApiKey"):
+        from pulse_core.s2_client import reset_s2_access
+        reset_s2_access()
     core_key = payload.get("coreApiKey")
     if isinstance(core_key, str) and core_key.strip():
         settings["coreApiKey"] = core_key.strip()
     elif payload.get("clearCoreApiKey"):
         settings["coreApiKey"] = ""
+    openalex_key = payload.get("openAlexApiKey")
+    if isinstance(openalex_key, str) and openalex_key.strip():
+        settings["openAlexApiKey"] = openalex_key.strip()
+        try:
+            from pulse_source_health import clear_source
+            clear_source("api.openalex.org")
+            clear_source("OpenAlex")
+        except Exception:
+            pass
+    elif payload.get("clearOpenAlexApiKey"):
+        settings["openAlexApiKey"] = ""
+    contact_email = payload.get("contactEmail") or payload.get("pulse_contact_email")
+    if isinstance(contact_email, str):
+        settings["pulse_contact_email"] = contact_email.strip()
+    elif payload.get("clearContactEmail"):
+        settings["pulse_contact_email"] = ""
     return write_settings(settings)
 
 def public_settings(settings):
     from pulse_core.ollama_mgr import bundled_ollama_status, ollama_status, workflow_capabilities
     dim_key = resolve_dimensions_api_key(settings)
     s2_key = resolve_semantic_scholar_api_key(settings)
+    s2_saved = bool(str(settings.get("semanticScholarApiKey") or "").strip())
+    s2_environment = bool(str(os.environ.get("SEMANTIC_SCHOLAR_API_KEY") or "").strip())
     core_key = resolve_core_api_key(settings)
+    openalex_key = resolve_openalex_api_key(settings)
+    contact_email = resolve_contact_email(settings)
     gemini_key = resolve_gemini_api_key(settings)
     caps = workflow_capabilities()
     ollama = ollama_status(settings)
@@ -390,9 +415,17 @@ def public_settings(settings):
             },
             "semanticScholar": {
                 "configured": bool(s2_key),
-                "preview": preview_key(s2_key),
+                "saved": s2_saved,
+                "source": "environment" if s2_environment else "saved" if s2_saved else "",
                 "endpoint": SEMANTIC_SCHOLAR_API_ROOT,
-                "note": "Optional. S2AG works free out-of-the-box; an API key enables higher throughput.",
+                "note": "Optional. A configured key is used for paper searches, citations and recommendations.",
+            },
+            "openAlex": {
+                "configured": bool(openalex_key),
+                "preview": preview_key(openalex_key),
+                "contactEmail": contact_email,
+                "endpoint": "https://api.openalex.org",
+                "note": "Optional. Public searches work keyless (10 req/s); an API key enables 100 req/s.",
             },
         },
     }

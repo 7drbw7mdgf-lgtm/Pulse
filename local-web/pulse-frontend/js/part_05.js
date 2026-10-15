@@ -3,6 +3,7 @@
       const clearDimensionsApiKey = Boolean(options.clearDimensionsApiKey);
       const clearSemanticScholarApiKey = Boolean(options.clearSemanticScholarApiKey);
       const clearCoreApiKey = Boolean(options.clearCoreApiKey);
+      let semanticScholarKeySaved = Boolean(els.clearSemanticScholarKeyButton && !els.clearSemanticScholarKeyButton.disabled);
       els.saveSettingsButton.disabled = true;
       if (els.clearDimensionsKeyButton) els.clearDimensionsKeyButton.disabled = true;
       if (els.clearSemanticScholarKeyButton) els.clearSemanticScholarKeyButton.disabled = true;
@@ -32,6 +33,7 @@
         });
         const settings = await response.json();
         if (!response.ok) throw new Error(settings.error || 'Could not save backend settings.');
+        semanticScholarKeySaved = Boolean(settings?.providers?.semanticScholar?.saved);
         if (els.dimensionsKeyInput) els.dimensionsKeyInput.value = '';
         if (els.semanticScholarKeyInput) els.semanticScholarKeyInput.value = '';
         if (els.coreKeyInput) els.coreKeyInput.value = '';
@@ -47,7 +49,8 @@
       } finally {
         els.saveSettingsButton.disabled = false;
         if (els.clearDimensionsKeyButton) els.clearDimensionsKeyButton.disabled = false;
-        if (els.clearSemanticScholarKeyButton) els.clearSemanticScholarKeyButton.disabled = false;
+        if (els.clearSemanticScholarKeyButton) els.clearSemanticScholarKeyButton.disabled = !semanticScholarKeySaved;
+        if (els.clearCoreKeyButton) els.clearCoreKeyButton.disabled = false;
       }
     }
 

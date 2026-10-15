@@ -162,6 +162,12 @@ function updateManagers() {
   document.getElementById('mendeleyDeveloperSettings').hidden=Boolean(mendeley?.sharedRegistration && mendeley?.configured && !mendeley?.developerSettingsAvailable);
   document.getElementById('mendeleyConnect').disabled=!mendeley?.configured || managerUi.connecting || Boolean(managerUi.status?.mendeley?.pending);
   document.getElementById('mendeleyConnect').hidden=Boolean(managerUi.status?.mendeley?.connected);
+  const restart=document.getElementById('mendeleyRestartSignIn');
+  if(restart) {restart.hidden=!mendeley?.pending;restart.disabled=Boolean(managerUi.connecting);}
+  const usePulse=document.getElementById('mendeleyUsePulseSignIn');
+  if(usePulse) {usePulse.hidden=Boolean(mendeley?.connected || !mendeley?.defaultSignInAvailable || mendeley?.sharedRegistration);usePulse.disabled=Boolean(managerUi.connecting);}
+  const method=document.getElementById('mendeleyConnectionMethod');
+  if(method) method.textContent=mendeley?.sharedRegistration ? 'Connection method: Pulse sign-in. No developer credentials are needed on this Mac.' : mendeley?.configured ? 'Connection method: your custom Mendeley application. If Mendeley reports an invalid third-party app, use Pulse sign-in instead.' : '';
   document.getElementById('mendeleyDisconnect').hidden=!managerUi.status?.mendeley?.connected;
   document.getElementById('mendeleySyncBox').hidden=!mendeley?.connected;
   document.getElementById('mendeleyAutomaticSync').checked=mendeley?.automaticSync !== false && !state.mendeleySyncPaused;
@@ -187,11 +193,23 @@ function syncMendeleyConfigInputs(config) {
     if (el) el.placeholder = secretPlaceholder;
   }
 }
+function beginMendeleySignInFlow() {
+  const generation=managerUi.signInGeneration=(managerUi.signInGeneration || 0)+1;
+  clearInterval(managerUi.timer);managerUi.timer=null;
+  document.getElementById('managerRefresh').disabled=false;
+  return generation;
+}
 async function refreshManagers() {
+  const generation=managerUi.signInGeneration || 0;
+  const request=managerUi.statusRequest=(managerUi.statusRequest || 0)+1;
+  const current=()=>generation===(managerUi.signInGeneration || 0) && request===managerUi.statusRequest;
   document.getElementById('managerRefresh').disabled=true;
-  try {managerUi.status=await pulseRecordsRequest('/api/managers/status'); updateManagers();}
-  catch(error) {document.getElementById('managerFeedback').textContent=error.message;}
-  finally {document.getElementById('managerRefresh').disabled=false;}
+  try {
+    const status=await pulseRecordsRequest('/api/managers/status');
+    if(!current()) return null;
+    managerUi.status=status;updateManagers();return status;
+  } catch(error) {if(current())document.getElementById('managerFeedback').textContent=error.message;return null;}
+  finally {if(current())document.getElementById('managerRefresh').disabled=false;}
 }
 async function openManagers() {
   if(!managerDialog.open) managerDialog.showModal();
@@ -226,16 +244,57 @@ async function connectMendeley() {
     return;
   }
   managerUi.connecting=true;
+  const generation=beginMendeleySignInFlow();
+  const link=document.getElementById('mendeleyAuthorizeLink');link.hidden=true;link.removeAttribute?.('href');
   const button=document.getElementById('mendeleyConnect');button.disabled=true;
   try {const result=await pulseRecordsRequest('/api/managers/mendeley/connect',{});
-    const link=document.getElementById('mendeleyAuthorizeLink');link.href=result.authorizationUrl;link.hidden=false;
+    if(generation!==managerUi.signInGeneration) return;
+    link.href=result.authorizationUrl;link.hidden=false;
+    // Desktop navigation is intercepted by Tauri and opened in the system browser.
+    // A same-window target avoids WebKit's async popup/user-gesture restrictions.
+    link.target=typeof window!=='undefined' && window.__TAURI__ ? '_self' : '_blank';
     document.getElementById('managerFeedback').textContent='Mendeley will open for sign-in or account creation. Approve access there, then return here to send your citations.';
     link.textContent='Continue with Mendeley';link.click();
-    clearInterval(managerUi.timer);managerUi.timer=setInterval(async()=>{await refreshManagers();if(!managerUi.status?.mendeley?.pending) {clearInterval(managerUi.timer);if(managerUi.status?.mendeley?.connected){document.getElementById('mendeleyAuthorizeLink').hidden=true;document.getElementById('managerFeedback').textContent='Mendeley connected. Your library can now sync here.';}}},4000);
+    let polling=false;
+    const timer=setInterval(async()=>{
+      if(polling || generation!==managerUi.signInGeneration) return;
+      polling=true;
+      try {
+        const status=await refreshManagers();
+        if(generation!==managerUi.signInGeneration || !status || managerUi.timer!==timer) return;
+        if(!status.mendeley?.pending) {
+          clearInterval(timer);managerUi.timer=null;
+          if(status.mendeley?.connected) {link.hidden=true;document.getElementById('managerFeedback').textContent='Mendeley connected. Your library can now sync here.';}
+        }
+      } finally {polling=false;}
+    },4000);
+    managerUi.timer=timer;
     await refreshManagers();
-  } catch(error) {document.getElementById('managerFeedback').textContent=error.message;} finally {managerUi.connecting=false;updateManagers();}
+  } catch(error) {if(generation===managerUi.signInGeneration)document.getElementById('managerFeedback').textContent=error.message;}
+  finally {if(generation===managerUi.signInGeneration){managerUi.connecting=false;updateManagers();}}
 }
 document.getElementById('mendeleyConnect').addEventListener('click',connectMendeley);
+document.getElementById('mendeleyRestartSignIn')?.addEventListener('click',connectMendeley);
+async function usePulseMendeleySignIn() {
+  if(managerUi.connecting || managerUi.syncing) return;
+  managerUi.connecting=true;const generation=beginMendeleySignInFlow();updateManagers();
+  try {
+    await pulseRecordsRequest('/api/managers/config',{usePulseSignIn:true});
+    if(generation!==managerUi.signInGeneration) return;
+    state.syncEpoch=(state.syncEpoch || 0)+1;
+    managerUi.syncMessage='';
+    const link=document.getElementById('mendeleyAuthorizeLink');link.hidden=true;link.removeAttribute?.('href');
+    const config=await pulseRecordsRequest('/api/managers/config');
+    if(generation!==managerUi.signInGeneration) return;
+    syncMendeleyConfigInputs(config);
+    for(const id of ['mendeleyClientSecret','settingsMendeleyClientSecret']) {const input=document.getElementById(id);if(input)input.value='';}
+    await refreshManagers();
+    if(generation!==managerUi.signInGeneration) return;
+  } catch(error) {if(generation===managerUi.signInGeneration)document.getElementById('managerFeedback').textContent=error.message;return;}
+  finally {if(generation===managerUi.signInGeneration){managerUi.connecting=false;updateManagers();}}
+  await connectMendeley();
+}
+document.getElementById('mendeleyUsePulseSignIn')?.addEventListener('click',usePulseMendeleySignIn);
 document.getElementById('mendeleyDisconnect').addEventListener('click',async()=>{
   try {const result=await pulseRecordsRequest('/api/managers/mendeley/disconnect',{});document.getElementById('managerFeedback').textContent=result.message || 'Mendeley disconnected.';state.syncEpoch=(state.syncEpoch || 0)+1;document.getElementById('mendeleyAuthorizeLink').hidden=true;await refreshManagers();}
   catch(error) {document.getElementById('managerFeedback').textContent=error.message;}
