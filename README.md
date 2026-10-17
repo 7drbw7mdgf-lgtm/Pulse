@@ -22,14 +22,13 @@
 
 ![Pulse Discovery Review Workspace — synthetic example](docs/images/pulse-1.7.11-discovery.png)
 
-## What’s new in 2.0.0 (The Discovery A+ Upgrade)
+## What’s new in 2.0.0
 
-- **Author Trajectory Retrieval:** Traces scientific lineages of senior and first authors in the same topical sub-concept via OpenAlex, with dedicated provenance badges and filters.
-- **Sub-10ms Instant Interactive Feedback:** Candidate paper re-ranking triggers immediately (< 10 ms) on clicking Relevant / Not Relevant via client-side Rocchio feedback below the fold, keeping reviewed items stable.
-- **Citation Context & Intent Extraction:** Extracts exact citing sentences and classifies intents (`Methodology`, `Result`, `Background`) from Semantic Scholar and Europe PMC JATS XML.
-- **Universal Scientific Cross-Encoder:** Retains fast, domain-resilient MiniLM-L6-v2 across all scientific disciplines following extensive ablation testing showing specialized models suffer cross-domain collapse.
-- **Grounded Evidence Matrix:** Side-by-side comparative synthesis across 2–15 papers covering 4 key dimensions (*Study system / organism*, *Core method*, *Main finding*, *Limitation*) with deterministic sentence extraction and mandatory verbatim grounding.
-- **Independent Multi-Domain Benchmark Suite:** 146 standardized cases across RELISH, SYNERGY, SciDocs, and Head-to-Head with 100% offline regression coverage.
+- **Same-author follow-ups:** a new search channel finds recent papers by your seed's first and last authors on the same topic, marked with a badge. On the independent RELISH benchmark it improves nDCG@20 by 0.012 and recent-paper recall by 3 points.
+- **Instant re-ranking:** marking a result Relevant or Not relevant re-orders the unreviewed results below it at once (about 5–8 ms for 2,000 results on Apple Silicon), without moving what you are reading.
+- **“How it cites your seed”:** the preview quotes the sentences in which a result cites your seed paper, with intent labels when Semantic Scholar provides them.
+- **Compare selected:** a side-by-side table (study system, method, finding, limitation) filled by automatic sentence extraction, with no AI. Every cell is copied from the paper with its quote, so check it against the quote.
+- **Independent benchmark** (RELISH, SYNERGY, SciDocs) for every ranking change; the biomedical reranker was tested and not adopted.
 
 See the [2.0.0 notes](docs/releases/2.0.0.md).
 

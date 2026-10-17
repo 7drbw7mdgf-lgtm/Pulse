@@ -77,8 +77,15 @@ def handle_discovery_compare(payload):
     from pulse_core.storage import load_settings
     papers = payload.get("papers") or []
     columns = payload.get("columns")
+    if not isinstance(papers, list) or not 2 <= len(papers) <= 15 or not all(isinstance(p, dict) for p in papers):
+        raise ClientError(400, "Select 2 to 15 papers to compare.")
+    if columns is not None:
+        if (not isinstance(columns, list) or not 1 <= len(columns) <= 8 or not all(
+                isinstance(c, dict) and isinstance(c.get("id") or c.get("name"), str) and 0 < len(c.get("id") or c.get("name")) <= 60
+                and isinstance(c.get("name", ""), str) and len(c.get("name", "")) <= 60 for c in columns)):
+            raise ClientError(400, "Choose 1 to 8 columns with short names.")
     settings = load_settings()
-    matrix = generate_evidence_matrix(papers, columns=columns, settings=settings)
+    matrix = generate_evidence_matrix(papers, columns=columns, settings=settings, max_papers=15)
     fmt = payload.get("format")
     if fmt == "csv":
         return {"csv": export_matrix_csv(matrix)}

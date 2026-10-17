@@ -124,3 +124,62 @@ class EvidenceMatrixTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EvidenceMatrixAuditFixes(unittest.TestCase):
+    """Fixes from the 2.0.0 audit: honest extraction, claim-in-quote check, CSV and request safety."""
+
+    def test_invented_claim_with_a_real_quote_is_rejected(self):
+        source = "Outer membrane vesicles were isolated from cultures. Vesicles induced IL-8 secretion in epithelial cells."
+        cell = em.verify_grounded_cell("Vesicles cured infection in 90% of patients", "Vesicles induced IL-8 secretion in epithelial cells.", source)
+        self.assertFalse(cell["grounded"])
+        self.assertEqual(cell["value"], "Not stated in the abstract")
+        ok = em.verify_grounded_cell("induced IL-8 secretion", "Vesicles induced IL-8 secretion in epithelial cells.", source)
+        self.assertTrue(ok["grounded"])
+
+    def test_study_system_prefers_organisms_and_avoids_look_alikes(self):
+        bio = "Cytokines were measured. S. aureus strains were grown in broth, and Staphylococcus aureus Newman was used throughout."
+        self.assertEqual(em.heuristic_extract_column("system", bio)["value"], "Staphylococcus aureus")
+        stats = "We compute the Mahalanobis distance between spectra. The Perseus interface is used for post-processing."
+        self.assertEqual(em.heuristic_extract_column("system", stats)["value"], "Not stated in the abstract")
+        trial = "This trial enrolled healthy adults aged 18-45. Data were analysed by intention to treat."
+        self.assertEqual(em.heuristic_extract_column("system", trial)["value"], "healthy adults")
+        self.assertEqual(em.heuristic_extract_column("system", "Body weight was recorded daily. We infected mice with the strain.")["value"], "infected mice")
+        mech = "At small strains the clots behaved linearly. Fibre compaction increased stiffness."
+        self.assertEqual(em.heuristic_extract_column("system", mech)["value"], "Not stated in the abstract")
+
+    def test_findings_are_whole_result_sentences_not_aims_or_hypotheses(self):
+        text = ("Little is known about vesicle uptake. To test this hypothesis, we studied 40 mice. "
+                "We found that vesicle uptake increased 3-fold (p < 0.01). These vesicles might be useful vaccines.")
+        cell = em.heuristic_extract_column("finding", text)
+        self.assertEqual(cell["value"], "We found that vesicle uptake increased 3-fold (p < 0.01).")
+        self.assertNotIn("…", cell["value"], "short sentences are shown whole")
+
+    def test_sentences_do_not_split_on_common_abbreviations(self):
+        parts = em._sentences("Rhizopus stolonifer var. lyticus grew well. Smith et al. showed the effect in C. jejuni strains.")
+        self.assertEqual(len(parts), 2)
+
+    def test_csv_export_neutralises_spreadsheet_formulas(self):
+        matrix = {"columns": [{"id": "finding", "name": "Main finding"}], "rows": [
+            {"title": "=HYPERLINK(\"http://evil.example\",\"click\")", "meta": "+1", "doi": "-2",
+             "cells": {"finding": {"value": "@SUM(A1:A2)", "quote": "", "grounded": True}}}]}
+        csv_text = em.export_matrix_csv(matrix)
+        for dangerous in ('=HYPERLINK', '+1', '-2', '@SUM'):
+            self.assertIn("'" + dangerous, csv_text)
+
+    def test_provider_label_says_no_ai(self):
+        papers = [{"title": f"P{i}", "abstract": "We found that uptake increased 3-fold in mice."} for i in range(2)]
+        self.assertEqual(em.generate_evidence_matrix(papers)["provider"], "Automatic sentence extraction (no AI)")
+
+
+class CompareEndpointValidation(unittest.TestCase):
+    def test_server_enforces_paper_and_column_limits(self):
+        from pulse_core import server
+        from pulse_core.constants import ClientError
+        paper = {"title": "P", "abstract": "We found that uptake increased 3-fold in mice."}
+        for payload in ({"papers": [paper]}, {"papers": [paper] * 16}, {"papers": "x"}, {"papers": [paper, "x"]},
+                        {"papers": [paper, paper], "columns": "x"}, {"papers": [paper, paper], "columns": [{"id": "x" * 61}]},
+                        {"papers": [paper, paper], "columns": [{"id": str(i)} for i in range(9)]}):
+            with self.assertRaises(ClientError):
+                server.handle_discovery_compare(payload)
+        self.assertEqual(len(server.handle_discovery_compare({"papers": [paper, paper]})["rows"]), 2)
