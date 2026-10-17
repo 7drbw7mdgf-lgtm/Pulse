@@ -112,7 +112,9 @@
         userTags: (Array.isArray(paper.userTags) ? paper.userTags : splitKeywords(paper.userTags || '')).map(tag => cleanField(String(tag)).slice(0, 60)).filter(Boolean).slice(0, 24),
         mapIds: Array.isArray(paper.mapIds) ? [...paper.mapIds] : (paper.mapId ? [paper.mapId] : (paper.selected !== false ? [state.maps?.[0]?.id || 'map-1'] : [])),
         mapId: paper.mapId || '',
-        metadataSource: paper.metadataSource || source
+        metadataSource: paper.metadataSource || source,
+        // Links copies of this paper on the user's other Macs (library sync).
+        syncId: /^[0-9a-f]{32}$/.test(paper.syncId || '') ? paper.syncId : ''
       };
     }
 

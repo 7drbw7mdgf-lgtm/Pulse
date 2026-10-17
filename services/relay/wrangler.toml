@@ -1,0 +1,10 @@
+name = "pulse-relay"
+main = "worker.mjs"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+# Created by setup.sh (npx wrangler d1 create pulse-relay); the ID is not a secret.
+[[d1_databases]]
+binding = "DB"
+database_name = "pulse-relay"
+database_id = "02bab00a-7940-4c3c-8dbb-0b8e07fbc801"

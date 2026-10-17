@@ -1,7 +1,7 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai https://europepmc.org https://icite.od.nih.gov; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.8.9 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-1.8.9-merge">
-<link rel="icon" type="image/png" href="favicon.png?v=1.8.9"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v1.9.0 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-1.9.0">
+<link rel="icon" type="image/png" href="favicon.png?v=1.9.0"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
@@ -252,6 +252,7 @@
 </button>
 <button class="mac-sidebar-item" data-settings-tab="search" type="button"><span class="mac-sidebar-icon">⌕</span><span>Search sources</span></button>
 <button class="mac-sidebar-item" data-settings-tab="managers" type="button"><span class="mac-sidebar-icon">📚</span><span>Mendeley &amp; Zotero</span></button>
+<button class="mac-sidebar-item" data-settings-tab="sync" type="button"><span class="mac-sidebar-icon">⇅</span><span>Sync &amp; privacy</span></button>
 </nav>
 <div class="settings-content mac-settings-body">
 <section data-settings-pane="backend" class="settings-pane mac-pane">
@@ -378,18 +379,24 @@
 <div class="mac-form-actions"><button id="settingsOpenZoteroDialogButton" class="mac-btn" type="button">Check Zotero Connection</button></div>
 </div>
 </section>
-<section data-settings-pane="managers" class="settings-pane mac-pane" hidden>
-<div class="mac-group-card"><div class="mac-group-title">Mendeley Connection Settings</div>
-<p class="subtle">Connect Mendeley to automatically sync citations and send discovered papers directly to your Mendeley library. Register your application at the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal ↗</a>.</p>
-<div class="mac-form-row"><label class="mac-form-label" for="settingsMendeleyClientId">Client ID</label><div class="mac-form-control"><input id="settingsMendeleyClientId" class="mac-input" placeholder="e.g. 26116" autocomplete="off"></div></div>
-<div class="mac-form-row"><label class="mac-form-label" for="settingsMendeleyClientSecret">Client Secret</label><div class="mac-form-control"><input id="settingsMendeleyClientSecret" class="mac-input" type="password" autocomplete="new-password" placeholder="Your registered client secret"></div></div>
-<div class="mac-form-row"><label class="mac-form-label" for="settingsMendeleyRedirect">Redirect URL</label><div class="mac-form-control"><input id="settingsMendeleyRedirect" class="mac-input" type="url" value="http://127.0.0.1:8765/mendeley/callback"><small class="subtle">Must match the Redirect URL in dev.mendeley.com exactly (e.g. <code>http://127.0.0.1:8767/mendeley/callback</code>).</small></div></div>
-<div class="mac-form-actions"><button id="settingsSaveMendeleyButton" class="mac-btn primary" type="button">Save Settings</button><button id="settingsOpenMendeleyDialogButton" class="mac-btn" type="button">Open Mendeley bridge</button></div>
-<p id="settingsMendeleyFeedback" class="subtle" style="margin-top:8px;" role="status"></p>
+<section data-settings-pane="sync" class="settings-pane mac-pane" hidden>
+<div class="mac-group-card"><div class="mac-group-title">Sync between your Macs</div>
+<p class="subtle">Keep the library, notes, tags, reading status and maps the same on each Mac. Everything is encrypted on this Mac with a key made from your sync code; Pulse’s relay stores only data it cannot read. PDFs, extracted full text and map positions stay on the Mac where they were made. Papers removed on another Mac can be restored from Recovery.</p>
+<p id="syncStatusText" class="subtle" role="status">Sync is off.</p>
+<div id="syncOffControls" class="mac-form-actions"><button id="syncStartButton" class="mac-btn primary" type="button">Turn on sync</button><button id="syncJoinToggle" class="mac-btn" type="button">Use a code from another Mac</button></div>
+<div id="syncJoinRow" class="mac-form-row" hidden><label class="mac-form-label" for="syncJoinInput">Sync code</label><div class="mac-form-control"><input id="syncJoinInput" class="mac-input" type="password" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-…"><small class="subtle">Find it on your other Mac under Settings → Sync &amp; privacy → Show code.</small></div></div>
+<div id="syncJoinActions" class="mac-form-actions" hidden><button id="syncJoinButton" class="mac-btn primary" type="button">Join and sync</button></div>
+<div id="syncOnControls" hidden>
+<div class="mac-form-actions"><button id="syncNowButton" class="mac-btn primary" type="button">Sync now</button><button id="syncShowCodeButton" class="mac-btn" type="button">Show code</button><button id="syncCopyCodeButton" class="mac-btn" type="button" hidden>Copy code</button></div>
+<p id="syncCodeText" class="sync-code" hidden></p>
+<p class="subtle">Anyone with this code can read and change your synced library. Keep it private, like a password.</p>
+<div class="mac-form-actions"><button id="syncOffButton" class="mac-btn" type="button">Turn off on this Mac</button><button id="syncEraseButton" class="mac-btn danger" type="button">Turn off and erase the cloud copy</button></div>
 </div>
-<div class="mac-group-card"><div class="mac-group-title">Zotero Integration</div>
-<p class="subtle">Zotero connects automatically through Zotero Desktop on this computer. Keep Zotero open to send citations directly.</p>
-<div class="mac-form-actions"><button id="settingsOpenZoteroDialogButton" class="mac-btn" type="button">Check Zotero Connection</button></div>
+</div>
+<div class="mac-group-card"><div class="mac-group-title">Problem reports</div>
+<p class="subtle">When something goes wrong, Pulse records a report on this Mac: the error, where in the code it happened, app and macOS versions and memory use. Paper titles, notes, searches, keys and file paths are removed first. Nothing is sent unless you choose Send after viewing the exact report.</p>
+<ul id="crashReportList" class="crash-report-list"></ul>
+<div class="mac-form-actions"><button id="crashReportsRefresh" class="mac-btn" type="button">Refresh</button><button id="crashReportsDeleteAll" class="mac-btn" type="button">Delete all</button></div>
 </div>
 </section>
 <section data-settings-pane="storage" class="settings-pane mac-pane" hidden>
@@ -526,6 +533,9 @@
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your computer until you import them. PDFs and full paper text are not uploaded.</small></p>
 <details id="mendeleyDeveloperSettings" hidden><summary id="mendeleySettingsSummary">Mendeley connection settings (Client ID, Secret, Redirect URL)</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this computer's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
+<dialog id="crashReportDialog" class="record-dialog crash-report-dialog" aria-labelledby="crashReportTitle"><header><div><h2 id="crashReportTitle">Problem report</h2><small>This is exactly what Send uploads.</small></div><button id="crashReportClose" type="button" aria-label="Close problem report">×</button></header>
+<div class="record-dialog-body"><pre id="crashReportBody" class="crash-report-body"></pre><div class="record-actions"><button id="crashReportSend" class="button primary" type="button">Send report</button><button id="crashReportDelete" class="button secondary" type="button">Delete</button></div><p id="crashReportFeedback" class="record-feedback" role="status"></p></div></dialog>
+<div id="crashNotice" class="crash-notice" role="status" hidden><span id="crashNoticeText">Pulse recorded a problem.</span><button id="crashNoticeView" type="button">View report</button><button id="crashNoticeDismiss" type="button" aria-label="Dismiss">Dismiss</button></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-1.8.9-merge"></script>
 <script src="js/map-tabs.js?v=ui-1.8.9-merge"></script>
 <script src="js/paper-links.js?v=ui-20261012-dbef-scale"></script>
@@ -536,7 +546,7 @@
 <script src="js/part_06.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_07.js?v=ui-20261012-dbef-scale"></script>
 <script src="graph-engine.js?v=ui-1.8.9"></script>
-<script src="js/part_08.js?v=ui-1.8.9"></script>
+<script src="js/part_08.js?v=ui-1.9.0"></script>
 <script src="js/part_09.js?v=ui-1.8.9-merge"></script>
 <script src="js/graph-runtime.js?v=ui-1.8.9"></script>
 <script src="js/part_10.js?v=ui-1.8.9"></script>
@@ -549,13 +559,15 @@
 <script src="js/part_23.js?v=ui-1.8.9-mendeley"></script>
 <script src="js/mendeley-sync.js?v=ui-1.8.9-merge"></script>
 <script src="js/part_24.js?v=ui-1.8.9"></script>
+<script src="js/library-sync.js?v=ui-1.9.0b"></script>
+<script src="js/sync-and-reports.js?v=ui-1.9.0"></script>
 <script src="js/discovery-controls.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/publication-status.js?v=ui-20261012-evidence"></script>
 <script src="js/inspector.js?v=ui-1.8.9"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
 <script src="js/part_17.js?v=ui-1.8.9-merge"></script>
 <script src="js/part_18.js?v=ui-1.8.9"></script>
 <script src="js/discovery-review.js?v=ui-20261012-bridges-passages"></script>
-<script src="js/part_19.js?v=ui-1.8.9"></script>
+<script src="js/part_19.js?v=ui-1.9.0"></script>
 <script src="js/citation-lookup.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_20.js?v=ui-20261013-map"></script>
 <script src="js/timeline.js?v=ui-1.8.9"></script>

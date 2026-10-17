@@ -1,6 +1,6 @@
 {
   "name": "pulse-literature",
-  "version": "1.8.9",
+  "version": "1.9.0",
   "private": true,
   "description": "Local scientific literature discovery and paper linkage workspace",
   "license": "MIT",

@@ -115,6 +115,7 @@
         areas: state.areas.map(area => ({ ...area })),
         papers: state.papers.map(paper => ({
           id: paper.id,
+          syncId: paper.syncId || '',
           selected: paper.selected !== false,
           title: paper.title,
           name: paper.name,

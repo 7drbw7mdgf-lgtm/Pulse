@@ -33,6 +33,11 @@ class IndexMarkupTests(unittest.TestCase):
         self.assertEqual(parser.mismatches, [], 'closing tags out of order (line, column)')
         self.assertEqual(parser.stack, [], 'elements left open (line, column)')
 
+    def test_element_ids_are_unique(self):
+        import collections, re
+        ids = collections.Counter(re.findall(r'\bid="([^"]+)"', INDEX.read_text(encoding='utf-8')))
+        self.assertEqual({key: count for key, count in ids.items() if count > 1}, {}, 'duplicate IDs (e.g. a section merged twice)')
+
 
 if __name__ == '__main__':
     unittest.main()

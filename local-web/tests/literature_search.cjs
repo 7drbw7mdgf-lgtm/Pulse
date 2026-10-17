@@ -20,7 +20,9 @@ assert.deepEqual([...imported.paperKeywords],['diagrams','accessibility']);asser
 assert.equal(imported.discoveryMethod,'DBEF-content');assert.equal(imported.dbef.sharedReferenceIds[0],'W12');
 const workspaceSource=fs.readFileSync('pulse-frontend/js/part_19.js','utf8');vm.runInContext(workspaceSource.slice(workspaceSource.indexOf('    const libraryBibliographyCache'),workspaceSource.indexOf('    async function exportMap')),context);
 Object.assign(context.state,{papers:[imported],areas:[],links:[],clusters:[],keywords:new Map(),graphStyle:{},view:{},discoverySearchSources:{europePmc:true,core:false,semanticScholar:true},discoveryLimit:500});
+imported.syncId='cd'.repeat(16);
 const workspace=JSON.parse(JSON.stringify(context.serializeMap())),restored=context.normalizeImportedPaper(workspace.papers[0],'Restored workspace');
+assert.equal(restored.syncId,'cd'.repeat(16),'Library sync IDs must survive autosave and reload');
 assert.equal(workspace.discoveryLimit,500,'The discovery limit must survive workspace export and autosave');
 assert.equal(restored.discoveryMethod,'DBEF-content');assert.equal(restored.dbef.score,12.3);
 assert.equal(restored.fullTextUrl,item.fullTextUrl);assert.equal(restored.fullTextLinks.length,1);assert.equal(restored.sourceIdentifiers.CORE,'456');assert.equal(restored.pmcid,'PMC123');assert.equal(restored.coreId,'456');assert.equal(restored.citationCountsBySource['Europe PMC'],0);assert.equal(workspace.discoverySearchSources.core,false);

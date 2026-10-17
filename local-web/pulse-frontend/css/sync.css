@@ -1,0 +1,8 @@
+.sync-code { font: 600 15px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 8px; background: var(--surface-2); word-break: break-all; user-select: all; }
+.mac-btn.danger { color: #b42318; }
+.crash-report-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
+.crash-report-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12.5px; }
+.crash-report-body { max-height: 52vh; overflow: auto; margin: 0 0 12px; padding: 12px; border-radius: 8px; background: var(--surface-2); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; }
+.crash-notice { position: fixed; right: 18px; bottom: 18px; z-index: 900; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-lg, 0 10px 30px rgba(15,23,42,.18)); font-size: 12.5px; color: var(--ink); }
+.crash-notice[hidden] { display: none; }
+.crash-notice button { border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); padding: 4px 9px; font: inherit; cursor: pointer; }

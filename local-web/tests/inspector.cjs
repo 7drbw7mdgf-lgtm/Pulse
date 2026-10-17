@@ -128,5 +128,9 @@ const tiku = { id: 'tiku', title: 'Host immunity and cellular responses to bacte
   assert.equal(cleaned.relevance, '');
   assert.equal(cleaned.notes.length, 20000);
   assert.deepEqual([...cleaned.userTags], ['a', 'b']);
+  // Library sync links copies of a paper by syncId; reloading the library must keep it.
+  const synced = ctx.normalizeImportedPaper({ title: 'Synced', syncId: 'ab'.repeat(16) }, 'test');
+  assert.equal(synced.syncId, 'ab'.repeat(16));
+  assert.equal(ctx.normalizeImportedPaper({ title: 'Bad id', syncId: '../x' }, 'test').syncId, '');
   console.log('PASS: reading status, relevance, notes and tags survive saving and restoring, and invalid values are cleaned.');
 }

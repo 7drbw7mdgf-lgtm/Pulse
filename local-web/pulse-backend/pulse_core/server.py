@@ -49,6 +49,7 @@ from pulse_core.publication_status import publication_status
 from pulse_core.paper_metrics import paper_metrics, paper_relations
 from pulse_core.library_managers import manager_status, configure_mendeley, public_config, disconnect_mendeley, save_manager_records, search_manager
 from pulse_core.mendeley_oauth import start_oauth
+from pulse_core import sync_relay, crash_reports
 from pulse_core.mendeley_sync import page as mendeley_sync_page, preferences as mendeley_sync_preferences
 from pulse_core.paper_agent import agent_status, PAPER_SUMMARY_JOBS
 from pulse_core.passages import retrieve_passages, import_s2orc
@@ -158,6 +159,12 @@ class PulseHandler(SimpleHTTPRequestHandler):
         if path == "/api/library/recovery":
             self.write_json(200, list_recovery())
             return
+        if path == "/api/sync/state":
+            self.write_json(200, sync_relay.get_state())
+            return
+        if path == "/api/crash-reports":
+            self.write_json(200, crash_reports.list_reports())
+            return
         if path == "/api/health":
             settings = load_settings()
             self.write_json(200, {
@@ -209,6 +216,9 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/papers/status",
             "/api/citations/chase",
             "/api/citations/network",
+            "/api/sync/state", "/api/sync/forget", "/api/sync/relay",
+            "/api/crash-reports/get", "/api/crash-reports/send", "/api/crash-reports/dismiss",
+            "/api/crash-reports/delete", "/api/crash-reports/record",
         }
         if path not in valid_post_endpoints:
             self.send_error(404, "Unknown endpoint")
@@ -251,6 +261,14 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/citations/chase": iterative_citation_chase,
                 "/api/citations/network": citation_network_triangulation,
                 "/api/test": lambda _: test_gemma_settings(),
+                "/api/sync/state": sync_relay.save_state,
+                "/api/sync/forget": sync_relay.forget,
+                "/api/sync/relay": sync_relay.relay,
+                "/api/crash-reports/get": crash_reports.get_report,
+                "/api/crash-reports/send": crash_reports.send_report,
+                "/api/crash-reports/dismiss": crash_reports.dismiss_reports,
+                "/api/crash-reports/delete": crash_reports.delete_reports,
+                "/api/crash-reports/record": crash_reports.record_frontend,
             }
             if path == "/api/discovery/start":
                 validate_discovery_request(payload)
@@ -273,6 +291,8 @@ class PulseHandler(SimpleHTTPRequestHandler):
         except ClientError as error:
             self.write_json(error.status, {"error": str(error)})
         except Exception as error:
+            try: crash_reports.record_exception('backend-request', error, {'endpoint': path})
+            except Exception: pass
             self.write_json(500, {"error": f"Backend analysis failed: {error}"})
 
     def request_is_allowed(self, parsed, allow_api_token=True):
@@ -415,6 +435,7 @@ def start_parent_watchdog():
 
 def main():
     global SERVER_INSTANCE
+    crash_reports.install_hooks()
     port = int(os.environ.get("PULSE_PORT") or os.environ.get("IRATXE_PORT") or "8000")
     server = None
     ports_to_try = [port]

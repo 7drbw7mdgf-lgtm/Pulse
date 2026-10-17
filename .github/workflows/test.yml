@@ -44,4 +44,5 @@ jobs:
       - run: python3 -m pip install -r auth-service/requirements.txt
       - run: python3 -m unittest discover -s auth-service/tests -v
       - run: node --test auth-service/cloudflare/test/worker.test.mjs
+      - run: node --test services/relay/test/relay.test.mjs local-web/tests/library_sync.test.mjs
       - run: python3 -m unittest discover -s local-web/tests -p "test_mendeley_*.py" -v

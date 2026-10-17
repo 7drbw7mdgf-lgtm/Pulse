@@ -2,13 +2,13 @@
 
 ### A private, local-first workspace for scientific literature discovery and synthesis
 
-[![Release](https://img.shields.io/badge/release-v1.8.9-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.8.9)
+[![Release](https://img.shields.io/badge/release-v1.9.0-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v1.9.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases)
 
 ---
 
-**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.9/Pulse-1.8.9.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.8.0)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.8.9.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
+**[Download for Mac (Apple Silicon)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.9.0/Pulse-1.9.0.dmg)** &nbsp;|&nbsp; **[Download for Windows (x64, 1.8.0)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)** &nbsp;|&nbsp; **[Release Notes](docs/releases/1.9.0.md)** &nbsp;|&nbsp; **[Run from Source](local-web/README.md)**
 
 ---
 
@@ -21,6 +21,13 @@
 ---
 
 ![Pulse Discovery Review Workspace — synthetic example](docs/images/pulse-1.7.11-discovery.png)
+
+## What’s new in 1.9.0
+
+- **Encrypted sync between your Macs:** turn it on in Settings → Sync & privacy and enter the code on your other Mac. Library, notes, tags, reading status and maps stay in step; changes merge paper by paper, and notes edited on both Macs keep both texts. Encryption happens on your Mac, so the relay cannot read your library.
+- **Problem reports you control:** errors and memory spikes are recorded on your Mac with titles, notes, searches and keys removed. Nothing is sent unless you view the report and choose Send.
+
+See the [1.9.0 notes](docs/releases/1.9.0.md).
 
 ## What’s new in 1.8.9
 
@@ -145,7 +152,9 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 | **PDFs & Extracted Text** | Read, indexed, and stored entirely on your computer. Never uploaded. |
 | **AI Summaries & Analysis** | Processed by local Ollama models on your GPU/CPU. |
 | **Concept Search Keywords** | Extracted by the configured AI, locally by default. If you configure cloud AI, your typed topic is sent to that provider. Extracted phrases and the original topic are sent to the selected scholarly indexes. |
-| **Accounts & Tracking** | None. No account required, no telemetry, no tracking cookies. |
+| **Accounts & Tracking** | None. No account required, no automatic telemetry, no tracking cookies. |
+| **Sync between Macs (optional)** | Off until you turn it on. Library records are encrypted on your Mac with keys made from your sync code before upload; Pulse's relay (a Cloudflare Worker) stores only ciphertext it cannot read. PDFs, extracted full text and map positions are not synced. You can erase the cloud copy at any time. |
+| **Problem reports** | Recorded on your Mac with titles, notes, searches, keys and file paths removed. Sent to Pulse's relay only when you click Send after viewing the exact report. |
 | **Scholarly Lookups** | Pulse sends public paper identifiers (DOIs, titles, search keywords) to open scholarly APIs (Crossref, OpenAlex, OpenCitations, Europe PMC, NIH iCite, arXiv, Semantic Scholar, CORE) just like a web browser lookup. Keeping a paper selected for 1.5 s may run that paper's search lookups in the background (pre-warm, at most 10 per hour) so the next search starts faster. Responses are cached on your computer: stable lookups for up to 7 days, free-text searches for 15 minutes. An optional OpenAlex API key is sent only to OpenAlex and is never stored in the cache. |
 | **Reference Managers (optional)** | Only when you connect them. Zotero is reached on your computer through Zotero Desktop. Mendeley sign-in goes to Mendeley through Pulse's sign-in service (a Cloudflare Worker that stores nothing and only adds Pulse's application secret when exchanging or refreshing your tokens); Pulse then reads your Mendeley library to import it and sends only the papers you choose to send (bibliographic details and abstract, never PDFs). Mendeley tokens are stored encrypted on your computer. |
 
@@ -172,12 +181,12 @@ Pulse connects the entire workflow of literature exploration into one cohesive d
 ## Installation
 
 ### macOS (Apple Silicon, macOS 11+)
-1. Download **[Pulse-1.8.9.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.9/Pulse-1.8.9.dmg)**.
+1. Download **[Pulse-1.9.0.dmg](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.9.0/Pulse-1.9.0.dmg)**.
 2. Open the DMG and drag **Pulse.app** into your **Applications** folder.
 3. *Note:* Ensure you have Python 3.10+ installed (e.g. via Homebrew `brew install python`). Because Pulse is ad-hoc signed, if macOS blocks the first launch, right-click the app and choose **Open**, or run the `Allow-Pulse-Tauri.command` included in the DMG.
 
 ### Windows (Windows 10/11 x64)
-1. Download **[Pulse-1.8.0-Windows-x64-Setup.exe](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)**. The Windows installer is version 1.8.0; the 1.8.1–1.8.9 changes are in the Mac installer and in source.
+1. Download **[Pulse-1.8.0-Windows-x64-Setup.exe](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v1.8.0/Pulse-1.8.0-Windows-x64-Setup.exe)**. The Windows installer is version 1.8.0; the 1.8.1–1.9.0 changes are in the Mac installer and in source.
 2. Run the installer and follow the on-screen instructions. Python, PDF extraction, English OCR and the portable offline search ranker are bundled directly inside the Windows setup. [Installed-app verification](https://github.com/7drbw7mdgf-lgtm/Pulse/actions/runs/38360480575) checks these assets in an isolated profile.
 
 ---

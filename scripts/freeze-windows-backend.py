@@ -47,6 +47,7 @@ def main():
                     '--specpath', str(work), '--paths', str(backend),
                     '--collect-submodules', 'pulse_core', '--collect-all', 'pymupdf',
                     '--add-data', str(backend / 'pulse_core/mendeley-client.json') + ':pulse_core',
+                    '--add-data', str(backend / 'pulse_core/relay-client.json') + ':pulse_core',
                     '--add-data', str(backend / 'pulse_core/reranker_worker.py') + ':pulse_core',
                     *packaged_data_arguments(backend, args.search_runtime),
                     str(backend / 'pulse_backend.py')], cwd=ROOT, check=True)
