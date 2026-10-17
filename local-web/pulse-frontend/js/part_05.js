@@ -29,7 +29,6 @@
             openAlexApiKey: clearOpenAlexApiKey ? '' : (els.openAlexApiKeyInput ? els.openAlexApiKeyInput.value.trim() : ''),
             clearOpenAlexApiKey,
             contactEmail: els.pulseContactEmailInput ? els.pulseContactEmailInput.value.trim() : '',
-            searchRerankerModelType: els.searchRerankerModelTypeSelect ? els.searchRerankerModelTypeSelect.value : 'general',
             gemmaModel: els.gemmaModelInput.value.trim() || 'gemma3:4b',
             embeddingModel: els.embeddingModelInput.value.trim() || 'nomic-embed-text',
             triageModel: document.getElementById('triageModelInput')?.value.trim() || 'llama3.2:3b',

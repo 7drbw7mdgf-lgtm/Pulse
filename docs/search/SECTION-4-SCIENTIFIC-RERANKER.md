@@ -4,11 +4,11 @@
 We evaluated specialized scientific ranking architectures against the bundled default general-domain cross-encoder (`cross-encoder/ms-marco-MiniLM-L6-v2`) across all four Section 0 independent benchmark pools (`relish`, `synergy`, `scidocs`, `headtohead`).
 
 Under the strict Section 0 Decision Rule:
-- **Decision**: **Retain MiniLM-L6-v2 as the default cross-encoder and offer a dedicated "Biomedical ranker" setting** in Settings → Search sources.
+- **Decision**: **Retain MiniLM-L6-v2 as the universal default cross-encoder; reject bundling MedCPT into the release application.**
 - **Rationale**:
   1. **Domain Collapse**: While MedCPT (`ncbi/MedCPT-Cross-Encoder`, PubMedBERT-base) modestly improved biomedical retrieval on RELISH (+1.47% nDCG@20), it suffered severe domain collapse on multidisciplinary scientific corpora: **-4.42% nDCG@20 on SciDocs** (CS, physics, materials) and **-4.85% nDCG@20 on Head-to-Head** (transport, economics, environmental science). This violates the requirement that no dataset drop > 1.0%.
-  2. **Package Size Ceiling**: Bundling MedCPT int8 (~110 MB) and SPECTER2 (~110 MB) adds +235 MB to the application bundle, violating the strict +150 MB DMG limit.
-  3. **Inference Latency**: MedCPT warm inference on Apple Silicon CPU for 200 candidates × 4 passages reached 1.85 s (vs 0.18 s for MiniLM-L6), and combining both models exceeded 3.4 s, violating the 2.0 s warm latency ceiling.
+  2. **Package Size Ceiling**: Bundling MedCPT int8 (~110 MB) adds +112 MB to the DMG footprint, and combining models (+226 MB) violates the +150 MB DMG limit.
+  3. **Inference Latency**: MedCPT warm inference on Apple Silicon CPU for 200 candidates × 4 passages reached 1.85 s (vs 0.18 s for MiniLM-L6), a 10× latency penalty.
 
 ---
 
@@ -74,6 +74,6 @@ Measured on Apple Silicon M-series (macOS 15, CPU inference with onnxruntime):
 ---
 
 ## 5. Architectural Implementation
-1. **Model Selection UI**: Added **Reranker Model** selector to Settings → Search sources (`searchRerankerModelTypeSelect`), allowing researchers working exclusively on PubMed literature to select the Biomedical ranker.
-2. **Runtime Dispatch**: `pulse_core/discovery_crossencoder.py` reads `settings.get('searchRerankerModelType')` or `PULSE_RERANKER_MODEL_TYPE`, checking for `manifest-biomedical.json` with fallback to `manifest.json`.
+1. **Universal Model Retention**: In accordance with the Section 0 Decision Rule, `cross-encoder/ms-marco-MiniLM-L6-v2` is maintained as the sole on-device cross-encoder runtime.
+2. **Runtime Verification**: `pulse_core/discovery_crossencoder.py` locates and executes `manifest.json` under persistent worker subprocesses.
 3. **Packaging Integrity**: Preserves `onnx-executable-v1` format, isolated JSONL subprocess IPC, macOS 11 compatibility target, and offline execution without downloading weights at search time.

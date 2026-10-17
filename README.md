@@ -27,8 +27,8 @@
 - **Author Trajectory Retrieval:** Traces scientific lineages of senior and first authors in the same topical sub-concept via OpenAlex, with dedicated provenance badges and filters.
 - **Sub-10ms Instant Interactive Feedback:** Candidate paper re-ranking triggers immediately (< 10 ms) on clicking Relevant / Not Relevant via client-side Rocchio feedback below the fold, keeping reviewed items stable.
 - **Citation Context & Intent Extraction:** Extracts exact citing sentences and classifies intents (`Methodology`, `Result`, `Background`) from Semantic Scholar and Europe PMC JATS XML.
-- **Configurable Biomedical Cross-Encoder:** Keeps fast, domain-resilient MiniLM-L6-v2 by default, adding an optional PubMed-optimized cross-encoder toggle under Settings → Search sources.
-- **Hallucination-Proof Evidence Matrix:** Side-by-side comparative synthesis across 2–15 papers with 100% precision and mandatory verbatim grounding (0.0% hallucinated cells).
+- **Universal Scientific Cross-Encoder:** Retains fast, domain-resilient MiniLM-L6-v2 across all scientific disciplines following extensive ablation testing showing specialized models suffer cross-domain collapse.
+- **Grounded Evidence Matrix:** Side-by-side comparative synthesis across 2–15 papers covering 4 key dimensions (*Study system / organism*, *Core method*, *Main finding*, *Limitation*) with deterministic sentence extraction and mandatory verbatim grounding.
 - **Independent Multi-Domain Benchmark Suite:** 146 standardized cases across RELISH, SYNERGY, SciDocs, and Head-to-Head with 100% offline regression coverage.
 
 See the [2.0.0 notes](docs/releases/2.0.0.md).
