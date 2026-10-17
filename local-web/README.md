@@ -35,7 +35,7 @@ Results open in a three-column review workspace with source progress, named matc
 
 Install and start Ollama separately for optional local reports. Select a paper, then open AI agent. Reports use only that paper's available text, abstract or metadata. Progress, cancellation and downloads are available; model settings are separate from the main report panel. There is no OCR or paywall retrieval.
 
-The Reference managers ribbon tab offers Zotero Desktop transfer and Mendeley RIS export. Shared Mendeley sign-in uses the deployed Pulse token-exchange service. Its application credentials are currently rejected by Mendeley with HTTP 401; the service owner must repair that registration before shared sign-in and sync can work. See the [owner repair guide](../docs/MENDELEY-ACTIVATION.md). Scholarly lookup/discovery uses online services; local Ollama reports use local inference.
+The Reference managers ribbon tab offers Zotero Desktop transfer and Mendeley RIS export. Shared Mendeley sign-in uses the deployed Pulse token-exchange service. If sign-in repeatedly fails with HTTP 401, the service's application secret needs updating; see the [owner repair guide](../docs/MENDELEY-ACTIVATION.md). Scholarly lookup/discovery uses online services; local Ollama reports use local inference.
 
 Press the active ribbon tab again or double-click it to hide its tools. Reopen it with another press, or switch to the other tab. The AI agent stays in the top right of the toolbar.
 

@@ -4,7 +4,7 @@ Pulse ships the public address of its shared token-exchange service, `https://pu
 
 ## Current status
 
-The service is deployed and starts browser sign-in. Mendeley currently rejects the service’s application credentials with HTTP 401 during token exchange. A successful `/health` response confirms configuration presence; it does not validate the application credentials. Installing a new Pulse build or repeating browser login cannot replace the rejected server credential.
+The service is deployed and starts browser sign-in; Mendeley accepts application 26261 and its callback. The application secret was replaced on 17 October after Mendeley rejected the previous one. A successful `/health` response confirms configuration presence only. Mendeley answers HTTP 401 both for wrong application credentials and for an expired or already-used sign-in code, so a single 401 is not proof of a credential problem; repeated 401s on fresh sign-ins are. Installing a new Pulse build cannot replace a rejected server credential.
 
 ## Owner repair
 
