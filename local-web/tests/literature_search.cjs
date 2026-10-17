@@ -12,12 +12,14 @@ const item={title:'Accessible research diagrams',doi:'10.1234/diagram',authors:[
  sourceList:['Europe PMC','CORE'],sourceIdentifiers:{'Europe PMC':'MED/123',CORE:'456'},pmcid:'PMC123',coreId:'456',europePmcId:'MED/123',
  fullTextUrl:'https://europepmc.org/articles/PMC123',fullTextLinks:[{url:'https://repository.example/diagram.pdf',format:'pdf'}],
  citationCount:0,citationCountSource:'Europe PMC',citationCountsBySource:{'Europe PMC':0},keywords:'diagrams; accessibility',
- rankingMethod:'DBEF-content',dbef:{score:12.3,sharedReferenceIds:['W12'],seedMatches:[{seedIndex:0,shared:1}]}};
+ rankingMethod:'DBEF-content',dbef:{score:12.3,sharedReferenceIds:['W12'],seedMatches:[{seedIndex:0,shared:1}]},
+ authorRole:'last',authorTrajectoryLabel:'Same senior author',authorTrajectoryName:'Ada Brooks'};
 const imported=context.paperFromRecommendation(item);
 assert.equal(imported.fullTextUrl,item.fullTextUrl);assert.equal(imported.fullTextLinks[0].url,item.fullTextLinks[0].url);
 assert.equal(imported.coreId,'456');assert.equal(imported.pmcid,'PMC123');assert.equal(imported.citedByCount,0);
 assert.deepEqual([...imported.paperKeywords],['diagrams','accessibility']);assert.equal(imported.sourceIdentifiers.CORE,'456');
 assert.equal(imported.discoveryMethod,'DBEF-content');assert.equal(imported.dbef.sharedReferenceIds[0],'W12');
+assert.equal(imported.authorRole,'last');assert.equal(imported.authorTrajectoryLabel,'Same senior author');assert.equal(imported.authorTrajectoryName,'Ada Brooks');
 const workspaceSource=fs.readFileSync('pulse-frontend/js/part_19.js','utf8');vm.runInContext(workspaceSource.slice(workspaceSource.indexOf('    const libraryBibliographyCache'),workspaceSource.indexOf('    async function exportMap')),context);
 Object.assign(context.state,{papers:[imported],areas:[],links:[],clusters:[],keywords:new Map(),graphStyle:{},view:{},discoverySearchSources:{europePmc:true,core:false,semanticScholar:true},discoveryLimit:500});
 imported.syncId='cd'.repeat(16);
@@ -25,9 +27,11 @@ const workspace=JSON.parse(JSON.stringify(context.serializeMap())),restored=cont
 assert.equal(restored.syncId,'cd'.repeat(16),'Library sync IDs must survive autosave and reload');
 assert.equal(workspace.discoveryLimit,500,'The discovery limit must survive workspace export and autosave');
 assert.equal(restored.discoveryMethod,'DBEF-content');assert.equal(restored.dbef.score,12.3);
+assert.equal(restored.authorRole,'last');assert.equal(restored.authorTrajectoryLabel,'Same senior author');assert.equal(restored.authorTrajectoryName,'Ada Brooks');
 assert.equal(restored.fullTextUrl,item.fullTextUrl);assert.equal(restored.fullTextLinks.length,1);assert.equal(restored.sourceIdentifiers.CORE,'456');assert.equal(restored.pmcid,'PMC123');assert.equal(restored.coreId,'456');assert.equal(restored.citationCountsBySource['Europe PMC'],0);assert.equal(workspace.discoverySearchSources.core,false);
 context.state.discoveryResults=[item];context.state.discoveryQueue='all';context.state.discoverySearchErrors.set('fixture',{core:'Search limit reached.'});
-context.renderDiscoveryModal();assert.match(context.els.discoveryPaperList.innerHTML,/Full text available/);assert.match(context.els.discoveryPaperList.innerHTML,/Europe PMC/);assert.match(context.els.discoveryPaperList.innerHTML,/CORE/);assert.match(context.els.discoveryPaperList.innerHTML,/0 citations/);
+context.renderDiscoveryModal();assert.match(context.els.discoveryPaperList.innerHTML,/Full text available/);assert.match(context.els.discoveryPaperList.innerHTML,/Same senior author/);assert.match(context.els.discoveryPaperList.innerHTML,/is-author-trajectory/);assert.match(context.els.discoveryPaperList.innerHTML,/0 citations/);
+assert.match(context.discoveryPreviewMarkup(item,false),/dv-author-trajectory.*Same senior author/);
 assert.equal(notice.hidden,false);assert.match(notice.textContent,/Partial results.*CORE/);
 context.state.discoverySearchErrors.clear();context.state.discoveryResults=[{...item,fullTextUrl:'javascript:alert(1)'}];context.renderDiscoveryModal();
 assert(!context.els.discoveryPaperList.innerHTML.includes('javascript:'));assert(!context.els.discoveryPaperList.innerHTML.includes('Full text available'));assert.equal(notice.hidden,true);

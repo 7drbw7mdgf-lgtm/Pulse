@@ -135,6 +135,7 @@
           sourceList: paper.sourceList || [], sourceIdentifiers: paper.sourceIdentifiers || {},
           citationCountSource: paper.citationCountSource || '', citationCountsBySource: paper.citationCountsBySource || {},
           discoveryMethod: paper.discoveryMethod || '', dbef: paper.dbef || null,
+          authorRole: paper.authorRole || '', authorTrajectoryLabel: paper.authorTrajectoryLabel || '', authorTrajectoryName: paper.authorTrajectoryName || '',
           volume: paper.volume || '', issue: paper.issue || '', pages: paper.pages || '', issn: paper.issn || '',
           publisher: String(paper.publisher || ''), url: String(paper.url || ''), articleNumber: String(paper.articleNumber || ''), isbn: String(paper.isbn || ''), language: String(paper.language || ''), publicationType: String(paper.publicationType || ''),
         metadataCheckedAt: paper.metadataCheckedAt || '', metadataSnapshot: paper.metadataSnapshot || null, mendeleySource: paper.mendeleySource || null,

@@ -186,6 +186,34 @@ def _plain_reason(text):
 def why_found(record, seed_papers, options, relevance=0.0):
     """Plain-language evidence for one result, strongest kinds first."""
     why = []
+    evidence = record.get('retrievalEvidence') or []
+    channels = [str(ev.get('channel') or '') for ev in evidence]
+    seed_word = 'your seed paper' if len(seed_papers) <= 1 else 'one of your seed papers'
+    seen_traj_roles = set()
+    for ev in evidence:
+        ch = str(ev.get('channel') or '')
+        if not ch.startswith('author:'):
+            continue
+        role = ev.get('authorRole') or ('last' if ch.endswith(':last') else 'first' if ch.endswith(':first') else '')
+        if role not in ('first', 'last') or role in seen_traj_roles:
+            continue
+        seen_traj_roles.add(role)
+        author_name = str(ev.get('authorName') or record.get('authorTrajectoryName') or '').strip()
+        if role == 'last':
+            detail = f'Recent work by {seed_word}’s senior author ({author_name})' if author_name else f'Recent work by {seed_word}’s senior author'
+            why.append({'kind': 'senior-author', 'label': 'Same senior author', 'detail': detail})
+        else:
+            detail = f'Recent work by {seed_word}’s first author ({author_name})' if author_name else f'Recent work by {seed_word}’s first author'
+            why.append({'kind': 'first-author', 'label': 'Same first author', 'detail': detail})
+    if not seen_traj_roles and record.get('authorRole') in ('first', 'last'):
+        role = record['authorRole']
+        author_name = str(record.get('authorTrajectoryName') or '').strip()
+        if role == 'last':
+            detail = f'Recent work by {seed_word}’s senior author ({author_name})' if author_name else f'Recent work by {seed_word}’s senior author'
+            why.append({'kind': 'senior-author', 'label': 'Same senior author', 'detail': detail})
+        else:
+            detail = f'Recent work by {seed_word}’s first author ({author_name})' if author_name else f'Recent work by {seed_word}’s first author'
+            why.append({'kind': 'first-author', 'label': 'Same first author', 'detail': detail})
     seed_names = {}
     for seed in seed_papers:
         for name in seed.get('authors') or []:
@@ -201,9 +229,6 @@ def why_found(record, seed_papers, options, relevance=0.0):
         names = ', '.join(shared[:5]) + (f' +{len(shared) - 5}' if len(shared) > 5 else '')
         why.append({'kind': 'authors', 'label': f"Shares {len(shared)} author{'s' if len(shared) != 1 else ''}",
                     'detail': f'Shares authors with your seed: {names}'})
-    evidence = record.get('retrievalEvidence') or []
-    channels = [str(ev.get('channel') or '') for ev in evidence]
-    seed_word = 'your seed paper' if len(seed_papers) <= 1 else 'one of your seed papers'
     if any(channel.startswith('citations:') and channel.endswith(':backward') for channel in channels):
         why.append({'kind': 'cited-by-seed', 'label': 'Cited by your seed', 'detail': f'{seed_word[0].upper()}{seed_word[1:]} cites this paper'})
     if any(channel.startswith('citations:') and channel.endswith(':forward') for channel in channels):
@@ -327,6 +352,9 @@ def _versions(records):
                 if feature in other: published[feature] = other[feature]
         published['score'] = max(published['score'],other['score'])
         published['retrievalEvidence'] = (published.get('retrievalEvidence') or [])+(other.get('retrievalEvidence') or [])
+        for traj_key in ('authorRole', 'authorTrajectoryLabel', 'authorTrajectoryName'):
+            if not published.get(traj_key) and other.get(traj_key):
+                published[traj_key] = other[traj_key]
         published['sourceList'] = sorted(set((published.get('sourceList') or [])+(other.get('sourceList') or [])))
         published['branches'] = sorted(set(published['branches']+other['branches']))
         published['branchHits']={**(published.get('branchHits') or {}),**(other.get('branchHits') or {})}
@@ -392,9 +420,26 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
                 if record.get('subType'): ev.setdefault('subType', record['subType'])
                 if record.get('reason') and branch in ('citationNetwork', 'citationGraph'): ev.setdefault('detail', record['reason'])
                 if record.get('chaseViaTitle'): ev.setdefault('via', record['chaseViaTitle'])
+                if record.get('authorRole'): ev.setdefault('authorRole', record['authorRole'])
+                if record.get('authorTrajectoryName'): ev.setdefault('authorName', record['authorTrajectoryName'])
             candidates.append(record)
     records = merge_search_records(candidates)
     if not records: return []
+    for record in records:
+        for ev in record.get('retrievalEvidence') or []:
+            ch = str(ev.get('channel') or '')
+            if ch.startswith('author:'):
+                role = ev.get('authorRole') or ('last' if ch.endswith(':last') else 'first' if ch.endswith(':first') else '')
+                if role in ('first', 'last'):
+                    record.setdefault('authorRole', role)
+                    record.setdefault('authorTrajectoryLabel', 'Same senior author' if role == 'last' else 'Same first author')
+                    if ev.get('authorName'):
+                        record.setdefault('authorTrajectoryName', ev['authorName'])
+                    badge = record['authorTrajectoryLabel']
+                    badges = list(record.get('discoveryBadges') or [])
+                    if badge not in badges:
+                        badges.insert(0, badge)
+                        record['discoveryBadges'] = badges
     apply_network_assessments(records,candidates_by_branch)
     queries = ([options['researchQuestion']] if options.get('researchQuestion') else []) + [text_for_paper(p) for p in seed_papers]
     if options.get('steerKeywords'): queries.append(' '.join(options['steerKeywords']))
