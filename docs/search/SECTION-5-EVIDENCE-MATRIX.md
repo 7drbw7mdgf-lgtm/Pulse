@@ -29,4 +29,4 @@ Tested in `local-web/tests/test_evidence_matrix.py` across synthetic test cases 
 - **Total Cells Evaluated**: 80 cells (20 test cases × 4 structured columns).
 - **Hallucinated Cells**: **0% (0 / 80 cells)**. Every populated cell is backed by an exact verbatim sentence verified against the source text.
 - **Correct "Not Stated" Fallback**: Correctly identifies when a dimension (such as limitation) is unmentioned in the abstract.
-- **Latency**: Sub-millisecond (~1.5 ms per paper) with deterministic heuristic extraction and thread pool concurrency.
+- **Latency**: ~1.5 ms per paper with deterministic heuristic extraction and thread pool concurrency.
