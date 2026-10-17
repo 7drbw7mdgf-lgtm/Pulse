@@ -38,7 +38,7 @@ test('health reports configuration without exposing secrets', async () => {
   assert.ok(!JSON.stringify(await missing.json()).includes('test-secret'));
 });
 
-test('provider application authentication failures preserve 401 and identify the registration repair', async () => {
+test('a Mendeley 401 is passed on as 401 and explains both likely causes', async () => {
   const { started } = await signIn();
   const provider = mockProvider(async () => Response.json({ message: 'Credentials are required to access this resource. test-secret' }, { status:401 }));
   try {
@@ -49,7 +49,8 @@ test('provider application authentication failures preserve 401 and identify the
       assert.equal(failure.code,'mendeley_application_authentication_failed');
       assert.equal(failure.stage,'application_authentication');
       assert.equal(failure.providerStatus,401);
-      assert.match(failure.error,/service owner.*application ID and secret/);
+      assert.match(failure.error,/expired or been used already/, 'Mendeley also answers 401 for an expired or reused code');
+      assert.match(failure.error,/application ID or secret/);
       assert.ok(!JSON.stringify(failure).includes('test-secret'));
       assert.equal(failure.access_token,undefined);
     }

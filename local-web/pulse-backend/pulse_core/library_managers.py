@@ -116,7 +116,7 @@ def request(url, method='GET', data=None, headers=None, timeout=10, envelope=Fal
             pass
         if url == MENDELEY + '/oauth/token' and error.code == 401:
             raise mendeley_failure(401,
-                'Mendeley application authentication failed (HTTP 401). Check the registered application ID and secret in Connection settings, then connect again.',
+                'Mendeley rejected the sign-in (HTTP 401). Connect again; if this keeps happening, check the application ID and secret in Connection settings.',
                 'application_authentication', 'mendeley_application_authentication_failed') from None
         msg = f'{"Zotero" if url.startswith(ZOTERO) else "Mendeley"} returned HTTP {error.code}'
         if detail: msg += f': {detail}'

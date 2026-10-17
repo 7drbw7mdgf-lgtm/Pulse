@@ -120,7 +120,7 @@ class ExchangeTests(unittest.TestCase):
         self.assertEqual(rejected.exception.status,401)
         self.assertEqual(rejected.exception.mendeley_stage,'application_authentication')
         self.assertEqual(rejected.exception.mendeley_code,'mendeley_application_authentication_failed')
-        self.assertIn('service owner must verify',str(rejected.exception))
+        self.assertIn('connect again',str(rejected.exception))
         self.assertNotIn('do-not-echo',str(rejected.exception));self.assertEqual(opener.open.call_count,1)
     def test_invalid_grant_remains_token_exchange_failure(self):
         error=urllib.error.HTTPError('https://service.example/token',400,'Bad Request',{},

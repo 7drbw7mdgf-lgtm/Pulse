@@ -100,7 +100,8 @@ async function providerToken(env, fields) {
   if (!response.ok) {
     if (response.status === 401) {
       return json({
-        error: 'Mendeley application authentication failed. The Pulse sign-in service owner must verify its registered application ID and secret before connecting again.',
+        // Mendeley answers 401 both for wrong application credentials and for an expired or reused code.
+        error: 'Mendeley rejected the sign-in (HTTP 401). The sign-in may have expired or been used already: connect again. If this keeps happening, the sign-in service\'s application ID or secret may be wrong.',
         code: 'mendeley_application_authentication_failed', stage: 'application_authentication', providerStatus: 401
       }, 401);
     }

@@ -39,7 +39,7 @@ def call(base, path, payload):
                                error.code == 401 and path in {'/token', '/refresh'})
         if application_failure:
             failure = ClientError(status,
-                'Mendeley application authentication failed (HTTP 401). The Pulse sign-in service owner must verify its registered application ID and secret. Connect again after the service is corrected.')
+                'Mendeley rejected the sign-in (HTTP 401). The sign-in may have expired or been used already: connect again. If this keeps happening, the sign-in service\'s application ID or secret may be wrong.')
             failure.mendeley_stage = 'application_authentication'
             failure.mendeley_code = 'mendeley_application_authentication_failed'
         else:
