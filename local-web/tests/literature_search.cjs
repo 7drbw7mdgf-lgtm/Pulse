@@ -12,12 +12,16 @@ const item={title:'Accessible research diagrams',doi:'10.1234/diagram',authors:[
  sourceList:['Europe PMC','CORE'],sourceIdentifiers:{'Europe PMC':'MED/123',CORE:'456'},pmcid:'PMC123',coreId:'456',europePmcId:'MED/123',
  fullTextUrl:'https://europepmc.org/articles/PMC123',fullTextLinks:[{url:'https://repository.example/diagram.pdf',format:'pdf'}],
  citationCount:0,citationCountSource:'Europe PMC',citationCountsBySource:{'Europe PMC':0},keywords:'diagrams; accessibility',
+ citationContexts:['We adapted the accessible diagram encoding from Brooks (2024) for our benchmark.'],citationIntents:['Methodology','Result'],isInfluentialCitation:true,
  rankingMethod:'DBEF-content',dbef:{score:12.3,sharedReferenceIds:['W12'],seedMatches:[{seedIndex:0,shared:1}]}};
 const imported=context.paperFromRecommendation(item);
 assert.equal(imported.fullTextUrl,item.fullTextUrl);assert.equal(imported.fullTextLinks[0].url,item.fullTextLinks[0].url);
 assert.equal(imported.coreId,'456');assert.equal(imported.pmcid,'PMC123');assert.equal(imported.citedByCount,0);
 assert.deepEqual([...imported.paperKeywords],['diagrams','accessibility']);assert.equal(imported.sourceIdentifiers.CORE,'456');
 assert.equal(imported.discoveryMethod,'DBEF-content');assert.equal(imported.dbef.sharedReferenceIds[0],'W12');
+assert.deepEqual([...imported.citationContexts],['We adapted the accessible diagram encoding from Brooks (2024) for our benchmark.']);
+assert.deepEqual([...imported.citationIntents],['Methodology','Result']);
+assert.equal(imported.isInfluentialCitation,true);
 const workspaceSource=fs.readFileSync('pulse-frontend/js/part_19.js','utf8');vm.runInContext(workspaceSource.slice(workspaceSource.indexOf('    const libraryBibliographyCache'),workspaceSource.indexOf('    async function exportMap')),context);
 Object.assign(context.state,{papers:[imported],areas:[],links:[],clusters:[],keywords:new Map(),graphStyle:{},view:{},discoverySearchSources:{europePmc:true,core:false,semanticScholar:true},discoveryLimit:500});
 imported.syncId='cd'.repeat(16);
@@ -25,6 +29,15 @@ const workspace=JSON.parse(JSON.stringify(context.serializeMap())),restored=cont
 assert.equal(restored.syncId,'cd'.repeat(16),'Library sync IDs must survive autosave and reload');
 assert.equal(workspace.discoveryLimit,500,'The discovery limit must survive workspace export and autosave');
 assert.equal(restored.discoveryMethod,'DBEF-content');assert.equal(restored.dbef.score,12.3);
+assert.deepEqual([...restored.citationContexts],['We adapted the accessible diagram encoding from Brooks (2024) for our benchmark.']);
+assert.deepEqual([...restored.citationIntents],['Methodology','Result']);
+assert.equal(restored.isInfluentialCitation,true);
+const previewHtml=context.discoveryPreviewMarkup(item,false);
+assert.match(previewHtml,/How it cites your seed/);
+assert.match(previewHtml,/Methods/);
+assert.match(previewHtml,/Results/);
+assert.match(previewHtml,/Influential/);
+assert.match(previewHtml,/adapted the accessible diagram encoding/);
 assert.equal(restored.fullTextUrl,item.fullTextUrl);assert.equal(restored.fullTextLinks.length,1);assert.equal(restored.sourceIdentifiers.CORE,'456');assert.equal(restored.pmcid,'PMC123');assert.equal(restored.coreId,'456');assert.equal(restored.citationCountsBySource['Europe PMC'],0);assert.equal(workspace.discoverySearchSources.core,false);
 context.state.discoveryResults=[item];context.state.discoveryQueue='all';context.state.discoverySearchErrors.set('fixture',{core:'Search limit reached.'});
 context.renderDiscoveryModal();assert.match(context.els.discoveryPaperList.innerHTML,/Full text available/);assert.match(context.els.discoveryPaperList.innerHTML,/Europe PMC/);assert.match(context.els.discoveryPaperList.innerHTML,/CORE/);assert.match(context.els.discoveryPaperList.innerHTML,/0 citations/);

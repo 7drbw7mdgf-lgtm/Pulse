@@ -90,14 +90,24 @@ def merge_search_records(records):
         else:
             base = group["record"]
             for key, value in record.items():
-                if key not in {"branches", "sourceList", "fullTextLinks", "discoveryBadges", "sourceIdentifiers", "citationCountsBySource", "retrievalEvidence", "citationCount", "citedByCount", "citationCountSource"} and value not in (None, "", [], {}) and base.get(key) in (None, "", [], {}):
+                if key not in {"branches", "sourceList", "fullTextLinks", "discoveryBadges", "sourceIdentifiers", "citationCountsBySource", "retrievalEvidence", "citationCount", "citedByCount", "citationCountSource", "citationContexts", "citationIntents"} and value not in (None, "", [], {}) and base.get(key) in (None, "", [], {}):
                     base[key] = value
-            for key in ("branches", "sourceList", "fullTextLinks", "discoveryBadges", "retrievalEvidence", "publicationRelations", "publicationNotices"):
+            for key in ("branches", "sourceList", "fullTextLinks", "discoveryBadges", "retrievalEvidence", "publicationRelations", "publicationNotices", "citationIntents"):
                 if key in base or key in record:
                     base[key] = list(base.get(key) or [])
                     for value in record.get(key) or []:
                         if value not in base[key]:
                             base[key].append(value)
+            if "citationContexts" in base or "citationContexts" in record:
+                merged_ctx = list(base.get("citationContexts") or [])
+                for ctx in record.get("citationContexts") or []:
+                    s = str(ctx or "").strip()
+                    if s and s not in merged_ctx and len(merged_ctx) < 3:
+                        merged_ctx.append(s[:300])
+                if merged_ctx:
+                    base["citationContexts"] = merged_ctx
+            if record.get("isInfluentialCitation") is True:
+                base["isInfluentialCitation"] = True
             if record.get('isRetracted') is True:base['isRetracted']=True
             # Several indexes may report citations; keep the highest known count.
             incoming = known_count(record)

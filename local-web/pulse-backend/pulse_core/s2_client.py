@@ -171,27 +171,155 @@ def s2_paper_id_for_paper(paper, api_key=None):
         if match: return match.get('s2PaperId')
     return None
 
+import re
+
+_INTENT_LABELS = {
+    "methodology": "Methodology",
+    "methods": "Methodology",
+    "result": "Result",
+    "results": "Result",
+    "background": "Background",
+}
+
+
+def normalize_citation_contexts(contexts, max_sentences=3, max_chars=300):
+    if not contexts or not isinstance(contexts, (list, tuple)):
+        return []
+    out = []
+    seen = set()
+    for raw in contexts:
+        text = re.sub(r"\s+", " ", str(raw or "")).strip()
+        if not text:
+            continue
+        if len(text) > max_chars:
+            text = text[: max_chars - 1].rstrip() + "…"
+        key = text.lower()
+        if key not in seen:
+            seen.add(key)
+            out.append(text)
+            if len(out) >= max_sentences:
+                break
+    return out
+
+
+def normalize_citation_intents(intents):
+    if not intents or not isinstance(intents, (list, tuple)):
+        return []
+    out = []
+    for raw in intents:
+        val = str(raw or "").strip().lower()
+        if not val:
+            continue
+        if val in _INTENT_LABELS:
+            label = _INTENT_LABELS[val]
+        elif val.startswith("method"):
+            label = "Methodology"
+        elif val.startswith("result"):
+            label = "Result"
+        elif val.startswith("background"):
+            label = "Background"
+        else:
+            label = str(raw).strip().capitalize()
+        if label and label not in out:
+            out.append(label)
+    return out
+
+
+def _attach_s2_edge_context(meta, item):
+    contexts = normalize_citation_contexts(item.get("contexts"))
+    intents = normalize_citation_intents(item.get("intents"))
+    if contexts:
+        meta["citationContexts"] = contexts
+    if intents:
+        meta["citationIntents"] = intents
+    if item.get("isInfluential") is not None:
+        meta["isInfluentialCitation"] = bool(item.get("isInfluential"))
+    return meta
+
+
+def extract_epmc_xml_citation_contexts(xml_text, target_paper=None, max_sentences=3, max_chars=300):
+    """Extract up to 3 short verbatim citation sentences (<= 300 chars) from Europe PMC JATS XML."""
+    if not xml_text or not isinstance(xml_text, str):
+        return []
+    ref_ids = set()
+    if isinstance(target_paper, dict):
+        target_doi = str(target_paper.get("doi") or "").strip().lower()
+        target_pmid = str(target_paper.get("pmid") or "").strip()
+        target_title = re.sub(r"\W+", " ", str(target_paper.get("title") or "").lower()).strip()
+        for match in re.finditer(r'<ref\b[^>]*\bid=["\']([^"\']+)["\'][^>]*>(.*?)</ref>', xml_text, re.I | re.S):
+            rid, block = match.group(1), match.group(2)
+            block_low = block.lower()
+            if (target_doi and target_doi in block_low) or (target_pmid and target_pmid in block_low):
+                ref_ids.add(rid)
+            elif target_title and len(target_title) >= 12:
+                clean_block = re.sub(r"\W+", " ", re.sub(r"<[^>]+>", " ", block_low)).strip()
+                if target_title[:40] in clean_block:
+                    ref_ids.add(rid)
+    sentences = []
+    for p_match in re.finditer(r"<p\b[^>]*>(.*?)</p>", xml_text, re.I | re.S):
+        p_html = p_match.group(1)
+        if "<xref" not in p_html.lower():
+            continue
+        if ref_ids:
+            if not any(re.search(rf'rid=["\'][^"\']*\b{re.escape(rid)}\b', p_html, re.I) for rid in ref_ids):
+                continue
+        parts = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9(<])", p_html)
+        for part in parts:
+            if "<xref" not in part.lower():
+                continue
+            if ref_ids and not any(re.search(rf'rid=["\'][^"\']*\b{re.escape(rid)}\b', part, re.I) for rid in ref_ids):
+                continue
+            clean_sent = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", part)).strip()
+            if len(clean_sent) >= 20:
+                sentences.append(clean_sent)
+                if len(sentences) >= max_sentences:
+                    return normalize_citation_contexts(sentences, max_sentences=max_sentences, max_chars=max_chars)
+    return normalize_citation_contexts(sentences, max_sentences=max_sentences, max_chars=max_chars)
+
+
 def s2_fetch_references(identifier, api_key=None, limit=30):
     limit = min(500, discovery_limit(limit))
-    url = f"https://api.semanticscholar.org/graph/v1/paper/{identifier}/references?fields=citedPaper.title,citedPaper.authors,citedPaper.year,citedPaper.venue,citedPaper.externalIds,citedPaper.citationCount,citedPaper.abstract&limit={limit}"
+    url = f"https://api.semanticscholar.org/graph/v1/paper/{identifier}/references?fields=contexts,intents,isInfluential,citedPaper.title,citedPaper.authors,citedPaper.year,citedPaper.venue,citedPaper.externalIds,citedPaper.citationCount,citedPaper.abstract&limit={limit}"
     data = fetch_s2_json(url, api_key=api_key)
     res = []
-    for item in (data or {}).get("data") or []:
+    has_key = bool(s2_api_key(url, api_key))
+    context_cap = limit if has_key else 25
+    for idx, item in enumerate((data or {}).get("data") or []):
         cited = item.get("citedPaper")
         if cited and cited.get("title"):
-            res.append(s2_to_metadata(cited))
+            meta = s2_to_metadata(cited)
+            if idx < context_cap:
+                _attach_s2_edge_context(meta, item)
+            res.append(meta)
     return res
 
 def s2_fetch_citations(identifier, api_key=None, limit=30):
     limit = min(500, discovery_limit(limit))
-    url = f"https://api.semanticscholar.org/graph/v1/paper/{identifier}/citations?fields=citingPaper.title,citingPaper.authors,citingPaper.year,citingPaper.venue,citingPaper.externalIds,citingPaper.citationCount,citingPaper.abstract&limit={limit}"
+    url = f"https://api.semanticscholar.org/graph/v1/paper/{identifier}/citations?fields=contexts,intents,isInfluential,citingPaper.title,citingPaper.authors,citingPaper.year,citingPaper.venue,citingPaper.externalIds,citingPaper.citationCount,citingPaper.abstract&limit={limit}"
     data = fetch_s2_json(url, api_key=api_key)
     res = []
-    for item in (data or {}).get("data") or []:
+    has_key = bool(s2_api_key(url, api_key))
+    context_cap = limit if has_key else 25
+    for idx, item in enumerate((data or {}).get("data") or []):
         citing = item.get("citingPaper")
         if citing and citing.get("title"):
-            res.append(s2_to_metadata(citing))
+            meta = s2_to_metadata(citing)
+            if idx < context_cap:
+                _attach_s2_edge_context(meta, item)
+            res.append(meta)
     return res
+
+
+def s2_enrich_citation_contexts(identifier, direction="citations", api_key=None, limit=25):
+    """Optional best-effort citation context enrichment; silently skips on 429 or network error."""
+    try:
+        has_key = bool(s2_api_key("https://api.semanticscholar.org/graph/v1/paper", api_key))
+        eff_limit = min(100 if has_key else 25, max(1, int(limit or 25)))
+        if direction == "references":
+            return s2_fetch_references(identifier, api_key=api_key, limit=eff_limit)
+        return s2_fetch_citations(identifier, api_key=api_key, limit=eff_limit)
+    except Exception:
+        return []
 
 def s2_recommendations(positive_ids, negative_ids=None, api_key=None, limit=30):
     limit = min(500, discovery_limit(limit))

@@ -712,6 +712,30 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
                             publish_partial(copy.deepcopy(gathered))
                     except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
                     except Exception: pass
+        elif bool(api_key) and (cites or refs) and not cooldowns().get('Semantic Scholar'):
+            try:
+                s2_id = _core.s2_paper_id_for_paper(paper, api_key=api_key)
+                if s2_id:
+                    s2_edges = []
+                    if cites:
+                        s2_edges.extend( _core.s2_enrich_citation_contexts(s2_id, direction="citations", api_key=api_key, limit=per_seed) or [] )
+                    if refs:
+                        s2_edges.extend( _core.s2_enrich_citation_contexts(s2_id, direction="references", api_key=api_key, limit=per_seed) or [] )
+                    by_doi = {normalize_doi(e.get("doi") or "").lower(): e for e in s2_edges if normalize_doi(e.get("doi") or "")}
+                    by_pmid = {str(e.get("pmid") or "").strip(): e for e in s2_edges if str(e.get("pmid") or "").strip()}
+                    for rec in list(cites) + list(refs):
+                        d_key = normalize_doi(rec.get("doi") or "").lower()
+                        p_key = str(rec.get("pmid") or "").strip()
+                        edge = by_doi.get(d_key) or by_pmid.get(p_key)
+                        if edge:
+                            if edge.get("citationContexts") and not rec.get("citationContexts"):
+                                rec["citationContexts"] = edge["citationContexts"]
+                            if edge.get("citationIntents") and not rec.get("citationIntents"):
+                                rec["citationIntents"] = edge["citationIntents"]
+                            if edge.get("isInfluentialCitation") and not rec.get("isInfluentialCitation"):
+                                rec["isInfluentialCitation"] = True
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+            except Exception: pass
 
     max_depth = 4 if str(depth) == "iterative" else max(1, min(int(depth or (2 if include_iterative_chase else 1)), 3))
     if max_depth == 1:
