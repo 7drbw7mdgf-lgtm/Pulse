@@ -72,6 +72,21 @@ DISCOVERY_JOBS = DiscoveryJobs()
 BOOTSTRAP_CONSUMED = False
 SERVER_INSTANCE = None
 
+def handle_discovery_compare(payload):
+    from pulse_core.evidence_matrix import generate_evidence_matrix, export_matrix_csv, export_matrix_markdown
+    from pulse_core.storage import load_settings
+    papers = payload.get("papers") or []
+    columns = payload.get("columns")
+    settings = load_settings()
+    matrix = generate_evidence_matrix(papers, columns=columns, settings=settings)
+    fmt = payload.get("format")
+    if fmt == "csv":
+        return {"csv": export_matrix_csv(matrix)}
+    if fmt == "markdown":
+        return {"markdown": export_matrix_markdown(matrix)}
+    return matrix
+
+
 class PulseHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -213,6 +228,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/discovery/start",
             "/api/discovery/cancel",
             "/api/discovery/warm",
+            "/api/discovery/compare",
             "/api/papers/status",
             "/api/citations/chase",
             "/api/citations/network",
@@ -257,6 +273,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/citations/snowball": snowball_papers,
                 "/api/discovery/pipeline": run_discovery_pipeline,
                 "/api/discovery/warm": lambda p: (threading.Thread(target=warm_paper_discovery, args=(p.get("paper"), p.get("options") if isinstance(p.get("options"), dict) else None), daemon=True, name="pulse-warm").start() if isinstance(p, dict) and isinstance(p.get("paper"), dict) else None, {"warmed": True})[1],
+                "/api/discovery/compare": handle_discovery_compare,
                 "/api/papers/status":publication_status,
                 "/api/citations/chase": iterative_citation_chase,
                 "/api/citations/network": citation_network_triangulation,

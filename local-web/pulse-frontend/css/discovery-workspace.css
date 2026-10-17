@@ -229,3 +229,19 @@
 .publication-notices small { flex-basis:100%; color:var(--muted); }
 .publication-notices a { color:var(--accent); }
 html[data-theme="dark"] .publication-notices.is-warning { background:#381b24; color:#ffcaca; }
+
+/* Evidence Matrix Compare Dialog */
+.compare-dialog { max-width: 95vw; width: 1200px; max-height: 90vh; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow-lg); padding: 0; }
+.compare-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.compare-actions { display: flex; gap: 8px; }
+.compare-status { padding: 8px 18px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.compare-table-container { overflow-x: auto; max-height: calc(90vh - 150px); padding: 0; }
+.compare-table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left; }
+.compare-table th { position: sticky; top: 0; background: var(--surface-2); padding: 10px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-bottom: 1px solid var(--line); z-index: 2; }
+.compare-table td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; max-width: 280px; }
+.compare-paper-cell { min-width: 200px; }
+.compare-paper-cell strong { display: block; font-size: 13px; color: var(--ink); margin-bottom: 4px; }
+.compare-paper-cell small { color: var(--muted); }
+.compare-cell-val { font-weight: 500; color: var(--ink); line-height: 1.45; }
+.compare-cell-quote { display: block; margin-top: 6px; font-size: 11px; font-style: italic; color: var(--muted); line-height: 1.4; border-left: 2px solid #6366f1; padding-left: 6px; }
+.compare-table td.is-not-stated .compare-cell-val { color: var(--muted); font-style: italic; }
