@@ -117,28 +117,23 @@ function normalizedRelevance(value) {
 }
 
 // The library list's order: tag filters, then the chosen sort.
-function libraryDisplayPapers() {
-  const papers = state.papers.filter(paperMatchesFilters);
+function libraryDisplayPapers({clusterByPaper} = {}) {
   const sortKey = state.librarySortKey || 'year';
-  const isAsc = Boolean(state.librarySortAsc);
-  return papers.sort((a, b) => {
-    let valA = a[sortKey] || '';
-    let valB = b[sortKey] || '';
-    if (sortKey === 'authors') {
-      valA = (paperAuthors(a)[0] || '').toLowerCase();
-      valB = (paperAuthors(b)[0] || '').toLowerCase();
-    } else if (sortKey === 'citations') {
-      valA = (paperCitationCount(a) ?? -1);
-      valB = (paperCitationCount(b) ?? -1);
-      return isAsc ? valA - valB : valB - valA;
-    } else if (sortKey === 'year') {
-      valA = String(valA);
-      valB = String(valB);
-      return isAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-    } else {
-      valA = String(valA).toLowerCase();
-      valB = String(valB).toLowerCase();
-    }
-    return isAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+  const direction = state.librarySortAsc ? 1 : -1;
+  if (sortKey === 'group' && !clusterByPaper) {
+    clusterByPaper = new Map();
+    (state.clusters || []).forEach((cluster,index) => cluster.forEach(id => clusterByPaper.set(id,index)));
+  }
+  // Extract each sort value once. Group lookup and author parsing must not run
+  // inside the comparator, which is called O(n log n) times.
+  const rows = state.papers.filter(paperMatchesFilters).map((paper,index) => {
+    let value = paper[sortKey] || '';
+    if (sortKey === 'authors') value = paperAuthors(paper)[0] || '';
+    else if (sortKey === 'citations') value = paperCitationCount(paper) ?? -1;
+    else if (sortKey === 'group') value = typeof paperGroupInfo === 'function' ? paperGroupInfo(paper,clusterByPaper).name : '';
+    if (sortKey !== 'citations') value = String(value).toLowerCase();
+    return {paper,index,value};
   });
+  rows.sort((a,b) => direction * (sortKey === 'citations' ? a.value - b.value : a.value.localeCompare(b.value)) || a.index - b.index);
+  return rows.map(row => row.paper);
 }

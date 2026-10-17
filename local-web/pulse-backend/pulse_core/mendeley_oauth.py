@@ -13,7 +13,7 @@ from pulse_core.library_managers import read_config, config_lock, token_exchange
 
 _LOCK = threading.Lock()
 _PENDING = None
-_STATUS = {'pending': False, 'authorizationMessage': ''}
+_STATUS = {'pending': False, 'authorizationMessage': '', 'authorizationStage': '', 'authorizationErrorCode': ''}
 
 def oauth_status():
     from pulse_core.mendeley_broker import status
@@ -29,7 +29,7 @@ def cancel_oauth():
         previous = _PENDING
         if previous: previous['cancelled'] = True
         _PENDING = None
-        _STATUS.update(pending=False, authorizationMessage='')
+        _STATUS.update(pending=False, authorizationMessage='', authorizationStage='', authorizationErrorCode='')
     worker = previous.get('worker') if previous else None
     if worker and worker is not threading.current_thread(): worker.join(timeout=.75)
 
@@ -42,21 +42,25 @@ def callback_page(message, nonce):
 
 def start_oauth(payload=None):
     global _PENDING
-    with config_lock(): config = read_config()
-    flow = config.get('authFlow', 'code')
+    cancel_oauth()
+    with config_lock():
+        config = read_config()
+        flow = config.get('authFlow', 'code')
+        exchange = flow == 'exchange'
+        public_pkce = flow == 'pkce' and config.get('pkceVerified') is True
+        if flow == 'implicit':
+            raise ClientError(400, 'This older Mendeley sign-in is disabled. Activate an authorization-code connection.')
+        if exchange:
+            if not config.get('exchangeUrl'): raise ClientError(400, 'Pulse’s Mendeley sign-in service is not configured.')
+        elif flow != 'broker' and (not config.get('clientId') or not (public_pkce or (flow == 'code' and config.get('clientSecret')))):
+            raise ClientError(400, 'Pulse’s Mendeley connection needs its one-time application activation and provider verification.')
+        # A callback already exchanging a code must not save its grant after a restart.
+        config['authGeneration'] = config.get('authGeneration', 0) + 1
+        from pulse_core.library_managers import write_config
+        write_config(config)
     if flow=='broker':
-        cancel_oauth()
         from pulse_core.mendeley_broker import start
         return start(config)
-    if flow == 'implicit':
-        raise ClientError(400, 'This older Mendeley sign-in is disabled. Activate an authorization-code connection.')
-    exchange = flow == 'exchange'
-    public_pkce = flow == 'pkce' and config.get('pkceVerified') is True
-    if exchange:
-        if not config.get('exchangeUrl'): raise ClientError(400, 'Pulse’s Mendeley sign-in service is not configured.')
-    elif not config.get('clientId') or not (public_pkce or (flow == 'code' and config.get('clientSecret'))):
-        raise ClientError(400, 'Pulse’s Mendeley connection needs its one-time application activation and provider verification.')
-    cancel_oauth()
     verifier = secrets.token_urlsafe(64)
     if exchange:
         # Pulse's sign-in service redirects back to this computer on a free port; the code is
@@ -91,10 +95,14 @@ def start_oauth(payload=None):
                 fields.update({'state':pending['state']} if exchange else {'redirect_uri':redirect})
                 token_exchange(config, fields)
                 code, message = 200, 'Mendeley connected. Return to Pulse to send your chosen citations.'
+                stage, error_code = '', ''
             except ClientError as error:
-                code, message = 400, f'Could not finish Mendeley sign-in: {str(error)}. Return to Pulse and connect again.'
+                code, message = 400, f'Could not finish Mendeley sign-in: {str(error).rstrip(".")}. Return to Pulse.'
+                stage = getattr(error, 'mendeley_stage', 'authorization_response')
+                error_code = getattr(error, 'mendeley_code', '')
             with _LOCK:
-                if _PENDING is pending: _STATUS.update(pending=False, authorizationMessage=message)
+                if _PENDING is pending:
+                    _STATUS.update(pending=False, authorizationMessage=message, authorizationStage=stage, authorizationErrorCode=error_code)
             self.reply(code, message)
         def do_POST(self):
             self.reply(405, 'Only authorization-code responses are accepted.')

@@ -129,6 +129,7 @@ const state = {
       map: document.getElementById('map'),
       tableView: document.getElementById('tableView'),
       timelineView: document.getElementById('timelineView'),
+      trendsView: document.getElementById('trendsView'),
       emptyState: document.getElementById('emptyState'),
       details: document.getElementById('details'),
       detailsContent: document.getElementById('detailsContent'),
@@ -408,6 +409,7 @@ const state = {
     }
 
     function workspaceRail() {
+      if (typeof trendsVisible === 'function' && trendsVisible()) return 'trends';
       if (els.timelineView && !els.timelineView.hidden) return 'timeline';
       return state.mode === 'clusters' ? 'trends' : state.mode === 'table' ? 'bibliography' : 'network';
     }

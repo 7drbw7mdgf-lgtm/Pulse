@@ -29,25 +29,30 @@ def config_lock():
         with exclusive_file_lock(CONFIG_DIR / 'library-managers.lock'):
             yield
 
+def shared_mendeley_registration():
+    """Return only the shipped public registration, never this Mac's credentials."""
+    registration = Path(__file__).with_name('mendeley-client.json')
+    if not registration.exists(): return {}
+    public = json.loads(registration.read_text())
+    from pulse_core.mendeley_broker import origin
+    if public.get('exchangeUrl'):
+        return dict(exchangeUrl=origin(public['exchangeUrl']), authFlow='exchange', sharedRegistration=True)
+    if public.get('brokerUrl'):
+        return dict(brokerUrl=origin(public['brokerUrl']), authFlow='broker', sharedRegistration=True)
+    if public.get('clientId'):
+        return dict(clientId=public['clientId'], redirectUri=validate_redirect(public['redirectUri']),
+                    authFlow='pkce', pkceVerified=public.get('pkceVerified') is True, sharedRegistration=True)
+    return {}
+
 def read_config():
     path = CONFIG_DIR / 'library-managers.json'
     data = json.loads(path.read_text()) if path.exists() else {}
     for key in SECRETS:
         if data.get(key): data[key] = decrypt_secret(data[key])
     # Public application registration ships only an ID and redirect URL, never a secret.
-    registration = Path(__file__).with_name('mendeley-client.json')
     # Only a Mac without its own application or service settings uses the shipped registration.
-    if not data.get('clientId') and not data.get('brokerUrl') and registration.exists():
-        public = json.loads(registration.read_text())
-        if public.get('exchangeUrl'):
-            from pulse_core.mendeley_broker import origin
-            data.update(exchangeUrl=origin(public['exchangeUrl']),authFlow='exchange',sharedRegistration=True)
-        elif public.get('brokerUrl'):
-            from pulse_core.mendeley_broker import origin
-            data.update(brokerUrl=origin(public['brokerUrl']),authFlow='broker',sharedRegistration=True)
-        elif public.get('clientId'):
-            data.update(clientId=public['clientId'], redirectUri=validate_redirect(public['redirectUri']),
-                        authFlow='pkce', pkceVerified=public.get('pkceVerified') is True, sharedRegistration=True)
+    if not data.get('clientId') and not data.get('brokerUrl'):
+        data.update(shared_mendeley_registration())
     return data
 
 def write_config(data):
@@ -65,6 +70,12 @@ def write_config(data):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
+
+def mendeley_failure(status, message, stage, code):
+    error = ClientError(status, message)
+    error.mendeley_stage = stage
+    error.mendeley_code = code
+    return error
 
 def request(url, method='GET', data=None, headers=None, timeout=10, envelope=False):
     # Credentials may only reach the fixed provider; redirects are not followed.
@@ -103,10 +114,26 @@ def request(url, method='GET', data=None, headers=None, timeout=10, envelope=Fal
                 detail = data.get('error_description') or data.get('message') or data.get('error') or ''
         except Exception:
             pass
+        if url == MENDELEY + '/oauth/token' and error.code == 401:
+            raise mendeley_failure(401,
+                'Mendeley application authentication failed (HTTP 401). Check the registered application ID and secret in Connection settings, then connect again.',
+                'application_authentication', 'mendeley_application_authentication_failed') from None
         msg = f'{"Zotero" if url.startswith(ZOTERO) else "Mendeley"} returned HTTP {error.code}'
         if detail: msg += f': {detail}'
+        if url == MENDELEY + '/oauth/token':
+            raise mendeley_failure(error.code, f'Mendeley token exchange failed. {msg}',
+                'token_exchange', 'mendeley_token_exchange_failed') from None
+        if url == MENDELEY + '/profiles/me':
+            advice = ' Connect again to obtain a new account token.' if error.code == 401 else ''
+            raise mendeley_failure(error.code, f'Mendeley account verification failed. {msg.rstrip(".")}.{advice}',
+                'account_verification', 'mendeley_account_verification_failed') from None
         raise ClientError(error.code, msg)
     except (OSError, ValueError) as error:
+        if url in {MENDELEY + '/oauth/token', MENDELEY + '/profiles/me'}:
+            stage = 'token_exchange' if url.endswith('/oauth/token') else 'account_verification'
+            context = 'token exchange' if stage == 'token_exchange' else 'account verification'
+            raise mendeley_failure(502, f'Mendeley {context} is unavailable. Check the connection and try again.',
+                stage, f'mendeley_{stage}_unavailable') from error
         raise ClientError(502, f'{"Zotero" if url.startswith(ZOTERO) else "Mendeley"} is unavailable. Check the connection and try again.') from error
 
 def validate_redirect(value):
@@ -120,6 +147,8 @@ def validate_redirect(value):
     return value
 
 def configure_mendeley(payload):
+    if payload.get('usePulseSignIn') is True:
+        return use_pulse_mendeley_sign_in()
     client_id = str(payload.get('clientId') or '').strip()
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,200}', client_id):
         raise ClientError(400, 'Enter the Mendeley application client ID.')
@@ -136,11 +165,31 @@ def configure_mendeley(payload):
         write_config(config)
     return {'ok': True, 'configured': True}
 
+def use_pulse_mendeley_sign_in():
+    registration = shared_mendeley_registration()
+    if not registration or (registration.get('authFlow') == 'pkce' and registration.get('pkceVerified') is not True):
+        raise ClientError(400, 'This Pulse build does not include a working shared Mendeley registration.')
+    from pulse_core.mendeley_oauth import cancel_oauth
+    cancel_oauth()
+    with config_lock():
+        config = read_config()
+        config['authGeneration'] = config.get('authGeneration', 0) + 1
+        for key in ('clientId', 'clientSecret', 'redirectUri', 'brokerUrl', 'exchangeUrl', 'authFlow',
+                    'pkceVerified', 'sharedRegistration', 'accessToken', 'refreshToken', 'expiresAt',
+                    'profile', 'brokerSession', 'mendeleyReceipts', 'mendeleyAccountId'):
+            config.pop(key, None)
+        config.update(registration)
+        write_config(config)
+    return {'ok': True, 'configured': True}
+
 def public_config():
     with config_lock(): config = read_config()
+    registration = shared_mendeley_registration()
+    default_available = bool(registration) and (registration.get('authFlow') != 'pkce' or registration.get('pkceVerified') is True)
     return {'clientId': config.get('clientId', ''), 'redirectUri': config.get('redirectUri', 'http://127.0.0.1:8765/mendeley/callback'),
             'hasClientSecret': bool(config.get('clientSecret')), 'configured': bool((config.get('authFlow')=='broker' and config.get('brokerUrl')) or (config.get('authFlow')=='exchange' and config.get('exchangeUrl')) or config.get('clientId') and ((config.get('authFlow', 'code') == 'code' and config.get('clientSecret')) or (config.get('authFlow') == 'pkce' and config.get('pkceVerified') is True))),
             'sharedRegistration': bool(config.get('sharedRegistration')), 'authFlow': config.get('authFlow', 'code'),
+            'defaultSignInAvailable': default_available,
             'developerSettingsAvailable': os.environ.get('PULSE_MENDELEY_ADMIN')=='1' or not bool(config.get('sharedRegistration'))}
 
 def token_exchange(config, fields):
@@ -165,16 +214,19 @@ def token_exchange(config, fields):
     if (not isinstance(token, str) or not 1 <= len(token) <= 8192 or
         any(ord(char) < 33 or ord(char) > 126 for char in token) or
         str(result.get('token_type', 'bearer')).lower() != 'bearer'):
-        raise ClientError(502, 'Mendeley did not issue a valid access token.')
+        raise mendeley_failure(502, 'Mendeley token exchange failed: the response did not contain a valid access token.',
+            'token_exchange', 'mendeley_invalid_token_response')
     try:
         lifetime = int(result.get('expires_in', 3600))
         if not 1 <= lifetime <= 86400: raise ValueError()
     except (ValueError, TypeError, OverflowError):
-        raise ClientError(502, 'Mendeley returned an invalid token expiry.')
+        raise mendeley_failure(502, 'Mendeley token exchange failed: the response contained an invalid token expiry.',
+            'token_exchange', 'mendeley_invalid_token_response')
     profile = request(MENDELEY + '/profiles/me', headers={'Authorization': 'Bearer ' + token,
                       'Accept': 'application/vnd.mendeley-profiles.1+json'})
     if not isinstance(profile, dict) or not profile.get('id'):
-        raise ClientError(502, 'Mendeley did not confirm the account connection.')
+        raise mendeley_failure(502, 'Mendeley account verification failed: the response did not identify the connected account.',
+            'account_verification', 'mendeley_account_verification_failed')
     with config_lock():
         current = read_config()
         if (current.get('clientId') != config.get('clientId') or current.get('clientSecret') != config.get('clientSecret') or

@@ -1,35 +1,31 @@
-# Pulse 1.3.1 performance and reliability
+# Large-library performance
 
-This release restores the supplied 1.2 interface inside Tauri and extracts the backend into twelve modules. Discovery traversal and ranking are preserved. Earlier 1.3.0 worker and retained-SVG measurements describe a different frontend and do not apply to this restored workspace.
+The desktop package stages `local-web/pulse-frontend` and `local-web/pulse-backend`. Performance regression tests exercise those production files, independently of the historical root frontend.
 
-## Current measurements
+## Changes
 
-Measured on 7 October 2026 with headless Chrome on the development Mac. Short synthetic papers use twenty topic groups and the default threshold. Cold time includes analysis, drawing and layout; warm time is the median of five selection refreshes. No user library was used.
+Graph input snapshots compare relevant scalar fields and copied metadata arrays without serializing unchanged full text. The analysis engine caches tokenization, similarity pairs and citation topology. Selection, colour changes and ordinary redraws reuse the accepted result. Libraries of at least 120 papers use a worker for analysis; force layouts with at least 120 active nodes also run there. Revision and position checks reject stale results. Layout caches include map membership, dimensions, mode, centering, spacing and pinned coordinates.
 
-| Papers | Cold render | Warm selection | Calculated links |
-| --- | ---: | ---: | ---: |
-| 15 | 25.0 ms | 3.6 ms | 105 |
-| 100 | 239.8 ms | 54.7 ms | 4,950 |
+Library cards and full-screen table rows retain their DOM identity unless displayed content changes. A measured scrolling window limits mounted rows; a focused editor remains mounted. Event delegation prevents duplicate listeners. Sorting precomputes expensive keys once per paper. Map counters use sets instead of repeatedly searching the whole library for each link.
 
-Selection reuses the analysis and settled layout while the reference renderer redraws SVG elements. Initial graph calculation still runs on the main thread and compares paper pairs; large, dense libraries need further frontend optimisation. These measurements are observations of these fixtures, not speed guarantees or live-provider benchmarks.
+Autosave keeps one request in flight and combines later edits into the latest snapshot. Cached paper serialization and bibliography extraction avoid repeated full-text processing. A successful full save establishes an opaque storage revision; later requests can transfer changed papers. The backend validates that exact baseline and checkpoints the complete library atomically. A foreign clear or recovery invalidates old patches. The full local browser backup and on-disk checkpoint still contain the complete library; this is not a database migration.
 
-```sh
-PULSE_BROWSER_CHANNEL=chrome node scripts/benchmark-network.cjs
-```
+Trends reuses accepted graph keywords and topic groups. It caches publication and concept aggregates by relevant metadata, retains the dashboard when unchanged, and initially draws 24 paper cards and 12 concepts.
 
-Defaults are 15 and 100 papers. `PULSE_BENCH_SIZES=15,100,250` selects other sizes. Libraries and persistence are isolated from real user data.
+## Reproducing validation
 
-## Reliability retained during extraction
+Run `npm run test:workspace` for scoring parity, stale worker results/fallback, maps and pinning, keyed Library rows/editors, scrolling, save conflicts/clear/recovery, and Trends coverage and cache invalidation. Run `npm run test:performance:workspace` for a headless production-frontend benchmark using isolated synthetic libraries and no external service requests.
 
-- Discovery methods use bounded concurrency and retain successful branches when another fails. The job API supports progress and cancellation; the restored reference UI uses the completed pipeline response.
-- Successful scholarly JSON responses use a bounded ten-minute cache. Requests use provider gates and bounded Retry-After retries.
-- Model vectors use a bounded SQLite cache keyed by content, provider, endpoint and model, without storing the original document text.
-- Browser saves coalesce in a serial queue. Backend revision checks reject stale saves after newer snapshots, resets and unload beacons. Atomic file replacement protects the library write.
-- Save errors distinguish a browser-storage fallback from a complete persistence failure.
-- Runtime state and caches belong to an application context. Request and worker scopes prevent instances from sharing tokens, libraries or revision state.
+Measured on the development Mac with the same fixtures and four active map papers:
 
-## Verification
+| Operation | 336 papers before | 336 papers after | 1,000 papers before | 1,000 papers after |
+| --- | ---: | ---: | ---: | ---: |
+| Unchanged redraw, median of three | 196.8 ms | 2.5 ms | 1,763.7 ms | 9.5 ms |
+| Initial render returns | 209.5 ms | 12.0 ms | 1,814.6 ms | 5.1 ms |
+| Calculation and view ready | 428.1 ms | 212.0 ms | 3,558.7 ms | 952.8 ms |
+| Paper selection | 10.1 ms | 3.8 ms | 54.6 ms | 12.1 ms |
+| Mounted library rows | 336 | 20 | 1,000 | 20 |
 
-Twenty-three Python tests pass on Python 3.9, plus browser interaction, graph-engine and save-performance suites. Separate security tests cover encrypted credentials, session/Origin checks, header-based Gemini keys and PDF decompression caps. Ranking parity uses four complete-output fixtures recorded before extraction.
+Relationship and cluster totals match the baseline. Settled positions remain stable across unchanged redraws. Cached Trends reopening measured 0.8–1.5 ms. A separate synthetic save fixture with 336 papers and 24,000 full-text characters per paper sent 30,340 bytes for a one-paper delta versus 8,789,926 bytes for the full request (99.65% less transfer).
 
-The rebuilt Tauri bundle was checked in the actual Mac webview using a disposable copy and temporary data: startup port/token handshake, graph selection, Timeline ordering, settings persistence, JSON import and JSON/CSV downloads passed without JavaScript errors. The final installer is verified with a deep code-signature check, DMG verification and SHA-256 checksum. It is ad hoc signed and not Apple-notarized.
+These measurements describe synthetic local fixtures, not guaranteed timings for every library, machine or external search provider. Cold calculation still depends on paper count, text and relationship density.

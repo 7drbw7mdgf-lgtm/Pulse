@@ -32,10 +32,29 @@ async function signIn(port = 51234) {
 test('health reports configuration without exposing secrets', async () => {
   const ok = await call('/health');
   assert.equal(ok.status, 200);
-  assert.deepEqual(await ok.json(), { ok: true, protocol: 'exchange-1' });
+  assert.deepEqual(await ok.json(), { ok: true, configured: true, providerAuthentication: 'not_checked', protocol: 'exchange-1' });
   const missing = await call('/health', { environment: {} });
   assert.equal(missing.status, 503);
   assert.ok(!JSON.stringify(await missing.json()).includes('test-secret'));
+});
+
+test('provider application authentication failures preserve 401 and identify the registration repair', async () => {
+  const { started } = await signIn();
+  const provider = mockProvider(async () => Response.json({ message: 'Credentials are required to access this resource. test-secret' }, { status:401 }));
+  try {
+    for (const [path,body] of [['/token',{code:'abc',state:started.state,verifier}],['/refresh',{refresh_token:'old'}]]) {
+      const response = await call(path,{method:'POST',body});
+      assert.equal(response.status,401,'Application authentication is not reported as an invalid grant');
+      const failure = await response.json();
+      assert.equal(failure.code,'mendeley_application_authentication_failed');
+      assert.equal(failure.stage,'application_authentication');
+      assert.equal(failure.providerStatus,401);
+      assert.match(failure.error,/service owner.*application ID and secret/);
+      assert.ok(!JSON.stringify(failure).includes('test-secret'));
+      assert.equal(failure.access_token,undefined);
+    }
+    assert.equal(provider.seen.length,2,'Bad credentials are not retried');
+  } finally { provider.restore(); }
 });
 
 test('start returns a Mendeley authorization URL bound to the worker callback and never the secret', async () => {
@@ -106,6 +125,8 @@ test('refresh forwards only the refresh token and passes on provider refusals wi
     assert.equal(refused.status, 400);
     const body = await refused.json();
     assert.equal(body.error, 'Refresh token expired');
+    assert.equal(body.stage,'token_exchange');
+    assert.equal(body.code,'mendeley_token_exchange_failed');
     assert.ok(!JSON.stringify(body).includes('test-secret'));
     assert.equal(new URLSearchParams(provider.seen[0].init.body).get('grant_type'), 'refresh_token');
     assert.equal((await call('/refresh', { method: 'POST', body: {} })).status, 400);

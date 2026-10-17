@@ -258,7 +258,20 @@
       return tokens.concat(grams.filter(gram => gram.length < 42));
     }
 
-    function calculateRelatedness() {
+    let relatednessRevision = 0;
+    let relatednessFallbackKey = '';
+    function calculateRelatedness(options = {}) {
+      if (typeof ensureGraphAnalysis === 'function') return ensureGraphAnalysis(options);
+      // Standalone/minimal-script hosts retain the same synchronous behavior.
+      const key = JSON.stringify([state.papers.map(paper => [paper.id,paper.title,paper.authors,paper.year,paper.journal,paper.abstract,paper.paperKeywords,paper.text,paper.openAlexId,paper.openAlexUrl,paper.referenceIds,paper.citedByIds]),state.graphSteerKeywords,state.threshold,[...stopwords]]);
+      if (key === relatednessFallbackKey) return;
+      calculateRelatednessLegacy();
+      relatednessFallbackKey = key;
+      relatednessRevision += 1;
+      state.graphAnalysisRevision = relatednessRevision;
+    }
+
+    function calculateRelatednessLegacy() {
       const graphSteerTerms = dedupeList(state.graphSteerKeywords.flatMap(term => tokenize(term))).slice(0, 24);
       const docs = state.papers.map(paper => ({
         id: paper.id,

@@ -47,6 +47,39 @@ class _ResponseWrapper:
         pass
 
 
+def _request_origin(url):
+    try:
+        target = urllib.parse.urlsplit(url)
+        if target.username is not None or target.password is not None or not target.hostname:
+            return None
+        port = target.port
+        if port is None: port = 443 if target.scheme.lower() == 'https' else 80
+        return target.scheme.lower(), target.hostname.lower(), port
+    except ValueError:
+        return None
+
+
+class _OriginRestrictedRedirect(urllib.request.HTTPRedirectHandler):
+    def __init__(self, origin):
+        self.origin = _request_origin(origin)
+
+    def redirect_request(self, request, fp, code, message, headers, new_url):
+        if self.origin is None or _request_origin(new_url) != self.origin:
+            raise urllib.error.HTTPError(request.full_url, 502, 'API redirect blocked', headers,
+                io.BytesIO(b'The API redirected to an unsupported service address.'))
+        redirected = super().redirect_request(request, fp, code, message, headers, new_url)
+        if redirected is not None:
+            redirected.pulse_redirect_origin = request.pulse_redirect_origin
+        return redirected
+
+
+def _urlopen_fallback(request, timeout=14):
+    origin = getattr(request, 'pulse_redirect_origin', None)
+    if origin:
+        return urllib.request.build_opener(_OriginRestrictedRedirect(origin)).open(request, timeout=timeout)
+    return urllib.request.urlopen(request, timeout=timeout)
+
+
 def _urlopen_persistent(request, timeout=14):
     if hasattr(urllib.request.urlopen, 'mock_calls') or type(urllib.request.urlopen).__module__.startswith('unittest.mock'):
         return urllib.request.urlopen(request, timeout=timeout)
@@ -421,7 +454,7 @@ def _request_json_once(request, timeout=14, cache=True):
                 except (urllib.error.HTTPError, DiscoveryCancelled, DiscoveryBudgetExceeded, ProviderCooldown):
                     raise
                 except Exception:
-                    with urllib.request.urlopen(request, timeout=request_timeout) as response:
+                    with _urlopen_fallback(request, timeout=request_timeout) as response:
                         raw = response.read()
                         if (isinstance(raw, bytes) and raw.startswith(b'\x1f\x8b')) or (getattr(response, 'headers', None) and getattr(response.headers, 'get', lambda k, d='': d)('content-encoding', '').lower() == 'gzip'):
                             try:

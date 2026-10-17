@@ -189,20 +189,21 @@
             showToast('Enter a paper title or DOI to start discovery');
           }
         } else if (rail === 'network') {
+          if (typeof setTrendsVisible === 'function') setTrendsVisible(false);
           setTimelineVisible(false);
           state.mode = 'network';
           render();
         } else if (rail === 'trends') {
           setTimelineVisible(false);
-          state.mode = 'clusters';
-          render();
-          showToast('Topic clusters & trends');
+          if (typeof setTrendsVisible === 'function') setTrendsVisible(true);
         } else if (rail === 'collections' || rail === 'bibliography') {
+          if (typeof setTrendsVisible === 'function') setTrendsVisible(false);
           setTimelineVisible(false);
           state.mode = 'table';
           render();
           showToast('Bibliography view active.');
         } else if (rail === 'timeline') {
+          if (typeof setTrendsVisible === 'function') setTrendsVisible(false);
           setTimelineVisible(true);
         }
       });
@@ -239,6 +240,7 @@
       els.closeLibrarySwipeBtn.setAttribute('aria-label', label);
       els.closeLibrarySwipeBtn.setAttribute('aria-expanded', String(state.libraryFullscreen));
       if (expanded) {
+        if (typeof setTrendsVisible === 'function') setTrendsVisible(false);
         setTimelineVisible(false);
         setAiPanelOpen(false);
         highlightRail('library');
@@ -246,6 +248,7 @@
         const rail = state.libraryPreviousRail === 'library' ? 'network' : state.libraryPreviousRail || 'network';
         highlightRail(rail);
         if (rail === 'timeline') setTimelineVisible(true);
+        if (rail === 'trends' && typeof setTrendsVisible === 'function') setTrendsVisible(true);
       }
       syncDensityButtons();
       renderPapers();
@@ -254,6 +257,20 @@
     }
 
     els.closeLibrarySwipeBtn?.addEventListener('click', () => setLibraryFullscreen(!state.libraryFullscreen));
+
+    function openTrendsPaperInGraph(id) {
+      const paper = state.papers.find(item => item.id === id);
+      if (!paper) return;
+      setTrendsVisible(false);
+      setTimelineVisible(false);
+      state.mode = 'network';
+      state.centerId = id;
+      if (typeof setPaperOnMap === 'function') setPaperOnMap(paper, state.activeMapId, true);
+      highlightRail('network');
+      inspectPaper(id);
+      render();
+    }
+    if (typeof window !== 'undefined') window.openTrendsPaperInGraph = openTrendsPaperInGraph;
 
     // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {

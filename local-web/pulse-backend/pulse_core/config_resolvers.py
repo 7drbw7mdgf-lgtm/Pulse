@@ -10,7 +10,8 @@ def resolve_contact_email(settings):
     return str(os.environ.get("PULSE_CONTACT_EMAIL") or settings.get("pulse_contact_email") or settings.get("contactEmail") or "").strip()
 
 def resolve_semantic_scholar_api_key(settings):
-    return os.environ.get("SEMANTIC_SCHOLAR_API_KEY") or settings.get("semanticScholarApiKey") or ""
+    environment_key = str(os.environ.get("SEMANTIC_SCHOLAR_API_KEY") or "").strip()
+    return environment_key or str(settings.get("semanticScholarApiKey") or "").strip()
 
 def resolve_dimensions_api_key(settings):
     return os.environ.get("DIMENSIONS_API_KEY") or settings.get("dimensionsApiKey") or ""

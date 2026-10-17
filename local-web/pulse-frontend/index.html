@@ -1,7 +1,7 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai https://europepmc.org https://icite.od.nih.gov; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.8.6 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-1.8.5-map">
-<link rel="icon" type="image/png" href="favicon.png?v=1.8.6"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v1.8.9 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-1.8.9-merge">
+<link rel="icon" type="image/png" href="favicon.png?v=1.8.9"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
@@ -115,7 +115,7 @@
 <span id="libraryBulkCount" role="status">0 selected</span><button id="libraryBulkDeselect" class="button small secondary" type="button">Deselect</button>
 <select id="libraryBulkMapTabSelect" class="library-bulk-map-select" hidden aria-label="Add selected to map tab"><option value="">Add to map…</option></select>
 <label class="sr-only" for="libraryBulkFormat">Export format</label><select id="libraryBulkFormat" aria-label="Export format"><option value="ris">RIS</option><option value="csv">CSV</option><option value="json">JSON</option></select>
-<button id="libraryBulkExport" class="button small secondary" type="button">Export selected</button><button id="libraryBulkTag" class="button small secondary" type="button">Tag selected</button><button id="libraryBulkTransfer" class="button small secondary" type="button">Transfer selected</button><button id="libraryBulkRemove" class="button small secondary danger" type="button">Remove selected</button>
+<button id="libraryBulkExport" class="button small secondary" type="button">Export selected</button><button id="libraryBulkTag" class="button small secondary" type="button">Tag selected</button><label class="library-bulk-color-label" title="Colour code selected papers" aria-label="Colour code selected papers"><input type="color" id="libraryBulkColor" value="#4f46e5" aria-label="Colour code selected papers"></label><button id="libraryBulkColorBtn" class="button small secondary" type="button" title="Colour code selected papers">Colour selected</button><button id="libraryBulkTransfer" class="button small secondary" type="button">Transfer selected</button><button id="libraryBulkRemove" class="button small secondary danger" type="button">Remove selected</button>
 </div>
 <div id="activeTagFiltersList" class="active-tag-chips"></div> <div id="tagFilterDropdown" class="tag-filter-dropdown" hidden>
 <div id="libraryTagCloud" class="library-tag-cloud"></div> </div>
@@ -131,7 +131,9 @@
 <div id="mapDropOverlay" class="map-drop-overlay" hidden><div><strong>Drop papers onto your map</strong><span>PDF, BibTeX, RIS, JSON and text files</span></div></div> <svg id="map" class="map" role="img" aria-label="A linkage map of related papers"></svg>
 <div id="mapSelectionBar" class="map-selection-bar" role="toolbar" aria-label="Selected papers" hidden><span id="mapSelectionCount" class="map-selection-count">0 selected</span><button id="mapSelectionBridge" class="map-selection-primary" type="button" title="Search for what the selected papers share and find papers connecting them">Find bridges</button><button id="mapSelectionClear" type="button">Clear</button></div>
 <div id="tableView" class="table-view" hidden></div>
+<div id="graphComputeStatus" class="graph-compute-status" role="status" aria-live="polite" hidden></div>
 <section id="timelineView" class="timeline-view" aria-label="Papers in chronological order" hidden></section>
+<section id="trendsView" class="trends-view" aria-label="Library trends dashboard" hidden></section>
 <!-- EMPTY STATE -->
 <div id="emptyState" class="empty-state"> <div class="empty-card"> <div class="empty-glyph" aria-hidden="true"> <svg viewBox="0 0 120 80">
 <line x1="24" y1="52" x2="60" y2="22"></line> <line x1="60" y1="22" x2="96" y2="46"></line> <line x1="24" y1="52" x2="96" y2="46"></line>
@@ -345,6 +347,11 @@
 </section>
 <section data-settings-pane="search" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card"><div class="mac-group-title">Search quality benchmark</div><p class="subtle">Review 40 research questions, relevant papers and landmark labels. Provisional judgments stay separate from reviewed evidence.</p><a class="mac-btn" href="benchmark-review.html" target="_blank" rel="noreferrer">Review benchmark questions ↗</a></div>
+<div class="mac-group-card"><div class="mac-group-title">Semantic Scholar</div>
+<p class="subtle">Add your API key to use it for paper searches, citations and recommendations. Public search is also available without a key. Your saved key stays encrypted on this computer.</p>
+<div class="mac-form-row"><label class="mac-form-label" for="semanticScholarKeyInput">Semantic Scholar API key</label><div class="mac-form-control"><input id="semanticScholarKeyInput" class="mac-input" type="password" autocomplete="off" spellcheck="false" placeholder="Optional" aria-describedby="semanticScholarKeyStatus"><small id="semanticScholarKeyStatus" class="subtle" role="status">Public search · no key saved</small></div></div>
+<div class="mac-form-actions"><button id="clearSemanticScholarKeyButton" class="mac-btn" type="button">Remove saved key</button><button class="mac-btn primary" data-save-settings type="button">Save</button></div>
+<p class="subtle"><a href="https://www.semanticscholar.org/product/api#api-key-form" target="_blank" rel="noreferrer">Get a Semantic Scholar API key ↗</a></p></div>
 <div class="mac-group-card"><div class="mac-group-title">Europe PMC &amp; CORE</div>
 <p class="subtle">Public search works without account setup. Choose your sources in Discovery options. A CORE API key is optional and can provide a higher search allowance.</p>
 <div class="mac-form-row"><label class="mac-form-label" for="coreKeyInput">CORE API key</label><div class="mac-form-control"><input id="coreKeyInput" class="mac-input" type="password" autocomplete="off" placeholder="Optional"><small id="coreSearchStatus" class="subtle">Public search</small></div></div>
@@ -356,6 +363,20 @@
 <div class="mac-form-row"><label class="mac-form-label" for="pulseContactEmailInput">Polite pool email</label><div class="mac-form-control"><input id="pulseContactEmailInput" class="mac-input" type="email" autocomplete="off" placeholder="Optional (e.g. name@institution.edu)"><small class="subtle">Sent to OpenAlex only, to join its polite pool</small></div></div>
 <div class="mac-form-actions"><button id="clearOpenAlexKeyButton" class="mac-btn" type="button">Remove key</button><button class="mac-btn primary" data-save-settings type="button">Save</button></div>
 <p class="subtle"><a href="https://openalex.org" target="_blank" rel="noreferrer">Get an OpenAlex API key ↗</a></p></div>
+</section>
+<section data-settings-pane="managers" class="settings-pane mac-pane" hidden>
+<div class="mac-group-card"><div class="mac-group-title">Mendeley Connection Settings</div>
+<p class="subtle">Connect Mendeley to automatically sync citations and send discovered papers directly to your Mendeley library. Register your application at the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal ↗</a>.</p>
+<div class="mac-form-row"><label class="mac-form-label" for="settingsMendeleyClientId">Client ID</label><div class="mac-form-control"><input id="settingsMendeleyClientId" class="mac-input" placeholder="e.g. 26116" autocomplete="off"></div></div>
+<div class="mac-form-row"><label class="mac-form-label" for="settingsMendeleyClientSecret">Client Secret</label><div class="mac-form-control"><input id="settingsMendeleyClientSecret" class="mac-input" type="password" autocomplete="new-password" placeholder="Your registered client secret"></div></div>
+<div class="mac-form-row"><label class="mac-form-label" for="settingsMendeleyRedirect">Redirect URL</label><div class="mac-form-control"><input id="settingsMendeleyRedirect" class="mac-input" type="url" value="http://127.0.0.1:8765/mendeley/callback"><small class="subtle">Must match the Redirect URL in dev.mendeley.com exactly (e.g. <code>http://127.0.0.1:8767/mendeley/callback</code>).</small></div></div>
+<div class="mac-form-actions"><button id="settingsSaveMendeleyButton" class="mac-btn primary" type="button">Save Settings</button><button id="settingsOpenMendeleyDialogButton" class="mac-btn" type="button">Open Mendeley bridge</button></div>
+<p id="settingsMendeleyFeedback" class="subtle" style="margin-top:8px;" role="status"></p>
+</div>
+<div class="mac-group-card"><div class="mac-group-title">Zotero Integration</div>
+<p class="subtle">Zotero connects automatically through Zotero Desktop on this computer. Keep Zotero open to send citations directly.</p>
+<div class="mac-form-actions"><button id="settingsOpenZoteroDialogButton" class="mac-btn" type="button">Check Zotero Connection</button></div>
+</div>
 </section>
 <section data-settings-pane="managers" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card"><div class="mac-group-title">Mendeley Connection Settings</div>
@@ -501,39 +522,42 @@
 <header><div><h2 id="managerTitle">Library connections</h2><small>Send discovered papers to your reference manager.</small></div><button id="managerClose" type="button" aria-label="Close library connections">×</button></header>
 <div class="record-dialog-body"><div class="record-actions"><label>Papers to send <select id="managerScope"><option value="selected">Selected paper</option><option value="discoveries">Selected discovery results</option><option value="relations">Loaded citation / reference list</option><option value="bulk">Selected library rows</option><option value="all">Entire Pulse library</option></select></label><span id="managerSelectionCount" class="subtle"></span><button id="managerRefresh" class="button secondary" type="button">Refresh connections</button></div>
 <div class="manager-provider-grid"><section class="manager-provider-card"><h3>Zotero</h3><p id="zoteroConnectionNote"></p><small>Uses Zotero Desktop on this computer. Records go to the library or collection selected in Zotero.</small><div class="record-actions"><button id="zoteroSend" class="button primary" type="button" disabled>Send to Zotero</button></div></section>
-<section class="manager-provider-card"><h3>Mendeley</h3><p id="mendeleyConnectionNote"></p><small id="mendeleyHowTo">Export your chosen citations, then import the file into Mendeley.</small><div class="record-actions"><button id="mendeleyConnect" class="button secondary" type="button" disabled>Connect Mendeley</button><button id="mendeleyDisconnect" class="button secondary" type="button" hidden>Disconnect</button><button id="mendeleyConfigureBtn" class="button secondary" type="button">Connection settings</button><button id="mendeleySend" class="button primary" type="button" disabled>Export for Mendeley</button></div><a id="mendeleyAuthorizeLink" target="_blank" rel="noreferrer" hidden>Authorize Mendeley</a><p id="mendeleyAuthorizationNote" class="record-feedback" role="status"></p><div id="mendeleySyncBox" class="mendeley-sync-box" hidden><label><input id="mendeleyAutomaticSync" type="checkbox" checked> Keep Mendeley library in sync</label><p><small>Imports new and updated citations while Pulse is open. Your edits stay here; removed papers stay removed. Sending to Mendeley uses the papers you choose.</small></p><button id="mendeleySyncNow" class="button secondary" type="button">Sync now</button><p id="mendeleySyncStatus" class="record-feedback" role="status"></p></div><p id="mendeleyImportHelp"><small>In Mendeley, drag in the downloaded RIS file, or choose Add New → Import Library → RIS. <a href="https://www.elsevier.support/mendeley/answer/how-can-i-add-new-references-to-my-library-in-mendeley-reference-manager" target="_blank" rel="noreferrer">Import guide</a></small></p></section></div>
+<section class="manager-provider-card"><h3>Mendeley</h3><p id="mendeleyConnectionNote"></p><p id="mendeleyConnectionMethod" class="subtle"></p><small id="mendeleyHowTo">Export your chosen citations, then import the file into Mendeley.</small><div class="record-actions"><button id="mendeleyConnect" class="button secondary" type="button" disabled>Connect Mendeley</button><button id="mendeleyDisconnect" class="button secondary" type="button" hidden>Disconnect</button><button id="mendeleyRestartSignIn" class="button secondary" type="button" hidden>Restart sign-in</button><button id="mendeleyUsePulseSignIn" class="button secondary" type="button" hidden>Use Pulse sign-in</button><button id="mendeleyConfigureBtn" class="button secondary" type="button">Connection settings</button><button id="mendeleySend" class="button primary" type="button" disabled>Export for Mendeley</button></div><a id="mendeleyAuthorizeLink" target="_blank" rel="noreferrer" hidden>Authorize Mendeley</a><p id="mendeleyAuthorizationNote" class="record-feedback" role="status"></p><div id="mendeleySyncBox" class="mendeley-sync-box" hidden><label><input id="mendeleyAutomaticSync" type="checkbox" checked> Keep Mendeley library in sync</label><p><small>Imports new and updated citations while Pulse is open. Your edits stay here; removed papers stay removed. Sending to Mendeley uses the papers you choose.</small></p><button id="mendeleySyncNow" class="button secondary" type="button">Sync now</button><p id="mendeleySyncStatus" class="record-feedback" role="status"></p></div><p id="mendeleyImportHelp"><small>In Mendeley, drag in the downloaded RIS file, or choose Add New → Import Library → RIS. <a href="https://www.elsevier.support/mendeley/answer/how-can-i-add-new-references-to-my-library-in-mendeley-reference-manager" target="_blank" rel="noreferrer">Import guide</a></small></p></section></div>
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your computer until you import them. PDFs and full paper text are not uploaded.</small></p>
 <details id="mendeleyDeveloperSettings" hidden><summary id="mendeleySettingsSummary">Mendeley connection settings (Client ID, Secret, Redirect URL)</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this computer's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-1.8.5-clear"></script>
-<script src="js/map-tabs.js?v=ui-20261012-dbef-scale"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-1.8.9-merge"></script>
+<script src="js/map-tabs.js?v=ui-1.8.9-merge"></script>
 <script src="js/paper-links.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_02.js?v=ui-1.9-optimisation2"></script>
+<script src="js/part_02.js?v=ui-1.8.9-merge"></script>
 <script src="js/part_03.js?v=ui-20261011-171"></script>
-<script src="js/part_04.js?v=ui-1.9-openalex2"></script>
-<script src="js/part_05.js?v=ui-1.9-openalex"></script>
+<script src="js/part_04.js?v=ui-1.8.9"></script>
+<script src="js/part_05.js?v=ui-1.8.9-merge"></script>
 <script src="js/part_06.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_07.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_08.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_09.js?v=ui-1.8.5-links"></script>
-<script src="js/part_10.js?v=ui-20261013-map"></script>
+<script src="graph-engine.js?v=ui-1.8.9"></script>
+<script src="js/part_08.js?v=ui-1.8.9"></script>
+<script src="js/part_09.js?v=ui-1.8.9-merge"></script>
+<script src="js/graph-runtime.js?v=ui-1.8.9"></script>
+<script src="js/part_10.js?v=ui-1.8.9"></script>
 <script src="js/part_11.js?v=ui-20261013-map2"></script>
 <script src="js/part_12.js?v=ui-20261013-map2"></script>
-<script src="js/part_13.js?v=ui-20261014-drag"></script>
-<script src="js/part_14.js?v=ui-20261013-map"></script>
-<script src="js/map-interactions.js?v=ui-1.8.5-clear"></script>
+<script src="js/part_13.js?v=ui-1.8.9"></script>
+<script src="js/part_14.js?v=ui-1.8.9"></script>
+<script src="js/map-interactions.js?v=ui-1.8.9-merge"></script>
 <script src="js/part_15.js?v=ui-20261010-2"></script>
-<script src="js/part_23.js?v=ui-20261014-mendeley"></script>
-<script src="js/mendeley-sync.js?v=ui-20261014-merge3"></script>
-<script src="js/part_24.js?v=ui-20261010-2"></script>
+<script src="js/part_23.js?v=ui-1.8.9-mendeley"></script>
+<script src="js/mendeley-sync.js?v=ui-1.8.9-merge"></script>
+<script src="js/part_24.js?v=ui-1.8.9"></script>
 <script src="js/discovery-controls.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/publication-status.js?v=ui-20261012-evidence"></script>
-<script src="js/inspector.js?v=ui-20261011-11"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
-<script src="js/part_17.js?v=ui-1.9-optimisation"></script>
-<script src="js/part_18.js?v=ui-20261013-map2"></script>
+<script src="js/inspector.js?v=ui-1.8.9"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
+<script src="js/part_17.js?v=ui-1.8.9-merge"></script>
+<script src="js/part_18.js?v=ui-1.8.9"></script>
 <script src="js/discovery-review.js?v=ui-20261012-bridges-passages"></script>
-<script src="js/part_19.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/part_19.js?v=ui-1.8.9"></script>
 <script src="js/citation-lookup.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_20.js?v=ui-20261013-map"></script>
-<script src="js/timeline.js?v=ui-20261011-9"></script>
-<script src="js/part_21.js?v=ui-1.9-openalex"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>
+<script src="js/timeline.js?v=ui-1.8.9"></script>
+<script src="js/trends.js?v=ui-1.8.9"></script>
+<script src="js/part_21.js?v=ui-1.8.9-merge"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>

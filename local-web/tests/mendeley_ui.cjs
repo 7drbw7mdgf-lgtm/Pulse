@@ -20,6 +20,106 @@ context.state.selectedId=null;await context.exportMendeleyCitations();assert.equ
 const connector=source.slice(source.indexOf('async function connectMendeley()'),source.indexOf("document.getElementById('mendeleyConnect').addEventListener"));
 context.document.getElementById('mendeleyClientId').focus=()=>{};context.pulseRecordsRequest=()=>{throw new Error('Unconfigured setup must not request authorization');};
 vm.runInContext(connector,context);await context.connectMendeley();assert(elements.get('managerFeedback').textContent.includes('awaiting Pulse service activation'));
-console.log('PASS: shared registration hides developer settings; pending sign-in prevents duplicate requests; sending requires connection and chosen citations; unconfigured Mendeley offers selected-only export and actionable setup.');
+managerUi.status.mendeley={configured:true,connected:false,sharedRegistration:false,defaultSignInAvailable:true,pending:true};
+context.updateManagers();
+assert.equal(elements.get('mendeleyUsePulseSignIn').hidden,false);
+assert.equal(elements.get('mendeleyRestartSignIn').hidden,false);
+assert(elements.get('mendeleyConnectionMethod').textContent.includes('custom'));
+const link=context.document.getElementById('mendeleyAuthorizeLink');let opened=[];
+link.href='https://api.mendeley.com/oauth/authorize?client_id=obsolete';
+link.removeAttribute=name=>{if(name==='href')delete link.href;};
+link.click=()=>opened.push({href:link.href,target:link.target});
+context.window={__TAURI__:{}};context.clearInterval=()=>{};context.setInterval=()=>1;
+context.refreshManagers=async()=>{};
+context.pulseRecordsRequest=async()=>({authorizationUrl:'https://api.mendeley.com/oauth/authorize?client_id=current'});
+await context.connectMendeley();
+assert.equal(opened.at(-1).target,'_self','Desktop sign-in avoids an asynchronously blocked new-window popup');
+assert(opened.at(-1).href.includes('client_id=current'));
+context.pulseRecordsRequest=async()=>{throw new Error('Could not start sign-in');};
+await context.connectMendeley();assert.equal(link.hidden,true);assert.equal(link.href,undefined,'Failed restarts cannot reuse an obsolete application URL');
+const recovery=source.slice(source.indexOf('async function usePulseMendeleySignIn()'),source.indexOf("document.getElementById('mendeleyUsePulseSignIn')?.addEventListener"));
+vm.runInContext(recovery,context);
+const calls=[];const library=JSON.stringify(context.state.papers);
+context.pulseRecordsRequest=async(path,payload)=>{
+  calls.push({path,payload});
+  if(path.endsWith('/connect'))return {authorizationUrl:'https://api.mendeley.com/oauth/authorize?client_id=shared'};
+  return {configured:true,hasClientSecret:false,authFlow:'exchange',sharedRegistration:true};
+};
+context.refreshManagers=async()=>{managerUi.status.mendeley={configured:true,connected:false,authFlow:'exchange',sharedRegistration:true,defaultSignInAvailable:true};};
+await context.usePulseMendeleySignIn();
+assert.equal(calls[0].payload.usePulseSignIn,true);
+assert(opened.at(-1).href.includes('client_id=shared'));
+assert.equal(context.state.syncEpoch,1);
+assert.equal(JSON.stringify(context.state.papers),library,'Connection recovery does not replace local papers');
+assert.equal(elements.get('mendeleyUsePulseSignIn').hidden,true);
+await staleStatusCannotUndoRecovery();
+console.log('PASS: shared/custom modes, pending restart, fresh authorization URLs, desktop browser handoff, custom-application recovery, stale-response protection, local data preservation and selected-only export.');
 
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+function deferred() {
+  let resolve,reject;
+  const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});
+  return {promise,resolve,reject};
+}
+async function flush() {for(let i=0;i<12;i++)await Promise.resolve();}
+async function staleStatusCannotUndoRecovery() {
+  const fields=new Map(),timers=new Map(),cleared=[],requests=[];
+  const ui={status:{mendeley:{configured:true,connected:false,sharedRegistration:false,pending:true}},busy:false,connecting:false};
+  let nextTimer=1,shared=false;
+  const fixture={managerUi:ui,state:{papers:[{id:'kept'}],selectedId:'kept'},window:{__TAURI__:{}},
+    document:{getElementById(id){if(!fields.has(id))fields.set(id,element());return fields.get(id);}},
+    clearInterval:id=>{cleared.push(id);timers.delete(id);},
+    setInterval:callback=>{const id=nextTimer++;timers.set(id,callback);return id;},
+    pulseRecordsRequest:async(path,payload)=>{
+      if(path==='/api/managers/status'){const item=deferred();requests.push(item);return item.promise;}
+      if(path.endsWith('/connect'))return {authorizationUrl:'https://api.mendeley.com/oauth/authorize?client_id='+(shared?'shared':'custom')};
+      if(payload?.usePulseSignIn)shared=true;
+      return {configured:true,sharedRegistration:shared,authFlow:shared?'exchange':'code',defaultSignInAvailable:true};
+    }
+  };
+  vm.createContext(fixture);
+  const refresh=source.slice(source.indexOf('async function refreshManagers()'),source.indexOf('async function openManagers()'));
+  const connect=source.slice(source.indexOf('async function connectMendeley()'),source.indexOf("document.getElementById('mendeleyConnect').addEventListener"));
+  const recovery=source.slice(source.indexOf('async function usePulseMendeleySignIn()'),source.indexOf("document.getElementById('mendeleyUsePulseSignIn')?.addEventListener"));
+  vm.runInContext(selected+'\n'+refresh+'\n'+connect+'\n'+recovery,fixture);
+  const authorize=fixture.document.getElementById('mendeleyAuthorizeLink');authorize.click=()=>{};
+  authorize.removeAttribute=name=>{if(name==='href')delete authorize.href;};
+  const status=(isShared,pending,connected=false)=>({mendeley:{configured:true,sharedRegistration:isShared,defaultSignInAvailable:true,pending,connected}});
+  const first=fixture.connectMendeley();await flush();
+  requests[0].resolve(status(false,true));await first;
+  const oldTimer=ui.timer,oldPoll=timers.get(oldTimer)();await flush();
+  assert.equal(requests.length,2);
+  const recovering=fixture.usePulseMendeleySignIn();await flush();
+  assert(!timers.has(oldTimer));
+  requests[2].resolve(status(true,false));await flush();
+  requests[3].resolve(status(true,true));await recovering;
+  const newTimer=ui.timer;
+  assert.notEqual(newTimer,oldTimer);assert(timers.has(newTimer));
+  requests[1].resolve(status(false,false));await oldPoll;
+  assert.equal(ui.status.mendeley.sharedRegistration,true,'old custom status cannot overwrite recovered shared mode');
+  assert.equal(ui.status.mendeley.pending,true,'old completed status cannot clear a fresh pending sign-in');
+  assert(timers.has(newTimer),'an old poll cannot stop the new sign-in timer');
+  assert(!cleared.includes(newTimer));
+  assert(authorize.href.includes('client_id=shared'));
+  const failedPoll=timers.get(newTimer)();await flush();
+  await timers.get(newTimer)();
+  assert.equal(requests.length,5,'slow status checks must not overlap and invalidate every earlier result');
+  requests[4].reject(new Error('Temporary status failure'));await failedPoll;
+  assert(timers.has(newTimer),'a failed refresh must keep polling rather than interpret old state as completion');
+  const finished=timers.get(newTimer)();await flush();
+  requests[5].resolve(status(true,false,true));await finished;
+  assert(!timers.has(newTimer));assert.equal(ui.timer,null);assert.equal(authorize.hidden,true);
+  assert(fields.get('managerFeedback').textContent.includes('Mendeley connected'));
+  const before=fields.get('managerFeedback').textContent;
+  const stale=fixture.refreshManagers(),latest=fixture.refreshManagers();await flush();
+  requests[7].resolve(status(true,false,true));await latest;
+  requests[6].reject(new Error('Obsolete custom-app error'));await stale;
+  assert.equal(fields.get('managerFeedback').textContent,before,'stale refresh errors cannot replace current success feedback');
+  const older=fixture.refreshManagers(),newer=fixture.refreshManagers();await flush();
+  requests[8].resolve(status(false,true));await older;
+  assert.equal(fields.get('managerRefresh').disabled,true,'an old request cannot re-enable the newest pending refresh');
+  assert.equal(ui.status.mendeley.sharedRegistration,true);
+  requests[9].resolve(status(true,false,true));await newer;
+  assert.equal(fields.get('managerRefresh').disabled,false);
+}

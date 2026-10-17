@@ -10,29 +10,43 @@ function renderLibraryBulkActions(visiblePapers = state.papers.filter(paperMatch
   const bar = document.getElementById('libraryBulkBar');
   bar.hidden = !state.libraryFullscreen;
   document.getElementById('libraryBulkCount').textContent = `${count} selected${count > shown ? ` · ${count - shown} outside this filter` : ''}`;
-  for (const id of ['libraryBulkDeselect','libraryBulkExport','libraryBulkTag','libraryBulkTransfer','libraryBulkRemove']) document.getElementById(id).disabled = !count || state.libraryMutation;
+  for (const id of ['libraryBulkDeselect','libraryBulkExport','libraryBulkTag','libraryBulkColorBtn','libraryBulkTransfer','libraryBulkRemove']) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !count || state.libraryMutation;
+  }
   document.getElementById('libraryUndo').disabled = !state.libraryUndoId || state.libraryMutation;
   const selectAll = document.getElementById('librarySelectVisible');
   if (selectAll) {
     selectAll.checked = visiblePapers.length > 0 && shown === visiblePapers.length;
     selectAll.indeterminate = shown > 0 && shown < visiblePapers.length;
-    selectAll.addEventListener('change', () => {
-      for (const paper of visiblePapers) {
-        if (selectAll.checked) state.librarySelectedIds.add(paper.id);
-        else state.librarySelectedIds.delete(paper.id);
-      }
-      renderPapers();
-    });
   }
-  els.paperList.querySelectorAll('[data-action="select-library-row"]').forEach(input => {
-    const row = input.closest('[data-paper]');
-    row.classList.toggle('is-bulk-selected', input.checked);
-    input.addEventListener('change', () => {
-      if (input.checked) state.librarySelectedIds.add(row.dataset.paper);
-      else state.librarySelectedIds.delete(row.dataset.paper);
-      renderPapers();
-      document.querySelector(`[data-paper="${CSS.escape(row.dataset.paper)}"] [data-action="select-library-row"]`)?.focus();
-    });
+  const root=els.paperList;
+  root.__pulseVisibleLibraryPapers=visiblePapers;
+  const change=event=>{
+    const input=event.target;
+    if(input.id==='librarySelectVisible') {
+      for(const paper of root.__pulseVisibleLibraryPapers||[]) {
+        if(input.checked)state.librarySelectedIds.add(paper.id);else state.librarySelectedIds.delete(paper.id);
+      }
+    } else if(input.dataset?.action==='select-library-row') {
+      const row=input.closest('[data-paper]');if(!row)return;
+      if(input.checked)state.librarySelectedIds.add(row.dataset.paper);else state.librarySelectedIds.delete(row.dataset.paper);
+    } else return;
+    renderPapers();
+  };
+  if(typeof root.addEventListener==='function') {
+    if(!root.__pulseBulkBound){root.__pulseBulkBound=true;root.addEventListener('change',change);}
+  } else if(selectAll) {
+    // Minimal non-browser hosts keep the same visible-filter selection rules.
+    selectAll.__pulseVisibleLibraryPapers=visiblePapers;
+    if(!selectAll.__pulseBulkBound){selectAll.__pulseBulkBound=true;selectAll.addEventListener('change',()=>{
+      for(const paper of selectAll.__pulseVisibleLibraryPapers){if(selectAll.checked)state.librarySelectedIds.add(paper.id);else state.librarySelectedIds.delete(paper.id);}renderPapers();
+    });}
+  }
+  root.querySelectorAll('[data-action="select-library-row"]').forEach(input=>{
+    const row=input.closest('[data-paper]');
+    input.checked=state.librarySelectedIds.has(row.dataset.paper);
+    row.classList.toggle('is-bulk-selected',input.checked);
   });
 }
 async function libraryMutationRequest(path, payload) {
@@ -135,7 +149,24 @@ function tagLibrarySelection(value) {
   render();
   return true;
 }
+function colorLibrarySelection(chosenColor) {
+  const papers = libraryBulkPapers();
+  if (!papers.length || !chosenColor) return false;
+  for (const paper of papers) {
+    paper.color = chosenColor;
+  }
+  render();
+  showToast(`Coloured ${papers.length} selected paper${papers.length === 1 ? '' : 's'}.`);
+  return true;
+}
 document.getElementById('libraryBulkDeselect').addEventListener('click', () => {state.librarySelectedIds.clear(); renderPapers();});
+document.getElementById('libraryBulkColorBtn')?.addEventListener?.('click', () => {
+  const input = document.getElementById('libraryBulkColor');
+  if (input) colorLibrarySelection(input.value);
+});
+document.getElementById('libraryBulkColor')?.addEventListener?.('change', event => {
+  colorLibrarySelection(event.target.value);
+});
 document.getElementById('libraryBulkExport').addEventListener('click', () => exportLibrarySelection(document.getElementById('libraryBulkFormat').value));
 document.getElementById('libraryBulkTransfer').addEventListener('click', () => {document.getElementById('managerScope').value = 'bulk'; openManagers();});
 document.getElementById('libraryBulkTag').addEventListener('click', () => {document.getElementById('libraryBulkTags').value=''; document.getElementById('libraryTagDialog').showModal(); document.getElementById('libraryBulkTags').focus();});

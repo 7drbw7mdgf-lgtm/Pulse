@@ -18,7 +18,7 @@ assert.equal(imported.fullTextUrl,item.fullTextUrl);assert.equal(imported.fullTe
 assert.equal(imported.coreId,'456');assert.equal(imported.pmcid,'PMC123');assert.equal(imported.citedByCount,0);
 assert.deepEqual([...imported.paperKeywords],['diagrams','accessibility']);assert.equal(imported.sourceIdentifiers.CORE,'456');
 assert.equal(imported.discoveryMethod,'DBEF-content');assert.equal(imported.dbef.sharedReferenceIds[0],'W12');
-const workspaceSource=fs.readFileSync('pulse-frontend/js/part_19.js','utf8');vm.runInContext(workspaceSource.slice(workspaceSource.indexOf('    function serializeMap'),workspaceSource.indexOf('    async function exportMap')),context);
+const workspaceSource=fs.readFileSync('pulse-frontend/js/part_19.js','utf8');vm.runInContext(workspaceSource.slice(workspaceSource.indexOf('    const libraryBibliographyCache'),workspaceSource.indexOf('    async function exportMap')),context);
 Object.assign(context.state,{papers:[imported],areas:[],links:[],clusters:[],keywords:new Map(),graphStyle:{},view:{},discoverySearchSources:{europePmc:true,core:false,semanticScholar:true},discoveryLimit:500});
 const workspace=JSON.parse(JSON.stringify(context.serializeMap())),restored=context.normalizeImportedPaper(workspace.papers[0],'Restored workspace');
 assert.equal(workspace.discoveryLimit,500,'The discovery limit must survive workspace export and autosave');

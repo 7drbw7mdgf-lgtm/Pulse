@@ -1,11 +1,17 @@
-# Install Pulse 1.7.8
+# Install Pulse 1.8.9
 
-Quit Pulse, open **Pulse-1.7.8.dmg**, and drag **Pulse.app** into **Applications**.
+Quit Pulse, open **Pulse-1.8.9.dmg**, and drag **Pulse.app** into **Applications**, replacing the previous copy.
 
-This build reduces CPU cross-encoder ranking to 75 candidates and meaning ranking to 150, reuses background embedding work, and caps Europe PMC collection at eight seconds. It retains all candidates for ordinary ranking and keeps multi-window text coverage in the bundled offline ranker. Direct citation discovery, bridge discovery, full-text passages and selected-paper reports remain available.
+An **Apple Silicon Mac**, **macOS 11 or later**, and **Python 3.10 or later** are required. Python for the main backend is installed separately. PDF extraction dependencies and the offline cross-encoder are included; Ollama and its optional model weights are installed separately.
 
-Apple Silicon Mac, macOS 11 or later, and Python 3.10 or later are required. PDF extraction dependencies are included. Python for the main backend, Ollama and its optional model weights are installed separately; the cross-encoder is bundled. The app is ad hoc signed and has not been notarized by Apple.
+The app is **ad hoc signed** and **has not been notarized by Apple**.
 
 Your existing library remains in your user profile. The installer does not include personal papers or account credentials.
 
-Mendeley RIS export works now. Shared sign-in and library sync require the Pulse owner's application registration and HTTPS hosting and are unavailable in the default installer. See **MENDELEY-ACTIVATION.md** for the owner's remaining activation steps.
+In **Settings → Search sources → Semantic Scholar**, enter an optional API key and choose **Save**. Saved keys stay encrypted on this computer. Public search remains available without a key; **Remove saved key** removes the locally saved key. A key supplied by the computer's environment takes precedence.
+
+Timeline keeps only five nearby paper cards mounted, preserves native scrolling, and updates the inspector after scrolling settles. Year navigation and keyboard selection remain immediate.
+
+**Current Mendeley limitation:** RIS export remains available. Shared sign-in and sync are currently blocked because Mendeley rejects the shared sign-in service's application credentials. The Pulse owner must correct the service's application ID or secret. Reinstalling Pulse or repeating browser sign-in does not repair that server setting.
+
+See the [1.8.9 release notes](releases/1.8.9.md).

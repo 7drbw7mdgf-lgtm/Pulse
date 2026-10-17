@@ -204,6 +204,14 @@
     }
 
     function renderBackendStatus(settings, message) {
+      const s2Provider=settings?.providers?.semanticScholar || {};
+      const s2Configured=Boolean(s2Provider.configured), s2Saved=Boolean(s2Provider.saved);
+      if(els.semanticScholarKeyInput)els.semanticScholarKeyInput.placeholder=s2Saved?'Key saved · leave blank to keep':'Optional';
+      const s2KeyStatus=document.getElementById('semanticScholarKeyStatus');
+      if(s2KeyStatus)s2KeyStatus.textContent=s2Provider.source==='environment'
+        ? 'Key supplied by this computer · takes priority over a saved key'
+        : s2Configured ? 'Key saved · used for search, citations and recommendations' : 'Public search · no key saved';
+      if(els.clearSemanticScholarKeyButton)els.clearSemanticScholarKeyButton.disabled=!s2Saved;
       const coreConfigured=Boolean(settings?.providers?.core?.configured);
       if(els.coreKeyInput)els.coreKeyInput.placeholder=coreConfigured?'Key saved · leave blank to keep':'Optional';
       const coreStatus=document.getElementById('coreSearchStatus');if(coreStatus)coreStatus.textContent=coreConfigured?'CORE key configured':'Public search · no key needed';
@@ -263,7 +271,7 @@
         : 'Ollama offline';
       const vectorStatus = vectorDb.available ? vectorDb.active : 'sklearn cosine fallback';
       const dimensionsStatus = dimensions.configured ? `Configured (${dimensions.preview})` : 'Optional';
-      const s2Status = semanticScholar.configured ? `Configured (${semanticScholar.preview})` : 'Active (Free S2AG public graph)';
+      const s2Status = semanticScholar.configured ? (semanticScholar.source==='environment' ? 'Key supplied by this computer' : 'Saved key configured') : 'Public search (no key saved)';
       if (els.gemmaStatus) els.gemmaStatus.textContent = gemmaStatus;
       if (els.embeddingStatus) els.embeddingStatus.textContent = embeddingStatus;
       if (els.vectorStatus) els.vectorStatus.textContent = vectorStatus;

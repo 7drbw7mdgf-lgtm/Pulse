@@ -53,6 +53,37 @@ class CodeMendeleyTests(unittest.TestCase):
         with patch.object(l,'request',side_effect=[{'access_token':'test-token'}, ClientError(401,'Rejected')]):
             with self.assertRaises(ClientError):l.token_exchange(config,{'grant_type':'authorization_code','code':'test-code'})
         self.assertNotIn('accessToken',l.read_config())
+    def test_direct_token_401_identifies_application_credentials_without_retry(self):
+        config=self.config();l.write_config(config)
+        error=urllib.error.HTTPError(l.MENDELEY+'/oauth/token',401,'Unauthorized',{},
+            io.BytesIO(b'{"message":"Credentials are required to access this resource. test-private-secret"}'))
+        opener=Mock();opener.open.side_effect=error
+        with patch.object(l.urllib.request,'build_opener',return_value=opener):
+            with self.assertRaises(ClientError) as rejected:
+                l.token_exchange(config,{'grant_type':'authorization_code','code':'dummy-code'})
+        self.assertEqual(rejected.exception.status,401)
+        self.assertEqual(rejected.exception.mendeley_stage,'application_authentication')
+        self.assertEqual(rejected.exception.mendeley_code,'mendeley_application_authentication_failed')
+        self.assertIn('application ID and secret in Connection settings',str(rejected.exception))
+        self.assertNotIn('test-private-secret',str(rejected.exception))
+        self.assertEqual(opener.open.call_count,1)
+        self.assertNotIn('accessToken',l.read_config())
+    def test_profile_401_is_distinct_from_application_authentication_and_does_not_store_tokens(self):
+        config=self.config();l.write_config(config)
+        token=MagicMock();token.__enter__.return_value=token
+        token.read.return_value=b'{"access_token":"issued-token","refresh_token":"issued-refresh","expires_in":3600}'
+        error=urllib.error.HTTPError(l.MENDELEY+'/profiles/me',401,'Unauthorized',{},
+            io.BytesIO(b'{"message":"Credentials are required to access this resource."}'))
+        opener=Mock();opener.open.side_effect=[token,error]
+        with patch.object(l.urllib.request,'build_opener',return_value=opener):
+            with self.assertRaises(ClientError) as rejected:
+                l.token_exchange(config,{'grant_type':'authorization_code','code':'dummy-code'})
+        self.assertEqual(rejected.exception.mendeley_stage,'account_verification')
+        self.assertEqual(rejected.exception.mendeley_code,'mendeley_account_verification_failed')
+        self.assertIn('account verification failed',str(rejected.exception))
+        self.assertNotIn('application ID and secret',str(rejected.exception))
+        self.assertEqual(opener.open.call_args_list[1].args[0].get_header('Authorization'),'Bearer issued-token')
+        self.assertNotIn('accessToken',l.read_config());self.assertNotIn('refreshToken',l.read_config())
     def test_invalid_token_does_not_reach_profile(self):
         config=self.config();l.write_config(config)
         for result in [{'access_token':'bad\r\ntoken'},{'access_token':'valid','token_type':'other'}, {'access_token':'valid','expires_in':-1}]:
@@ -99,6 +130,25 @@ class CodeMendeleyTests(unittest.TestCase):
         fields=urllib.parse.parse_qs(request.call_args_list[0].args[2].decode())
         self.assertNotIn('code_verifier',fields)
         self.assertIn('Authorization',request.call_args_list[0].args[3])
+    def test_restart_rejects_an_old_exchange_already_in_flight(self):
+        listeners=[]
+        class FakeServer:
+            def __init__(self,address,handler):
+                self.handler=handler;listeners.append(self)
+        l.write_config(self.config())
+        with patch.object(oauth,'HTTPServer',FakeServer),patch.object(oauth.threading,'Thread'):
+            first=oauth.start_oauth();old=l.read_config();pending=oauth._PENDING
+            second=oauth.start_oauth();current=l.read_config()
+        self.assertTrue(pending['cancelled'])
+        self.assertNotEqual(first['authorizationUrl'],second['authorizationUrl'])
+        self.assertEqual(current['authGeneration'],old['authGeneration']+1)
+        with patch.object(l,'request',side_effect=[{'access_token':'stale-token','expires_in':3600},{'id':'old-account'}]):
+            with self.assertRaises(ClientError) as rejected:
+                l.token_exchange(old,{'grant_type':'authorization_code','code':'old-code'})
+        self.assertEqual(rejected.exception.status,409)
+        self.assertNotIn('accessToken',l.read_config())
+        self.assertTrue(oauth.oauth_status()['pending'])
+        oauth._PENDING=None
     def test_provider_request_identifies_pulse_with_version(self):
         response=MagicMock();response.read.return_value=b'{}'
         response.__enter__.return_value=response
@@ -140,5 +190,26 @@ class CodeMendeleyTests(unittest.TestCase):
         self.assertEqual(oauth.oauth_status()['authorizationMessage'],message)
         self.assertFalse(oauth.oauth_status()['pending'])
         oauth._PENDING=None
+    def test_callback_preserves_application_error_stage_and_recovery_advice(self):
+        listeners=[]
+        class FakeServer:
+            def __init__(self,address,handler): self.handler=handler;listeners.append(self)
+        config=self.config();l.write_config(config)
+        failure=l.mendeley_failure(401,'Mendeley application authentication failed. Correct the application ID and secret first.',
+            'application_authentication','mendeley_application_authentication_failed')
+        with patch.object(oauth,'HTTPServer',FakeServer),patch.object(oauth.threading,'Thread'),patch.object(oauth,'token_exchange',side_effect=failure):
+            started=oauth.start_oauth()
+            state=urllib.parse.parse_qs(urllib.parse.urlsplit(started['authorizationUrl']).query)['state'][0]
+            callback=object.__new__(listeners[0].handler)
+            callback.path='/mendeley/callback?'+urllib.parse.urlencode({'state':state,'code':'dummy-code'})
+            callback.headers={'Host':'127.0.0.1:8765'};callback.reply=Mock();callback.do_GET()
+        status=oauth.oauth_status()
+        self.assertEqual(status['authorizationStage'],'application_authentication')
+        self.assertEqual(status['authorizationErrorCode'],'mendeley_application_authentication_failed')
+        self.assertIn('Correct the application ID and secret first',status['authorizationMessage'])
+        self.assertNotIn('Return to Pulse and connect again',status['authorizationMessage'])
+        self.assertFalse(status['pending']);oauth.cancel_oauth()
+        self.assertEqual(oauth.oauth_status()['authorizationStage'],'')
+        self.assertEqual(oauth.oauth_status()['authorizationErrorCode'],'')
 
 if __name__=='__main__':unittest.main()

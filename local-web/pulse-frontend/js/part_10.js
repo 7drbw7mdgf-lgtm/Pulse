@@ -11,17 +11,73 @@
     }
 
     function paperColor(paper, clusterByPaper) {
+      if (!paper) return palette[0];
       if (paper.color) return paper.color;
-      const area = state.areas.find(item => item.id === paper.areaId);
+      const area = state.areas?.find(item => item.id === paper.areaId);
       if (area?.color) return area.color;
+      if (!clusterByPaper) {
+        clusterByPaper = new Map();
+        (state.clusters || []).forEach((cluster, index) => cluster.forEach(id => clusterByPaper.set(id, index)));
+      }
       return palette[(clusterByPaper.get(paper.id) || 0) % palette.length];
     }
 
+    function paperGroupInfo(paper, clusterByPaper) {
+      if (!paper) return { color: palette[0], name: '', clusterIndex: -1, areaId: '', hasGroup: false };
+      if (!clusterByPaper) {
+        clusterByPaper = new Map();
+        (state.clusters || []).forEach((cluster, index) => cluster.forEach(id => clusterByPaper.set(id, index)));
+      }
+      const color = paperColor(paper, clusterByPaper);
+      const area = state.areas?.find(item => item.id === paper.areaId);
+      const clusterIdx = clusterByPaper.get(paper.id);
+      let name = '';
+      if (area?.name) {
+        name = area.name;
+      } else if (clusterIdx !== undefined && state.clusters && state.clusters.length > 1) {
+        name = `Group ${clusterIdx + 1}`;
+      } else if (paper.color) {
+        name = 'Custom';
+      }
+      return {
+        color,
+        name,
+        areaId: area?.id || '',
+        clusterIndex: clusterIdx !== undefined ? clusterIdx : -1,
+        hasGroup: Boolean(area || (clusterIdx !== undefined && state.clusters && state.clusters.length > 1) || paper.color)
+      };
+    }
+    if (typeof window !== 'undefined') {
+      window.paperColor = paperColor;
+      window.paperGroupInfo = paperGroupInfo;
+    }
+
+    let graphDrawingKey = '', graphDrawingLinks = null;
+    function updateGraphSelectionClasses() {
+      const linked = selectedLinkEndpoints();
+      els.map.querySelectorAll('.node').forEach(node => {
+        node.classList.toggle('is-selected',node.dataset.id === state.selectedId);
+        node.classList.toggle('is-linked',linked.has(node.dataset.id));
+      });
+    }
+    function renderWorkspacePanels() {
+      if (typeof renderMultiSelection === 'function') renderMultiSelection();
+      renderTagFilterBar();
+      if (state.mode === 'table') renderTableView();
+      renderPapers();
+      renderDetails();
+      if (els.timelineView && !els.timelineView.hidden) renderTimeline();
+      if (typeof renderTrends === 'function' && typeof trendsVisible === 'function' && trendsVisible()) renderTrends({refresh:true});
+      renderLinkages();
+      renderAreasPanel();
+      updateMetrics();
+      scheduleAutosave();
+    }
     function render() {
       if (typeof enrichLibraryAutomatically === 'function') queueMicrotask(enrichLibraryAutomatically);
       if (typeof updateAgentControls === 'function') updateAgentControls();
       calculateRelatedness();
-      if (state.selectedLinkId && !state.links.some(link => linkId(link) === state.selectedLinkId)) {
+      if (!state.graphAnalysisPending && state.selectedLinkId && !state.links.some(link => linkId(link) === state.selectedLinkId)) {
         state.selectedLinkId = null;
       }
       if (state.libraryFullscreen) {
@@ -29,6 +85,10 @@
         renderPapers();
         updateMetrics();
         scheduleAutosave();
+        return;
+      }
+      if ((typeof trendsVisible === 'function' && trendsVisible()) || (els.timelineView && !els.timelineView.hidden)) {
+        renderWorkspacePanels();
         return;
       }
       const isTableMode = state.mode === 'table';
@@ -40,7 +100,8 @@
         titleHeading.textContent = isTableMode ? 'Biolography' : (state.mode === 'radial' ? 'Radial hierarchy' : (state.mode === 'clusters' ? 'Topic clusters' : 'Relatedness graph'));
       }
       if (isTableMode) {
-        renderTableView();
+        renderWorkspacePanels();
+        return;
       }
       const rect = els.map.getBoundingClientRect();
       const width = Math.max(rect.width, 640);
@@ -51,6 +112,18 @@
       els.map.classList.toggle('no-grid', !state.graphStyle.showGrid);
       layout(width, safeHeight);
       applyAreaContainment();
+      if (!state.graphAnalysisPending && !state.graphLayoutPending && !isRecenteringAnimation && typeof rememberGraphLayout === 'function') rememberGraphLayout(width,safeHeight);
+      const activeDrawingPapers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
+      const drawingKey = JSON.stringify([width,safeHeight,state.mode,state.centerId,state.activeMapId,state.graphAnalysisRevision || 0,
+        state.graphStyle,state.areas,state.selectedAreaId,state.selectedLinkId,bouncingNodeId,state.filterTags,state.filterMode,
+        activeDrawingPapers.map(paper => [paper.id,paper.x,paper.y,paper.color,paper.areaId,paper.gemmaKeywords,paper.userTags])]);
+      if (drawingKey === graphDrawingKey && graphDrawingLinks === state.links) {
+        updateGraphSelectionClasses();
+        renderWorkspacePanels();
+        return;
+      }
+      graphDrawingKey = drawingKey;
+      graphDrawingLinks = state.links;
 
       const clusterByPaper = new Map();
       state.clusters.forEach((cluster, index) => cluster.forEach(id => clusterByPaper.set(id, index)));
@@ -65,34 +138,60 @@
       }).join('') : '';
 
       const hasFilter = Boolean(state.filterTags && state.filterTags.length > 0);
-      const visiblePapers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
+      const visiblePapers = activeDrawingPapers;
       const visiblePaperIds = new Set(visiblePapers.map(p => p.id));
-      const sortedLinks = [...state.links]
-        .filter(link => visiblePaperIds.has(link.source) && visiblePaperIds.has(link.target))
-        .sort((a, b) => a.score - b.score);
+      const visibleById = new Map(visiblePapers.map(paper => [paper.id,paper]));
+      const visibleLinks = state.links.filter(link => visiblePaperIds.has(link.source) && visiblePaperIds.has(link.target));
+      const edgeBudget = Math.max(800,Math.min(1800,visiblePapers.length * 6));
+      let sortedLinks = visibleLinks;
+      if (visibleLinks.length > edgeBudget) {
+        // Preserve full scientific evidence in state, exports, linkages and Trends.
+        // Keep each node's strongest connection before filling the drawing budget.
+        const strongest = [...visibleLinks].sort((a,b) => b.score - a.score);
+        const chosen = new Set(), covered = new Set();
+        strongest.forEach(link => {
+          if (!covered.has(link.source) || !covered.has(link.target) || linkId(link) === state.selectedLinkId) {
+            chosen.add(link); covered.add(link.source); covered.add(link.target);
+          }
+        });
+        for (const link of strongest) { if (chosen.size >= edgeBudget) break; chosen.add(link); }
+        sortedLinks = [...chosen];
+      }
+      sortedLinks = [...sortedLinks].sort((a,b) => a.score - b.score);
+      const linkLimitMarkup = sortedLinks.length < visibleLinks.length
+        ? `<text class="graph-link-limit-notice" x="16" y="24" fill="var(--muted)" font-size="12">Showing ${sortedLinks.length} of ${visibleLinks.length} links</text>` : '';
       const linkMarkup = sortedLinks.map(link => {
-        const source = state.papers.find(paper => paper.id === link.source);
-        const target = state.papers.find(paper => paper.id === link.target);
+        const source = visibleById.get(link.source);
+        const target = visibleById.get(link.target);
+        if (!source || !target) return '';
+        const sx = Number.isFinite(source.x) ? source.x : (width / 2);
+        const sy = Number.isFinite(source.y) ? source.y : (safeHeight / 2);
+        const tx = Number.isFinite(target.x) ? target.x : (width / 2);
+        const ty = Number.isFinite(target.y) ? target.y : (safeHeight / 2);
         const sourceMatches = !hasFilter || (source && paperMatchesFilters(source));
         const targetMatches = !hasFilter || (target && paperMatchesFilters(target));
         const filterDimmed = hasFilter && (!sourceMatches || !targetMatches) ? ' is-filter-dimmed' : '';
         const opacity = Math.min(0.72, 0.18 + link.score * 0.48);
-        const width = (0.55 + link.score * 3.15) * (state.graphStyle.edgeScale || 0.65);
+        const widthVal = (0.55 + link.score * 3.15) * (state.graphStyle.edgeScale || 0.65);
         const id = linkId(link);
         const selected = state.selectedLinkId === id ? ' is-selected' : '';
         const label = linkLabel(link);
-        return `<line class="edge${selected}${filterDimmed}" data-type="${escapeHtml(link.type || 'similarity')}" data-link="${id}" data-source="${link.source}" data-target="${link.target}" x1="${source.x}" y1="${source.y}" x2="${target.x}" y2="${target.y}" stroke-width="${selected ? (width + 2.4).toFixed(2) : width.toFixed(2)}" opacity="${selected ? '1' : opacity.toFixed(2)}"><title>${escapeHtml(label)}</title></line>
-          <line class="edge-hit" data-link="${id}" data-source="${link.source}" data-target="${link.target}" x1="${source.x}" y1="${source.y}" x2="${target.x}" y2="${target.y}" stroke-width="20" stroke="transparent" stroke-linecap="round"><title>${escapeHtml(label)}</title></line>`;
+        return `<line class="edge${selected}${filterDimmed}" data-type="${escapeHtml(link.type || 'similarity')}" data-link="${id}" data-source="${link.source}" data-target="${link.target}" x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${tx.toFixed(1)}" y2="${ty.toFixed(1)}" stroke-width="${selected ? (widthVal + 2.4).toFixed(2) : widthVal.toFixed(2)}" opacity="${selected ? '1' : opacity.toFixed(2)}"><title>${escapeHtml(label)}</title></line>
+          <line class="edge-hit" data-link="${id}" data-source="${link.source}" data-target="${link.target}" x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${tx.toFixed(1)}" y2="${ty.toFixed(1)}" stroke-width="20" stroke="transparent" stroke-linecap="round"><title>${escapeHtml(label)}</title></line>`;
       }).join('');
 
+      const selectedEndpoints = selectedLinkEndpoints();
       const nodeMarkup = visiblePapers.map((paper, idx) => {
         const color = paperColor(paper, clusterByPaper);
         const radius = state.graphStyle.nodeSize || 22;
-        const linked = selectedLinkEndpoints().has(paper.id) ? ' is-linked' : '';
+        const linked = selectedEndpoints.has(paper.id) ? ' is-linked' : '';
         const selected = state.selectedId === paper.id ? ' is-selected' : '';
         const centered = state.centerId === paper.id ? ' is-centered' : '';
         const matchesFilter = !hasFilter || paperMatchesFilters(paper);
         const filterClass = hasFilter ? (matchesFilter ? ' is-filter-match' : ' is-filter-dimmed') : '';
+
+        const px = Number.isFinite(paper.x) ? paper.x : (width / 2);
+        const py = Number.isFinite(paper.y) ? paper.y : (safeHeight / 2);
 
         // Check neighboring nodes within proximity to avoid label collisions
         let labelPos = 'bottom';
@@ -101,10 +200,12 @@
         for (let j = 0; j < visiblePapers.length; j++) {
           if (j === idx) continue;
           const other = visiblePapers[j];
-          const dist = Math.hypot(paper.x - other.x, paper.y - other.y);
+          const ox = Number.isFinite(other.x) ? other.x : (width / 2);
+          const oy = Number.isFinite(other.y) ? other.y : (safeHeight / 2);
+          const dist = Math.hypot(px - ox, py - oy);
           if (dist < radius * 2.6 + 36) {
-            if (other.y > paper.y) neighborBelow = true;
-            if (other.y < paper.y) neighborAbove = true;
+            if (oy > py) neighborBelow = true;
+            if (oy < py) neighborAbove = true;
           }
         }
         if (neighborBelow && !neighborAbove) {
@@ -134,7 +235,7 @@
           <circle class="bounce-ripple bounce-ripple-2" r="${radius}" fill="none" stroke="var(--accent)" stroke-width="2.5"></circle>
         ` : '';
 
-        return `<g class="node${selected}${linked}${centered}${filterClass}${bouncingClass}" data-id="${paper.id}" transform="translate(${paper.x.toFixed(1)},${paper.y.toFixed(1)})">
+        return `<g class="node${selected}${linked}${centered}${filterClass}${bouncingClass}" data-id="${paper.id}" transform="translate(${px.toFixed(1)},${py.toFixed(1)})">
           ${rippleSvg}
           <circle class="node-main-circle" r="${radius}" fill="${color}"></circle>
           ${labelSvg}
@@ -142,20 +243,11 @@
         </g>`;
       }).join('');
 
-      els.map.innerHTML = `<g>${areaMarkup}</g><g>${linkMarkup}</g><g>${nodeMarkup}</g>`;
+      els.map.innerHTML = `<g>${areaMarkup}</g><g>${linkMarkup}</g><g>${nodeMarkup}</g>${linkLimitMarkup}`;
       bindAreaEvents();
       bindEdgeEvents();
       bindNodeEvents();
-      if (typeof renderMultiSelection === 'function') renderMultiSelection();
-      renderTagFilterBar();
-      renderTableView();
-      renderPapers();
-      renderDetails();
-      if (els.timelineView && !els.timelineView.hidden) renderTimeline();
-      renderLinkages();
-      renderAreasPanel();
-      updateMetrics();
-      scheduleAutosave();
+      renderWorkspacePanels();
     }
 
     function renderTableView(focusColumn = '') {

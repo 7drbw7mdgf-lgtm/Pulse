@@ -69,6 +69,7 @@
     }
 
     function renderSelection() {
+      if (typeof renderTrendsSelection === 'function') renderTrendsSelection();
       els.map.querySelectorAll('.node').forEach(node => {
         node.classList.toggle('is-selected', node.dataset.id === state.selectedId);
         node.classList.toggle('is-centered', node.dataset.id === state.centerId);
@@ -151,7 +152,7 @@
     }
 
     function renderLinkages() {
-      if (!els.linkageList) return;
+      if (!els.linkageList || els.linkagePanel?.hidden) return;
       const sorted = [...state.links].sort((a, b) => b.score - a.score);
       els.linkageSummary.textContent = sorted.length
         ? `${sorted.length} link${sorted.length === 1 ? '' : 's'} at ${Math.round(state.threshold * 100)}% threshold.`
@@ -176,7 +177,7 @@
     }
 
     function renderAreasPanel() {
-      if (!els.areaList) return;
+      if (!els.areaList || els.areaPanel?.hidden) return;
       els.areaList.innerHTML = state.areas.length ? state.areas.map(area => {
         const count = state.papers.filter(paper => paper.areaId === area.id).length;
         const selected = state.selectedAreaId === area.id ? ' is-selected' : '';

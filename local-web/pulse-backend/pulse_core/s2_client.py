@@ -26,18 +26,46 @@ def s2_cache_set(key, val):
 
 _INVALID_S2_KEYS = set()
 
+def reset_s2_access():
+    """Let a newly saved key retry immediately after an earlier rejection."""
+    _INVALID_S2_KEYS.clear()
+    from pulse_source_health import clear_source
+    clear_source('Semantic Scholar')
+
+def s2_api_key(url, api_key):
+    try:
+        target = urllib.parse.urlsplit(url)
+        valid = target.scheme == 'https' and target.hostname == 'api.semanticscholar.org' and target.username is None and target.password is None and target.port in {None,443}
+    except ValueError:
+        valid = False
+    if not valid:
+        raise ClientError(400, 'Unsupported Semantic Scholar address.')
+    if api_key is None:
+        from pulse_core.config_resolvers import resolve_semantic_scholar_api_key
+        from pulse_core.storage import load_settings
+        api_key = resolve_semantic_scholar_api_key(load_settings())
+    return str(api_key or '').strip()
+
 def s2_request_headers(api_key=None):
     headers = {"User-Agent": "Pulse/1.3", "Accept": "application/json"}
     if api_key and api_key not in _INVALID_S2_KEYS:
         headers["x-api-key"] = api_key
     return headers
 
+def s2_request(url, **kwargs):
+    request = urllib.request.Request(url, **kwargs)
+    # The shared transport may fall back to urllib, which otherwise forwards
+    # custom API-key headers when following a redirect to a different host.
+    request.pulse_redirect_origin = 'https://api.semanticscholar.org'
+    return request
+
 def fetch_s2_json(url, api_key=None, timeout=14, cache=True):
+    api_key = s2_api_key(url, api_key)
     cached = s2_cache_get(url) if cache else None
     if cached:
         return cached
     active_key = api_key if (api_key and api_key not in _INVALID_S2_KEYS) else None
-    request = urllib.request.Request(url, headers=s2_request_headers(active_key), method="GET")
+    request = s2_request(url, headers=s2_request_headers(active_key), method="GET")
     try:
         return request_json(request, timeout=timeout, cache=cache)
     except ProviderCooldown as error:
@@ -49,7 +77,7 @@ def fetch_s2_json(url, api_key=None, timeout=14, cache=True):
         if error.code == 403 and active_key:
             _INVALID_S2_KEYS.add(active_key)
             try:
-                unauth_req = urllib.request.Request(url, headers=s2_request_headers(None), method="GET")
+                unauth_req = s2_request(url, headers=s2_request_headers(None), method="GET")
                 return request_json(unauth_req, timeout=timeout, cache=cache)
             except Exception:
                 pass
@@ -59,6 +87,7 @@ def fetch_s2_json(url, api_key=None, timeout=14, cache=True):
         raise ClientError(502, f"Semantic Scholar connection error: {error}")
 
 def post_s2_json(url, payload, api_key=None, timeout=14):
+    api_key = s2_api_key(url, api_key)
     cache_key = f"{url}:{json.dumps(payload, sort_keys=True)}"
     cached = s2_cache_get(cache_key)
     if cached:
@@ -67,7 +96,7 @@ def post_s2_json(url, payload, api_key=None, timeout=14):
     headers = s2_request_headers(active_key)
     headers["Content-Type"] = "application/json"
     data = json.dumps(payload).encode("utf-8")
-    request = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    request = s2_request(url, data=data, headers=headers, method="POST")
     try:
         return request_json(request, timeout=timeout)
     except ProviderCooldown as error:
@@ -79,7 +108,7 @@ def post_s2_json(url, payload, api_key=None, timeout=14):
             try:
                 unauth_headers = s2_request_headers(None)
                 unauth_headers["Content-Type"] = "application/json"
-                unauth_req = urllib.request.Request(url, data=data, headers=unauth_headers, method="POST")
+                unauth_req = s2_request(url, data=data, headers=unauth_headers, method="POST")
                 return request_json(unauth_req, timeout=timeout)
             except Exception:
                 pass

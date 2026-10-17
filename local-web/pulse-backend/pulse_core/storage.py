@@ -104,14 +104,60 @@ def save_library(payload):
         ordered = isinstance(session, str) and 0 < len(session) <= 100 and isinstance(revision, int)
         if ordered and revision <= SAVE_REVISIONS.get(session, -1):
             return {"ok": True, "superseded": True}
-        result = _core._save_library(payload)
+        if isinstance(payload, dict) and payload.get('_saveMode') == 'paper-delta-v1':
+            payload, existing = _apply_library_delta(payload)
+            result = _core._save_library(payload, existing_data=existing)
+        else:
+            result = _core._save_library(payload)
         if ordered:
             SAVE_REVISIONS[session] = revision
             if len(SAVE_REVISIONS) > 64:
                 SAVE_REVISIONS.pop(next(iter(SAVE_REVISIONS)))
         return result
 
-def _save_library(payload):
+def _apply_library_delta(payload):
+    """Apply a small client patch only to the exact acknowledged disk snapshot."""
+    token = payload.get('_baseStorageRevision')
+    if not isinstance(token, str) or not re.fullmatch(r'[a-f0-9]{32}', token):
+        raise ClientError(400, 'A valid library save baseline is required.')
+    try:
+        existing = json.loads(_core.LIBRARY_PATH.read_text('utf-8'))
+    except (OSError, ValueError):
+        existing = None
+    if not isinstance(existing, dict) or existing.get('_storageRevision') != token:
+        raise ClientError(409, 'The saved library changed elsewhere. Your changes are kept locally; reload or use Recovery before saving again.')
+    updates, removed, order = payload.get('upsertPapers'), payload.get('removePaperIds'), payload.get('paperOrder')
+    changes, missing = payload.get('workspaceChanges'), payload.get('removeWorkspaceKeys')
+    if not isinstance(updates, list) or not all(isinstance(p, dict) and isinstance(p.get('id'), str) and p['id'] for p in updates):
+        raise ClientError(400, 'Changed library papers must have IDs.')
+    if not isinstance(removed, list) or not all(isinstance(i, str) for i in removed) or len(set(removed)) != len(removed):
+        raise ClientError(400, 'Removed library paper IDs must be unique.')
+    if not isinstance(order, list) or not all(isinstance(i, str) for i in order) or len(set(order)) != len(order):
+        raise ClientError(400, 'Library paper order must contain unique IDs.')
+    if len({p['id'] for p in updates}) != len(updates) or set(removed) & {p['id'] for p in updates}:
+        raise ClientError(400, 'Changed library paper IDs must be unique and cannot also be removed.')
+    protected = {'papers', '_storageRevision', '_saveSession', '_saveRevision', '_saveMode', '_baseStorageRevision', 'savedAt'}
+    if (not isinstance(changes, dict) or set(changes) & protected or not isinstance(missing, list)
+        or not all(isinstance(key, str) for key in missing) or set(missing) & protected):
+        raise ClientError(400, 'Invalid library workspace changes.')
+    old_papers = existing.get('papers')
+    if not isinstance(old_papers, list) or not all(isinstance(p, dict) and isinstance(p.get('id'), str) for p in old_papers):
+        raise ClientError(409, 'Reload the saved library before making incremental changes.')
+    by_id = {p['id']: p for p in old_papers}
+    if len(by_id) != len(old_papers) or not set(removed) <= by_id.keys():
+        raise ClientError(409, 'Reload the saved library before making incremental changes.')
+    for identity in removed: by_id.pop(identity)
+    by_id.update({p['id']: p for p in updates})
+    if set(order) != by_id.keys():
+        raise ClientError(400, 'Library paper order must include every remaining paper.')
+    result = dict(existing)
+    for key in missing: result.pop(key, None)
+    result.update(changes)
+    result['papers'] = [by_id[identity] for identity in order]
+    result['_saveSession'], result['_saveRevision'] = payload.get('_saveSession'), payload.get('_saveRevision')
+    return result, existing
+
+def _save_library(payload, existing_data=None):
     if not isinstance(payload, dict):
         raise ClientError(400, "Library payload must be a JSON object.")
     if not isinstance(payload.get("papers"), list) or not all(isinstance(paper, dict) for paper in payload["papers"]):
@@ -127,9 +173,10 @@ def _save_library(payload):
     data["format"] = data.get("format") or "pulse-map"
     data["version"] = data.get("version") or APP_VERSION
     data["savedAt"] = time_iso()
+    data['_storageRevision'] = uuid.uuid4().hex
     if _core.LIBRARY_PATH.exists() and _core.LIBRARY_PATH.stat().st_size > 10:
         try:
-            json.loads(_core.LIBRARY_PATH.read_text("utf-8"))
+            if existing_data is None: json.loads(_core.LIBRARY_PATH.read_text("utf-8"))
             ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             backup_file = backup_dir / f"library_{ts}.json"
             shutil.copy2(_core.LIBRARY_PATH, backup_file)
@@ -154,7 +201,8 @@ def _save_library(payload):
         if os.path.exists(temp_path):
             try: os.unlink(temp_path)
             except OSError: pass
-    return {"ok": True, "path": str(_core.LIBRARY_PATH), "savedAt": data["savedAt"]}
+    return {"ok": True, "path": str(_core.LIBRARY_PATH), "savedAt": data["savedAt"],
+            'storageRevision': data['_storageRevision'], 'deltaSupported': True}
 
 def _validate_workspace(data):
     if not isinstance(data, dict) or not isinstance(data.get('papers'), list) or not all(isinstance(p, dict) and isinstance(p.get('id'), str) for p in data['papers']):
@@ -302,6 +350,9 @@ def save_settings(payload):
         settings["semanticScholarApiKey"] = s2_key.strip()
     elif payload.get("clearSemanticScholarApiKey"):
         settings["semanticScholarApiKey"] = ""
+    if (isinstance(s2_key, str) and s2_key.strip()) or payload.get("clearSemanticScholarApiKey"):
+        from pulse_core.s2_client import reset_s2_access
+        reset_s2_access()
     core_key = payload.get("coreApiKey")
     if isinstance(core_key, str) and core_key.strip():
         settings["coreApiKey"] = core_key.strip()
@@ -329,6 +380,8 @@ def public_settings(settings):
     from pulse_core.ollama_mgr import bundled_ollama_status, ollama_status, workflow_capabilities
     dim_key = resolve_dimensions_api_key(settings)
     s2_key = resolve_semantic_scholar_api_key(settings)
+    s2_saved = bool(str(settings.get("semanticScholarApiKey") or "").strip())
+    s2_environment = bool(str(os.environ.get("SEMANTIC_SCHOLAR_API_KEY") or "").strip())
     core_key = resolve_core_api_key(settings)
     openalex_key = resolve_openalex_api_key(settings)
     contact_email = resolve_contact_email(settings)
@@ -410,9 +463,17 @@ def public_settings(settings):
             },
             "semanticScholar": {
                 "configured": bool(s2_key),
-                "preview": preview_key(s2_key),
+                "saved": s2_saved,
+                "source": "environment" if s2_environment else "saved" if s2_saved else "",
                 "endpoint": SEMANTIC_SCHOLAR_API_ROOT,
-                "note": "Optional. S2AG works free out-of-the-box; an API key enables higher throughput.",
+                "note": "Optional. A configured key is used for paper searches, citations and recommendations.",
+            },
+            "openAlex": {
+                "configured": bool(openalex_key),
+                "preview": preview_key(openalex_key),
+                "contactEmail": contact_email,
+                "endpoint": "https://api.openalex.org",
+                "note": "Optional. Public searches work keyless (10 req/s); an API key enables 100 req/s.",
             },
             "openAlex": {
                 "configured": bool(openalex_key),

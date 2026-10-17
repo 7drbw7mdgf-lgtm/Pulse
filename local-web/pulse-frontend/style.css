@@ -17,15 +17,19 @@
 @import url("css/part_17.css?v=ui-20261010-2");
 @import url("css/part_18.css?v=ui-20261010-2");
 
-@import url("css/workspace.css?v=ui-20261013-map");
+@import url("css/workspace.css?v=ui-20261014-groupcolor");
 
 @import url("css/paper-agent.css?v=ui-20261010-2");
 
 @import url("css/library-connections.css?v=ui-20261010-2");
 
-@import url("css/timeline.css?v=ui-20261011-9");
+@import url("css/timeline.css?v=ui-1.8.9");
 @import url("css/inspector.css?v=ui-20261011-10");
 @import url("css/discovery-workspace.css?v=ui-1.9-openalex");
 
 @import url("css/citation-lookup.css?v=ui-20261012-reliability");
-@import url("css/map-interactions.css?v=ui-1.8.5-clear");
+@import url("css/map-interactions.css?v=ui-1.8.9-clear");
+
+@import url("css/trends.css?v=ui-1.8.9");
+
+@import url("css/performance.css?v=ui-1.8.9");

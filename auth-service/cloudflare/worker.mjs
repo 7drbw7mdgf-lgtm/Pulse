@@ -98,8 +98,14 @@ async function providerToken(env, fields) {
   let body = {};
   try { body = await response.json(); } catch { body = {}; }
   if (!response.ok) {
+    if (response.status === 401) {
+      return json({
+        error: 'Mendeley application authentication failed. The Pulse sign-in service owner must verify its registered application ID and secret before connecting again.',
+        code: 'mendeley_application_authentication_failed', stage: 'application_authentication', providerStatus: 401
+      }, 401);
+    }
     const reason = String(body.error_description || body.message || body.error || 'Mendeley refused the request.').slice(0, 300);
-    return json({ error: reason }, response.status === 400 || response.status === 401 ? 400 : 502);
+    return json({ error: reason, code: 'mendeley_token_exchange_failed', stage: 'token_exchange', providerStatus: response.status }, response.status === 400 ? 400 : 502);
   }
   const { access_token, refresh_token, expires_in, token_type } = body;
   if (typeof access_token !== 'string' || !access_token) return json({ error: 'Mendeley did not issue a token.' }, 502);
@@ -154,7 +160,9 @@ export default {
     try {
       const { pathname } = new URL(request.url);
       const configured = Boolean(env.MENDELEY_CLIENT_ID && env.MENDELEY_CLIENT_SECRET && env.STATE_KEY && env.STATE_KEY.length >= 32);
-      if (request.method === 'GET' && pathname === '/health') return json({ ok: configured, protocol: PROTOCOL }, configured ? 200 : 503);
+      // This checks configuration presence, without claiming the provider accepts it.
+      if (request.method === 'GET' && pathname === '/health') return json({ ok: configured, configured,
+        providerAuthentication: 'not_checked', protocol: PROTOCOL }, configured ? 200 : 503);
       if (!configured) return json({ error: 'The sign-in service is not configured.' }, 503);
       if (request.method === 'GET' && pathname === '/callback') return await callback(request, env);
       if (request.method === 'POST' && pathname === '/start') return await start(request, env);
