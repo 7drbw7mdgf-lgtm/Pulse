@@ -1,13 +1,16 @@
 import os
 from pathlib import Path
 import sys
+import statistics
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'pulse-backend'))
 os.environ.setdefault('PULSE_CONFIG_DIR', tempfile.mkdtemp(prefix='pulse-feedback-test-'))
 
+from pulse_core import discovery_feedback
 from pulse_core.discovery_feedback import (
     concept_features,
     contrastive_profile,
@@ -121,7 +124,7 @@ class TestInstantFeedback(unittest.TestCase):
         self.assertEqual([r['doi'] for r in reranked[3:]], ['10.1000/p4', '10.1000/p3'])
         self.assertEqual(moved_up, 1)
 
-    def test_rerank_latency_for_2000_candidates_is_measured(self):
+    def test_warmed_2000_candidate_rerank_reuses_features_and_stays_bounded(self):
         big_pool = [
             {
                 'title': f'Candidate paper {i} on bacterial vesicles and transport',
@@ -148,19 +151,34 @@ class TestInstantFeedback(unittest.TestCase):
             {'grade': 0, 'paper': self.pool[1]},
             {'grade': 2, 'paper': self.pool[2]},
         ]
-        # Measured and printed; the 10 ms target is hardware-dependent (CI runners measured 22-37 ms),
-        # so only a large regression fails unless PULSE_STRICT_PERF=1.
-        timings = []
-        for _ in range(7):
-            t0 = time.perf_counter()
+        # The cached pool must never be tokenized again when feedback changes.
+        cached_features = dict(cache)
+        with patch.object(discovery_feedback, 'concept_features', wraps=concept_features) as extract:
             reranked, moved = rerank_pool_with_feedback(big_pool, feedback, below_index=10, feature_cache=cache)
-            timings.append((time.perf_counter() - t0) * 1000.0)
-        elapsed_ms = sorted(timings)[3]
-        print(f'\n2,000-candidate feedback re-ranking (Python): median {elapsed_ms:.2f} ms', file=sys.stderr)
-        limit = 10.0 if os.environ.get('PULSE_STRICT_PERF') == '1' else 250.0
-        self.assertLess(elapsed_ms, limit, f'2,000-candidate re-ranking took {elapsed_ms:.2f} ms (limit {limit:.0f} ms)')
+        self.assertEqual(extract.call_count, len(feedback), 'Only the two feedback papers need feature extraction')
+        self.assertEqual({call.args[0]['doi'] for call in extract.call_args_list}, {row['paper']['doi'] for row in feedback})
+        self.assertTrue(all(cache[key] is value for key, value in cached_features.items()))
+        self.assertEqual(len(reranked), len(big_pool))
+        self.assertCountEqual([r['doi'] for r in reranked], [r['doi'] for r in big_pool])
         self.assertEqual([r['doi'] for r in reranked[:11]], [r['doi'] for r in big_pool[:11]])
+        self.assertEqual([r['rank'] for r in reranked], list(range(1, len(big_pool) + 1)))
         self.assertGreater(moved, 0)
+
+        for _ in range(3):
+            rerank_pool_with_feedback(big_pool, feedback, below_index=10, feature_cache=cache)
+        samples = []
+        for _ in range(7):
+            started = time.perf_counter()
+            rerank_pool_with_feedback(big_pool, feedback, below_index=10, feature_cache=cache)
+            samples.append((time.perf_counter() - started) * 1000.0)
+        elapsed_ms = statistics.median(samples)
+        # Shared CI runners vary by CPU and load. This catches gross regressions;
+        # the explicit benchmark mode measures the stricter 10ms target separately.
+        benchmark = os.environ.get('PULSE_FEEDBACK_BENCHMARK') == '1'
+        budget_ms = 10.0 if benchmark else 100.0
+        self.assertLess(elapsed_ms, budget_ms, f'Warmed 2,000-candidate median {elapsed_ms:.2f} ms exceeded {budget_ms:.0f} ms; samples={samples}')
+        if benchmark:
+            print(f'Python warmed 2,000-candidate feedback median: {elapsed_ms:.3f} ms; samples={samples}')
 
     def test_pipeline_ranking_records_pre_feedback_score(self):
         seed = {

@@ -58,6 +58,27 @@ def _frames(stack):
 
 def _memory_mb():
     try:
+        if sys.platform == 'win32':
+            import ctypes
+
+            class ProcessMemoryCounters(ctypes.Structure):
+                _fields_ = [('cb', ctypes.c_uint32), ('PageFaultCount', ctypes.c_uint32)] + [
+                    (name, ctypes.c_size_t) for name in (
+                        'PeakWorkingSetSize', 'WorkingSetSize', 'QuotaPeakPagedPoolUsage',
+                        'QuotaPagedPoolUsage', 'QuotaPeakNonPagedPoolUsage',
+                        'QuotaNonPagedPoolUsage', 'PagefileUsage', 'PeakPagefileUsage')]
+
+            kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+            memory = ctypes.WinDLL('psapi', use_last_error=True)
+            kernel.GetCurrentProcess.argtypes = []
+            kernel.GetCurrentProcess.restype = ctypes.c_void_p
+            memory.GetProcessMemoryInfo.argtypes = [ctypes.c_void_p, ctypes.POINTER(ProcessMemoryCounters), ctypes.c_uint32]
+            memory.GetProcessMemoryInfo.restype = ctypes.c_int
+            counters = ProcessMemoryCounters()
+            counters.cb = ctypes.sizeof(counters)
+            if not memory.GetProcessMemoryInfo(kernel.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+                return None
+            return round(counters.PeakWorkingSetSize / (1024 * 1024))
         import resource
         peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         return round(peak / (1024 * 1024 if sys.platform == 'darwin' else 1024))  # macOS reports bytes, Linux KiB

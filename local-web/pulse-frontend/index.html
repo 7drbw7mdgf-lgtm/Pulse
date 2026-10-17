@@ -1,7 +1,7 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai https://europepmc.org https://icite.od.nih.gov; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v2.0.0 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-2.0.0">
-<link rel="icon" type="image/png" href="favicon.png?v=2.0.0"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v2.0.1 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-2.0.1">
+<link rel="icon" type="image/png" href="favicon.png?v=2.0.1"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
@@ -380,21 +380,21 @@
 </div>
 </section>
 <section data-settings-pane="sync" class="settings-pane mac-pane" hidden>
-<div class="mac-group-card"><div class="mac-group-title">Sync between your Macs</div>
-<p class="subtle">Keep the library, notes, tags, reading status and maps the same on each Mac. Everything is encrypted on this Mac with a key made from your sync code; Pulse’s relay stores only data it cannot read. PDFs, extracted full text and map positions stay on the Mac where they were made. Papers removed on another Mac can be restored from Recovery.</p>
+<div class="mac-group-card"><div class="mac-group-title">Sync between your computers</div>
+<p class="subtle">Keep the library, notes, tags, reading status and maps the same on each computer. Everything is encrypted on this computer with a key made from your sync code; Pulse’s relay stores only data it cannot read. PDFs, extracted full text and map positions stay on the computer where they were made. Papers removed on another computer can be restored from Recovery.</p>
 <p id="syncStatusText" class="subtle" role="status">Sync is off.</p>
-<div id="syncOffControls" class="mac-form-actions"><button id="syncStartButton" class="mac-btn primary" type="button">Turn on sync</button><button id="syncJoinToggle" class="mac-btn" type="button">Use a code from another Mac</button></div>
-<div id="syncJoinRow" class="mac-form-row" hidden><label class="mac-form-label" for="syncJoinInput">Sync code</label><div class="mac-form-control"><input id="syncJoinInput" class="mac-input" type="password" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-…"><small class="subtle">Find it on your other Mac under Settings → Sync &amp; privacy → Show code.</small></div></div>
+<div id="syncOffControls" class="mac-form-actions"><button id="syncStartButton" class="mac-btn primary" type="button">Turn on sync</button><button id="syncJoinToggle" class="mac-btn" type="button">Use a code from another computer</button></div>
+<div id="syncJoinRow" class="mac-form-row" hidden><label class="mac-form-label" for="syncJoinInput">Sync code</label><div class="mac-form-control"><input id="syncJoinInput" class="mac-input" type="password" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-…"><small class="subtle">Find it on your other computer under Settings → Sync &amp; privacy → Show code.</small></div></div>
 <div id="syncJoinActions" class="mac-form-actions" hidden><button id="syncJoinButton" class="mac-btn primary" type="button">Join and sync</button></div>
 <div id="syncOnControls" hidden>
 <div class="mac-form-actions"><button id="syncNowButton" class="mac-btn primary" type="button">Sync now</button><button id="syncShowCodeButton" class="mac-btn" type="button">Show code</button><button id="syncCopyCodeButton" class="mac-btn" type="button" hidden>Copy code</button></div>
 <p id="syncCodeText" class="sync-code" hidden></p>
 <p class="subtle">Anyone with this code can read and change your synced library. Keep it private, like a password.</p>
-<div class="mac-form-actions"><button id="syncOffButton" class="mac-btn" type="button">Turn off on this Mac</button><button id="syncEraseButton" class="mac-btn danger" type="button">Turn off and erase the cloud copy</button></div>
+<div class="mac-form-actions"><button id="syncOffButton" class="mac-btn" type="button">Turn off on this computer</button><button id="syncEraseButton" class="mac-btn danger" type="button">Turn off and erase the cloud copy</button></div>
 </div>
 </div>
 <div class="mac-group-card"><div class="mac-group-title">Problem reports</div>
-<p class="subtle">When something goes wrong, Pulse records a report on this Mac: the error, where in the code it happened, app and macOS versions and memory use. Paper titles, notes, searches, keys and file paths are removed first. Nothing is sent unless you choose Send after viewing the exact report.</p>
+<p class="subtle">When something goes wrong, Pulse records a report on this computer: the error, where in the code it happened, app and operating system versions and memory use. Paper titles, notes, searches, keys and file paths are removed first. Nothing is sent unless you choose Send after viewing the exact report.</p>
 <ul id="crashReportList" class="crash-report-list"></ul>
 <div class="mac-form-actions"><button id="crashReportsRefresh" class="mac-btn" type="button">Refresh</button><button id="crashReportsDeleteAll" class="mac-btn" type="button">Delete all</button></div>
 </div>
@@ -573,7 +573,7 @@
 <script src="js/part_06.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_07.js?v=ui-20261012-dbef-scale"></script>
 <script src="graph-engine.js?v=ui-1.8.9"></script>
-<script src="js/part_08.js?v=ui-2.0.0"></script>
+<script src="js/part_08.js?v=ui-2.0.1"></script>
 <script src="js/part_09.js?v=ui-1.8.9-merge"></script>
 <script src="js/graph-runtime.js?v=ui-1.8.9"></script>
 <script src="js/part_10.js?v=ui-1.8.9"></script>
@@ -586,15 +586,15 @@
 <script src="js/part_23.js?v=ui-1.8.9-mendeley"></script>
 <script src="js/mendeley-sync.js?v=ui-1.8.9-merge"></script>
 <script src="js/part_24.js?v=ui-1.8.9"></script>
-<script src="js/library-sync.js?v=ui-2.0.0"></script>
-<script src="js/sync-and-reports.js?v=ui-2.0.0"></script>
+<script src="js/library-sync.js?v=ui-2.0.1"></script>
+<script src="js/sync-and-reports.js?v=ui-2.0.1"></script>
 <script src="js/discovery-controls.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/publication-status.js?v=ui-20261012-evidence"></script>
 <script src="js/inspector.js?v=ui-1.8.9"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
 <script src="js/part_17.js?v=ui-aplus-2-feedback"></script>
 <script src="js/part_18.js?v=ui-1.8.9"></script>
 <script src="js/discovery-review.js?v=ui-aplus-2-feedback"></script>
-<script src="js/part_19.js?v=ui-2.0.0"></script>
+<script src="js/part_19.js?v=ui-2.0.1"></script>
 <script src="js/citation-lookup.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_20.js?v=ui-20261013-map"></script>
 <script src="js/timeline.js?v=ui-1.8.9"></script>

@@ -1,4 +1,4 @@
-/* Settings → Sync & privacy: encrypted multi-Mac sync controls, and local problem reports. */
+/* Settings → Sync & privacy: encrypted between-computer sync controls, and local problem reports. */
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -39,14 +39,14 @@
     try {
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try { summary = await runLibrarySync(io, () => state.papers); break; }
-        catch (error) { if (error.status !== 409 || attempt) throw error; }  // another Mac pushed at the same moment
+        catch (error) { if (error.status !== 409 || attempt) throw error; }  // another computer pushed at the same moment
       }
       if (summary && !summary.skipped && (summary.added || summary.updated || summary.removed)) {
         if (typeof render === 'function') render();
         if (typeof scheduleAutosave === 'function') scheduleAutosave();
         const parts = [summary.added && `${summary.added} added`, summary.updated && `${summary.updated} updated`, summary.removed && `${summary.removed} removed`].filter(Boolean);
-        if (manual || parts.length) showToast(`Synced from your other Mac: ${parts.join(', ')}.`);
-      } else if (manual && summary && !summary.skipped) showToast('Library is up to date on this Mac.');
+        if (manual || parts.length) showToast(`Synced from your other computer: ${parts.join(', ')}.`);
+      } else if (manual && summary && !summary.skipped) showToast('Library is up to date on this computer.');
       if (summary && !summary.skipped && typeof scheduleAutosave === 'function') scheduleAutosave();  // new sync IDs are saved
       sync.state = await localApi('/api/sync/state');
     } catch (error) {
@@ -89,7 +89,7 @@
   function bindSync() {
     $('syncStartButton').addEventListener('click', async () => {
       const code = newSyncCode();
-      try { await enableSync(code); sync.codeShown = true; renderSyncStatus(); showToast('Sync is on. Enter the code shown on your other Mac.'); }
+      try { await enableSync(code); sync.codeShown = true; renderSyncStatus(); showToast('Sync is on. Enter the code shown on your other computer.'); }
       catch (error) { showToast(error.message); }
     });
     $('syncJoinToggle').addEventListener('click', () => { $('syncJoinRow').hidden = false; $('syncJoinActions').hidden = false; $('syncJoinInput').focus(); });
@@ -108,10 +108,10 @@
     });
     $('syncOffButton').addEventListener('click', async () => {
       await localApi('/api/sync/forget', {}); clearInterval(sync.timer); sync.codeShown = false;
-      sync.state = await localApi('/api/sync/state'); renderSyncStatus(); showToast('Sync is off on this Mac. Your library here is unchanged.');
+      sync.state = await localApi('/api/sync/state'); renderSyncStatus(); showToast('Sync is off on this computer. Your library here is unchanged.');
     });
     $('syncEraseButton').addEventListener('click', async () => {
-      if (!window.confirm('Erase the synced copy from Pulse’s relay? Your other Macs keep their libraries but stop syncing until sync is turned on again.')) return;
+      if (!window.confirm('Erase the synced copy from Pulse’s relay? Your other computers keep their libraries but stop syncing until sync is turned on again.')) return;
       try {
         const keys = await deriveSyncKeys(sync.state.code);
         await io.relay('erase', { vault: keys.vault, auth: keys.auth });

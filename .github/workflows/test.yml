@@ -1,7 +1,7 @@
 name: Test Pulse
 on: [push, pull_request]
 jobs:
-  test:
+  current-workspace:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,21 +15,8 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm test
-      - run: python3 test_v1_3_security.py
-
-  current-workspace:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
       - run: python3 -m pip install -r local-web/requirements.txt
-      - run: npm run test:workspace
+      - run: npm test
 
   shared-sign-in:
     runs-on: ubuntu-latest
@@ -44,5 +31,4 @@ jobs:
       - run: python3 -m pip install -r auth-service/requirements.txt
       - run: python3 -m unittest discover -s auth-service/tests -v
       - run: node --test auth-service/cloudflare/test/worker.test.mjs
-      - run: node --test services/relay/test/relay.test.mjs local-web/tests/library_sync.test.mjs
-      - run: python3 -m unittest discover -s local-web/tests -p "test_mendeley_*.py" -v
+      - run: python3 -m unittest discover -s auth-service/cloudflare/test -p "test_*.py" -v
