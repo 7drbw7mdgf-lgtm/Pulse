@@ -223,6 +223,9 @@
       if (els.pulseContactEmailInput && settings?.providers?.openAlex?.contactEmail !== undefined) {
         els.pulseContactEmailInput.value = settings.providers.openAlex.contactEmail || '';
       }
+      if (els.searchRerankerModelTypeSelect && settings?.searchRerankerModelType) {
+        els.searchRerankerModelTypeSelect.value = settings.searchRerankerModelType;
+      }
       const url = apiBase || window.location.origin;
       els.backendUrlInput.value = url;
       els.backendStatus.classList.remove('is-ready', 'is-error');

@@ -374,6 +374,9 @@ def save_settings(payload):
         settings["pulse_contact_email"] = contact_email.strip()
     elif payload.get("clearContactEmail"):
         settings["pulse_contact_email"] = ""
+    reranker_type = payload.get("searchRerankerModelType")
+    if isinstance(reranker_type, str) and reranker_type.strip():
+        settings["searchRerankerModelType"] = reranker_type.strip().lower()
     return write_settings(settings)
 
 def public_settings(settings):
@@ -418,6 +421,7 @@ def public_settings(settings):
         "triageModel": settings.get('triageModel') or 'llama3.2:3b',
         "reportModel": settings.get('reportModel') or 'qwen2.5:7b',
         "autoGemmaExtraction": settings.get("autoGemmaExtraction", LOCAL_BACKEND_DEFAULTS["autoGemmaExtraction"]),
+        "searchRerankerModelType": settings.get("searchRerankerModelType") or "general",
         "configPath": str(_core.CONFIG_PATH),
         "defaults": LOCAL_BACKEND_DEFAULTS,
         "workflow": {
