@@ -214,14 +214,14 @@ const discoveryBoundCheckboxes=new WeakSet();
 
     // ─── Discovery review workspace (1.7.1) ───
     const DISCOVERY_SOURCE_LABELS = {
-      citationGraph: 'Citations', citationCoCitation: 'Co-citation', citationNetwork: 'DBEF', semanticSearch: 'Semantic',
+      citationGraph: 'Citations', citationCoCitation: 'Co-citation', citationNetwork: 'DBEF', authorTrajectory: 'Author trajectory', semanticSearch: 'Semantic',
       lexicalConceptual: 'Semantic Scholar', europePmc: 'Europe PMC', core: 'CORE', fullText: 'Full-text'
     };
     const DISCOVERY_WHY_GROUPS = {
-      authors: 'authors', 'cites-seed': 'citations', 'cited-by-seed': 'citations', 'two-steps': 'citations',
+      authors: 'authors', 'senior-author': 'author-trajectory', 'first-author': 'author-trajectory', 'cites-seed': 'citations', 'cited-by-seed': 'citations', 'two-steps': 'citations',
       'co-cited': 'citations', 'shared-references': 'citations', topic: 'topic', question: 'topic', search: 'search', bridge: 'bridge', fulltext: 'fulltext'
     };
-    const DISCOVERY_WHY_FILTERS = [['authors', 'Shares authors with your seed'], ['citations', 'Linked by citations'], ['topic', 'Matches your topic'], ['search', 'Found by search only'], ['bridge', 'Connects selected seeds'], ['fulltext', 'Matched full-text passages']];
+    const DISCOVERY_WHY_FILTERS = [['author-trajectory', 'Same senior or first author'], ['authors', 'Shares authors with your seed'], ['citations', 'Linked by citations'], ['topic', 'Matches your topic'], ['search', 'Found by search only'], ['bridge', 'Connects selected seeds'], ['fulltext', 'Matched full-text passages']];
     const DISCOVERY_STRENGTHS = [['strong', 'Strong matches'], ['related', 'Related'], ['explore', 'Worth exploring']];
 
     function discoveryStrength(item) {
@@ -242,8 +242,10 @@ const discoveryBoundCheckboxes=new WeakSet();
     // Results from before 1.7.1 have no whyFound; keep their specific reasons, drop the generic one.
     function discoveryWhy(item) {
       if (Array.isArray(item.whyFound) && item.whyFound.length) return item.whyFound;
+      const trajectory = item.authorTrajectoryLabel ? [{ kind: item.authorRole === 'first' ? 'first-author' : 'senior-author', label: item.authorTrajectoryLabel, detail: item.reason || item.authorTrajectoryLabel }] : [];
       const reasons = (item.matchReasons || []).filter(reason => !/^Provider ranks combined/i.test(reason));
-      if (reasons.length) return reasons.map(reason => ({ kind: /citation/i.test(reason) ? 'cites-seed' : 'topic', label: reason, detail: reason }));
+      if (reasons.length) return [...trajectory, ...reasons.map(reason => ({ kind: /citation/i.test(reason) ? 'cites-seed' : 'topic', label: reason, detail: reason }))];
+      if (trajectory.length) return trajectory;
       const sources = [...new Set((item.sourceList || []).filter(Boolean))];
       return [{ kind: 'search', label: 'Topic search', detail: sources.length ? `Found by topic search in ${sources.join(', ')}` : (item.reason || 'Found by your selected search sources') }];
     }
@@ -329,7 +331,7 @@ const discoveryBoundCheckboxes=new WeakSet();
     function discoveryPlannedSources(options) {
       const planned = [];
       if(options.fullTextSearch)planned.push('fullText');
-      for (const key of ['citationGraph', 'citationNetwork', 'citationCoCitation', 'semanticSearch']) if (options.branches?.[key]) planned.push(key);
+      for (const key of ['citationGraph', 'citationNetwork', 'citationCoCitation', 'authorTrajectory', 'semanticSearch']) if (options.branches?.[key]) planned.push(key);
       if (options.branches?.lexicalSearch) {
         if (options.searchSources?.semanticScholar !== false) planned.push('lexicalConceptual');
         if (options.searchSources?.europePmc) planned.push('europePmc');
@@ -397,8 +399,8 @@ const discoveryBoundCheckboxes=new WeakSet();
       const level = strength === 'strong' ? 3 : strength === 'related' ? 2 : 1;
       const queue = discoveryQueueOf(item);
       const tag = queue === 'relevant' ? '<span class="dv-triage is-yes">Relevant</span>' : queue === 'not' ? '<span class="dv-triage is-no">Not relevant</span>' : queue === 'library' ? '<span class="dv-triage">In library</span>' : '';
-      const reasonsList = discoveryWhy(item).map(reason => ({ label: reason.label, detail: reason.detail || reason.label }));
-      const conceptsList = (item.matchedConcepts || item.paperKeywords || []).map(k => ({ label: k, detail: k }));
+      const reasonsList = discoveryWhy(item).map(reason => ({ label: reason.label, detail: reason.detail || reason.label, kind: reason.kind }));
+      const conceptsList = (item.matchedConcepts || item.paperKeywords || []).map(k => ({ label: k, detail: k, kind: 'concept' }));
       const seenLabels = new Set();
       const allPills = [];
       for (const p of [...reasonsList, ...conceptsList]) {
@@ -407,7 +409,7 @@ const discoveryBoundCheckboxes=new WeakSet();
           allPills.push(p);
         }
       }
-      const reasons = allPills.slice(0, 4).map(p => `<span class="dv-reason" title="${escapeHtml(p.detail)}">${escapeHtml(p.label)}</span>`).join('')
+      const reasons = allPills.slice(0, 4).map(p => `<span class="dv-reason${p.kind === 'senior-author' || p.kind === 'first-author' ? ' is-author-trajectory' : ''}" title="${escapeHtml(p.detail)}">${escapeHtml(p.label)}</span>`).join('')
         + (safeHref(item.fullTextUrl || '') ? '<span class="dv-reason is-fulltext">Full text available</span>' : '');
       const meta = [discoveryAuthorLine(item), item.year || item.date || '', item.journal || item.venue || ''].filter(Boolean).join(' · ');
       return `
@@ -448,11 +450,14 @@ const discoveryBoundCheckboxes=new WeakSet();
       const doiHref = doi ? safeHref(`https://doi.org/${encodeURI(doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, ''))}`) : '';
       const strengthLabel = item.matchLabel === 'Relevant' ? 'Relevant' : strength === 'strong' ? 'Strong' : strength === 'related' ? 'Related' : 'Explore';
       const whyReasons = discoveryWhy(item);
+      const trajectoryReason = whyReasons.find(r => r.kind === 'senior-author' || r.kind === 'first-author');
+      const trajectoryBadge = item.authorTrajectoryLabel || trajectoryReason?.label || '';
       return `
         <div class="dv-preview-heading"><span>Paper preview</span><button type="button" class="dv-link dv-preview-back" data-dv-action="show-results">Back to results</button></div>
         <div class="dv-preview-scroll" tabindex="0" aria-label="Read paper abstract">
           <div class="dv-preview-badges">
             <span class="dv-strength is-${strength}">${escapeHtml(strengthLabel)}</span>
+            ${trajectoryBadge ? `<span class="dv-badge dv-author-trajectory" title="${escapeHtml(trajectoryReason?.detail || item.reason || trajectoryBadge)}">${escapeHtml(trajectoryBadge)}</span>` : ''}
             ${Number.isFinite(item.score) ? `<span class="dv-score" title="Scores are relative within this search, not probabilities">${Math.round(item.score)} / 100 relative</span>` : ''}
           </div>
           <h3 class="dv-preview-title">${escapeHtml(cleanDiscoveryTitle(item.title))}</h3>

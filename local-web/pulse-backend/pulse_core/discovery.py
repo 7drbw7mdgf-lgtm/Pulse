@@ -767,6 +767,187 @@ def _collect_extra_hops(seed_papers, hop1_references, hop1_citations, gathered, 
         if not frontier:
             break
 
+ALPHABETICAL_AUTHOR_FIELDS = {
+    "mathematics",
+    "physics and astronomy",
+    "physics",
+}
+ALPHABETICAL_AUTHOR_TOPICS = {
+    "theoretical computer science",
+    "discrete mathematics and combinatorics",
+    "computational theory and mathematics",
+    "mathematical physics",
+    "algebra and number theory",
+    "geometry and topology",
+    "high energy physics",
+    "nuclear and high energy physics",
+}
+
+
+def is_alphabetical_author_field(work, paper=None):
+    """Return True when the seed's field or topic uses alphabetical author ordering (maths, physics, theoretical CS)."""
+    pt = (work or {}).get("primary_topic") or {}
+    field_name = str((pt.get("field") or {}).get("display_name") or (paper or {}).get("field") or "").strip().lower()
+    subfield_name = str((pt.get("subfield") or {}).get("display_name") or "").strip().lower()
+    topic_name = str(pt.get("display_name") or "").strip().lower()
+    if field_name in ALPHABETICAL_AUTHOR_FIELDS or subfield_name in ALPHABETICAL_AUTHOR_TOPICS or topic_name in ALPHABETICAL_AUTHOR_TOPICS:
+        return True
+    combined = f"{field_name} {subfield_name} {topic_name}"
+    return any(term in combined for term in ("mathematics", "physics", "theoretical computer science"))
+
+
+def _author_exceeds_annual_cap(author_obj, meta_count=None, years=3, max_per_year=300):
+    """Return True if an author has >300 works/year (probable merged OpenAlex identity)."""
+    if isinstance(author_obj, dict):
+        if int(author_obj.get("works_count_per_year") or 0) > max_per_year:
+            return True
+        for row in author_obj.get("counts_by_year") or []:
+            if int(row.get("works_count") or 0) > max_per_year:
+                return True
+    if meta_count is not None and int(meta_count) > max_per_year * max(1, int(years or 3)):
+        return True
+    return False
+
+
+def extract_seed_trajectory_authors(work, paper=None):
+    """Extract first and (when non-alphabetical or corresponding) last author specs from a seed's OpenAlex work."""
+    if not work or not isinstance(work, dict):
+        return []
+    authorships = work.get("authorships") or []
+    if not authorships:
+        return []
+    is_alpha = is_alphabetical_author_field(work, paper)
+    pt = work.get("primary_topic") or {}
+    topic_id = str(pt.get("id") or "").split("/")[-1]
+    field_id = str((pt.get("field") or {}).get("id") or "").split("/")[-1]
+
+    specs = []
+    first = authorships[0]
+    first_author = first.get("author") or {}
+    first_match = re.search(r"\bA\d+\b", str(first_author.get("id") or ""))
+    if first_match and not _author_exceeds_annual_cap(first_author):
+        specs.append({
+            "role": "first",
+            "label": "Same first author",
+            "author_id": first_match.group(0),
+            "name": str(first_author.get("display_name") or "").strip(),
+            "topic_id": topic_id,
+            "field_id": field_id,
+        })
+    if len(authorships) > 1:
+        last = authorships[-1]
+        last_author = last.get("author") or {}
+        last_match = re.search(r"\bA\d+\b", str(last_author.get("id") or ""))
+        is_corr = bool(last.get("is_corresponding"))
+        if last_match and (not is_alpha or is_corr) and not _author_exceeds_annual_cap(last_author):
+            if not specs or last_match.group(0) != specs[0]["author_id"]:
+                specs.append({
+                    "role": "last",
+                    "label": "Same senior author",
+                    "author_id": last_match.group(0),
+                    "name": str(last_author.get("display_name") or "").strip(),
+                    "topic_id": topic_id,
+                    "field_id": field_id,
+                })
+    return specs
+
+
+def fetch_author_trajectory_branch(seed_papers, seed_works=None, years=3, max_per_author=5):
+    """Fetch recent works by each seed's first and senior authors (at most 2 OpenAlex calls per seed)."""
+    import datetime
+    if cooldowns().get("OpenAlex"):
+        return SearchResults()
+    gathered = SearchResults()
+    years = max(1, min(int(years or 3), 10))
+    from_year = datetime.date.today().year - years
+    from_date = f"{from_year}-01-01"
+    seed_dois = {normalize_doi(p.get("doi") or "").lower() for p in (seed_papers or []) if p.get("doi")}
+    seed_titles = {normalize_title_key(p.get("title") or "") for p in (seed_papers or []) if p.get("title")}
+
+    for seed_index, paper in enumerate((seed_papers or [])[:24]):
+        check_cancelled()
+        work = seed_works[seed_index] if seed_works and seed_index < len(seed_works) else None
+        if work is None:
+            try:
+                work = _core.openalex_work_for_paper(paper)
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded):
+                raise
+            except Exception:
+                work = None
+        if not work:
+            continue
+        seed_wid = openalex_work_id(work.get("id"))
+        specs = extract_seed_trajectory_authors(work, paper)
+        for spec in specs[:2]:
+            check_cancelled()
+            filter_parts = [f"author.id:{spec['author_id']}", f"from_publication_date:{from_date}"]
+            if spec.get("topic_id"):
+                filter_parts.append(f"primary_topic.id:{spec['topic_id']}")
+            elif spec.get("field_id"):
+                filter_parts.append(f"primary_topic.field.id:{spec['field_id']}")
+            query_params = {
+                "filter": ",".join(filter_parts),
+                "per-page": max_per_author + 2,
+                "sort": "publication_date:desc",
+                "select": OPENALEX_WORK_SELECT,
+            }
+            try:
+                data = _core.fetch_json(f"https://api.openalex.org/works?{urllib.parse.urlencode(query_params)}")
+            except (DiscoveryCancelled, DiscoveryBudgetExceeded):
+                raise
+            except Exception as error:
+                gathered.warning = " · ".join(filter(None, [gathered.warning, str(error)]))
+                continue
+            meta_count = ((data or {}).get("meta") or {}).get("count")
+            if _author_exceeds_annual_cap(None, meta_count=meta_count, years=years):
+                continue
+            rows = (data or {}).get("results") or []
+            year_counts = collections.Counter(str(w.get("publication_year") or "") for w in rows if w.get("publication_year"))
+            if any(cnt > 300 for cnt in year_counts.values()):
+                continue
+            kept = 0
+            for w in rows:
+                if any(_author_exceeds_annual_cap((a.get("author") or {})) for a in (w.get("authorships") or []) if re.search(r"\bA\d+\b", str((a.get("author") or {}).get("id") or "")) and re.search(r"\bA\d+\b", str((a.get("author") or {}).get("id") or "")).group(0) == spec["author_id"]):
+                    kept = 0
+                    break
+                wid = openalex_work_id(w.get("id"))
+                if seed_wid and wid == seed_wid:
+                    continue
+                rec = recommendation_record(*openalex_recommendation_item(w), source="OpenAlex author trajectory")
+                rec_doi = normalize_doi(rec.get("doi") or "").lower()
+                rec_tk = normalize_title_key(rec.get("title") or "")
+                if (rec_doi and rec_doi in seed_dois) or (rec_tk and rec_tk in seed_titles):
+                    continue
+                kept += 1
+                label = spec["label"]
+                role = spec["role"]
+                author_name = spec["name"]
+                channel = f"author:{seed_index}:{role}"
+                rec.update(
+                    branch="authorTrajectory",
+                    subType=label,
+                    provider="OpenAlex",
+                    authorRole=role,
+                    authorTrajectoryLabel=label,
+                    authorTrajectoryName=author_name,
+                    reason=f"{label} ({author_name})" if author_name else label,
+                    discoveryBadges=[label],
+                    retrievalEvidence=[{
+                        "channel": channel,
+                        "provider": "OpenAlex",
+                        "rank": kept,
+                        "subType": label,
+                        "authorRole": role,
+                        "authorName": author_name,
+                        "seedIndex": seed_index,
+                    }],
+                )
+                gathered.append(rec)
+                if kept >= max_per_author:
+                    break
+    return gathered
+
+
 def fetch_citation_network_branch(seed_papers, api_key=None, limit=30):
     # Keep the existing API/workspace key while replacing both legacy network
     # searches with the supplied content-aware DBEF shared-reference method.
@@ -841,7 +1022,7 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
     api_key = resolve_semantic_scholar_api_key(settings)
     branches = payload.get("branches") or {}
     if concept_query:
-        branches = {'citationGraph':False, 'citationNetwork':False, 'citationCoCitation':False, 'semanticSearch':False, 'lexicalSearch':True}
+        branches = {'citationGraph':False, 'citationNetwork':False, 'citationCoCitation':False, 'authorTrajectory':False, 'semanticSearch':False, 'lexicalSearch':True}
     steer_keywords = steering_terms(payload.get("steerKeywords") or payload.get("keywords") or [])
     if concept_search:
         steer_keywords = steering_terms(concept_search['keywords'] + steer_keywords)
@@ -855,10 +1036,15 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
     query_plan = []
     tasks = {}
     resolved_seed_works = []
+    author_trajectory_enabled = branches.get(
+        'authorTrajectory',
+        branches.get('citationGraph', True) and branches.get('citationNetwork', True),
+    ) if not concept_query else False
     citation_branches_active = any([
         branches.get('citationGraph', True),
         branches.get('citationNetwork', True),
         branches.get('citationCoCitation', branches.get('citationNetwork', True)),
+        author_trajectory_enabled,
     ]) if not concept_query else False
     if citation_branches_active:
         # Resolve each seed once, in parallel. Later lookups by the co-citation
@@ -884,6 +1070,11 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
     if branches.get('citationCoCitation',branches.get('citationNetwork',True)):
         from pulse_core.cocitation_discovery import fetch_cocitation_branch
         tasks['citationCoCitation']=lambda:fetch_cocitation_branch(seed_papers,api_key=api_key,limit=limit)
+    if author_trajectory_enabled and (
+        branches.get('authorTrajectory') is True
+        or any(isinstance(w, dict) and w.get('authorships') for w in resolved_seed_works)
+    ):
+        tasks["authorTrajectory"] = lambda: _core.fetch_author_trajectory_branch(seed_papers, seed_works=resolved_seed_works, years=int(payload.get("authorTrajectoryYears") or 3))
     if branches.get("semanticSearch", True):
         tasks["semanticSearch"] = lambda: fetch_semantic_search_branch(seed_papers, api_key=api_key, limit=limit, feedback=feedback)
     if branches.get("lexicalSearch", branches.get("lexicalConceptual", True)):
