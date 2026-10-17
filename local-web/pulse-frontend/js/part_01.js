@@ -220,7 +220,6 @@ const state = {
       clearOpenAlexKeyButton: document.getElementById('clearOpenAlexKeyButton'),
       openAlexLimitBanner: document.getElementById('openAlexLimitBanner'),
       openAlexLimitTime: document.getElementById('openAlexLimitTime'),
-      searchRerankerModelTypeSelect: document.getElementById('searchRerankerModelTypeSelect'),
       autoGemmaExtractionInput: document.getElementById('autoGemmaExtractionInput'),
       backendDiagnostics: document.getElementById('backendDiagnostics'),
       saveSettingsButton: document.getElementById('saveSettingsButton'),

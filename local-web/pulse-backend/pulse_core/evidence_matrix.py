@@ -190,9 +190,7 @@ def generate_evidence_matrix(papers, columns=None, settings=None, max_workers=2,
     if len(selected) < 2:
         return {"rows": [], "columns": columns, "provider": "Local verified grounding", "error": "Select 2 to 15 papers to compare."}
 
-    provider_name = "Local Ollama (Verified Grounding)"
-    if isinstance(settings, dict) and settings.get("aiProvider") == "cloud":
-        provider_name = "Google Gemini (Verified Grounding)"
+    provider_name = "Local sentence heuristic extraction"
 
     rows = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:

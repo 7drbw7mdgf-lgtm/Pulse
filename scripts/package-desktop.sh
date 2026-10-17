@@ -32,6 +32,7 @@ sed "s/^expected_version=.*/expected_version='$version'/" "$source_root/scripts/
 chmod 755 "$release_dir/staging/Allow-Pulse-Tauri.command"
 grep -q "^expected_version='$version'$" "$release_dir/staging/Allow-Pulse-Tauri.command"
 cp "$source_root/docs/MACOS-INSTALL.md" "$release_dir/staging/MACOS-INSTALL.md"
+cp "$source_root/docs/WINDOWS-INSTALL.md" "$release_dir/staging/WINDOWS-INSTALL.md"
 if [ -f "$source_root/docs/PERFORMANCE.md" ]; then
   cp "$source_root/docs/PERFORMANCE.md" "$release_dir/staging/PERFORMANCE.md"
 fi

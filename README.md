@@ -17,8 +17,8 @@ Both installers use the same application source and version. The Mac app is ad h
 
 - Follow author trajectories when discovering related research, and inspect available citation contexts and intent.
 - Apply relevance feedback to unreviewed results while keeping reviewed papers in place.
-- Compare selected papers in an evidence matrix, review quotes checked against source abstracts, and export Markdown or CSV.
-- Use an optional biomedical ranking mode and the included independent benchmark tools.
+- Compare selected papers in an evidence matrix, review extracted sentences checked against abstracts or local full text, and export Markdown or CSV.
+- Rank results with the bundled scientific cross-encoder and inspect the included independent benchmark tools.
 - Optionally sync an encrypted citation library between computers. PDFs and extracted full text remain on the computer that imported them. Problem reports stay local until you review and send one.
 
 - Import PDFs, citation files, DOIs or text into a persistent local library. Keep notes, tags, reading status and relevance labels.

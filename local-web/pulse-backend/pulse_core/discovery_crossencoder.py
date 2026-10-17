@@ -97,13 +97,10 @@ def _find_search_runtime(settings):
         Path.home() / '.pulse/.search-runtime',
     ])
 
-    model_type = str(settings.get('searchRerankerModelType') or os.environ.get('PULSE_RERANKER_MODEL_TYPE') or 'general').lower()
-
     # Bundled executables carry the interpreter and inference dependencies.
     # Relative manifest paths make installed and relocated apps equivalent.
     for root in candidate_roots:
-        manifest_name = 'manifest-biomedical.json' if model_type == 'biomedical' and (root / 'manifest-biomedical.json').is_file() else 'manifest.json'
-        manifest = root / manifest_name
+        manifest = root / 'manifest.json'
         if not manifest.is_file(): continue
         try:
             data = json.loads(manifest.read_text())
