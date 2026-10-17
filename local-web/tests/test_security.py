@@ -29,18 +29,18 @@ server = importlib.import_module('pulse_core.server')
 
 class ReleaseVersionTests(unittest.TestCase):
     def test_current_frontend_backend_and_build_metadata_agree(self):
-        expected = json.loads((ROOT / 'package.json').read_text())['version']
+        expected = json.loads((ROOT / 'package.json').read_text(encoding="utf-8"))['version']
         for name in ['package-lock.json', 'desktop/package.json', 'desktop/package-lock.json', 'desktop/src-tauri/tauri.conf.json']:
             with self.subTest(path=name):
-                document = json.loads((ROOT / name).read_text())
+                document = json.loads((ROOT / name).read_text(encoding="utf-8"))
                 self.assertEqual(document['version'], expected)
                 if 'packages' in document:
                     self.assertEqual(document['packages']['']['version'], expected)
-        cargo = (ROOT / 'desktop/src-tauri/Cargo.toml').read_text()
-        lock = (ROOT / 'desktop/src-tauri/Cargo.lock').read_text()
+        cargo = (ROOT / 'desktop/src-tauri/Cargo.toml').read_text(encoding="utf-8")
+        lock = (ROOT / 'desktop/src-tauri/Cargo.lock').read_text(encoding="utf-8")
         self.assertEqual(re.search(r'\[package\][\s\S]*?\bversion\s*=\s*"([^"]+)"', cargo).group(1), expected)
         self.assertEqual(re.search(r'\[\[package\]\]\s*name = "pulse-desktop"\s*version = "([^"]+)"', lock).group(1), expected)
-        self.assertIn('<title>Pulse v' + expected + ' ', (ROOT / 'local-web/pulse-frontend/index.html').read_text())
+        self.assertIn('<title>Pulse v' + expected + ' ', (ROOT / 'local-web/pulse-frontend/index.html').read_text(encoding="utf-8"))
         with tempfile.TemporaryDirectory() as directory:
             environment = {key: value for key, value in os.environ.items() if key not in {'PULSE_APP_VERSION', 'IRATXE_APP_VERSION'}}
             environment.update(PULSE_CONFIG_DIR=directory, PYTHONDONTWRITEBYTECODE='1')
@@ -62,12 +62,12 @@ class CredentialSecurityTests(unittest.TestCase):
     def test_every_saved_provider_secret_is_encrypted_and_round_trips(self):
         values = {key: 'synthetic-private-' + key for key in security.SENSITIVE_SETTING_KEYS}
         storage.write_settings(values)
-        persisted = json.loads(core.CONFIG_PATH.read_text())
+        persisted = json.loads(core.CONFIG_PATH.read_text(encoding="utf-8"))
         loaded = storage.load_settings()
         for key, value in values.items():
             with self.subTest(key=key):
                 self.assertTrue(persisted[key].startswith('enc:v1:'))
-                self.assertNotIn(value, core.CONFIG_PATH.read_text())
+                self.assertNotIn(value, core.CONFIG_PATH.read_text(encoding="utf-8"))
                 self.assertEqual(loaded[key], value)
 
     def test_tampered_secret_is_rejected(self):
