@@ -38,6 +38,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           Pop-Location
+          node --test services/relay/test/relay.test.mjs local-web/tests/library_sync.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Read release version
         id: version
         shell: pwsh

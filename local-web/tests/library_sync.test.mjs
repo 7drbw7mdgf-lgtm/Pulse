@@ -134,7 +134,7 @@ test('a Mac with a different code sees nothing', async () => {
 test('merge rules', () => {
   assert.deepEqual(S.mergeLists(['a', 'b'], ['a', 'b', 'c'], ['b', 'd']), ['b', 'c', 'd'], 'local add kept, remote add and remove applied');
   assert.equal(S.mergeNotes('abc', 'abc def'), 'abc def');
-  assert.match(S.mergeNotes('mine', 'theirs'), /mine[\s\S]*other Mac[\s\S]*theirs/);
+  assert.match(S.mergeNotes('mine', 'theirs'), /mine[\s\S]*other computer[\s\S]*theirs/);
   const { merged, conflicts } = S.mergeSyncViews({ journal: 'J', year: '2020' }, { journal: 'J2', year: '2020' }, { journal: 'J3', year: '2021' });
   assert.deepEqual(merged, { journal: 'J2', year: '2021' }); assert.equal(conflicts, 1);
 });

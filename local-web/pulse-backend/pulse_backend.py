@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Pulse Literature Mapping App - Backend Entrypoint (v1.3.0)
-Refactored into pulse_core module hierarchy (all files <= 400 lines).
+Pulse Literature Mapping App - Current Desktop Backend Entrypoint
+Application services are organized in the pulse_core module hierarchy.
 Exports all legacy symbols for 100% backward compatibility.
 """
 import sys

@@ -127,6 +127,21 @@ def main():
             except urllib.error.HTTPError as error:
                 assert error.code == 403, error.code
             report['sessionAuthentication'] = True
+            for asset in ('graph-worker.js', 'js/graph-runtime.js', 'js/trends.js', 'js/library-sync.js', 'js/sync-and-reports.js'):
+                assert (install / 'resources/backend' / asset).is_file(), f'Installed asset missing: {asset}'
+            report['currentWorkspaceAssets'] = True
+            sync_state = request('/api/sync/state')
+            assert sync_state['ok'] and sync_state['enabled'] is False
+            assert sync_state['relayUrl'].startswith('https://'), 'Installed relay registration is missing'
+            recorded = request('/api/crash-reports/record', {'errorType': 'SyntheticWindowsVerification',
+                'message': 'Synthetic installed-app check', 'source': 'verification'})
+            problem = request('/api/crash-reports/get', {'id': recorded['id']})['report']
+            assert problem['appVersion'] == args.version and problem['os'].startswith('Windows ')
+            assert isinstance(problem['peakMemoryMB'], (int, float)) and problem['peakMemoryMB'] > 0, problem
+            assert problem['sent'] is False
+            request('/api/crash-reports/delete', {'id': recorded['id']})
+            report['syncAndReportApis'] = True
+            report['windowsMemoryMeasurement'] = True
             library = {'papers': [{'id': 'windows-test', 'title': 'A synthetic Windows test paper'}]}
             request('/api/library', library)
             assert request('/api/library')['papers'][0]['id'] == 'windows-test'

@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'pulse-backend'))
 os.environ.setdefault('PULSE_CONFIG_DIR', tempfile.mkdtemp(prefix='pulse-sync-test-'))
@@ -119,6 +119,65 @@ class CrashReportTests(TempConfig):
     def test_invalid_ids_are_rejected(self):
         for bad in ('../../etc/passwd', '', None, 'a' * 100):
             with self.assertRaises(ClientError): crash_reports.get_report({'id': bad})
+
+
+class MemoryMeasurementTests(unittest.TestCase):
+    def windows_api(self, success=True):
+        kernel, memory = Mock(), Mock()
+        kernel.GetCurrentProcess.return_value = -1
+        def measure(handle, pointer, size):
+            self.assertEqual(handle, -1)
+            self.assertEqual(pointer._obj.cb, size)
+            pointer._obj.PeakWorkingSetSize = 513 * 1024 * 1024
+            pointer._obj.WorkingSetSize = 128 * 1024 * 1024
+            return success
+        memory.GetProcessMemoryInfo.side_effect = measure
+        return kernel, memory
+
+    def test_windows_uses_peak_working_set_in_mebibytes(self):
+        kernel, memory = self.windows_api()
+        with patch.object(crash_reports.sys, 'platform', 'win32'), \
+             patch('ctypes.WinDLL', side_effect=[kernel, memory], create=True):
+            self.assertEqual(crash_reports._memory_mb(), 513)
+        self.assertEqual(memory.GetProcessMemoryInfo.call_count, 1)
+
+    def test_windows_api_failure_is_optional(self):
+        kernel, memory = self.windows_api(success=False)
+        with patch.object(crash_reports.sys, 'platform', 'win32'), \
+             patch('ctypes.WinDLL', side_effect=[kernel, memory], create=True):
+            self.assertIsNone(crash_reports._memory_mb())
+        with patch.object(crash_reports.sys, 'platform', 'win32'), \
+             patch('ctypes.WinDLL', side_effect=OSError('Unavailable'), create=True):
+            self.assertIsNone(crash_reports._memory_mb())
+
+    def test_unix_memory_units_are_unchanged(self):
+        resource = Mock()
+        with patch.dict(sys.modules, {'resource': resource}):
+            resource.getrusage.return_value.ru_maxrss = 513 * 1024 * 1024
+            with patch.object(crash_reports.sys, 'platform', 'darwin'):
+                self.assertEqual(crash_reports._memory_mb(), 513)
+            resource.getrusage.return_value.ru_maxrss = 513 * 1024
+            with patch.object(crash_reports.sys, 'platform', 'linux'):
+                self.assertEqual(crash_reports._memory_mb(), 513)
+
+    def test_memory_watch_records_locally_once_at_the_threshold(self):
+        with patch.object(crash_reports, '_memory_mb', side_effect=[1024, 2048]), \
+             patch.object(crash_reports, 'MEMORY_LIMIT_MB', 2048), \
+             patch.object(crash_reports, '_MEMORY_REPORTED', False), \
+             patch.object(crash_reports, 'record') as record, \
+             patch.object(crash_reports.time, 'sleep'), \
+             patch.object(crash_reports.threading, 'Thread') as thread, \
+             patch.object(crash_reports.sys, 'excepthook'), \
+             patch.object(crash_reports.threading, 'excepthook'), \
+             patch('pulse_core.sync_relay.post') as post:
+            crash_reports.install_hooks()
+            thread.call_args.kwargs['target']()
+            record.assert_called_once_with('memory', 'HighMemory', 'Peak memory 2048 MB (limit 2048 MB)')
+            post.assert_not_called()
+
+    @unittest.skipUnless(sys.platform == 'win32', 'Requires the actual Windows process API')
+    def test_actual_windows_process_has_a_positive_peak(self):
+        self.assertGreater(crash_reports._memory_mb(), 0)
 
 
 if __name__ == '__main__':

@@ -1,11 +1,11 @@
 /**
- * Encrypted multi-Mac library sync through the Pulse relay.
+ * Encrypted between-computer library sync through the Pulse relay.
  *
- * The sync code (32 random bytes) never leaves the Macs. From it, HKDF derives a vault ID, a
+ * The sync code (32 random bytes) never leaves the computers. From it, HKDF derives a vault ID, a
  * relay access token, an AES-GCM key and an HMAC key for record IDs; the relay stores only
  * ciphertext. Each paper is one record. Merging is three-way against the last synced version:
- * a field changed on one Mac wins, lists merge, notes edited on both Macs keep both texts.
- * PDFs, extracted full text and map positions stay on the Mac where they were made.
+ * a field changed on one computer wins, lists merge, notes edited on both computers keep both texts.
+ * PDFs, extracted full text and map positions stay on the computer where they were made.
  */
 (function (root) {
   'use strict';
@@ -43,7 +43,7 @@
   }
   function decodeSyncCode(text) {
     const code = normalizeSyncCode(text);
-    if (!/^[0-9A-HJKMNP-TV-Z]{52}$/.test(code)) throw new Error('That sync code is not valid. Copy it again from the other Mac.');
+    if (!/^[0-9A-HJKMNP-TV-Z]{52}$/.test(code)) throw new Error('That sync code is not valid. Copy it again from the other computer.');
     const bytes = []; let bits = 0, value = 0;
     for (const ch of code) { value = (value << 5) | CROCKFORD.indexOf(ch); bits += 5; if (bits >= 8) { bytes.push((value >>> (bits - 8)) & 255); bits -= 8; } }
     return new Uint8Array(bytes.slice(0, 32));
@@ -101,7 +101,7 @@
     const l = String(local || ''), r = String(remote || '');
     if (!l || r.includes(l)) return r;
     if (!r || l.includes(r)) return l;
-    return `${l}\n\n— From your other Mac —\n${r}`;
+    return `${l}\n\n— From your other computer —\n${r}`;
   }
 
   /** Three-way merge of one paper; `base` is null when two copies meet for the first time. */
@@ -117,7 +117,7 @@
       else if (isEmpty(r)) value = l;
       else if (NOTE_FIELDS.has(key)) { value = mergeNotes(l, r); conflicts += 1; }
       else if (Array.isArray(l) && Array.isArray(r)) value = mergeLists(base ? b : [], l, r);
-      else { value = l; conflicts += 1; }  // both Macs changed it: the Mac that merges keeps its value, then the other Mac adopts it
+      else { value = l; conflicts += 1; }  // both computers changed it: the computer that merges keeps its value, then the other computer adopts it
       if (value !== undefined) merged[key] = value;
     }
     return { merged, conflicts };
@@ -174,7 +174,7 @@
         const list = papers();
         let local = list.find(paper => paper.syncId === sid);
         if (!local && !payload.deleted && !previous) {
-          // First meeting of two copies of the same paper (for example when a Mac joins).
+          // First meeting of two copies of the same paper (for example when a computer joins).
           const identity = typeof paperIdentityKey === 'function' ? paperIdentityKey(payload.paper) : '';
           local = identity && list.find(paper => !base[paper.syncId] && paperIdentityKey(paper) === identity);
           if (local) local.syncId = sid;
