@@ -256,10 +256,11 @@
     paper.pinnedPosition = false;
     state.selectedId = paper.id;
     state.selectedLinkId = null;
-    if (typeof centerGraphOnPaper === 'function') centerGraphOnPaper(paper.id, true);
-    else if (typeof render === 'function') render();
+    // Open the details first: the panel narrows the map, and centring must use the final size.
     if (typeof inspectPaper === 'function') inspectPaper(paper.id);
     else if (typeof renderDetails === 'function') renderDetails();
+    if (typeof centerGraphOnPaper === 'function') centerGraphOnPaper(paper.id, true);
+    else if (typeof render === 'function') render();
     if (typeof renderMapTabs === 'function') renderMapTabs();
     if (typeof scheduleAutosave === 'function') scheduleAutosave();
     if (typeof showToast === 'function') {
