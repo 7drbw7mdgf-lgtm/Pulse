@@ -69,6 +69,12 @@ const discoveryBoundCheckboxes=new WeakSet();
         els.discoveryAddSelectedLibraryBtn.textContent = `Library only (${selectedCount})`;
         els.discoveryAddSelectedLibraryBtn.disabled = selectedCount === 0;
       }
+      const compareBtn = document.getElementById('discoveryCompareBtn');
+      if (compareBtn) {
+        const canCompare = selectedCount >= 2 && selectedCount <= 15;
+        compareBtn.disabled = !canCompare;
+        compareBtn.textContent = canCompare ? `Compare selected (${selectedCount})` : 'Compare selected';
+      }
       const bulk = document.getElementById('discoveryBulkBar');
       const hints = document.getElementById('discoveryHints');
       if (bulk) bulk.hidden = selectedCount === 0;
@@ -823,6 +829,8 @@ const discoveryBoundCheckboxes=new WeakSet();
           selectedDiscoveryPapers().forEach(result => labelDiscoveryPaper(result, action === 'bulk-relevant' ? 2 : 0));
           state.discoverySelectedKeys.clear();
           renderDiscoveryModal();
+        } else if (action === 'bulk-compare') {
+          openDiscoveryCompareDialog(selectedDiscoveryPapers());
         } else if (action === 'bulk-managers') {
           if (typeof openManagers === 'function') openManagers();
           else document.getElementById('libraryManagersDialog')?.showModal?.();
@@ -865,3 +873,114 @@ const discoveryBoundCheckboxes=new WeakSet();
         }
       });
     }
+
+    let _lastComparedMatrix = null;
+    let _lastComparedPapers = [];
+    async function openDiscoveryCompareDialog(papers) {
+      const dialog = document.getElementById('discoveryCompareDialog');
+      if (!dialog) return;
+      _lastComparedPapers = (papers || []).slice(0, 15);
+      const closeBtn = document.getElementById('discoveryCompareCloseBtn');
+      if (closeBtn && !closeBtn.dataset.bound) {
+        closeBtn.dataset.bound = '1';
+        closeBtn.addEventListener('click', () => dialog.close());
+      }
+      const exportCsvBtn = document.getElementById('compareExportCsvBtn');
+      if (exportCsvBtn && !exportCsvBtn.dataset.bound) {
+        exportCsvBtn.dataset.bound = '1';
+        exportCsvBtn.addEventListener('click', async () => {
+          if (!_lastComparedMatrix) return;
+          try {
+            const res = await fetch(backendUrl('/api/discovery/compare'), {
+              method: 'POST',
+              headers: apiHeaders({'Content-Type': 'application/json'}),
+              body: JSON.stringify({ papers: _lastComparedPapers.map(citationPaperPayload), format: 'csv' })
+            });
+            const data = await res.json();
+            if (data.csv && typeof downloadRecordFile === 'function') {
+              downloadRecordFile('pulse-evidence-matrix.csv', data.csv, 'text/csv');
+              showToast('Exported evidence matrix CSV.');
+            }
+          } catch (err) { showToast(err.message); }
+        });
+      }
+      const exportMdBtn = document.getElementById('compareExportMdBtn');
+      if (exportMdBtn && !exportMdBtn.dataset.bound) {
+        exportMdBtn.dataset.bound = '1';
+        exportMdBtn.addEventListener('click', async () => {
+          if (!_lastComparedMatrix) return;
+          try {
+            const res = await fetch(backendUrl('/api/discovery/compare'), {
+              method: 'POST',
+              headers: apiHeaders({'Content-Type': 'application/json'}),
+              body: JSON.stringify({ papers: _lastComparedPapers.map(citationPaperPayload), format: 'markdown' })
+            });
+            const data = await res.json();
+            if (data.markdown && typeof downloadRecordFile === 'function') {
+              downloadRecordFile('pulse-evidence-matrix.md', data.markdown, 'text/markdown');
+              showToast('Exported evidence matrix Markdown.');
+            }
+          } catch (err) { showToast(err.message); }
+        });
+      }
+      const rerunBtn = document.getElementById('compareRerunBtn');
+      if (rerunBtn && !rerunBtn.dataset.bound) {
+        rerunBtn.dataset.bound = '1';
+        rerunBtn.addEventListener('click', () => openDiscoveryCompareDialog(_lastComparedPapers));
+      }
+      dialog.showModal();
+      const status = document.getElementById('compareStatus');
+      const thead = document.getElementById('compareTableHead');
+      const tbody = document.getElementById('compareTableBody');
+      if (status) status.textContent = `Comparing ${_lastComparedPapers.length} papers…`;
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--muted)">Extracting grounded claims and verbatim supporting quotations…</td></tr>';
+      try {
+        const res = await fetch(backendUrl('/api/discovery/compare'), {
+          method: 'POST',
+          headers: apiHeaders({'Content-Type': 'application/json'}),
+          body: JSON.stringify({ papers: _lastComparedPapers.map(citationPaperPayload) })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Comparison failed.');
+        _lastComparedMatrix = data;
+        renderCompareTable(data);
+      } catch (err) {
+        if (status) status.textContent = `Error: ${err.message}`;
+      }
+    }
+
+    function renderCompareTable(matrix) {
+      const status = document.getElementById('compareStatus');
+      const thead = document.getElementById('compareTableHead');
+      const tbody = document.getElementById('compareTableBody');
+      if (status) status.textContent = `Compared ${(matrix.rows || []).length} papers · Generated by ${matrix.provider || 'Pulse Verified Grounding'}`;
+      const columns = matrix.columns || [];
+      if (thead) {
+        thead.innerHTML = `<tr>
+          <th>Paper</th>
+          ${columns.map(c => `<th>${escapeHtml(c.name || c.id)}</th>`).join('')}
+        </tr>`;
+      }
+      if (tbody) {
+        tbody.innerHTML = (matrix.rows || []).map(r => {
+          const cells = columns.map(c => {
+            const cell = (r.cells || {})[c.id || c.name] || {};
+            const val = escapeHtml(cell.value || 'Not stated');
+            const quote = cell.quote ? escapeHtml(cell.quote) : '';
+            const isNotStated = !cell.grounded || /^not stated/i.test(cell.value || '');
+            return `<td class="${isNotStated ? 'is-not-stated' : 'is-grounded'}" title="${quote ? `Supporting quotation: “${quote}”` : ''}">
+              <div class="compare-cell-val">${val}</div>
+              ${quote ? `<small class="compare-cell-quote">“${quote}”</small>` : ''}
+            </td>`;
+          }).join('');
+          return `<tr>
+            <td class="compare-paper-cell">
+              <strong>${escapeHtml(cleanDiscoveryTitle(r.title))}</strong>
+              <small>${escapeHtml(r.meta || '')}</small>
+            </td>
+            ${cells}
+          </tr>`;
+        }).join('');
+      }
+    }
+

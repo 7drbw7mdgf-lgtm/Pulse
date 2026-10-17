@@ -479,6 +479,7 @@
 <button id="discoveryAddSelectedLibraryBtn" class="dv-btn ghost sr-only" type="button" disabled>Library only (0)</button>
 <button class="dv-btn ghost" type="button" data-dv-action="bulk-relevant">Mark relevant</button>
 <button class="dv-btn ghost" type="button" data-dv-action="bulk-not">Mark not relevant</button>
+<button id="discoveryCompareBtn" class="dv-btn ghost" type="button" data-dv-action="bulk-compare" disabled title="Select 2 to 15 papers to compare side by side">Compare selected</button>
 <button class="dv-btn ghost" type="button" data-dv-action="bulk-managers">Send to Zotero or Mendeley…</button>
 <button class="dv-btn ghost" type="button" data-dv-action="bulk-export">Export RIS</button>
 <button id="discoveryDeselectAllBtn" class="dv-link light" type="button">Clear selection</button>
@@ -486,6 +487,32 @@
 <footer id="discoveryHints" class="dv-hints"><span><kbd>J</kbd> <kbd>K</kbd> move</span><span><kbd>R</kbd> relevant</span><span><kbd>N</kbd> not relevant</span><span><kbd>A</kbd> add</span><span><kbd>Space</kbd> select</span><span id="discoveryFooterNote" class="dv-hint-note">Mark results, then refine or rerun this question to use your feedback.</span></footer>
 </div>
 </div>
+<dialog id="discoveryCompareDialog" class="record-dialog compare-dialog" aria-labelledby="discoveryCompareTitle">
+  <header>
+    <div>
+      <h2 id="discoveryCompareTitle">Compare papers (Evidence matrix)</h2>
+      <small id="discoveryCompareSubtitle">Structured synthesis grounded in paper text</small>
+    </div>
+    <button id="discoveryCompareCloseBtn" type="button" aria-label="Close comparison">×</button>
+  </header>
+  <div class="record-dialog-body">
+    <div class="compare-toolbar">
+      <div id="compareColumnToggles" class="compare-column-toggles"></div>
+      <div class="compare-actions">
+        <button id="compareExportCsvBtn" class="button secondary" type="button">Export CSV</button>
+        <button id="compareExportMdBtn" class="button secondary" type="button">Export Markdown</button>
+        <button id="compareRerunBtn" class="button secondary" type="button">Rerun</button>
+      </div>
+    </div>
+    <div id="compareStatus" class="compare-status" role="status"></div>
+    <div class="compare-table-container">
+      <table id="compareTable" class="compare-table">
+        <thead id="compareTableHead"></thead>
+        <tbody id="compareTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</dialog>
 <!-- KEYWORD TAGS MODAL -->
 <div id="keywordModal" class="settings-panel keyword-modal-panel" hidden>
 <div class="keyword-modal-card" role="dialog" aria-modal="true" aria-labelledby="keywordModalTitle"> <div class="keyword-modal-header"> <div>
