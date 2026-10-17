@@ -2,8 +2,6 @@
 
 This is the source used by the current Mac app. It includes direct graph file drops, DOI-first lookup, sourced metrics and citation/reference lists, a compact discovery menu and library sidebar, a full-screen library table with bulk actions, local undo/recovery and a selected-paper AI assistant.
 
-![Pulse workspace with synthetic demonstration papers](../docs/images/pulse-1.5.9-discovery.png)
-
 ## Run
 
 Requires Python 3.10 or later. From this directory:
