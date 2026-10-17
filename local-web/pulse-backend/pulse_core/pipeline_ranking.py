@@ -513,11 +513,18 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
             score += cit_bonus + foundation_prior
         score += .06*min(2,float(options.get('impactTilt') or 0))*impact*topic_support
         score += .05*min(2,float(options.get('recencyTilt') or 0))*recency*max(relevance[i],sem or 0)
+        unadjusted_score = score - adjustment
+        if grade == 0:
+            unadjusted_vel = .09*impact*topic_support if options.get('citationVelocityPrior', True) and not record.get('dbef') else 0
+            unadjusted_fnd = .06*foundational_support(record, topic_support) if options.get('foundationalPrior', True) else 0
+            unadjusted_cit = citation_link_bonus(record, pool_context, topic_support)
+            unadjusted_comb = min(unadjusted_cit + unadjusted_fnd, max(unadjusted_cit, unadjusted_fnd) + 0.03) if (unadjusted_cit > 0 and unadjusted_fnd > 0) else (unadjusted_cit + unadjusted_fnd)
+            unadjusted_score += unadjusted_vel + unadjusted_comb
         record['score'] = round(100*max(0,min(1,score)),3)
         record['scoreBreakdown'] = {'text':round(relevance[i],3),'fusion':round(fusion,3),'semantic':round(sem,3) if sem is not None else None,
             'dbef':record.get('dbef'),'dbefEvidenceQuality':qualities[i] if record.get('dbef') else None,'citationEvidence':round(graph,3),
             'networkStatus':record['networkStatus'],'graphImputed':graphs[i]['imputed'],'graphRenormalized':graphs[i]['renormalize'],
-            'preliminaryScore':round(prelim[i],6),
+            'preliminaryScore':round(prelim[i],6),'preFeedbackScore':round(unadjusted_score,6),
             'optionalImpact':round(impact,3),'citationVelocityPrior':round(velocity_prior,4),'foundationalPrior':round(foundation_prior,4),
             'citationLinkBonus':round(cit_bonus,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
         record['branchHits'] = {b:True for b in record['branches']}

@@ -256,6 +256,7 @@
         authors: typeof paperAuthors==='function' ? paperAuthors(paper) : (Array.isArray(paper.authors)?paper.authors:[]),
         year: paper.year || '',
         journal: paper.journal || '',
+        venue: paper.venue || paper.journal || '',
         date:paper.date || '',volume:paper.volume || '',issue:paper.issue || '',pages:paper.pages || '',issn:paper.issn || '',authorDetails:paper.authorDetails || [],referenceAuthorDetails:paper.referenceAuthorDetails || [],
         abstract: String(paper.abstract || '').slice(0,6000),
         s2PaperId: paper.s2PaperId || '',
@@ -264,6 +265,11 @@
         techniques: paper.techniques || [],
         organisms: paper.organisms || [],
         paperKeywords: paper.paperKeywords || paper.keywords || [],
+        matchedConcepts: paper.matchedConcepts || [],
+        sharedConcepts: paper.sharedConcepts || [],
+        subType: paper.subType || '',
+        dbef: paper.dbef || null,
+        retrievalEvidence: paper.retrievalEvidence || [],
         referenceIds: paper.referenceIds || [],
         citedByIds: paper.citedByIds || []
       };
