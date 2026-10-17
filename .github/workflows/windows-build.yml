@@ -32,7 +32,8 @@ jobs:
           python -m unittest discover -s local-web/tests -p "test_*.py"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Push-Location local-web
-          foreach ($Test in Get-ChildItem tests -Filter *.cjs) {
+          # Browser performance measurements run separately from regressions.
+          foreach ($Test in Get-ChildItem tests -Filter *.cjs | Where-Object { $_.Name -ne 'large_library_benchmark.cjs' }) {
             node $Test.FullName
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
