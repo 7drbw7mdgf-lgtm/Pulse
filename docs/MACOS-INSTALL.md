@@ -12,6 +12,6 @@ In **Settings → Search sources → Semantic Scholar**, enter an optional API k
 
 Timeline keeps only five nearby paper cards mounted, preserves native scrolling, and updates the inspector after scrolling settles. Year navigation and keyboard selection remain immediate.
 
-**Current Mendeley limitation:** RIS export remains available. Shared sign-in and sync are currently blocked because Mendeley rejects the shared sign-in service's application credentials. The Pulse owner must correct the service's application ID or secret. Reinstalling Pulse or repeating browser sign-in does not repair that server setting.
+**Mendeley:** open **Library connections → Connect Mendeley** and complete browser sign-in. If this Mac has custom developer settings, choose **Use Pulse sign-in** first. Shared sign-in and library sync were verified on 17 October 2026 after the service credentials were repaired. Each Mac connects with its own Mendeley account; no developer application ID or secret is required. RIS export remains available.
 
 See the [1.8.9 release notes](releases/1.8.9.md).

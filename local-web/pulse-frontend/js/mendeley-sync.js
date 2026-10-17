@@ -5,14 +5,30 @@ function rememberMendeleyRemovals(papers) {
   for (const paper of papers) if (paper.mendeleySource) {ignored.add(mendeleyRemoteKey(paper.mendeleySource.account, paper.mendeleySource.id)); ignored.add(mendeleyRemoteKey(paper.mendeleySource.account,'identity:'+paperIdentityKey(paper)));}
   state.mendeleyIgnored = [...ignored];
 }
+function mendeleyFieldValue(value) {
+  return value==null || value==='' || (Array.isArray(value) && !value.length) ? '' : JSON.stringify(value);
+}
 function mergeMendeleyRecords(records, account) {
   const ignored = new Set(state.mendeleyIgnored || []);
-  let added=0, updated=0, preserved=0, removed=0;
+  const linked = new Set(state.papers.filter(p=>p.mendeleySource?.account===account).map(p=>p.mendeleySource.id));
+  // Copies of one paper inside Mendeley are grouped by their own metadata, so a DOI corrected in Pulse
+  // cannot split them apart. The copy already linked to a Pulse paper (or else the first) is used.
+  const primary = new Map();
+  for (const record of records) {
+    const identity=paperIdentityKey(record), current=primary.get(identity);
+    if (!current || (!linked.has(current.remoteId) && linked.has(record.remoteId))) primary.set(identity, record);
+  }
+  const handled = new Set();
+  let added=0, updated=0, preserved=0, removed=0, duplicates=0;
   for (const record of records) {
     const key=mendeleyRemoteKey(account, record.remoteId);
     if (ignored.has(key) || ignored.has(mendeleyRemoteKey(account,'identity:'+paperIdentityKey(record)))) {removed++; continue;}
+    if (primary.get(paperIdentityKey(record))!==record) {duplicates++; continue;}
     let paper=state.papers.find(p=>p.mendeleySource?.account===account && p.mendeleySource.id===record.remoteId);
-    if (!paper) paper=state.papers.find(p=>paperIdentityKey(p)===paperIdentityKey(record));
+    if (!paper) {
+      paper=state.papers.find(p=>paperIdentityKey(p)===paperIdentityKey(record));
+      if (paper && handled.has(paper)) {duplicates++; continue;}
+    }
     const snapshot=Object.fromEntries([...bibliographicFields,'paperKeywords'].map(k=>[k,record[k] || (k==='authors' || k==='paperKeywords' ? [] : '')]));
     if (!paper) {
       paper=normalizeImportedPaper({...record,name:record.title},'Mendeley');
@@ -20,22 +36,28 @@ function mergeMendeleyRecords(records, account) {
     } else {
       const previous=paper.mendeleySource?.account===account ? paper.mendeleySource.snapshot : null;
       const localDoi=normalizeDoi(paper.doi || '').toLowerCase(), incomingDoi=normalizeDoi(record.doi || '').toLowerCase();
-      if (localDoi && incomingDoi && localDoi!==incomingDoi) {preserved++; continue;}
+      if (localDoi && incomingDoi && localDoi!==incomingDoi) {
+        // A DOI corrected in Pulse is kept; it is reported only when Mendeley's DOI changes again.
+        if (!previous || normalizeDoi(previous.doi || '').toLowerCase()!==incomingDoi) preserved++;
+        handled.add(paper); continue;
+      }
       let edited=false, changed=false;
       for (const field of bibliographicFields) {
-        const local=paper[field], incoming=record[field];
-        const untouched=previous && JSON.stringify(local || '')===JSON.stringify(previous[field] || '');
-        if ((!local || (Array.isArray(local) && !local.length) || untouched) && incoming && JSON.stringify(local)!==JSON.stringify(incoming)) {
-          paper[field]=incoming;changed=true;
-        } else if (incoming && JSON.stringify(local || '')!==JSON.stringify(incoming)) edited=true;
+        const local=mendeleyFieldValue(paper[field]), incoming=mendeleyFieldValue(record[field]);
+        if (!incoming || incoming===local) continue;
+        // Three-way merge: unchanged in Mendeley since the last sync means there is nothing to apply.
+        if (previous && incoming===mendeleyFieldValue(previous[field])) continue;
+        if (!local || (previous && local===mendeleyFieldValue(previous[field]))) {paper[field]=record[field];changed=true;}
+        else edited=true;
       }
       paper.paperKeywords=[...new Set([...(paper.paperKeywords || []), ...(record.paperKeywords || [])])];
       if (changed) updated++;
       if (edited) preserved++;
     }
+    handled.add(paper);
     paper.mendeleySource={account,id:record.remoteId,snapshot};
   }
-  return {added,updated,preserved,removed};
+  return {added,updated,preserved,removed,duplicates};
 }
 async function syncMendeleyLibrary(manual=false) {
   if (managerUi.syncing || !state.autosaveReady || state.libraryMutation || state.clearingLibrary || !managerUi.status?.mendeley?.connected) return;
@@ -59,7 +81,7 @@ async function syncMendeleyLibrary(manual=false) {
     state.mendeleySyncPaused=false;render();
     if (!await saveLibrary()) throw new Error('Imported details are visible but could not be saved. Retry after checking the connection.');
     await pulseRecordsRequest('/api/managers/mendeley/sync-preferences',{completed:true,accountId:account});
-    managerUi.syncMessage=`${result.added} added · ${result.updated} updated${result.preserved ? ' · '+result.preserved+' local edits kept' : ''}${result.removed ? ' · '+result.removed+' removed papers kept out' : ''}${skipped ? ' · '+skipped+' records without a title skipped' : ''}.`;
+    managerUi.syncMessage=`${result.added} added · ${result.updated} updated${result.preserved ? ' · '+result.preserved+' local edits kept' : ''}${result.removed ? ' · '+result.removed+' removed papers kept out' : ''}${result.duplicates ? ' · '+result.duplicates+' duplicate'+(result.duplicates===1 ? '' : 's')+' in Mendeley merged' : ''}${skipped ? ' · '+skipped+' records without a title skipped' : ''}.`;
     showToast('Mendeley library synced.');
   } catch(error) {managerUi.syncMessage=error.message;}
   finally {managerUi.syncing=false;updateManagers();}

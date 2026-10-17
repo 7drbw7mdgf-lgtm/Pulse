@@ -16,6 +16,8 @@ import urllib.parse
 from broker_store import Store, digest
 from provider import Failure, call, token, validate_path
 
+PROFILE_TYPE = 'application/vnd.mendeley-profiles.1+json'
+
 class Service:
     def __init__(self,origin,client_id,secret,key,database):
         target=urllib.parse.urlsplit(origin)
@@ -56,7 +58,7 @@ class Service:
                 # Do not reconnect a session deleted during a delayed refresh.
                 self.store.update(session,tokens)
             content,following=call(path,method,json.dumps(data).encode() if data is not None else None,
-                {'Authorization':'Bearer '+tokens['access'],'Content-Type':'application/vnd.mendeley-document.1+json','Accept':'application/json' if path.split('?')[0]=='/profiles/v2/me' else 'application/vnd.mendeley-document.1+json'})
+                {'Authorization':'Bearer '+tokens['access'],'Content-Type':'application/vnd.mendeley-document.1+json','Accept':PROFILE_TYPE if path.split('?')[0]=='/profiles/me' else 'application/vnd.mendeley-document.1+json'})
             self.store.update(session,tokens)
             return {'data':content,'next':following,'accountId':account['account']}
 
@@ -112,7 +114,7 @@ def handler(service):
                         code=fields.get('code',[''])[0]
                         if not 1<=len(code)<=4096 or any(ord(c)<33 or ord(c)>126 for c in code):raise Failure(400,'Invalid sign-in response.')
                         tokens=token(service.client_id,service.secret,service.redirect,{'grant_type':'authorization_code','code':code})
-                        profile,_=call('/profiles/v2/me',headers={'Authorization':'Bearer '+tokens['access'],'Accept':'application/json'})
+                        profile,_=call('/profiles/me',headers={'Authorization':'Bearer '+tokens['access'],'Accept':PROFILE_TYPE})
                         if not isinstance(profile,dict) or not isinstance(profile.get('id'),str) or not profile['id']:raise Failure(502,'The account could not be confirmed.')
                         tokens['expires']=time.time()+tokens.pop('lifetime');service.store.complete(identity,tokens,profile['id'])
                         message='Mendeley connected. Return to Pulse to sync your library.';status=200

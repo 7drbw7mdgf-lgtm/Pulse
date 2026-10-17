@@ -41,6 +41,14 @@
 .dv-details[open] { position: absolute; right: 20px; top: 40px; width: min(500px, calc(100% - 40px)); z-index: 10; padding: 14px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-lg); }
 .dv-details > div, .dv-details p { margin: 6px 0 0; font-size: 11.5px; color: var(--muted); max-width: 560px; }
 .dv-notice { margin: 0; padding: 8px 18px; background: var(--surface-2); color: var(--ink-2); font-size: 12px; line-height: 1.5; border-bottom: 1px solid var(--line); }
+.dv-limit-banner { display: flex; align-items: center; justify-content: space-between; gap: 14px; background: #fffbeb; color: #92400e; border-bottom: 1px solid #fef3c7; }
+[data-theme="dark"] .dv-limit-banner { background: rgba(245, 158, 11, .12); color: #fcd34d; border-bottom-color: rgba(245, 158, 11, .25); }
+.dv-limit-text { font-size: 12px; font-weight: 500; }
+.dv-limit-text strong { font-weight: 700; color: inherit; }
+.dv-limit-btn { flex-shrink: 0; margin-left: auto; border-color: #f59e0b; color: #92400e; background: #fef3c7; font-weight: 600; }
+.dv-limit-btn:hover { background: #fde68a; }
+[data-theme="dark"] .dv-limit-btn { background: rgba(245, 158, 11, .2); color: #fef3c7; border-color: rgba(245, 158, 11, .4); }
+[data-theme="dark"] .dv-limit-btn:hover { background: rgba(245, 158, 11, .3); }
 
 .dv-progress { display: flex; flex-direction: column; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .dv-progress.is-compact { padding: 6px 18px; }

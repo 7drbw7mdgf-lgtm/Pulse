@@ -216,6 +216,13 @@
       if(els.coreKeyInput)els.coreKeyInput.placeholder=coreConfigured?'Key saved · leave blank to keep':'Optional';
       const coreStatus=document.getElementById('coreSearchStatus');if(coreStatus)coreStatus.textContent=coreConfigured?'CORE key configured':'Public search · no key needed';
       if(els.clearCoreKeyButton)els.clearCoreKeyButton.disabled=!coreConfigured;
+      const openAlexConfigured = Boolean(settings?.providers?.openAlex?.configured);
+      if (els.openAlexApiKeyInput) els.openAlexApiKeyInput.placeholder = openAlexConfigured ? 'Key saved · leave blank to keep' : 'Optional';
+      if (els.openAlexKeyStatus) els.openAlexKeyStatus.textContent = openAlexConfigured ? 'API key saved' : 'Free daily allowance';
+      if (els.clearOpenAlexKeyButton) els.clearOpenAlexKeyButton.disabled = !openAlexConfigured;
+      if (els.pulseContactEmailInput && settings?.providers?.openAlex?.contactEmail !== undefined) {
+        els.pulseContactEmailInput.value = settings.providers.openAlex.contactEmail || '';
+      }
       const url = apiBase || window.location.origin;
       els.backendUrlInput.value = url;
       els.backendStatus.classList.remove('is-ready', 'is-error');

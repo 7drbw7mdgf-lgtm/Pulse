@@ -331,7 +331,7 @@ def validate_library_limit(data, saving=False):
             data['paperLimit'] = context.max_papers
 
 
-SENSITIVE_SETTING_KEYS = frozenset({"apiKey", "dimensionsApiKey", "semanticScholarApiKey", "geminiApiKey"})
+SENSITIVE_SETTING_KEYS = frozenset({"apiKey", "dimensionsApiKey", "semanticScholarApiKey", "geminiApiKey", "coreApiKey", "openAlexApiKey"})
 
 def _get_encryption_key():
     get_context().config_dir.mkdir(parents=True, exist_ok=True)

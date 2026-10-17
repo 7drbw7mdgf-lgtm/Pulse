@@ -283,11 +283,17 @@
         try {
           if (state.discoveryLoading || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
           if (typeof backendUrl !== 'function' || typeof apiHeaders !== 'function') return;
+          // Warm exactly what "Discover related" would search for this paper:
+          // same options and feedback, so the later search is served from cache.
+          const seeds = typeof selectedPapersForRecommendation === 'function' ? selectedPapersForRecommendation() : [paper];
+          if (seeds.length !== 1 || seeds[0]?.id !== paper.id || typeof discoveryConfiguration !== 'function') return;
+          const options = discoveryConfiguration();
+          const feedback = typeof discoveryFeedbackPayload === 'function' ? discoveryFeedbackPayload(seeds, options) : {};
           _warmPaperController = new AbortController();
           fetch(backendUrl('/api/discovery/warm'), {
             method: 'POST',
             headers: apiHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ paper: citationPaperPayload(paper) }),
+            body: JSON.stringify({ paper: citationPaperPayload(paper), options: { ...options, ...feedback } }),
             signal: _warmPaperController.signal
           }).catch(() => {}).finally(() => { _warmPaperController = null; });
         } catch (_) {}

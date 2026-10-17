@@ -19,11 +19,13 @@ def validate_path(path, method='GET'):
     target = urllib.parse.urlsplit(path)
     if target.scheme or target.netloc or target.fragment or not path.startswith('/') or '\\' in path:
         raise Failure(400, 'Invalid library request.')
-    allowed = {'/documents', '/search/documents', '/profiles/v2/me'}
+    allowed = {'/documents', '/search/documents', '/profiles/me'}
     if method not in {'GET','POST'} or target.path not in allowed or (method=='POST' and target.path!='/documents'):
         raise Failure(400, 'This library operation is not available.')
     fields = urllib.parse.parse_qs(target.query, keep_blank_values=True)
-    if set(fields) - {'view','limit','marker','modified_since','order','sort','query'} or any(len(v)!=1 for v in fields.values()):
+    if set(fields) - {'view','limit','marker','reverse','modified_since','order','sort','query'} or any(len(v)!=1 for v in fields.values()):
+        raise Failure(400, 'Unsupported library filter.')
+    if fields.get('reverse', ['false'])[0] not in {'true','false'}:
         raise Failure(400, 'Unsupported library filter.')
     if fields.get('view', ['all'])[0] not in {'all','client','bib'} or fields.get('view')==['bib']:
         raise Failure(400, 'Only JSON library records are supported.')
@@ -35,7 +37,8 @@ def validate_path(path, method='GET'):
 
 def call(path, method='GET', data=None, headers=None):
     req=urllib.request.Request(ORIGIN+path, method=method, data=data,
-        headers={'Accept':'application/vnd.mendeley-document.1+json', **(headers or {})})
+        # Mendeley's edge blocks Python's default user agent (Cloudflare error 1010).
+        headers={'Accept':'application/vnd.mendeley-document.1+json', 'User-Agent':'Pulse-auth-service (Mendeley)', **(headers or {})})
     try:
         with urllib.request.build_opener(NoRedirect()).open(req, timeout=20) as response:
             raw=response.read(4*1024*1024+1)
