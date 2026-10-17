@@ -481,6 +481,21 @@ const discoveryBoundCheckboxes=new WeakSet();
               ${fullText ? `<li><span class="dv-check-icon">✓</span> <span>Free full text available</span></li>` : ''}
             </ul>
           </div>
+          ${(Array.isArray(item.citationContexts) && item.citationContexts.length) || (Array.isArray(item.citationIntents) && item.citationIntents.length) || item.isInfluentialCitation ? `
+            <section class="dv-citation-context">
+              <div class="dv-citation-context-head">
+                <h4>How it cites your seed</h4>
+                <div class="dv-citation-intents">
+                  ${(item.citationIntents || []).slice(0, 3).map(intent => {
+                    const label = /^method/i.test(intent) ? 'Methods' : /^result/i.test(intent) ? 'Results' : 'Background';
+                    const cls = /^method/i.test(intent) ? 'is-methods' : /^result/i.test(intent) ? 'is-results' : 'is-background';
+                    return `<span class="dv-intent-badge ${cls}">${escapeHtml(label)}</span>`;
+                  }).join('')}
+                  ${item.isInfluentialCitation ? '<span class="dv-intent-badge is-influential">Influential</span>' : ''}
+                </div>
+              </div>
+              ${(item.citationContexts || []).length ? `<ul class="dv-citation-quotes">${(item.citationContexts || []).slice(0, 3).map(ctx => `<li>“${escapeHtml(String(ctx || '').slice(0, 300))}”</li>`).join('')}</ul>` : ''}
+            </section>` : ''}
           ${item.abstract ? `
             <section class="dv-abstract">
               <h4>ABSTRACT</h4>

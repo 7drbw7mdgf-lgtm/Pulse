@@ -233,6 +233,14 @@ def why_found(record, seed_papers, options, relevance=0.0):
         why.append({'kind': 'cited-by-seed', 'label': 'Cited by your seed', 'detail': f'{seed_word[0].upper()}{seed_word[1:]} cites this paper'})
     if any(channel.startswith('citations:') and channel.endswith(':forward') for channel in channels):
         why.append({'kind': 'cites-seed', 'label': 'Cites your seed', 'detail': f'This paper cites {seed_word}'})
+    intents = [str(x).strip() for x in (record.get('citationIntents') or []) if str(x).strip()]
+    contexts = [str(x).strip() for x in (record.get('citationContexts') or []) if str(x).strip()]
+    is_inf = bool(record.get('isInfluentialCitation'))
+    if is_inf or intents or contexts:
+        badge_parts = (['Influential'] if is_inf else []) + [i for i in intents if i not in ('Influential',)]
+        label = f"{badge_parts[0]} citation" if badge_parts else 'Citation context'
+        detail = f"How it cites your seed ({', '.join(badge_parts)})" if badge_parts else 'Includes verbatim citation context'
+        why.append({'kind': 'cites-seed', 'label': label, 'detail': detail})
     if (record.get('scoreBreakdown') or {}).get('citationLinkBonus', 0) > 0:
         why.append({'kind': 'citation-link-bonus', 'label': 'Widely cited direct link', 'detail': 'Directly linked to your seed and widely cited'})
     def evidence_of(kind):
@@ -441,6 +449,27 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
                         badges.insert(0, badge)
                         record['discoveryBadges'] = badges
     apply_network_assessments(records,candidates_by_branch)
+    ext_ctx = options.get('_citationContexts') or {}
+    if isinstance(ext_ctx, dict) and ext_ctx:
+        from pulse_core.s2_client import normalize_citation_contexts, normalize_citation_intents
+        for rec in records:
+            for k in (
+                str(rec.get('doi') or '').strip().lower(),
+                str(rec.get('pmid') or '').strip(),
+                str(rec.get('s2PaperId') or '').strip(),
+                str(rec.get('openAlexId') or '').replace('https://openalex.org/', '').strip(),
+            ):
+                if k and k in ext_ctx and isinstance(ext_ctx[k], dict):
+                    entry = ext_ctx[k]
+                    ctxs = normalize_citation_contexts(entry.get('contexts'))
+                    ints = normalize_citation_intents(entry.get('intents'))
+                    if ctxs and not rec.get('citationContexts'):
+                        rec['citationContexts'] = ctxs
+                    if ints and not rec.get('citationIntents'):
+                        rec['citationIntents'] = ints
+                    if entry.get('isInfluential') is True:
+                        rec['isInfluentialCitation'] = True
+                    break
     queries = ([options['researchQuestion']] if options.get('researchQuestion') else []) + [text_for_paper(p) for p in seed_papers]
     if options.get('steerKeywords'): queries.append(' '.join(options['steerKeywords']))
     relevance = bm25_scores(records,queries,focus_first=bool(options.get('researchQuestion')))
@@ -556,6 +585,19 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
             score += min(cit_bonus + foundation_prior, max(cit_bonus, foundation_prior) + 0.03)
         else:
             score += cit_bonus + foundation_prior
+        ctx_bonus = 0.0
+        if options.get('citationContextSignal', True) and grade != 0:
+            intents_low = {str(x).strip().lower() for x in (record.get('citationIntents') or [])}
+            if record.get('isInfluentialCitation') is True:
+                ctx_bonus += 0.025
+            if 'methodology' in intents_low or 'result' in intents_low:
+                ctx_bonus += 0.020
+            elif 'background' in intents_low:
+                ctx_bonus += 0.010
+            if record.get('citationContexts'):
+                ctx_bonus += 0.010
+            ctx_bonus = min(0.045, ctx_bonus) * max(0.25, topic_support)
+            score += ctx_bonus
         score += .06*min(2,float(options.get('impactTilt') or 0))*impact*topic_support
         score += .05*min(2,float(options.get('recencyTilt') or 0))*recency*max(relevance[i],sem or 0)
         unadjusted_score = score - adjustment
@@ -571,7 +613,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
             'networkStatus':record['networkStatus'],'graphImputed':graphs[i]['imputed'],'graphRenormalized':graphs[i]['renormalize'],
             'preliminaryScore':round(prelim[i],6),'preFeedbackScore':round(unadjusted_score,6),
             'optionalImpact':round(impact,3),'citationVelocityPrior':round(velocity_prior,4),'foundationalPrior':round(foundation_prior,4),
-            'citationLinkBonus':round(cit_bonus,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
+            'citationLinkBonus':round(cit_bonus,4),'citationContextBonus':round(ctx_bonus,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
         record['branchHits'] = {b:True for b in record['branches']}
         if any(b in record['branches'] for b in ('core','europePmc','fullText')): record['branchHits']['lexicalConceptual']=True
         explanations = []

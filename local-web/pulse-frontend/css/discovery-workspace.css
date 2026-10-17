@@ -153,6 +153,17 @@
 .dv-abstract h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 .dv-abstract p { margin: 0; font-size: 13.5px; line-height: 1.75; color: var(--ink-2); }
 
+.dv-citation-context { padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; gap: 8px; }
+.dv-citation-context-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.dv-citation-context h4 { margin: 0; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.dv-citation-intents { display: flex; flex-wrap: wrap; gap: 6px; }
+.dv-intent-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); }
+.dv-intent-badge.is-methods { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
+.dv-intent-badge.is-results { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+.dv-intent-badge.is-background { background: #f8fafc; border-color: #cbd5e1; color: #475569; }
+.dv-intent-badge.is-influential { background: #fef3c7; border-color: #fde68a; color: #92400e; }
+.dv-citation-quotes { margin: 0; padding: 0 0 0 14px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; line-height: 1.55; color: var(--ink-2); font-style: italic; }
+
 .dv-links { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; font-weight: 600; padding: 4px 0; }
 .dv-links a, .dv-links button { color: #4f46e5; text-decoration: none; border: 0; background: transparent; font: inherit; cursor: pointer; padding: 0; }
 .dv-links a:hover, .dv-links button:hover { text-decoration: underline; }
