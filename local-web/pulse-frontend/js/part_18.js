@@ -350,11 +350,8 @@
 
     function updateMetrics() {
       const activePapers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
-      const activeLinks = state.links.filter(link => {
-        const p1 = state.papers.find(p => p.id === link.source);
-        const p2 = state.papers.find(p => p.id === link.target);
-        return p1 && p2 && isPaperOnActiveMap(p1) && isPaperOnActiveMap(p2);
-      });
+      const activeIds = new Set(activePapers.map(paper => paper.id));
+      const activeLinks = state.links.filter(link => activeIds.has(link.source) && activeIds.has(link.target));
       els.emptyState.style.display = activePapers.length ? 'none' : 'grid';
       if (!activePapers.length && state.papers.length > 0) {
         const currentMap = state.maps?.find(m => m.id === state.activeMapId);

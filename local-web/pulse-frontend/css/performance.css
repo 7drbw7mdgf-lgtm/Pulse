@@ -1,0 +1,2 @@
+.graph-compute-status { position:absolute; left:16px; bottom:16px; z-index:15; max-width:calc(100% - 32px); padding:9px 13px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--ink-2); font-size:12px; box-shadow:0 3px 12px #0001; pointer-events:none; }
+.graph-compute-status[hidden] { display:none !important; }

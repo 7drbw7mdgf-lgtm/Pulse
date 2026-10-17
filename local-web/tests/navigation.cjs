@@ -8,12 +8,13 @@ function element(id){return elements[id] ||= {dataset:{},attributes:{},classes:n
 const nav=['network','library','trends','timeline','settings'].map(name=>{const item=element(name);item.dataset.rail=name;return item;});
 const root=element('root');root.getAttribute=name=>root.attributes[name]||null;
 const state={mode:'network',libraryFullscreen:false,libraryOpen:true};
-const els={app:element('app'),timelineView:element('timelineView'),settingsPanel:element('settingsPanel'),settingsButton:element('settingsButton'),colLibrary:element('colLibrary'),closeLibrarySwipeBtn:element('fullscreen'),themeToggle:element('theme')};
+const els={app:element('app'),timelineView:element('timelineView'),trendsView:element('trendsView'),settingsPanel:element('settingsPanel'),settingsButton:element('settingsButton'),colLibrary:element('colLibrary'),closeLibrarySwipeBtn:element('fullscreen'),themeToggle:element('theme')};
 const store={};
 const context={state,els,localStorage:{getItem:key=>store[key],setItem:(key,value)=>store[key]=value},window:{matchMedia:()=>({matches:false})},
  document:{documentElement:root,querySelectorAll:()=>nav,querySelector:()=>nav.find(item=>item.classes.has('active')),getElementById:id=>element(id)},
  loadBackendSettings(){},showToast(){},setAiPanelOpen(){},syncDensityButtons(){},renderPapers(){},render(){},requestAnimationFrame:fn=>fn(),
- setTimelineVisible(value){els.timelineView.hidden=!value;}};
+ setTimelineVisible(value){els.timelineView.hidden=!value;},
+ trendsVisible(){return !els.trendsView.hidden;},setTrendsVisible(value){els.trendsView.hidden=!value;}};
 vm.createContext(context);
 vm.runInContext(functions(read('part_01.js'),'highlightRail','    function discoveryPaperKey'),context);
 vm.runInContext(functions(read('part_21.js'),'toggleLibraryWithSwipe','    els.closeLibrarySwipeBtn?'),context);
@@ -30,6 +31,12 @@ context.setSettingsOpen(true);context.setSettingsOpen(false);assert.equal(contex
 context.toggleLibraryWithSwipe(false);assert.equal(context.activeRail(),'timeline');
 context.highlightRail('trends');els.timelineView.hidden=true;state.mode='clusters';
 context.setLibraryFullscreen(true);context.setLibraryFullscreen(false);assert.equal(context.activeRail(),'trends');
+context.setTrendsVisible(true);state.mode='network';
+assert.equal(context.workspaceRail(),'trends');
+context.setLibraryFullscreen(true);assert.equal(els.trendsView.hidden,true);
+context.setLibraryFullscreen(false);assert.equal(els.trendsView.hidden,false);assert.equal(context.activeRail(),'trends');
+context.setSettingsOpen(true);context.setSettingsOpen(false);assert.equal(context.activeRail(),'trends');
+context.setTrendsVisible(false);
 context.setSettingsOpen(true);context.highlightRail('network');context.setSettingsOpen(false);assert.equal(context.activeRail(),'network');
 context.initFrankTheme();assert.equal(root.attributes['data-theme'],'light');assert.equal(els.themeToggle.attributes['aria-label'],'Switch to dark theme');
 els.themeToggle.click();assert.equal(root.attributes['data-theme'],'dark');assert.equal(store['pulse-theme'],'dark');assert.equal(els.themeToggle.attributes['aria-pressed'],'true');

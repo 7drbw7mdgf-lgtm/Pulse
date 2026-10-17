@@ -6,7 +6,52 @@
     let lastNodeClickTime = 0;
     let lastNodeClickId = null;
 
+    let layoutRevision = 0;
+    const graphLayoutCache = new Map();
+    function graphLayoutRequest(width, height) {
+      const papers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
+      const key = JSON.stringify([width,height,state.mode,state.centerId,state.activeMapId,state.graphStyle.spacing || 1,
+        state.graphAnalysisRevision || (typeof relatednessRevision === 'number' ? relatednessRevision : 0),
+        papers.map(paper => [paper.id,Boolean(paper.pinnedPosition),paper.pinnedPosition ? paper.x : null,paper.pinnedPosition ? paper.y : null])]);
+      return {key,width,height,papers,signature:[key,...papers.flatMap(paper => [paper.id,paper.x,paper.y,Boolean(paper.pinnedPosition)])]};
+    }
+    function sameGraphPositions(left, right) {
+      return Boolean(left && right && left.length === right.length && left.every((value,index) => Object.is(value,right[index])));
+    }
+    function rememberGraphLayout(width, height) {
+      const request = graphLayoutRequest(width,height);
+      graphLayoutCache.delete(request.key);
+      graphLayoutCache.set(request.key,request.signature);
+      while (graphLayoutCache.size > 8) graphLayoutCache.delete(graphLayoutCache.keys().next().value);
+    }
     function layout(width, height) {
+      if (isRecenteringAnimation || state.drag || state.areaDrag) return;
+      if (typeof graphMapVisible === 'function' && !graphMapVisible()) return;
+      const request = graphLayoutRequest(width,height);
+      if (!request.papers.length) return;
+      if (sameGraphPositions(graphLayoutCache.get(request.key),request.signature)) return;
+      // Show valid seed positions immediately while a larger map settles off-thread.
+      const radius = Math.max(80, Math.min(width,height) * .34 * (state.graphStyle.spacing || 1));
+      request.papers.forEach((paper,index) => {
+        if (!Number.isFinite(paper.x) || !Number.isFinite(paper.y)) {
+          const angle = Math.PI * 2 * index / request.papers.length - Math.PI / 2;
+          paper.x = width / 2 + Math.cos(angle) * radius;
+          paper.y = height / 2 + Math.sin(angle) * radius;
+        }
+      });
+      if (state.graphAnalysisPending) return;
+      if (!state.centerId && state.mode !== 'radial' && state.mode !== 'clusters' && typeof prepareGraphLayout === 'function') {
+        const prepared = prepareGraphLayout(graphLayoutRequest(width,height));
+        if (prepared.pending) return;
+      }
+      layoutUncached(width,height);
+      layoutRevision += 1;
+      if (state.graphPerformance) state.graphPerformance.layoutBuilds += 1;
+      if (typeof graphFinishLayoutPromise === 'function') graphFinishLayoutPromise(true);
+      rememberGraphLayout(width,height);
+    }
+
+    function layoutUncached(width, height) {
       const papers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
       if (!papers.length) return;
       if (isRecenteringAnimation) return;
@@ -28,6 +73,7 @@
 
       if (state.mode === 'radial') {
         papers.forEach((paper, index) => {
+          if (paper.pinnedPosition) return;
           const angle = (Math.PI * 2 * index) / papers.length - Math.PI / 2;
           paper.x = centerX + Math.cos(angle) * radius;
           paper.y = centerY + Math.sin(angle) * radius;
@@ -44,6 +90,7 @@
           const cy = centerY + Math.sin(angle) * radius * 0.72;
           const activeClusterPapers = cluster.map(id => activePaperMap.get(id)).filter(Boolean);
           activeClusterPapers.forEach((paper, index) => {
+            if (paper.pinnedPosition) return;
             const localAngle = (Math.PI * 2 * index) / Math.max(activeClusterPapers.length, 1);
             const cDist = Math.min(clusterRadius, 60 + activeClusterPapers.length * 18);
             paper.x = cx + Math.cos(localAngle) * cDist;
@@ -53,6 +100,7 @@
         return;
       }
 
+      const layoutPapersById = new Map(papers.map(paper => [paper.id,paper]));
       for (let tick = 0; tick < 58; tick += 1) {
         const forces = new Map(papers.map(paper => [paper.id, { x: 0, y: 0 }]));
 
@@ -61,7 +109,7 @@
             const a = papers[i];
             const b = papers[j];
             const dx = a.x - b.x;
-            const dy = b.y - a.y;
+            const dy = a.y - b.y;
             const distance = Math.max(45, Math.hypot(dx, dy));
             const push = (1600 * spacing * spacing) / (distance * distance);
             const forceA = forces.get(a.id);
@@ -96,8 +144,8 @@
         }
 
         state.links.forEach(link => {
-          const a = papers.find(paper => paper.id === link.source);
-          const b = papers.find(paper => paper.id === link.target);
+          const a = layoutPapersById.get(link.source);
+          const b = layoutPapersById.get(link.target);
           if (!a || !b) return;
           const dx = b.x - a.x;
           const dy = b.y - a.y;

@@ -19,23 +19,34 @@ function renderLibraryBulkActions(visiblePapers = state.papers.filter(paperMatch
   if (selectAll) {
     selectAll.checked = visiblePapers.length > 0 && shown === visiblePapers.length;
     selectAll.indeterminate = shown > 0 && shown < visiblePapers.length;
-    selectAll.addEventListener('change', () => {
-      for (const paper of visiblePapers) {
-        if (selectAll.checked) state.librarySelectedIds.add(paper.id);
-        else state.librarySelectedIds.delete(paper.id);
-      }
-      renderPapers();
-    });
   }
-  els.paperList.querySelectorAll('[data-action="select-library-row"]').forEach(input => {
-    const row = input.closest('[data-paper]');
-    row.classList.toggle('is-bulk-selected', input.checked);
-    input.addEventListener('change', () => {
-      if (input.checked) state.librarySelectedIds.add(row.dataset.paper);
-      else state.librarySelectedIds.delete(row.dataset.paper);
-      renderPapers();
-      document.querySelector(`[data-paper="${CSS.escape(row.dataset.paper)}"] [data-action="select-library-row"]`)?.focus();
-    });
+  const root=els.paperList;
+  root.__pulseVisibleLibraryPapers=visiblePapers;
+  const change=event=>{
+    const input=event.target;
+    if(input.id==='librarySelectVisible') {
+      for(const paper of root.__pulseVisibleLibraryPapers||[]) {
+        if(input.checked)state.librarySelectedIds.add(paper.id);else state.librarySelectedIds.delete(paper.id);
+      }
+    } else if(input.dataset?.action==='select-library-row') {
+      const row=input.closest('[data-paper]');if(!row)return;
+      if(input.checked)state.librarySelectedIds.add(row.dataset.paper);else state.librarySelectedIds.delete(row.dataset.paper);
+    } else return;
+    renderPapers();
+  };
+  if(typeof root.addEventListener==='function') {
+    if(!root.__pulseBulkBound){root.__pulseBulkBound=true;root.addEventListener('change',change);}
+  } else if(selectAll) {
+    // Minimal non-browser hosts keep the same visible-filter selection rules.
+    selectAll.__pulseVisibleLibraryPapers=visiblePapers;
+    if(!selectAll.__pulseBulkBound){selectAll.__pulseBulkBound=true;selectAll.addEventListener('change',()=>{
+      for(const paper of selectAll.__pulseVisibleLibraryPapers){if(selectAll.checked)state.librarySelectedIds.add(paper.id);else state.librarySelectedIds.delete(paper.id);}renderPapers();
+    });}
+  }
+  root.querySelectorAll('[data-action="select-library-row"]').forEach(input=>{
+    const row=input.closest('[data-paper]');
+    input.checked=state.librarySelectedIds.has(row.dataset.paper);
+    row.classList.toggle('is-bulk-selected',input.checked);
   });
 }
 async function libraryMutationRequest(path, payload) {

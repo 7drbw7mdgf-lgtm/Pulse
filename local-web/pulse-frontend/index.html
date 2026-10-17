@@ -1,7 +1,7 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v1.8.3 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-20261014-groupcolor">
-<link rel="icon" type="image/png" href="favicon.png?v=1.8.3"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v1.8.9 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-1.8.9">
+<link rel="icon" type="image/png" href="favicon.png?v=1.8.9"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
@@ -131,7 +131,9 @@
 <div id="mapDropOverlay" class="map-drop-overlay" hidden><div><strong>Drop papers onto your map</strong><span>PDF, BibTeX, RIS, JSON and text files</span></div></div> <svg id="map" class="map" role="img" aria-label="A linkage map of related papers"></svg>
 <div id="mapSelectionBar" class="map-selection-bar" role="toolbar" aria-label="Selected papers" hidden><span id="mapSelectionCount" class="map-selection-count">0 selected</span><button id="mapSelectionBridge" class="map-selection-primary" type="button" title="Search for what the selected papers share and find papers connecting them">Find bridges</button><button id="mapSelectionClear" type="button">Clear</button></div>
 <div id="tableView" class="table-view" hidden></div>
+<div id="graphComputeStatus" class="graph-compute-status" role="status" aria-live="polite" hidden></div>
 <section id="timelineView" class="timeline-view" aria-label="Papers in chronological order" hidden></section>
+<section id="trendsView" class="trends-view" aria-label="Library trends dashboard" hidden></section>
 <!-- EMPTY STATE -->
 <div id="emptyState" class="empty-state"> <div class="empty-card"> <div class="empty-glyph" aria-hidden="true"> <svg viewBox="0 0 120 80">
 <line x1="24" y1="52" x2="60" y2="22"></line> <line x1="60" y1="22" x2="96" y2="46"></line> <line x1="24" y1="52" x2="96" y2="46"></line>
@@ -499,35 +501,38 @@
 <p><small>Direct transfers share bibliographic metadata and the abstract with the chosen manager. Export files stay on your computer until you import them. PDFs and full paper text are not uploaded.</small></p>
 <details id="mendeleyDeveloperSettings" hidden><summary id="mendeleySettingsSummary">Mendeley connection settings (Client ID, Secret, Redirect URL)</summary><p><small>For a custom Mendeley application, register in the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal</a>. Enter its client ID, secret, and exactly the same redirect URL here. Credentials stay in this computer's protected Pulse settings.</small></p><form id="mendeleySettingsForm"><label>Client ID<input id="mendeleyClientId" autocomplete="off" required></label><label>Client secret<input id="mendeleyClientSecret" type="password" autocomplete="new-password" placeholder="Your registered client secret"></label><label>Registered redirect URL<input id="mendeleyRedirect" type="url" value="http://127.0.0.1:8765/mendeley/callback" required></label><button id="mendeleySaveSettings" class="button primary" type="submit">Save application settings</button></form></details>
 <p id="managerFeedback" class="record-feedback" role="status"></p></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-20261013-map"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-1.8.9"></script>
 <script src="js/map-tabs.js?v=ui-20261014-ticked"></script>
 <script src="js/paper-links.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_02.js?v=ui-1.9-faster-first"></script>
 <script src="js/part_03.js?v=ui-20261011-171"></script>
-<script src="js/part_04.js?v=ui-1.8.8"></script>
-<script src="js/part_05.js?v=ui-1.8.8"></script>
+<script src="js/part_04.js?v=ui-1.8.9"></script>
+<script src="js/part_05.js?v=ui-1.8.9"></script>
 <script src="js/part_06.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_07.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_08.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_09.js?v=ui-20261014-ticked"></script>
-<script src="js/part_10.js?v=ui-20261014-groupcolor"></script>
+<script src="graph-engine.js?v=ui-1.8.9"></script>
+<script src="js/part_08.js?v=ui-1.8.9"></script>
+<script src="js/part_09.js?v=ui-1.8.9"></script>
+<script src="js/graph-runtime.js?v=ui-1.8.9"></script>
+<script src="js/part_10.js?v=ui-1.8.9"></script>
 <script src="js/part_11.js?v=ui-20261013-map2"></script>
 <script src="js/part_12.js?v=ui-20261013-map2"></script>
-<script src="js/part_13.js?v=ui-20261014-drag"></script>
-<script src="js/part_14.js?v=ui-20261014-groupcolor"></script>
+<script src="js/part_13.js?v=ui-1.8.9"></script>
+<script src="js/part_14.js?v=ui-1.8.9"></script>
 <script src="js/map-interactions.js?v=ui-20261014-drag"></script>
 <script src="js/part_15.js?v=ui-20261010-2"></script>
-<script src="js/part_23.js?v=ui-1.8.8-mendeley"></script>
+<script src="js/part_23.js?v=ui-1.8.9-mendeley"></script>
 <script src="js/mendeley-sync.js?v=ui-20261010-2"></script>
-<script src="js/part_24.js?v=ui-20261014-groupcolor"></script>
+<script src="js/part_24.js?v=ui-1.8.9"></script>
 <script src="js/discovery-controls.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/publication-status.js?v=ui-20261012-evidence"></script>
-<script src="js/inspector.js?v=ui-20261014-groupcolor"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
+<script src="js/inspector.js?v=ui-1.8.9"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
 <script src="js/part_17.js?v=ui-20261011-5"></script>
-<script src="js/part_18.js?v=ui-20261013-map2"></script>
+<script src="js/part_18.js?v=ui-1.8.9"></script>
 <script src="js/discovery-review.js?v=ui-20261012-bridges-passages"></script>
-<script src="js/part_19.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/part_19.js?v=ui-1.8.9"></script>
 <script src="js/citation-lookup.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_20.js?v=ui-20261013-map"></script>
-<script src="js/timeline.js?v=ui-1.8.8"></script>
-<script src="js/part_21.js?v=ui-20261012-dbef-scale"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>
+<script src="js/timeline.js?v=ui-1.8.9"></script>
+<script src="js/trends.js?v=ui-1.8.9"></script>
+<script src="js/part_21.js?v=ui-1.8.9"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>

@@ -32,6 +32,13 @@ sed "s/^expected_version=.*/expected_version='$version'/" "$source_root/scripts/
 chmod 755 "$release_dir/staging/Allow-Pulse-Tauri.command"
 grep -q "^expected_version='$version'$" "$release_dir/staging/Allow-Pulse-Tauri.command"
 cp "$source_root/docs/MACOS-INSTALL.md" "$release_dir/staging/MACOS-INSTALL.md"
+if [ -f "$source_root/docs/PERFORMANCE.md" ]; then
+  cp "$source_root/docs/PERFORMANCE.md" "$release_dir/staging/PERFORMANCE.md"
+fi
+if [ -f "$source_root/docs/releases/$version.md" ]; then
+  mkdir -p "$release_dir/staging/releases"
+  cp "$source_root/docs/releases/$version.md" "$release_dir/staging/releases/$version.md"
+fi
 ln -s /Applications "$release_dir/staging/Applications"
 image="Pulse-$version.dmg"
 hdiutil create -volname "Pulse $version" -srcfolder "$release_dir/staging" -format UDZO -imagekey zlib-level=9 "$release_dir/$image"
