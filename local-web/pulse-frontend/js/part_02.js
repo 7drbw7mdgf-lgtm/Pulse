@@ -25,6 +25,9 @@ const discoveryBoundCheckboxes=new WeakSet();
         state.discoveryUserTouchedRelevance=false;
         state.discoveryPendingRefinedOrder=null;
         state.discoveryPendingRefinedOrderKey=null;
+        state.discoverySessionJudgedKeys=new Set();
+        state.discoveryMovedUpNote='';
+        state.discoveryMovedUpCount=0;
         Object.assign(state,{discoveryQueue:'review',discoveryWhyKinds:new Set(),discoveryHiddenStrengths:new Set(),discoveryShowExplore:false,
           discoveryMobilePane:'results',discoveryFiltersOpen:false,discoveryFilterText:'',discoveryFilterAuthor:'',discoveryFilterYear:'all',
           discoveryFilterBranch:'all',discoverySortBy:'score',discoveryQuickTag:'',discoveryFullTextOnly:false,discoveryExpandedAbstracts:new Set(),discoveryRenderLimit:100,discoveryPageSignature:''});
@@ -32,6 +35,7 @@ const discoveryBoundCheckboxes=new WeakSet();
         if(els.discoveryClearTextBtn)els.discoveryClearTextBtn.hidden=true;
         const fullText=document.getElementById('discoveryFullTextOnly');if(fullText)fullText.checked=false;
       }
+      if(typeof warmDiscoveryFeedbackFeatures==='function')warmDiscoveryFeedbackFeatures(state.discoveryResults);
       state.discoveryFocusKey=keepFocus;state.discoveryFocusExplicit=Boolean(keepFocus);
       const valid=new Set(state.discoveryResults.map(discoveryPaperKey));state.discoverySelectedKeys=new Set([...keepSelected].filter(key=>valid.has(key)));
       if(els.discoveryModal)els.discoveryModal.hidden=false;
@@ -114,7 +118,7 @@ const discoveryBoundCheckboxes=new WeakSet();
       const hiddenStrengths = state.discoveryHiddenStrengths || new Set();
       const whyKinds = state.discoveryWhyKinds || new Set();
       return items.filter(item => {
-        if (queue !== 'all' && !state.discoverySearching && discoveryQueueOf(item) !== queue) return false;
+        if (queue !== 'all' && !state.discoverySearching && discoveryQueueOf(item) !== queue && !(queue === 'review' && state.discoverySessionJudgedKeys?.has(discoveryPaperKey(item)))) return false;
         if (hiddenStrengths.has(discoveryStrength(item))) return false;
         if (whyKinds.size && !discoveryWhy(item).some(reason => whyKinds.has(discoveryWhyGroup(reason.kind)))) return false;
         if (state.discoveryFullTextOnly && !safeHref(item.fullTextUrl || '')) return false;
@@ -225,13 +229,14 @@ const discoveryBoundCheckboxes=new WeakSet();
     const DISCOVERY_STRENGTHS = [['strong', 'Strong matches'], ['related', 'Related'], ['explore', 'Worth exploring']];
 
     function discoveryStrength(item) {
-      const label = String(item.matchLabel || '').toLowerCase();
+      const rawLabel = item._initialMatchLabel !== undefined ? item._initialMatchLabel : item.matchLabel;
+      const label = String(rawLabel || '').toLowerCase();
       if (label === 'not relevant') return 'explore';
       if (label === 'relevant') return item.strongMatchEligible === true ? 'strong' : 'related';
       if (label.startsWith('strong')) return item.strongMatchEligible === true ? 'strong' : 'related';
       if (label.startsWith('related')) return 'related';
       if (label.startsWith('explore')) return 'explore';
-      const score = Number(item.score);
+      const score = Number(item._initialScore !== undefined ? item._initialScore : item.score);
       return score >= 40 ? 'related' : 'explore';
     }
 
@@ -344,6 +349,9 @@ const discoveryBoundCheckboxes=new WeakSet();
     function openDiscoverySearching(seedPaper, key, options) {
       state.discoverySearching = { key, seed: seedPaper, startedAt: Date.now(), job: null, planned: discoveryPlannedSources(options || {}) };
       state.discoveryResults = [];state.discoveryRenderLimit=100;state.discoveryPageSignature='';
+      state.discoverySessionJudgedKeys = new Set();
+      state.discoveryMovedUpNote = '';
+      state.discoveryMovedUpCount = 0;
       Object.assign(state,{discoveryFilterText:'',discoveryFilterAuthor:'',discoveryFilterYear:'all',discoveryFilterBranch:'all',discoverySortBy:'score',discoveryQuickTag:'',discoveryShowExplore:false,discoveryWhyKinds:new Set(),discoveryHiddenStrengths:new Set(),discoveryFullTextOnly:false});
       for(const [element,value] of [[els.discoveryFilterText,''],[els.discoveryFilterAuthor,''],[els.discoveryFilterYear,'all'],[els.discoverySortBy,'score']])if(element)element.value=value;
       state.discoveryResultKey = key;
@@ -536,8 +544,10 @@ const discoveryBoundCheckboxes=new WeakSet();
       const signature=JSON.stringify([state.discoveryResultKey,state.discoveryFilterText,state.discoveryFilterAuthor,state.discoveryFilterYear,state.discoverySortBy,state.discoveryQueue,[...(state.discoveryHiddenStrengths||[])],[...(state.discoveryWhyKinds||[])],state.discoveryShowExplore,state.discoveryQuickTag,state.discoveryFullTextOnly,state.discoveryHideLibrary,state.discoveryFilterBranch]);
       const sameView=signature===state.discoveryPageSignature;
       if(!sameView){state.discoveryRenderLimit=100;state.discoveryPageSignature=signature;}
-      const position=sameView?captureDiscoveryPosition(els.discoveryPaperList):null;
-      const previewScroll=document.getElementById('discoveryPreview')?.querySelector?.('.dv-preview-scroll')?.scrollTop||0;
+      const position=(sameView||options.preservePosition)?captureDiscoveryPosition(els.discoveryPaperList):null;
+      const previewEl=document.getElementById('discoveryPreview');
+      const previewScroll=previewEl?.querySelector?.('.dv-preview-scroll')?.scrollTop||0;
+      const activePreviewGrade=previewEl?.contains?.(document.activeElement)?document.activeElement?.dataset?.dvGrade:null;
       const oldPreviewKey=state.discoveryFocusKey;
       const seed = searching?.seed || state.discoverySeed;
       const seedTitle = cleanDiscoveryTitle(seed?.title || 'Selected seed paper');
@@ -556,9 +566,16 @@ const discoveryBoundCheckboxes=new WeakSet();
       }
       document.getElementById('discoveryFiltersBtn')?.setAttribute('aria-expanded', String(Boolean(state.discoveryFiltersOpen)));
       if (els.discoveryCountSummary) {
+        const movedNote = !searching && state.discoveryMovedUpNote ? ` · <span class="dv-moved-note" role="status">${escapeHtml(state.discoveryMovedUpNote)}</span>` : '';
         els.discoveryCountSummary.innerHTML = searching
           ? `<strong>${totalItems.length} candidates so far</strong>`
-          : `<strong>${totalItems.length} papers</strong> · <span>${strengthCount('strong')} strong</span> · <span>${strengthCount('related')} related</span> · <span>${strengthCount('explore')} to explore</span>`;
+          : `<strong>${totalItems.length} papers</strong> · <span>${strengthCount('strong')} strong</span> · <span>${strengthCount('related')} related</span> · <span>${strengthCount('explore')} to explore</span>${movedNote}`;
+      }
+      const footerNote = document.getElementById('discoveryFooterNote');
+      if (footerNote) {
+        footerNote.textContent = state.discoveryMovedUpNote
+          ? `${state.discoveryMovedUpNote} below · refine or rerun this question to search with your feedback.`
+          : 'Mark results, then refine or rerun this question to use your feedback.';
       }
       const runInfo = discoveryRunInfoForModal();
       const conceptSummary=document.getElementById('discoveryConceptSummary');
@@ -689,7 +706,10 @@ const discoveryBoundCheckboxes=new WeakSet();
       if (preview) {
         if (preview.dataset) preview.dataset.paperKey = state.discoveryFocusKey || '';
         preview.innerHTML = discoveryPreviewMarkup(focused, Boolean(searching));
-        if(oldPreviewKey===state.discoveryFocusKey){const body=preview.querySelector?.('.dv-preview-scroll');if(body)body.scrollTop=previewScroll;}
+        if(oldPreviewKey===state.discoveryFocusKey){
+          const body=preview.querySelector?.('.dv-preview-scroll');if(body)body.scrollTop=previewScroll;
+          if(activePreviewGrade)preview.querySelector?.(`[data-dv-grade="${activePreviewGrade}"]`)?.focus?.({preventScroll:true});
+        }
       }
 
       if (!filtered.length) {
@@ -724,7 +744,7 @@ const discoveryBoundCheckboxes=new WeakSet();
       if(visible.length<filtered.length)html+=`<div class="dv-page-more"><span>${visible.length} of ${filtered.length} matching papers shown</span><button type="button" class="dv-btn" data-dv-action="load-more">Show next ${Math.min(100,filtered.length-visible.length)}</button></div>`;
       reconcileDiscoveryRows(els.discoveryPaperList,html);
       restoreDiscoveryPosition(els.discoveryPaperList,position);
-      if(!sameView)els.discoveryPaperList.scrollTop=0;
+      if(!sameView&&!options.preservePosition)els.discoveryPaperList.scrollTop=0;
       els.discoveryPaperList.querySelectorAll('.discovery-item-checkbox').forEach(checkbox => {
         if(discoveryBoundCheckboxes.has(checkbox))return;discoveryBoundCheckboxes.add(checkbox);
         checkbox.addEventListener('change', () => setDiscoveryPaperSelected(checkbox.dataset.paperKey, checkbox.checked));
@@ -756,13 +776,7 @@ const discoveryBoundCheckboxes=new WeakSet();
       const item = (state.discoveryResults || []).find(result => discoveryPaperKey(result) === state.discoveryFocusKey);
       if (!item || typeof labelDiscoveryPaper !== 'function') return;
       state.discoveryUserTouchedRelevance = true;
-      const before = getFilteredDiscoveryPapers();
-      const index = before.findIndex(result => discoveryPaperKey(result) === state.discoveryFocusKey);
       labelDiscoveryPaper(item, discoveryRating(item) === grade ? undefined : grade);
-      // In the review queue, labelled papers leave the list; move on to the next one.
-      const after = getFilteredDiscoveryPapers();
-      const next = after[Math.min(index, after.length - 1)];
-      if (next) focusDiscoveryPaper(discoveryPaperKey(next));
     }
 
     function initDiscoveryWorkspace() {
@@ -792,7 +806,7 @@ const discoveryBoundCheckboxes=new WeakSet();
         const target = event.target.closest?.('[data-dv-focus],[data-dv-queue],[data-dv-grade],[data-dv-action],[data-dv-select-group]');
         if (!target) return;
         if (target.dataset.dvFocus) return focusDiscoveryPaper(target.dataset.dvFocus, false);
-        if (target.dataset.dvQueue) { state.discoveryQueue = target.dataset.dvQueue; state.discoveryFocusKey = null; state.discoveryFiltersOpen = false; state.discoveryMobilePane = 'results'; return renderDiscoveryModal(); }
+        if (target.dataset.dvQueue) { state.discoveryQueue = target.dataset.dvQueue; state.discoverySessionJudgedKeys = new Set(); state.discoveryMovedUpNote = ''; state.discoveryFocusKey = null; state.discoveryFiltersOpen = false; state.discoveryMobilePane = 'results'; return renderDiscoveryModal(); }
         if (target.dataset.dvGrade) { state.discoveryFocusKey = target.dataset.paperKey; return gradeFocusedDiscovery(Number(target.dataset.dvGrade)); }
         if (target.dataset.dvSelectGroup) {
           getFilteredDiscoveryPapers().filter(item => discoveryStrength(item) === target.dataset.dvSelectGroup).forEach(item => state.discoverySelectedKeys.add(discoveryPaperKey(item)));
