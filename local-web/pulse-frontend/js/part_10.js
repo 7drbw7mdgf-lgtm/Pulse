@@ -74,6 +74,7 @@
       scheduleAutosave();
     }
     function render() {
+      if (typeof updateMapTabCounts === 'function') updateMapTabCounts();
       if (typeof enrichLibraryAutomatically === 'function') queueMicrotask(enrichLibraryAutomatically);
       if (typeof updateAgentControls === 'function') updateAgentControls();
       calculateRelatedness();
@@ -97,7 +98,7 @@
       els.tableView.hidden = !isTableMode;
       const titleHeading = (els.canvasTitle || document.querySelector('.canvas-title'))?.querySelector('h1');
       if (titleHeading) {
-        titleHeading.textContent = isTableMode ? 'Biolography' : (state.mode === 'radial' ? 'Radial hierarchy' : (state.mode === 'clusters' ? 'Topic clusters' : 'Relatedness graph'));
+        titleHeading.textContent = isTableMode ? 'Findings table' : (state.mode === 'radial' ? 'Radial hierarchy' : (state.mode === 'clusters' ? 'Topic clusters' : 'Relatedness graph'));
       }
       if (isTableMode) {
         renderWorkspacePanels();
@@ -253,14 +254,14 @@
     function renderTableView(focusColumn = '') {
       if (!els.tableView) return;
       if (!state.papers.length) {
-        els.tableView.innerHTML = '<div class="table-empty">Drop papers to build an extracted Biolography table.</div>';
+        els.tableView.innerHTML = '<div class="table-empty">Add papers to build the findings table.</div>';
         return;
       }
       const rows = filteredTablePapers();
       const columns = activeTableColumns();
       const isCompact = state.paperView === 'compact';
       els.tableView.innerHTML = `
-        <table class="findings-table${isCompact ? ' is-compact' : ''}" aria-label="Extracted Biolography findings">
+        <table class="findings-table${isCompact ? ' is-compact' : ''}" aria-label="Extracted findings table">
           <thead>
             <tr>
               ${columns.map(column => `
@@ -283,7 +284,7 @@
             }).join('')}
           </tbody>
         </table>
-        ${rows.length ? '' : '<div class="table-empty">No papers match those Biolography filters.</div>'}
+        ${rows.length ? '' : '<div class="table-empty">No papers match those findings-table filters.</div>'}
       `;
       bindTableFilters();
       bindTableHeaders();
@@ -299,7 +300,7 @@
         row.addEventListener('click', () => {
           state.selectedId = row.dataset.tablePaper;
           renderDetails();
-          showToast('Selected paper from Biolography.');
+          showToast('Selected paper from the findings table.');
         });
       });
       els.tableView.querySelectorAll('[data-action="table-edit-tags"]').forEach(btn => {
@@ -362,10 +363,10 @@
         {
           key: 'keywords',
           label: 'Keywords',
-          text: paper => mergedKeywords(paper).join(' '),
-          sort: paper => mergedKeywords(paper).join(' '),
+          text: paper => displayKeywords(paper).join(' '),
+          sort: paper => displayKeywords(paper).join(' '),
           cell: paper => {
-            const terms = mergedKeywords(paper);
+            const terms = displayKeywords(paper);
             const count = isCompact ? 4 : terms.length;
             const chips = terms.slice(0, count).map((term, i) => `<span class="term"><span class="term-rank">#${i + 1}</span>${escapeHtml(term)}</span>`).join('');
             const extra = isCompact && terms.length > count ? `<span class="table-extra-chips subtle">+${terms.length - count}</span>` : '';

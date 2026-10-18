@@ -147,7 +147,7 @@
           paper.doi || '', ...['volume','issue','pages','articleNumber','publisher','issn','isbn','url','language'].map(k => paper[k] || ''),
           paper.abstract || '',
           keyFindings(paper),
-          mergedKeywords(paper),
+          displayKeywords(paper),
           paper.color || '',
           state.areas.find(area => area.id === paper.areaId)?.name || '',
           related.length,
@@ -357,7 +357,9 @@
     els.clearTagFiltersButton?.addEventListener('click', clearFilterTags);
     els.canvasClearFilterButton?.addEventListener('click', clearFilterTags);
     els.toggleTagFilterDropdown?.addEventListener('click', () => {
-      if (els.tagFilterDropdown) els.tagFilterDropdown.hidden = !els.tagFilterDropdown.hidden;
+      if (!els.tagFilterDropdown) return;
+      els.tagFilterDropdown.hidden = !els.tagFilterDropdown.hidden;
+      if (!els.tagFilterDropdown.hidden) renderLibraryTagCloud();
     });
     els.tagFilterSearchInput?.addEventListener('input', () => {
       if (els.tagFilterDropdown) els.tagFilterDropdown.hidden = false;

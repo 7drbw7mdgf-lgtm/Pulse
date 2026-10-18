@@ -63,6 +63,7 @@ function fixture(count = 300) {
 
 function productionSerialization(f) {
   f.context.mergedKeywords = paper => paper.paperKeywords || [];
+  f.context.displayKeywords = paper => paper.paperKeywords || [];
   f.context.extractBibliographyText = () => '';
   const begin=source.indexOf('    const libraryBibliographyCache');
   vm.runInContext(source.slice(begin,source.indexOf('    async function exportMap()',begin)),f.context);

@@ -150,7 +150,7 @@ function setupTestEnvironment() {
     },
     escapeHtml: s => String(s || ''),
     paperMatchScore: () => 88,
-    mergedKeywords: () => ['test'],
+    mergedKeywords: () => ['test'], displayKeywords: () => ['test'],
     paperAuthors: () => ['Alice', 'Bob'],
     paperAuthorSummary: () => 'Alice et al.',
     paperCitationCount: () => 42,

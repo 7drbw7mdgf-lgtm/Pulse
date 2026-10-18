@@ -221,6 +221,20 @@
     syncBulkMapTabSelect();
   }
 
+  // Keep the paper counts on the map tabs current without rebuilding the tabs (a rename may be in progress).
+  function updateMapTabCounts() {
+    const container = document.getElementById('ribbonMapTabsList');
+    if (!container || !Array.isArray(state.maps)) return;
+    for (const map of state.maps) {
+      const button = [...container.querySelectorAll('[data-action="switch-map-tab"]')].find(item => item.dataset.mapId === map.id);
+      const badge = button?.querySelector('.map-tab-count');
+      if (!badge) continue;
+      const count = state.papers.filter(p => isPaperOnMap(p, map.id)).length;
+      if (badge.textContent !== String(count)) badge.textContent = String(count);
+      button.title = `${map.name} (${count} paper${count === 1 ? '' : 's'}) — double-click to rename`;
+    }
+  }
+
   function syncBulkMapTabSelect() {
     const bulkSelect = document.getElementById('libraryBulkMapTabSelect');
     if (!bulkSelect) return;
@@ -297,6 +311,7 @@
   root.closeMapTab = closeMapTab;
   root.renameMapTab = renameMapTab;
   root.renderMapTabs = renderMapTabs;
+  root.updateMapTabCounts = updateMapTabCounts;
   root.initMapTabs = initMapTabs;
   root.bulkAddSelectedToMap = bulkAddSelectedToMap;
 

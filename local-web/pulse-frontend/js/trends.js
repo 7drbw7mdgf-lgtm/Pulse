@@ -15,7 +15,7 @@ function trendsPublicationYear(paper) {
 function trendsPaperTerms(paper) {
   let terms = [];
   if (typeof mergedKeywords === 'function') {
-    try { terms = mergedKeywords(paper); } catch (_) { /* malformed legacy metadata */ }
+    try { terms = typeof displayKeywords === 'function' ? displayKeywords(paper) : mergedKeywords(paper); } catch (_) { /* malformed legacy metadata */ }
   }
   if (!Array.isArray(terms) || !terms.length) {
     terms = [...(Array.isArray(paper?.paperKeywords) ? paper.paperKeywords : []),

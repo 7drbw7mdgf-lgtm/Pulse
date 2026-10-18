@@ -138,7 +138,7 @@
         .slice(0, 3);
       if (findings.length) return findings;
       if (paper.abstract) return [cleanField(paper.abstract).slice(0, 260)];
-      return mergedKeywords(paper).length ? [`Themes: ${mergedKeywords(paper).slice(0, 6).join(', ')}.`] : [];
+      return displayKeywords(paper).length ? [`Themes: ${displayKeywords(paper).slice(0, 6).join(', ')}.`] : [];
     }
 
     function evidenceSummary(paper) {
@@ -257,8 +257,8 @@
 
     function sharedKeywords(source, target) {
       if (!source || !target) return [];
-      const left = new Set(mergedKeywords(source).map(term => term.toLowerCase()));
-      return mergedKeywords(target).filter(term => left.has(term.toLowerCase()));
+      const left = new Set(displayKeywords(source).map(term => term.toLowerCase()));
+      return displayKeywords(target).filter(term => left.has(term.toLowerCase()));
     }
 
     function linkTypeName(link) {

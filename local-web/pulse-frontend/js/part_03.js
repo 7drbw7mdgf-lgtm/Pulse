@@ -88,7 +88,7 @@
       if (!paper) return;
       state.activeKeywordPaperId = paperId;
       if (!Array.isArray(paper.paperKeywords) || !paper.paperKeywords.length) {
-        paper.paperKeywords = [...mergedKeywords(paper)];
+        paper.paperKeywords = [...curatedKeywords(paper)];
       }
       if (els.keywordModalSubtitle) {
         els.keywordModalSubtitle.textContent = paper.title || 'Untitled paper';
@@ -114,7 +114,7 @@
         return;
       }
       if (!Array.isArray(paper.paperKeywords)) {
-        paper.paperKeywords = [...mergedKeywords(paper)];
+        paper.paperKeywords = [...curatedKeywords(paper)];
       }
       const keywords = paper.paperKeywords;
       if (els.keywordTagCount) {
@@ -259,7 +259,7 @@
       const clean = cleanField(newTerm);
       if (!clean) return;
       if (!Array.isArray(paper.paperKeywords)) {
-        paper.paperKeywords = [...mergedKeywords(paper)];
+        paper.paperKeywords = [...curatedKeywords(paper)];
       }
       const lower = clean.toLowerCase();
       if (!paper.paperKeywords.some(k => k.trim().toLowerCase() === lower)) {
@@ -283,34 +283,44 @@
       els.newKeywordInput.value = '';
     }
 
+    // A filter matches a tag that equals it or contains it as whole words ("immune response" matches
+    // "innate immune response"), never a fragment of a word.
+    function tagMatchesFilter(tag, filter) {
+      if (!tag || !filter) return false;
+      if (tag === filter) return true;
+      const escaped = filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, 'u').test(tag);
+    }
+
     function paperMatchesFilters(paper) {
       if (!state.filterTags || !state.filterTags.length) return true;
-      const paperTags = [...paperUserTags(paper), ...mergedKeywords(paper)].map(k => k.toLowerCase().trim());
+      const paperTags = [...paperUserTags(paper), ...displayKeywords(paper)].map(k => k.toLowerCase().trim());
       if (state.filterMode === 'any') {
         return state.filterTags.some(tag => {
           const t = tag.toLowerCase().trim();
-          return paperTags.some(k => k === t || k.includes(t) || t.includes(k));
+          return paperTags.some(k => tagMatchesFilter(k, t));
         });
       }
       return state.filterTags.every(tag => {
         const t = tag.toLowerCase().trim();
-        return paperTags.some(k => k === t || k.includes(t) || t.includes(k));
+        return paperTags.some(k => tagMatchesFilter(k, t));
       });
     }
 
     function getLibraryAllTags() {
       const counts = new Map();
       state.papers.forEach(paper => {
-        const kws = [...new Set([...paperUserTags(paper), ...mergedKeywords(paper)])];
+        const kws = [...new Set([...paperUserTags(paper), ...displayKeywords(paper)])];
         kws.forEach(kw => {
           const cleaned = cleanField(kw);
           if (!cleaned) return;
           counts.set(cleaned, (counts.get(cleaned) || 0) + 1);
         });
       });
+      const userTags = new Set(state.papers.flatMap(paper => paperUserTags(paper).map(tag => cleanField(tag).toLowerCase())));
       return Array.from(counts.entries())
-        .map(([tag, count]) => ({ tag, count }))
-        .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+        .map(([tag, count]) => ({ tag, count, userTag: userTags.has(tag.toLowerCase()) }))
+        .sort((a, b) => Number(b.userTag) - Number(a.userTag) || b.count - a.count || a.tag.localeCompare(b.tag));
     }
 
     function renderTagFilterBar() {

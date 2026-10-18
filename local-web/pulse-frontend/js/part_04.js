@@ -16,7 +16,7 @@
 
       els.libraryTagCloud.innerHTML = filtered.slice(0, 48).map(item => {
         const isActive = state.filterTags.some(t => t.toLowerCase() === item.tag.toLowerCase());
-        return `<button class="cloud-tag-chip${isActive ? ' is-active' : ''}" type="button" data-action="toggle-cloud-tag" data-tag="${escapeHtml(item.tag)}" title="Filter library by &quot;${escapeHtml(item.tag)}&quot;">
+        return `<button class="cloud-tag-chip${isActive ? ' is-active' : ''}${item.userTag ? ' is-user-tag' : ''}" type="button" data-action="toggle-cloud-tag" data-tag="${escapeHtml(item.tag)}" title="Filter library by &quot;${escapeHtml(item.tag)}&quot;">
           ${escapeHtml(item.tag)} <span class="cloud-tag-count">${item.count}</span>
         </button>`;
       }).join('');

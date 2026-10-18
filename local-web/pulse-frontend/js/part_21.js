@@ -172,13 +172,18 @@
         const rail = item.dataset.rail;
         if (rail === 'settings') { setSettingsOpen(true); return; }
         if (rail === 'library') {
-          if (state.libraryFullscreen) setLibraryFullscreen(false);
+          if (state.libraryFullscreen) { setLibraryFullscreen(false, false); toggleLibraryWithSwipe(true); }
           else toggleLibraryWithSwipe();
+          return;
+        }
+        if (rail === 'bibliography') {
+          if (!els.settingsPanel.hidden) setSettingsOpen(false);
+          setLibraryFullscreen(!state.libraryFullscreen);
           return;
         }
         if (!els.settingsPanel.hidden) setSettingsOpen(false);
         highlightRail(rail);
-        if (state.libraryFullscreen && ['network', 'trends', 'collections', 'bibliography', 'timeline'].includes(rail)) {
+        if (state.libraryFullscreen && ['network', 'trends', 'collections', 'timeline'].includes(rail)) {
           setLibraryFullscreen(false, false);
         }
         if (rail === 'discover') {
@@ -196,12 +201,6 @@
         } else if (rail === 'trends') {
           setTimelineVisible(false);
           if (typeof setTrendsVisible === 'function') setTrendsVisible(true);
-        } else if (rail === 'collections' || rail === 'bibliography') {
-          if (typeof setTrendsVisible === 'function') setTrendsVisible(false);
-          setTimelineVisible(false);
-          state.mode = 'table';
-          render();
-          showToast('Bibliography view active.');
         } else if (rail === 'timeline') {
           if (typeof setTrendsVisible === 'function') setTrendsVisible(false);
           setTimelineVisible(true);
@@ -234,16 +233,15 @@
       state.libraryOpen = true;
       els.app.classList.toggle('library-fullscreen', state.libraryFullscreen);
       els.colLibrary.classList.remove('is-swiped-hidden');
-      const label = expanded ? 'Return library to sidebar' : 'Expand library to full screen';
-      els.closeLibrarySwipeBtn.textContent = expanded ? 'Exit full screen' : 'Full screen';
-      els.closeLibrarySwipeBtn.title = label;
-      els.closeLibrarySwipeBtn.setAttribute('aria-label', label);
-      els.closeLibrarySwipeBtn.setAttribute('aria-expanded', String(state.libraryFullscreen));
+      // The full-width table is the Bibliography view (left rail), replacing the old Full screen button.
+      const heading = document.getElementById('libraryHeading');
+      if (heading) heading.textContent = state.libraryFullscreen ? 'Bibliography' : 'Library';
+      document.getElementById('railBibliographyBtn')?.setAttribute('aria-pressed', String(state.libraryFullscreen));
       if (expanded) {
         if (typeof setTrendsVisible === 'function') setTrendsVisible(false);
         setTimelineVisible(false);
         setAiPanelOpen(false);
-        highlightRail('library');
+        highlightRail('bibliography');
       } else if (restoreNavigation) {
         const rail = state.libraryPreviousRail === 'library' ? 'network' : state.libraryPreviousRail || 'network';
         highlightRail(rail);
@@ -252,11 +250,10 @@
       }
       syncDensityButtons();
       renderPapers();
+      // The sidebar list and the Bibliography table share one scroller; start each view at the top.
+      if (els.paperList) els.paperList.scrollTop = 0;
       requestAnimationFrame(() => { if (!state.libraryFullscreen) render(); });
-      if (restoreNavigation) els.closeLibrarySwipeBtn.focus();
     }
-
-    els.closeLibrarySwipeBtn?.addEventListener('click', () => setLibraryFullscreen(!state.libraryFullscreen));
 
     function openTrendsPaperInGraph(id) {
       const paper = state.papers.find(item => item.id === id);

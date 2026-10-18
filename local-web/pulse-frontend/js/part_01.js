@@ -138,7 +138,6 @@ const state = {
       railLibraryBadge: document.getElementById('railLibraryBadge'),
       railLibraryBtn: document.getElementById('railLibraryBtn'),
       colLibrary: document.getElementById('colLibrary'),
-      closeLibrarySwipeBtn: document.getElementById('closeLibrarySwipeBtn'),
       railSettingsBtn: document.getElementById('railSettingsBtn'),
       canvasLayoutSelect: document.getElementById('canvasLayoutSelect'),
       canvasLinksSelect: document.getElementById('canvasLinksSelect'),
@@ -325,6 +324,7 @@ const state = {
       'arrow-down': '<line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>',
       move: '<polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line>',
       'box-select': '<rect x="3" y="3" width="14" height="14" rx="1.5" stroke-dasharray="3 2.5"></rect><path d="M12 12l8 3.5-3.4 1.1-1.1 3.4z"></path>',
+      list: '<line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>',
       'x-circle': '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>'
     };
 
@@ -411,7 +411,7 @@ const state = {
     function workspaceRail() {
       if (typeof trendsVisible === 'function' && trendsVisible()) return 'trends';
       if (els.timelineView && !els.timelineView.hidden) return 'timeline';
-      return state.mode === 'clusters' ? 'trends' : state.mode === 'table' ? 'bibliography' : 'network';
+      return state.mode === 'clusters' ? 'trends' : 'network';
     }
 
     function setSettingsOpen(open) {

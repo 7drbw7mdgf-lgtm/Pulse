@@ -29,7 +29,7 @@ state.clusters=Array.from({length:100},(_,group)=>state.papers.slice(group*10,gr
 const context={state,document:doc,els:{paperList:root,paperCount:new Element(),railLibraryBadge:new Element()},Map,Set,CSS:{escape:x=>x},
  requestAnimationFrame(fn){const id=++frame;frames.set(id,fn);return id;},
  escapeHtml:s=>String(s??'').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;'),
- paperAuthors:p=>{sortReads++;return p.authors||[];},paperAuthorSummary:p=>(p.authors||[]).join(', '),paperCitationCount:p=>p.citationMetrics?.citationCount??null,mergedKeywords:p=>p.paperKeywords||[],
+ paperAuthors:p=>{sortReads++;return p.authors||[];},paperAuthorSummary:p=>(p.authors||[]).join(', '),paperCitationCount:p=>p.citationMetrics?.citationCount??null,mergedKeywords:p=>p.paperKeywords||[], displayKeywords: p=>p.paperKeywords||[],
  paperMatchesFilters:p=>!state.filterTags.length||state.filterTags.every(tag=>p.paperKeywords.includes(tag)),paperMatchScore:()=>0,paperDomainLabel:()=>'',paperStudyType:()=>'',paperOpenUrl:p=>'https://example.org/'+p.id,safePaperUrl:x=>x,
  paperColor:()=> '#3346d3',paperGroupInfo(p,lookup){groupReads++;return {color:p.color||'#3346d3',name:'Group '+((lookup?.get(p.id)||0)+1)};},
  isPaperOnActiveMap:p=>p.mapIds.includes(state.activeMapId),mapTabOptionsMarkup:p=>state.maps.map(map=>`<option value="${map.id}"${p.mapIds.includes(map.id)?' selected':''}>${map.name}</option>`).join(''),

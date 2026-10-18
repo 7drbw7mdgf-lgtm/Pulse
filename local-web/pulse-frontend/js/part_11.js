@@ -95,7 +95,7 @@
     function formatSmartLabel(paper, mode) {
       if (mode === 'none') return { lines: [] };
       if (mode === 'keywords') {
-        const kws = mergedKeywords(paper).slice(0, 2);
+        const kws = displayKeywords(paper).slice(0, 2);
         if (kws.length) return { lines: [kws.join(' / ').slice(0, 24)] };
       }
       if (mode === 'full') {

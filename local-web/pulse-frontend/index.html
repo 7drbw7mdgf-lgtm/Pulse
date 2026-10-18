@@ -1,11 +1,12 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai https://europepmc.org https://icite.od.nih.gov; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v2.0.1 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-2.0.1">
+<title>Pulse v2.0.1 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-2.0.2-bib">
 <link rel="icon" type="image/png" href="favicon.png?v=2.0.1"> </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
 <button class="rail-item" data-rail="library" id="railLibraryBtn" type="button" title="Toggle Library Panel"> <span data-feather="book-open"></span> <span>Library</span> </button>
+<button class="rail-item" data-rail="bibliography" id="railBibliographyBtn" type="button" title="Bibliography: the whole library as a sortable table"> <span data-feather="list"></span> <span>Bibliography</span> </button>
 <button class="rail-item" data-rail="trends" type="button" title="Literature trends & clusters"> <span data-feather="trending-up"></span> <span>Trends</span> </button>
 <button class="rail-item" data-rail="timeline" type="button" title="Papers in chronological order"> <span data-feather="clock"></span> <span>Timeline</span> </button>
 <button class="rail-item" data-rail="settings" id="railSettingsBtn" type="button" title="Settings & backend"> <span data-feather="settings"></span> <span>Settings</span> </button>
@@ -100,10 +101,10 @@
 </section>
 <!-- THREE-COLUMN WORKSPACE BODY -->
 <div class="pulse-workspace-cols"> <!-- COLUMN 1: LIBRARY LIST -->
-<aside class="pulse-col-library" id="colLibrary"> <div class="col-library-header"> <div class="col-header-left"><h3>Library</h3><span id="paperCount" class="library-paper-badge">0 papers</span></div>
+<aside class="pulse-col-library" id="colLibrary"> <div class="col-library-header"> <div class="col-header-left"><h3 id="libraryHeading">Library</h3><span id="paperCount" class="library-paper-badge">0 papers</span></div>
 <div class="col-header-actions">
 <button id="paperViewToggle" class="library-density-toggle" type="button" aria-label="Show expanded library view" aria-pressed="false" title="Show expanded library view">Expanded</button>
-<button id="closeLibrarySwipeBtn" class="library-action-button library-fullscreen-button" type="button" title="Expand library to full screen" aria-label="Expand library to full screen" aria-expanded="false" aria-controls="colLibrary">Full screen</button>
+
 <button id="libraryUndo" class="library-action-button" type="button" disabled>Undo</button><button id="libraryRecovery" class="library-action-button" type="button">Recovery</button>
 <details id="libraryActionsMenu" class="library-actions-menu"><summary class="library-action-button" aria-label="More library actions">More ⋯</summary><div class="library-actions-popup"><button id="clearButton" class="library-action-button library-clear-button" type="button" title="Clear all papers from this workspace">Clear papers…</button></div></details>
 </div> </div>
@@ -563,24 +564,24 @@
 <dialog id="crashReportDialog" class="record-dialog crash-report-dialog" aria-labelledby="crashReportTitle"><header><div><h2 id="crashReportTitle">Problem report</h2><small>This is exactly what Send uploads.</small></div><button id="crashReportClose" type="button" aria-label="Close problem report">×</button></header>
 <div class="record-dialog-body"><pre id="crashReportBody" class="crash-report-body"></pre><div class="record-actions"><button id="crashReportSend" class="button primary" type="button">Send report</button><button id="crashReportDelete" class="button secondary" type="button">Delete</button></div><p id="crashReportFeedback" class="record-feedback" role="status"></p></div></dialog>
 <div id="crashNotice" class="crash-notice" role="status" hidden><span id="crashNoticeText">Pulse recorded a problem.</span><button id="crashNoticeView" type="button">View report</button><button id="crashNoticeDismiss" type="button" aria-label="Dismiss">Dismiss</button></div>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-1.8.9-merge"></script>
-<script src="js/map-tabs.js?v=ui-1.8.9-merge"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-2.0.2-bib"></script>
+<script src="js/map-tabs.js?v=ui-2.0.2-bib2"></script>
 <script src="js/paper-links.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/part_02.js?v=ui-2.0.0-audit"></script>
-<script src="js/part_03.js?v=ui-20261011-171"></script>
-<script src="js/part_04.js?v=ui-1.8.9"></script>
+<script src="js/part_03.js?v=ui-2.0.2-bib"></script>
+<script src="js/part_04.js?v=ui-2.0.2-bib"></script>
 <script src="js/part_05.js?v=ui-1.8.9-merge"></script>
 <script src="js/part_06.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_07.js?v=ui-20261012-dbef-scale"></script>
+<script src="js/part_07.js?v=ui-2.0.2-bib"></script>
 <script src="graph-engine.js?v=ui-1.8.9"></script>
 <script src="js/part_08.js?v=ui-2.0.1"></script>
 <script src="js/part_09.js?v=ui-1.8.9-merge"></script>
 <script src="js/graph-runtime.js?v=ui-1.8.9"></script>
-<script src="js/part_10.js?v=ui-1.8.9"></script>
-<script src="js/part_11.js?v=ui-20261013-map2"></script>
+<script src="js/part_10.js?v=ui-2.0.2-bib"></script>
+<script src="js/part_11.js?v=ui-2.0.2-bib"></script>
 <script src="js/part_12.js?v=ui-20261013-map2"></script>
-<script src="js/part_13.js?v=ui-1.8.9"></script>
-<script src="js/part_14.js?v=ui-1.8.9"></script>
+<script src="js/part_13.js?v=ui-2.0.2-bib"></script>
+<script src="js/part_14.js?v=ui-2.0.2-bib2"></script>
 <script src="js/map-interactions.js?v=ui-1.8.9-merge2"></script>
 <script src="js/part_15.js?v=ui-20261010-2"></script>
 <script src="js/part_23.js?v=ui-1.8.9-mendeley"></script>
@@ -590,13 +591,13 @@
 <script src="js/sync-and-reports.js?v=ui-2.0.1"></script>
 <script src="js/discovery-controls.js?v=ui-20261012-dbef-scale"></script>
 <script src="js/publication-status.js?v=ui-20261012-evidence"></script>
-<script src="js/inspector.js?v=ui-1.8.9"></script> <script src="js/part_16.js?v=ui-20261011-11"></script>
+<script src="js/inspector.js?v=ui-1.8.9"></script> <script src="js/part_16.js?v=ui-2.0.2-bib"></script>
 <script src="js/part_17.js?v=ui-aplus-2-feedback"></script>
 <script src="js/part_18.js?v=ui-1.8.9"></script>
 <script src="js/discovery-review.js?v=ui-aplus-2-feedback"></script>
-<script src="js/part_19.js?v=ui-2.0.1"></script>
+<script src="js/part_19.js?v=ui-2.0.2-bib"></script>
 <script src="js/citation-lookup.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_20.js?v=ui-20261013-map"></script>
+<script src="js/part_20.js?v=ui-2.0.2-bib"></script>
 <script src="js/timeline.js?v=ui-1.8.9"></script>
-<script src="js/trends.js?v=ui-1.8.9"></script>
-<script src="js/part_21.js?v=ui-1.8.9-merge"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>
+<script src="js/trends.js?v=ui-2.0.2-bib"></script>
+<script src="js/part_21.js?v=ui-2.0.2-bib2"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>

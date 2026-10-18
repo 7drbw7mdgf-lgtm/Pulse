@@ -157,7 +157,7 @@
           organisms: paper.organisms || [],
           techniques: paper.techniques || [],
           discoveryTerms: paper.discoveryTerms || [],
-          keywords: mergedKeywords(paper),
+          keywords: displayKeywords(paper),
           color: paper.color || '',
           areaId: paper.areaId || '',
           mapIds: Array.isArray(paper.mapIds) ? paper.mapIds : (paper.mapId ? [paper.mapId] : []),

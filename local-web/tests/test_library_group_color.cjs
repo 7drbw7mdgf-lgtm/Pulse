@@ -141,7 +141,7 @@ function setupTest() {
     },
     escapeHtml: s => String(s || ''),
     paperMatchScore: () => null,
-    mergedKeywords: () => [],
+    mergedKeywords: () => [], displayKeywords: () => [],
     paperAuthors: () => ['Dr. Smith'],
     paperAuthorSummary: () => 'Dr. Smith',
     paperCitationCount: () => 10,

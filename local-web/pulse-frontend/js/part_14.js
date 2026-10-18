@@ -213,20 +213,34 @@ function bindLibraryRowEvents(root) {
 }
 
 
+    // "Tian C, Yang M, Xu H, et al." for tables; the full list is in the cell's tooltip.
+    function shortAuthorList(authors, max = 3) {
+      const names = (authors || []).map(name => {
+        const parts = String(name || '').trim().split(/\s+/);
+        if (parts.length < 2) return parts[0] || '';
+        if (/,/.test(name)) return String(name).trim();
+        const surname = parts.pop();
+        return `${surname} ${parts.flatMap(p => p.split('-')).map(p => p.replace(/[^\p{L}]/gu, '').charAt(0).toUpperCase()).join('')}`.trim();
+      }).filter(Boolean);
+      return names.length > max ? `${names.slice(0, max).join(', ')}, et al.` : names.join(', ');
+    }
+
     function renderPapers() {
       const areaOptions = paper => [
         `<option value="">No area</option>`,
         ...state.areas.map(area => `<option value="${area.id}" ${paper.areaId === area.id ? 'selected' : ''}>${escapeHtml(area.name)}</option>`)
       ].join('');
       const paperMetaChips = paper => {
-        const allKeywords = mergedKeywords(paper);
+        const allKeywords = displayKeywords(paper);
         const keywords = allKeywords.slice(0, 3);
         const extra = Math.max(0, allKeywords.length - keywords.length);
+        const userTags = (typeof paperUserTags === 'function' ? paperUserTags(paper) : []).slice(0, 3);
         const chips = [
+          ...userTags.map(value => ({ value, action: 'paper-keyword', title: `Your tag: ${value}`, userTag: true })),
           ...keywords.map((value, idx) => ({ value, action: 'paper-keyword', title: `Keyword #${idx + 1}: ${value}` })),
           ...(extra ? [{ value: `+${extra}`, action: 'open-paper-keywords', title: 'Manage & reorder keyword tags' }] : [{ value: '🏷️ tags', action: 'open-paper-keywords', title: 'Manage & reorder keyword tags' }])
         ];
-        return chips.map(item => `<button class="compact-chip${item.action === 'open-paper-keywords' ? ' tag-edit-chip' : ''}" type="button" data-action="${item.action}" data-keyword="${escapeHtml(item.value)}" data-paper="${paper.id}" title="${escapeHtml(item.title)}">${escapeHtml(item.value)}</button>`).join('');
+        return chips.map(item => `<button class="compact-chip${item.action === 'open-paper-keywords' ? ' tag-edit-chip' : ''}${item.userTag ? ' is-user-tag' : ''}" type="button" data-action="${item.action}" data-keyword="${escapeHtml(item.value)}" data-paper="${paper.id}" title="${escapeHtml(item.title)}">${escapeHtml(item.value)}</button>`).join('');
       };
       const clusterByPaper = new Map();
       state.clusters.forEach((cluster, index) => cluster.forEach(id => clusterByPaper.set(id, index)));
@@ -364,19 +378,19 @@ function bindLibraryRowEvents(root) {
           const group = typeof paperGroupInfo === 'function' ? paperGroupInfo(paper, clusterByPaper) : { color: paperColor(paper, clusterByPaper), name: '' };
           return `<tr class="library-table-row" data-paper="${escapeHtml(paper.id)}" tabindex="0" style="box-shadow: inset 3.5px 0 0 ${escapeHtml(group.color)};" aria-label="Inspect ${escapeHtml(paper.title || 'Untitled paper')}">
           <td class="library-select-column"><input type="checkbox" data-action="select-library-row"  aria-label="Select ${escapeHtml(paper.title || 'Untitled paper')} for bulk actions"></td><td class="library-map-column"><input type="checkbox" data-action="toggle-paper-active" ${isOnActive ? 'checked' : ''} aria-label="Show ${escapeHtml(paper.title || 'Untitled paper')} on map"></td>
-          ${showMapCol ? `<td><select class="table-map-tab-select" data-action="set-paper-map-tab" data-paper="${paper.id}" aria-label="Assign to map tab">${typeof mapTabOptionsMarkup === 'function' ? mapTabOptionsMarkup(paper) : ''}</select></td>` : ''}
+          ${showMapCol ? `<td class="library-maptab-column"><select class="table-map-tab-select" data-action="set-paper-map-tab" data-paper="${paper.id}" aria-label="Assign to map tab">${typeof mapTabOptionsMarkup === 'function' ? mapTabOptionsMarkup(paper) : ''}</select></td>` : ''}
           <td class="library-title-cell"><span class="paper-swatch" style="background:${escapeHtml(group.color)}; display:inline-block; vertical-align:middle; margin-right:6px;" title="${escapeHtml(group.name ? group.name + ' (' + group.color + ')' : group.color)}"></span><button type="button" data-action="focus" class="library-title-button">${escapeHtml(paper.title || 'Untitled paper')}</button></td>
           <td class="library-group-cell">${group.name ? `<span class="library-group-pill" style="color:${escapeHtml(group.color)}; border:1px solid ${escapeHtml(group.color)}55; background:${escapeHtml(group.color)}18;" title="Group: ${escapeHtml(group.name)}"><span class="paper-swatch" style="background:${escapeHtml(group.color)}; width:6px; height:6px; display:inline-block; vertical-align:middle; margin-right:4px;"></span>${escapeHtml(group.name)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
-          <td>${escapeHtml(paperAuthors(paper).join(', ') || '—')}</td><td class="library-year-cell">${escapeHtml(paper.year || '—')}</td>
-          <td>${escapeHtml(paper.journal || '—')}</td><td class="library-citations-cell" title="${escapeHtml(count !== null ? 'Verified from ' + paper.citationMetrics.source : 'Citation count not checked')}">${count !== null ? count.toLocaleString() : '—'}</td>
-          <td class="library-doi-cell">${paper.doi ? `<a href="${escapeHtml((typeof paperOpenUrl === 'function' ? paperOpenUrl(paper) : '') || safePaperUrl('https://doi.org/' + paper.doi))}" target="_blank" rel="noreferrer">${escapeHtml(paper.doi)}</a>` : '—'}</td><td><div class="library-table-tags">${paperMetaChips(paper)}</div></td></tr>`;
+          <td class="library-authors-cell" title="${escapeHtml(paperAuthors(paper).join(', '))}">${escapeHtml(shortAuthorList(paperAuthors(paper)) || '—')}</td><td class="library-year-cell">${escapeHtml(paper.year || '—')}</td>
+          <td class="library-journal-cell">${escapeHtml(paper.journal || '—')}</td><td class="library-citations-cell" title="${escapeHtml(count !== null ? 'Verified from ' + paper.citationMetrics.source : 'Citation count not checked')}">${count !== null ? count.toLocaleString() : '—'}</td>
+          <td class="library-doi-cell">${paper.doi ? `<a href="${escapeHtml((typeof paperOpenUrl === 'function' ? paperOpenUrl(paper) : '') || safePaperUrl('https://doi.org/' + paper.doi))}" target="_blank" rel="noreferrer">${escapeHtml(paper.doi)}</a>` : '—'}</td><td class="library-tags-cell"><div class="library-table-tags">${paperMetaChips(paper)}</div></td></tr>`;
 
       };
       const renderLibraryTable = papers => {
         const columns = [['title', 'Paper'], ['group', 'Group'], ['authors', 'Authors'], ['year', 'Year'], ['journal', 'Journal'], ['citations', 'Citations']];
-        const headers = columns.map(([key, label]) => `<th scope="col" aria-sort="${state.librarySortKey === key ? (state.librarySortAsc ? 'ascending' : 'descending') : 'none'}"><button type="button" data-table-sort="${key}">${label}${state.librarySortKey === key ? (state.librarySortAsc ? ' ↑' : ' ↓') : ''}</button></th>`).join('');
+        const headers = columns.map(([key, label]) => `<th scope="col" class="library-col-${key}" aria-sort="${state.librarySortKey === key ? (state.librarySortAsc ? 'ascending' : 'descending') : 'none'}"><button type="button" data-table-sort="${key}">${label}${state.librarySortKey === key ? (state.librarySortAsc ? ' ↑' : ' ↓') : ''}</button></th>`).join('');
         const showMapCol = Boolean(state.maps && state.maps.length > 1);
-        return `<table class="library-table"><caption class="sr-only">Papers in your library. Select a paper to open its inspector.</caption><thead><tr><th scope="col" class="library-select-column"><input id="librarySelectVisible" type="checkbox" aria-label="Select all visible papers"></th><th scope="col" class="library-map-column">On map</th>${showMapCol ? '<th scope="col" class="library-maptab-column">Map Tab</th>' : ''}${headers}<th scope="col">DOI</th><th scope="col">Tags</th></tr></thead><tbody>${papers.map(renderLibraryTableRow).join('')}</tbody></table>`;
+        return `<table class="library-table"><caption class="sr-only">Papers in your library. Select a paper to open its inspector.</caption><thead><tr><th scope="col" class="library-select-column"><input id="librarySelectVisible" type="checkbox" aria-label="Select all visible papers"></th><th scope="col" class="library-map-column">On map</th>${showMapCol ? '<th scope="col" class="library-maptab-column">Map</th>' : ''}${headers}<th scope="col" class="library-col-doi">DOI</th><th scope="col" class="library-col-tags">Tags</th></tr></thead><tbody>${papers.map(renderLibraryTableRow).join('')}</tbody></table>`;
       };
 
 

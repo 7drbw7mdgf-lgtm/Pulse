@@ -93,6 +93,31 @@
       return [...new Set([...(paper.paperKeywords || []), ...(paper.gemmaKeywords || []), ...(state.keywords.get(paper.id) || [])])].slice(0, 16);
     }
 
+    // Keywords people see, filter on and export: the paper's own keywords (from the paper, the user or the AI).
+    // The automatic terms in state.keywords exist to measure similarity between papers; they are shown
+    // only when a paper has no keywords at all, and generic words ("role", "requires", "open") are dropped.
+    const GENERIC_TERM_WORDS = new Set(['role', 'roles', 'open', 'question', 'questions', 'require', 'requires', 'required', 'trigger', 'triggers',
+      'triggering', 'activate', 'activates', 'deliver', 'delivers', 'review', 'reviews', 'study', 'studies', 'result', 'results', 'effect',
+      'effects', 'using', 'based', 'new', 'novel', 'case', 'data', 'analysis', 'approach', 'method', 'methods', 'model', 'models', 'paper',
+      'present', 'show', 'shows', 'shown', 'found', 'used', 'use', 'also', 'however', 'may', 'might', 'well', 'whether', 'including', 'emerging',
+      'issues', 'issue', 'functions', 'events', 'potential', 'recent', 'current', 'important', 'different', 'various', 'several', 'tract']);
+    function curatedKeywords(paper) {
+      const seen = new Set(), out = [];
+      for (const term of [...(paper.paperKeywords || []), ...(paper.gemmaKeywords || [])]) {
+        const clean = cleanField(String(term || ''));
+        if (clean && !seen.has(clean.toLowerCase())) { seen.add(clean.toLowerCase()); out.push(clean); }
+      }
+      return out;
+    }
+    function displayKeywords(paper) {
+      const curated = curatedKeywords(paper);
+      if (curated.length) return curated.slice(0, 16);
+      return (state.keywords.get(paper.id) || []).filter(term => {
+        const words = String(term || '').toLowerCase().split(/\s+/).filter(Boolean);
+        return words.length && !words.some(word => GENERIC_TERM_WORDS.has(word)) && (words.length > 1 || words[0].length >= 5);
+      }).slice(0, 5);
+    }
+
     function extractCitationText(raw) {
       return raw
         .replace(/\u0000/g, ' ')

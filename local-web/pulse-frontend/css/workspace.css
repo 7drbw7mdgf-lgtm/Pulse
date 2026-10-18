@@ -142,17 +142,22 @@ button:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
 /* Full-screen library is a sortable table; sidebar density remains independent. */
 .library-fullscreen .pulse-paper-list.is-table { display:block; overflow:auto; padding:0 24px 90px; }
 .library-fullscreen #paperViewToggle[hidden] { display:none !important; }
-.library-table { width:100%; min-width:980px; border-collapse:separate; border-spacing:0; font-size:12px; table-layout:fixed; }
+.library-table { width:100%; min-width:1100px; border-collapse:separate; border-spacing:0; font-size:12px; table-layout:fixed; }
 .library-table caption.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
 .library-table th { position:sticky; top:0; z-index:1; padding:12px 10px; text-align:left; font-size:11px; color:var(--muted); background:var(--surface-2); border-bottom:1px solid var(--line); }
 .library-table th button { border:0; padding:0; background:transparent; font:inherit; color:inherit; font-weight:600; cursor:pointer; }
- .library-table th:nth-child(3) { width:25%; }
-.library-table th:nth-child(4) { width:16%; }
-.library-table th:nth-child(5) { width:52px; }
-.library-table th:nth-child(6) { width:14%; }
-.library-table th:nth-child(7) { width:65px; }
-.library-table th:nth-child(8) { width:14%; }
-.library-table th:nth-child(9) { width:13%; }
+/* Column widths by column class (not position), so optional columns cannot shift them. */
+.library-table th.library-col-title { width:30%; }
+.library-table th.library-col-group { width:110px; }
+.library-table th.library-col-authors { width:17%; }
+.library-table th.library-col-year { width:58px; }
+.library-table th.library-col-journal { width:14%; }
+.library-table th.library-col-citations { width:76px; }
+.library-table th.library-col-doi { width:13%; }
+.library-table th.library-col-tags { width:16%; }
+.library-table th.library-maptab-column { width:110px; }
+.library-table .library-authors-cell, .library-table .library-journal-cell { overflow-wrap:normal; word-break:normal; }
+.library-table .library-doi-cell { overflow-wrap:anywhere; }
 .library-table .library-select-column { width:35px; text-align:center; }
 .library-table td { padding:15px 10px; vertical-align:top; border-bottom:1px solid var(--line); line-height:1.6; color:var(--ink-2); overflow-wrap:anywhere; }
 .library-table .library-map-column { width:48px; text-align:center; }
@@ -379,3 +384,11 @@ html[data-theme="dark"] .theme-switch .theme-moon { display:block; }
 
 .ribbon-review-button { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; font-size: 11px; white-space: nowrap; cursor: pointer; }
 .ribbon-review-button[hidden] { display: none; }
+
+/* Your own tags stand apart from paper keywords on cards and in the Tags list. */
+.compact-chip.is-user-tag, .cloud-tag-chip.is-user-tag { background: var(--accent-soft); color: var(--accent); border-color: transparent; font-weight: 600; }
+.compact-chip.is-user-tag::before, .cloud-tag-chip.is-user-tag::before { content: '#'; opacity: .7; margin-right: 1px; }
+/* Bibliography: the group colour dot sits beside the first line of the title, not above it. */
+.library-table .library-title-cell .paper-swatch { float:left; margin:0.55em 7px 0 0 !important; }
+.library-table .library-title-cell .library-title-button { display:block; overflow:hidden; }
+.library-fullscreen .pulse-paper-list.is-table { scroll-padding-top: 52px; }

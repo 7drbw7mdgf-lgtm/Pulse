@@ -196,7 +196,7 @@ function bindInspectorSections() {
       const checkedLabel = checked && !Number.isNaN(checked.getTime())
         ? (checked.toDateString() === new Date().toDateString() ? 'checked today' : `checked ${checked.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`)
         : 'not checked yet';
-      const concepts = mergedKeywords(paper);
+      const concepts = displayKeywords(paper);
       const shownConcepts = state.inspectorShowAllConcepts ? concepts : concepts.slice(0, 6);
       const findings = (paper.keyFindings || []).filter(Boolean);
       return `
