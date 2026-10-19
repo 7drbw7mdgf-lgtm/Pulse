@@ -118,7 +118,7 @@ async function main() {
   const async=runtimeContext(fixture(150));
   const promise=async.calculateRelatedness();
   assert.equal(async.state.graphAnalysisPending,true);
-  const worker=async.workers[0];assert.equal(worker.url,'http://127.0.0.1:9000/graph-worker.js?v=2.1.0');
+  const worker=async.workers[0];assert.equal(worker.url,'http://127.0.0.1:9000/graph-worker.js?v=2.1.1');
   async.state.papers[0].title='intermediate';async.calculateRelatedness();
   async.state.papers[0].title='latest';async.calculateRelatedness();
   assert.equal(worker.messages.length,1,'One analysis runs while newer mutations coalesce');
@@ -174,7 +174,7 @@ async function main() {
   assert.equal(sync.state.papers[0].x,0,'Center mode leaves other pinned papers in place');
 
   const messages=[];
-  const workerVm={PulseGraph:Graph,importScripts:file=>assert.equal(file,'graph-engine.js?v=2.1.0'),self:{postMessage:message=>messages.push(message)}};
+  const workerVm={PulseGraph:Graph,importScripts:file=>assert.equal(file,'graph-engine.js?v=2.1.1'),self:{postMessage:message=>messages.push(message)}};
   vm.createContext(workerVm);vm.runInContext(source('graph-worker.js'),workerVm);
   workerVm.self.onmessage({data:{id:7,action:'analyse',payload}});
   assert.equal(messages[0].id,7);assert(messages[0].result.links.length);

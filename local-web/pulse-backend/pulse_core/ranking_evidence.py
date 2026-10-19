@@ -4,6 +4,51 @@ import statistics
 import re
 
 
+def citation_structure(records, seeds):
+    """Degree-normalized edges; common methods references carry less weight."""
+    import collections
+    from .search_merge import known_count
+    def ids(values):
+        return {match.group(0) for value in values or []
+                if (match := re.search(r'\bW\d+\b', str(value)))}
+    def count(value):
+        try: return max(0, int(value)) if not isinstance(value, bool) else 0
+        except (ValueError, TypeError, OverflowError): return 0
+    seed_refs = [ids(seed.get('referenceIds')) for seed in seeds]
+    candidate_refs = [ids(record.get('referenceIds')) for record in records]
+    frequencies = collections.Counter(ref for references in candidate_refs for ref in references)
+    weights = {ref:math.log1p((len(records)+1)/(1+frequency)) for ref,frequency in frequencies.items()}
+    unknown = math.log1p(len(records)+1)
+    results = []
+    for record, refs in zip(records, candidate_refs):
+        dbef = record.get('dbef') or {}
+        shared, similarity = 0, 0.0
+        for references in seed_refs:
+            overlap = (refs if refs else ids(dbef.get('sharedReferenceIds'))) & references
+            if not overlap: continue
+            seed_weight = sum(weights.get(ref, unknown) for ref in references)
+            candidate_total = max(len(refs), count(dbef.get('referenceCount') or record.get('referenceCount')), len(overlap))
+            candidate_weight = sum(weights.get(ref, unknown) for ref in refs) + max(0, candidate_total-len(refs))*unknown
+            shared_weight = sum(weights.get(ref, unknown) for ref in overlap)
+            normalized = shared_weight / math.sqrt(max(1e-9, seed_weight*candidate_weight))
+            effective_shared = shared_weight / max(weights.get(ref, unknown) for ref in references)
+            similarity = max(similarity, .5*min(1, normalized) + .5*effective_shared/(effective_shared+4))
+            shared = max(shared, len(overlap))
+        co_count = count(record.get('coCitationCount'))
+        seed_degree = sum(count(known_count(seed)) for seed in seeds)
+        candidate_degree = known_count(record)
+        if co_count and seed_degree and candidate_degree is not None:
+            cosine = co_count / math.sqrt(max(co_count, seed_degree)*max(co_count, count(candidate_degree)))
+            cocitation = math.sqrt(min(1, cosine)) * co_count/(co_count+4)
+        else:
+            # Unknown degrees retain observed evidence at a conservative weight.
+            cocitation = .25*co_count/(co_count+4) if co_count else 0.0
+        results.append({'sharedReferences':shared, 'sharedReferenceSimilarity':round(similarity, 6),
+                        'coCitationCount':co_count, 'coCitationSimilarity':round(cocitation, 6),
+                        'strength':1-(1-similarity)*(1-cocitation)})
+    return results
+
+
 def _unit(value, unknown=.5):
     try:
         value=float(value)

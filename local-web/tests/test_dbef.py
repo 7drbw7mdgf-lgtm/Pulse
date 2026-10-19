@@ -236,7 +236,7 @@ class DBEFScalingAndMissingTests(unittest.TestCase):
         ranked=hybrid({'citationGraph':[row]},[],{'researchQuestion':'Search paper','impute_missing_graph':'renormalize'})[0]
         self.assertEqual(ranked['scoreBreakdown']['citationEvidence'],.5)
         self.assertFalse(ranked['scoreBreakdown']['graphImputed']);self.assertFalse(ranked['scoreBreakdown']['graphRenormalized'])
-        self.assertEqual(ranked['matchStrengthVersion'],'evidence-v6-citation-bonus')
+        self.assertEqual(ranked['matchStrengthVersion'],'evidence-v7-citation-structure')
 
     def test_assessed_zero_information_survives_a_different_retrieval_channel(self):
         from pulse_core.search_limits import SearchResults

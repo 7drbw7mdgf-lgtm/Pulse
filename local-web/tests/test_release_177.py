@@ -91,7 +91,7 @@ class FoundationalTests(unittest.TestCase):
                          retrievalEvidence=[{'channel': 'citations:0:forward', 'rank': 1}]),
                    paper('third', year=str(year), citationCount=5, hop=1,
                          retrievalEvidence=[{'channel': 'citations:0:forward', 'rank': 3}])]
-        options = {'diversify': False, 'citationVelocityPrior': False, 'citationLinkBonus': False}
+        options = {'diversify': False, 'citationVelocityPrior': False, 'citationLinkBonus': False, 'backwardCitationWeight': 0}
         with patch('pulse_core.pipeline_ranking.bm25_scores', return_value=[.8]*3):
             boosted = rank({'citationGraph': records}, [SEED], options.copy())
             baseline = rank({'citationGraph': records}, [SEED], dict(options, foundationalPrior=False))

@@ -9,7 +9,7 @@ from .search_limits import SearchResults,discovery_limit
 from pulse_performance import REQUEST_CONTEXT,DiscoveryCancelled,DiscoveryBudgetExceeded,check_cancelled,publish_partial
 
 
-def fetch_cocitation_branch(seed_papers,api_key=None,limit=500):
+def fetch_cocitation_branch(seed_papers,api_key=None,limit=500,seed_works=None):
     result=SearchResults();votes=collections.Counter();paths=collections.defaultdict(set);seed_ids=set();warnings=[];seen_pairs=set();metadata={}
     prior=getattr(REQUEST_CONTEXT,'deadline',None)
     REQUEST_CONTEXT.deadline=min(prior,time.monotonic()+8) if prior else time.monotonic()+8
@@ -18,8 +18,8 @@ def fetch_cocitation_branch(seed_papers,api_key=None,limit=500):
         unknown=[ident for ident in ids if ident not in metadata]
         for start in range(0,len(unknown),100):
             check_cancelled()
-            query=urllib.parse.urlencode({'filter':'openalex_id:'+'|'.join(unknown[start:start+100]),'per-page':100,'select':'id,doi,title,authorships,primary_location,publication_year,abstract_inverted_index,cited_by_count,referenced_works,referenced_works_count,counts_by_year,primary_topic,is_retracted,biblio,publication_date,type,language'})
-            works=core.fetch_json('https://api.openalex.org/works?'+query).get('results') or []
+            works=core.fetch_openalex_works_batch(unknown[start:start+100])
+            if getattr(works,'warning',''): warnings.append(works.warning)
             metadata.update({work_id(work.get('id')):work for work in works})
             update_result(ids)
         update_result(ids)
@@ -39,11 +39,12 @@ def fetch_cocitation_branch(seed_papers,api_key=None,limit=500):
         for index,paper in enumerate(seed_papers[:24]):
             check_cancelled()
             try:
-                seed=core.openalex_work_for_paper(paper)
+                seed=seed_works[index] if seed_works is not None and index < len(seed_works) else core.openalex_work_for_paper(paper)
                 ident=work_id((seed or {}).get('id'))
                 if not ident:continue
                 seed_ids.add(ident)
-                for work in core.openalex_citing_works(ident,limit=16):
+                from .discovery import citation_neighborhood_limit
+                for work in core.openalex_citing_works(ident,limit=citation_neighborhood_limit(limit,len(seed_papers))):
                     citer=work_id(work.get('id'))
                     if not citer or ident not in references(work):continue
                     for ref in set(references(work))-{ident}:

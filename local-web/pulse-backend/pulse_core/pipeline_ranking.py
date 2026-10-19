@@ -12,7 +12,7 @@ from pulse_core.metadata_resolution import similarity
 from pulse_core.search_merge import merge_search_records, title_key, known_count
 from pulse_core.search_limits import discovery_limit, MAX_CANDIDATE_POOL, SearchResults
 from pulse_core.discovery_feedback import paper_key, contrastive_profile, feedback_adjustment
-from pulse_core.ranking_evidence import dbef_quality, apply_network_assessments, graph_evidence
+from pulse_core.ranking_evidence import dbef_quality, apply_network_assessments, graph_evidence, citation_structure
 from pulse_core.publication_records import fold_explicit_versions
 from pulse_core.discovery_matches import query_coverage, match_evidence, match_label, fit_calibration, independent_channel_count
 
@@ -259,6 +259,10 @@ def why_found(record, seed_papers, options, relevance=0.0):
     if coupled:
         why.append({'kind': 'shared-references', 'label': 'Shares references',
                     'detail': _plain_reason(coupled.get('detail') or record.get('reason')) or 'Shares references with your seed paper'})
+    structure = record.get('citationStructure') or {}
+    if not coupled and structure.get('sharedReferences'):
+        why.append({'kind':'shared-references','label':'Shares references',
+                    'detail':f"Shares {structure['sharedReferences']} indexed references with your seed papers"})
     seed_terms, seen = [], set()
     for seed in seed_papers:
         for term in list(seed.get('paperKeywords') or []) + list(options.get('steerKeywords') or []):
@@ -480,14 +484,30 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
     raw_rrf, base_rrf = [], []
     qualities=[dbef_quality(record,options.get('dbefPolicy')) for record in records]
     graphs,options['_networkEvidence']=graph_evidence(records,qualities,options)
+    structures = citation_structure(records, seed_papers)
+    structure_weight = max(0, min(.3, float(options.get('citationStructureWeight', .06))))
+    backward_weight = max(0, min(.1, float(options.get('backwardCitationWeight', .03))))
     for record in records:
         channels = {}
         for evidence in record.get('retrievalEvidence') or []:
             rank = max(1,int(evidence.get('rank') or 1))
             channel = evidence.get('channel') or 'concepts'
+            if str(channel).startswith('author:'):
+                # First- and senior-author history for the same seed describe
+                # one correlated retrieval route, not two independent votes.
+                channel = ':'.join(str(channel).split(':')[:2])
             channels[channel] = min(rank,channels.get(channel,rank))
-        base_rrf.append(sum(1/(60+rank) for rank in channels.values()))
-        raw_rrf.append(sum((qualities[len(raw_rrf)] if channel=='dbef' or channel.startswith('dbef:') else 1)/(60+rank) for channel,rank in channels.items()))
+        # Author history is secondary on its own. Independent citation evidence
+        # can corroborate it; weak topic matches still receive less influence.
+        author_weight = max(0, min(1, float(options.get('authorTrajectoryWeight', .35))))
+        linked = any(str(channel).startswith(('citations:', 'dbef', 'citationCoCitation')) for channel in channels)
+        if linked and 'authorTrajectoryWeight' not in options: author_weight = 1.0
+        author_weight *= min(1, relevance[len(raw_rrf)] / .3)
+        base_rrf.append(sum((author_weight if str(channel).startswith('author:') else 1)/(60+rank)
+                            for channel,rank in channels.items()))
+        raw_rrf.append(sum((author_weight if str(channel).startswith('author:') else
+                           qualities[len(raw_rrf)] if channel=='dbef' or channel.startswith('dbef:') else 1)/(60+rank)
+                           for channel,rank in channels.items()))
     peak_rrf = max(base_rrf) or 1
     rejected = {paper_key(row['paper']) for row in options.get('relevanceFeedback') or [] if row['grade'] == 0}
     pool_context = build_citation_link_context(records, seed_papers, options)
@@ -501,11 +521,12 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         cb = citation_link_bonus(rec, pool_context, topic=rel) if not is_rej else 0.0
         comb_prior = min(cb + fp, max(cb, fp) + 0.03) if cb > 0 and fp > 0 else (cb + fp)
         p_val = ((.7 * rel + .3 * raw_rrf[i] / peak_rrf) / (.88 if graphs[i]['renormalize'] else 1) +
-                 (.12 * graphs[i]['prelim']) + comb_prior)
+                 (.12 * graphs[i]['prelim']) + comb_prior + structure_weight * structures[i]['strength'])
         prelim.append(p_val)
     indices = balanced_indices(records, prelim, MAX_CANDIDATE_POOL)
     records, relevance, raw_rrf, prelim, qualities = ([records[i] for i in indices], [relevance[i] for i in indices], [raw_rrf[i] for i in indices], [prelim[i] for i in indices], [qualities[i] for i in indices])
     graphs=[graphs[i] for i in indices]
+    structures=[structures[i] for i in indices]
     options['_candidateCount'] = len(records)
     if options.get('_shortlistProbe'):
         # Background pre-computation fills caches for exactly the papers the
@@ -601,6 +622,12 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
                 ctx_bonus += 0.010
             ctx_bonus = min(0.045, ctx_bonus) * max(0.25, topic_support)
             score += ctx_bonus
+        structural_bonus = structure_weight * structures[i]['strength']
+        backward = any(str(ev.get('channel') or '').startswith('citations:') and
+                       str(ev.get('channel') or '').endswith(':backward') for ev in record.get('retrievalEvidence') or [])
+        backward_bonus = backward_weight * max(structures[i]['strength'], min(1, topic_support/.3)) if backward else 0.0
+        if grade != 0: score += structural_bonus + backward_bonus
+        record['citationStructure'] = structures[i]
         score += .06*min(2,float(options.get('impactTilt') or 0))*impact*topic_support
         score += .05*min(2,float(options.get('recencyTilt') or 0))*recency*max(relevance[i],sem or 0)
         unadjusted_score = score - adjustment
@@ -609,14 +636,14 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
             unadjusted_fnd = .06*foundational_support(record, topic_support) if options.get('foundationalPrior', True) else 0
             unadjusted_cit = citation_link_bonus(record, pool_context, topic_support)
             unadjusted_comb = min(unadjusted_cit + unadjusted_fnd, max(unadjusted_cit, unadjusted_fnd) + 0.03) if (unadjusted_cit > 0 and unadjusted_fnd > 0) else (unadjusted_cit + unadjusted_fnd)
-            unadjusted_score += unadjusted_vel + unadjusted_comb
+            unadjusted_score += unadjusted_vel + unadjusted_comb + structural_bonus + backward_bonus
         record['score'] = round(100*max(0,min(1,score)),3)
         record['scoreBreakdown'] = {'text':round(relevance[i],3),'fusion':round(fusion,3),'semantic':round(sem,3) if sem is not None else None,
             'dbef':record.get('dbef'),'dbefEvidenceQuality':qualities[i] if record.get('dbef') else None,'citationEvidence':round(graph,3),
             'networkStatus':record['networkStatus'],'graphImputed':graphs[i]['imputed'],'graphRenormalized':graphs[i]['renormalize'],
             'preliminaryScore':round(prelim[i],6),'preFeedbackScore':round(unadjusted_score,6),
             'optionalImpact':round(impact,3),'citationVelocityPrior':round(velocity_prior,4),'foundationalPrior':round(foundation_prior,4),
-            'citationLinkBonus':round(cit_bonus,4),'citationContextBonus':round(ctx_bonus,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
+            'citationStructureBonus':round(structural_bonus if grade != 0 else 0,4),'backwardCitationBonus':round(backward_bonus if grade != 0 else 0,4),'citationLinkBonus':round(cit_bonus,4),'citationContextBonus':round(ctx_bonus,4),'softAvoids':avoided,'pairwise':round(pair,3) if pair is not None else None,'feedback':round(adjustment,3)}
         record['branchHits'] = {b:True for b in record['branches']}
         if any(b in record['branches'] for b in ('core','europePmc','fullText')): record['branchHits']['lexicalConceptual']=True
         explanations = []
@@ -643,7 +670,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         if profile.get('version') != 'evidence-v1' or profile.get('mode') != mode: profile = None
         record['matchMode'] = mode
         record['matchLabel'] = match_label(evidence, profile, grade)
-        record['matchStrengthVersion'] = 'evidence-v6-citation-bonus'
+        record['matchStrengthVersion'] = 'evidence-v7-citation-structure'
         if grade is not None:
             record['relevanceGrade'] = grade
             record['matchReasons'].insert(0, 'Marked relevant for this question' if grade > 0 else 'Marked not relevant for this question')

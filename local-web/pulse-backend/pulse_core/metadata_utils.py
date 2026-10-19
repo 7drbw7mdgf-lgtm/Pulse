@@ -160,7 +160,7 @@ def openalex_to_metadata(item):
         **citation_metadata(item.get("cited_by_count"), "OpenAlex"),
         "openAlexId": item.get("id"),
         "referenceIds": list(dict.fromkeys(match.group(0) for value in item.get('referenced_works') or []
-                                           if (match := re.search(r'\bW\d+\b',str(value)))))[:160],
+                                           if (match := re.search(r'\bW\d+\b',str(value))))),
         "referenceCount": len(item['referenced_works']) if isinstance(item.get('referenced_works'),list) else None,
         "citationCountsByYear": item.get('counts_by_year') if isinstance(item.get('counts_by_year'),list) else [],
         "field": ((item.get("primary_topic") or {}).get("field") or {}).get("display_name") or "",

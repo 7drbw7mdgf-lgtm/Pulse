@@ -1,0 +1,199 @@
+{
+  "baseline": "f8e9c89 / Pulse 2.1.0",
+  "candidate": "Pulse 2.1.1 local working tree",
+  "date": "2026-10-19",
+  "scope": "Fixed pools, text/citation ranking only. No live retrieval or neural models. Pools were inspected during development; this is not an untouched held-out evaluation.",
+  "datasets": {
+    "relish": {
+      "cases": 100,
+      "metrics": {
+        "nDCG@20": {
+          "before": 0.3024,
+          "after": 0.3031,
+          "pairedDelta": {
+            "mean": 0.0008,
+            "ci_low": -0.0054,
+            "ci_high": 0.0073,
+            "ci_half_width": 0.0063,
+            "n": 100
+          }
+        },
+        "Recall@20": {
+          "before": 0.1254,
+          "after": 0.1235,
+          "pairedDelta": {
+            "mean": -0.0018,
+            "ci_low": -0.005,
+            "ci_high": 0.0017,
+            "ci_half_width": 0.0033,
+            "n": 100
+          }
+        },
+        "Recall@50": {
+          "before": 0.211,
+          "after": 0.2072,
+          "pairedDelta": {
+            "mean": -0.0038,
+            "ci_low": -0.0059,
+            "ci_high": -0.0017,
+            "ci_half_width": 0.0021,
+            "n": 100
+          }
+        }
+      }
+    },
+    "synergy": {
+      "cases": 16,
+      "metrics": {
+        "nDCG@20": {
+          "before": 0.2291,
+          "after": 0.2332,
+          "pairedDelta": {
+            "mean": 0.0041,
+            "ci_low": -0.0023,
+            "ci_high": 0.0124,
+            "ci_half_width": 0.0074,
+            "n": 16
+          }
+        },
+        "Recall@20": {
+          "before": 0.0981,
+          "after": 0.0966,
+          "pairedDelta": {
+            "mean": -0.0015,
+            "ci_low": -0.0044,
+            "ci_high": 0.0,
+            "ci_half_width": 0.0022,
+            "n": 16
+          }
+        },
+        "Recall@50": {
+          "before": 0.1616,
+          "after": 0.1724,
+          "pairedDelta": {
+            "mean": 0.0108,
+            "ci_low": 0.0001,
+            "ci_high": 0.0249,
+            "ci_half_width": 0.0124,
+            "n": 16
+          }
+        }
+      }
+    },
+    "scidocs": {
+      "cases": 25,
+      "metrics": {
+        "nDCG@20": {
+          "before": 0.0748,
+          "after": 0.0768,
+          "pairedDelta": {
+            "mean": 0.002,
+            "ci_low": 0.0004,
+            "ci_high": 0.0041,
+            "ci_half_width": 0.0018,
+            "n": 25
+          }
+        },
+        "Recall@20": {
+          "before": 0.0813,
+          "after": 0.0813,
+          "pairedDelta": {
+            "mean": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.0,
+            "ci_half_width": 0.0,
+            "n": 25
+          }
+        },
+        "Recall@50": {
+          "before": 0.1267,
+          "after": 0.1267,
+          "pairedDelta": {
+            "mean": 0.0,
+            "ci_low": 0.0,
+            "ci_high": 0.0,
+            "ci_half_width": 0.0,
+            "n": 25
+          }
+        }
+      }
+    },
+    "headtohead": {
+      "cases": 5,
+      "metrics": {
+        "nDCG@20": {
+          "before": 0.4086,
+          "after": 0.4022,
+          "pairedDelta": {
+            "mean": -0.0064,
+            "ci_low": -0.0236,
+            "ci_high": 0.0091,
+            "ci_half_width": 0.0164,
+            "n": 5
+          }
+        },
+        "Recall@20": {
+          "before": 0.44,
+          "after": 0.4267,
+          "pairedDelta": {
+            "mean": -0.0133,
+            "ci_low": -0.04,
+            "ci_high": 0.0,
+            "ci_half_width": 0.02,
+            "n": 5
+          }
+        },
+        "Recall@50": {
+          "before": 0.6267,
+          "after": 0.6133,
+          "pairedDelta": {
+            "mean": -0.0133,
+            "ci_low": -0.04,
+            "ci_high": 0.0,
+            "ci_half_width": 0.02,
+            "n": 5
+          }
+        }
+      }
+    }
+  },
+  "liveCitationCheck": [
+    {
+      "condition": "cold",
+      "seconds": 1.334,
+      "expectedReferenceIds": 78,
+      "backwardResults": 78,
+      "forwardResults": 79,
+      "networkRequests": 4,
+      "requestSeconds": [
+        {
+          "host": "api.openalex.org",
+          "seconds": 0.321
+        },
+        {
+          "host": "api.openalex.org",
+          "seconds": 0.67
+        },
+        {
+          "host": "api.openalex.org",
+          "seconds": 0.705
+        },
+        {
+          "host": "api.openalex.org",
+          "seconds": 0.948
+        }
+      ],
+      "hasWarning": false
+    },
+    {
+      "condition": "warm",
+      "seconds": 0.065,
+      "expectedReferenceIds": 78,
+      "backwardResults": 78,
+      "forwardResults": 79,
+      "networkRequests": 0,
+      "requestSeconds": [],
+      "hasWarning": false
+    }
+  ]
+}

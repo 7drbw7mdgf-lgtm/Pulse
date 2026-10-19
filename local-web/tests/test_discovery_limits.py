@@ -100,7 +100,7 @@ class DiscoveryLimitTests(unittest.TestCase):
         with patch.object(discovery, 'fetch_json', side_effect=transport):
             found = discovery.openalex_discovery_works('cites:W1234', limit=235)
         self.assertEqual(len(found), 235)
-        self.assertEqual(requests, [(1, 100), (2, 100), (3, 100)])
+        self.assertEqual(requests, [(1, 200), (2, 200)])
 
     def test_semantic_recommendations_and_citation_limits_are_bounded(self):
         with patch.object(s2_client, 'post_s2_json', return_value={}) as post:

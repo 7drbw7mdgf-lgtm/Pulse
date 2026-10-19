@@ -1,4 +1,4 @@
-# Pulse 2.0.1 development
+# Pulse development
 
 The current Tauri desktop app stages `local-web/pulse-frontend` and `local-web/pulse-backend`. Both platforms share this application source; platform packaging adds the native launcher and dependencies.
 

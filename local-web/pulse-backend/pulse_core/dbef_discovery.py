@@ -140,8 +140,9 @@ def seed_reference_fallback(paper,api_key=None):
     return list(dict.fromkeys(found))
 
 
-def fetch_dbef_branch(seed_papers, api_key=None, limit=200):
+def fetch_dbef_branch(seed_papers, api_key=None, limit=200, seed_works=None):
     limit = discovery_limit(limit)
+    provided_works = seed_works
     seeds, seed_works, ref_texts, counts, raw, seen, warnings = [], [], {}, {}, [], set(), []
     field_sizes = {}
     seed_coverages = {}
@@ -154,7 +155,7 @@ def fetch_dbef_branch(seed_papers, api_key=None, limit=200):
     try:
         for seed_index,paper in enumerate(seed_papers[:24]):
             check_cancelled()
-            try: work = core.openalex_work_for_paper(paper)
+            try: work = provided_works[seed_index] if provided_works is not None and seed_index < len(provided_works) else core.openalex_work_for_paper(paper)
             except (DiscoveryCancelled,DiscoveryBudgetExceeded): raise
             except Exception as error: warnings.append(str(error)); continue
             if not work: continue

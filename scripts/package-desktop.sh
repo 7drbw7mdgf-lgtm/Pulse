@@ -36,6 +36,11 @@ chmod 755 "$release_dir/staging/Allow-Pulse-Tauri.command"
 grep -q "^expected_version='$version'$" "$release_dir/staging/Allow-Pulse-Tauri.command"
 cp "$source_root/docs/MACOS-INSTALL.md" "$release_dir/staging/MACOS-INSTALL.md"
 cp "$source_root/docs/WINDOWS-INSTALL.md" "$release_dir/staging/WINDOWS-INSTALL.md"
+cp "$source_root/docs/SIGNING.md" "$release_dir/staging/SIGNING.md"
+if [ -f "$source_root/docs/search/CITATION-STRUCTURE.md" ]; then
+  mkdir -p "$release_dir/staging/search"
+  cp "$source_root/docs/search/CITATION-STRUCTURE.md" "$release_dir/staging/search/CITATION-STRUCTURE.md"
+fi
 if [ -f "$source_root/docs/PERFORMANCE.md" ]; then
   cp "$source_root/docs/PERFORMANCE.md" "$release_dir/staging/PERFORMANCE.md"
 fi

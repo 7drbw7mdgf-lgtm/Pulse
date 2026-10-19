@@ -106,7 +106,7 @@ class CitationFallbackTests(unittest.TestCase):
     def test_openalex_reference_works_uses_cited_by_query(self):
         with patch.object(discovery, 'openalex_discovery_works', return_value=[{'id': 'W2', 'title': 'Landmark ref'}]) as disc_mock:
             results = discovery.openalex_reference_works('W1', limit=20)
-            disc_mock.assert_called_once_with('cited_by:W1', 20, sort='cited_by_count:desc')
+            disc_mock.assert_called_once_with('cited_by:W1', 2000, sort='cited_by_count:desc')
             self.assertEqual(len(results), 1)
             self.assertEqual(results[0]['id'], 'W2')
 
@@ -209,7 +209,7 @@ class StrongMatchTests(unittest.TestCase):
             self.assertEqual([row['rank'] for row in found if row['matchLabel']=='Explore'], list(range(7,16)))
             self.assertTrue(all(row['matchPoolSize']==30 for row in found))
             self.assertTrue(all(row['matchDisplaySize']==15 for row in found))
-            self.assertTrue(all(row['matchStrengthVersion']=='evidence-v6-citation-bonus' for row in found))
+            self.assertTrue(all(row['matchStrengthVersion']=='evidence-v7-citation-structure' for row in found))
 
     def test_provider_mirrors_and_query_variants_are_not_independent(self):
         evidence = [{'channel':'concepts:q1','provider':'CORE'}, {'channel':'concepts:q1','provider':'Semantic Scholar'}, {'channel':'concepts:q2','provider':'Europe PMC'}]

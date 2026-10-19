@@ -15,7 +15,7 @@ Both installers use the same application source and version. The Mac app is ad h
 
 ## 2.1 development
 
-The next version adds multi-keyword/tag search, Fast/Enhanced ranking, saved searches and watchlists, a reading queue, transactional SQLite library storage, faster graph calculations and a bundled Mac Python backend. See the [2.1 development notes](docs/releases/2.1.0.md). The download links above remain the published stable release.
+The next version adds multi-keyword/tag search, Fast/Enhanced ranking, saved searches and watchlists, a reading queue, transactional SQLite library storage, faster graph calculations and a bundled Mac Python backend. The citation update adds shared-reference/co-citation ranking, full indexed reference retrieval and shared OpenAlex caching. See the [2.1.1 development notes](docs/releases/2.1.1.md). The download links above remain the published stable release.
 
 ## What the app does
 

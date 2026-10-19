@@ -92,12 +92,15 @@ def merge_search_records(records):
             for key, value in record.items():
                 if key not in {"branches", "sourceList", "fullTextLinks", "discoveryBadges", "sourceIdentifiers", "citationCountsBySource", "retrievalEvidence", "citationCount", "citedByCount", "citationCountSource", "citationContexts", "citationIntents"} and value not in (None, "", [], {}) and base.get(key) in (None, "", [], {}):
                     base[key] = value
-            for key in ("branches", "sourceList", "fullTextLinks", "discoveryBadges", "retrievalEvidence", "publicationRelations", "publicationNotices", "citationIntents"):
+            for key in ("branches", "sourceList", "fullTextLinks", "discoveryBadges", "retrievalEvidence", "publicationRelations", "publicationNotices", "citationIntents", "referenceIds"):
                 if key in base or key in record:
                     base[key] = list(base.get(key) or [])
                     for value in record.get(key) or []:
                         if value not in base[key]:
                             base[key].append(value)
+            for key in ('referenceCount', 'coCitationCount', 'coCitationSimilarity'):
+                values = [value for value in (base.get(key), record.get(key)) if isinstance(value, (int, float)) and not isinstance(value, bool)]
+                if values: base[key] = max(values)
             if "citationContexts" in base or "citationContexts" in record:
                 merged_ctx = list(base.get("citationContexts") or [])
                 for ctx in record.get("citationContexts") or []:

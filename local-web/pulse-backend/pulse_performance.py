@@ -178,6 +178,21 @@ def check_cancelled():
         raise DiscoveryBudgetExceeded('Search time budget reached; showing collected results.')
 
 
+def submit_with_context(executor, function, *args, **kwargs):
+    """Nested HTTP work shares its caller's cancellation and request budget."""
+    keys = ('cancel_event', 'deadline', 'request_counter')
+    context = {key:getattr(REQUEST_CONTEXT, key, None) for key in keys}
+    def run():
+        previous = {key:getattr(REQUEST_CONTEXT, key, None) for key in keys}
+        try:
+            for key,value in context.items(): setattr(REQUEST_CONTEXT, key, value)
+            check_cancelled()
+            return function(*args, **kwargs)
+        finally:
+            for key,value in previous.items(): setattr(REQUEST_CONTEXT, key, value)
+    return executor.submit(run)
+
+
 def _wait(seconds):
     check_cancelled()
     remaining = remaining_budget()
@@ -248,7 +263,7 @@ def _disk_http_cache_key(request):
 
 
 def _disk_http_cache_ttl(url):
-    u = url.lower()
+    u = urllib.parse.unquote(url).lower()
     # Free-text searches have 15-minute TTL
     if 'search=' in u or 'query=' in u:
         # Identifier lookups (DOI or PMID queries) are stable; topic searches are not.

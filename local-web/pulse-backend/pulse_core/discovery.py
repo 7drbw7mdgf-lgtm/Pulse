@@ -6,7 +6,7 @@ import copy
 import math
 import queue
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import urllib.parse
 import urllib.request
@@ -44,7 +44,7 @@ from pulse_core.s2_client import (
     s2_to_metadata,
 )
 from pulse_core.storage import load_settings
-from pulse_performance import parallel_branches, parallel_lookup, DiscoveryCancelled, REQUEST_CONTEXT, check_cancelled, publish_partial, DiscoveryBudgetExceeded
+from pulse_performance import parallel_branches, parallel_lookup, DiscoveryCancelled, REQUEST_CONTEXT, check_cancelled, publish_partial, DiscoveryBudgetExceeded, submit_with_context
 
 
 def openalex_work_id(value):
@@ -56,6 +56,13 @@ def openalex_work_id(value):
 
 
 def openalex_work_for_paper(paper):
+    ident = openalex_work_id(paper.get('openAlexId') or paper.get('openalexId'))
+    if ident:
+        try:
+            work = fetch_openalex_work_by_id(ident)
+            if confident_candidate(paper, [openalex_to_metadata(work)]): return work
+        except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+        except Exception: pass
     doi = normalize_doi(paper.get("doi") or "")
     if doi:
         try:
@@ -143,53 +150,48 @@ OPENALEX_WORK_SELECT = 'id,doi,title,authorships,primary_location,publication_ye
 
 
 def fetch_openalex_works_batch(work_ids, select=OPENALEX_WORK_SELECT):
-    clean_ids = [openalex_work_id(w) for w in work_ids if openalex_work_id(w)]
-    if not clean_ids:
-        return []
-    results = []
-    chunk_size = 100
-    for i in range(0, len(clean_ids), chunk_size):
-        chunk = clean_ids[i:i + chunk_size]
-        filter_arg = "openalex_id:" + "|".join(chunk)
-        query_params = {"filter": filter_arg, "per-page": len(chunk)}
-        if select: query_params["select"] = select
-        params = urllib.parse.urlencode(query_params)
-        try:
-            data = fetch_json(f"https://api.openalex.org/works?{params}")
-            results.extend(data.get("results") or [])
-        except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-        except Exception:
-            continue
-    return results
+    from pulse_core.openalex_cache import cached_batch
+    clean_ids = list(dict.fromkeys(openalex_work_id(value) for value in work_ids if openalex_work_id(value)))
+    if not clean_ids: return SearchResults()
+    clean_set = set(clean_ids)
+    found = cached_batch(clean_ids, select)
+    missing = [ident for ident in clean_ids if ident not in found]
+    groups = [missing[i:i+100] for i in range(0, len(missing), 100)]
+    warnings = []
+    def fetch_group(group):
+        params = {'filter':'openalex_id:'+'|'.join(group), 'per-page':len(group)}
+        if select: params['select'] = select
+        return _core.fetch_json('https://api.openalex.org/works?'+urllib.parse.urlencode(params)).get('results') or []
+    if groups:
+        with ThreadPoolExecutor(max_workers=min(4, len(groups)), thread_name_prefix='pulse-reference-batch') as executor:
+            futures = [submit_with_context(executor, fetch_group, group) for group in groups]
+            for future in as_completed(futures):
+                try:
+                    for work in future.result():
+                        ident = openalex_work_id(work.get('id'))
+                        if ident in clean_set: found[ident] = work
+                except DiscoveryCancelled: raise
+                except Exception as error: warnings.append(str(error))
+    result = SearchResults(found[ident] for ident in clean_ids if ident in found)
+    if len(result) < len(clean_ids): warnings.append(f'Reference metadata available for {len(result)} of {len(clean_ids)} indexed works.')
+    result.warning = ' · '.join(dict.fromkeys(warnings))
+    return result
+
+
+def citation_neighborhood_limit(limit, seed_count=1):
+    # Graph and co-citation use identical streams, sharing cache and in-flight GETs.
+    return max(80, min(400, math.ceil(discovery_limit(limit)/max(1, seed_count))))
 
 
 def openalex_reference_works(work_id, limit=20, referenced_works=None):
     normalized = openalex_work_id(work_id)
-    if not normalized:
-        return []
-    limit = discovery_limit(limit)
-    gathered = SearchResults()
-    try:
-        rows = openalex_discovery_works(f"cited_by:{normalized}", limit, sort="cited_by_count:desc")
-        if rows:
-            gathered.extend(rows)
-            if getattr(rows, "warning", ""):
-                gathered.warning = rows.warning
-            return gathered
-    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-    except Exception as error:
-        gathered.warning = str(error)
-
+    if not normalized: return SearchResults()
     if referenced_works:
-        clean_ids = [openalex_work_id(w) for w in referenced_works if openalex_work_id(w)][:limit]
-        if clean_ids:
-            try:
-                batch_rows = fetch_openalex_works_batch(clean_ids)
-                gathered.extend(batch_rows[:limit])
-            except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-            except Exception as error:
-                gathered.warning = " · ".join(filter(None, [gathered.warning, str(error)]))
-    return gathered
+        # The resolved work already carries the full outgoing ID list. Hydrate
+        # every ID in parallel batches rather than run another capped filter.
+        rows = fetch_openalex_works_batch(referenced_works)
+        if rows: return rows
+    return openalex_discovery_works(f'cited_by:{normalized}', 2000, sort='cited_by_count:desc')
 
 
 def opencitations_citing_dois(doi, limit=30):
@@ -286,7 +288,7 @@ def openalex_citing_works(work_id, limit=12):
             REQUEST_CONTEXT.deadline = None
             REQUEST_CONTEXT.request_counter = None
     with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = [executor.submit(fetch_stream, sort, size) for sort, size in streams]
+        futures = [submit_with_context(executor, fetch_stream, sort, size) for sort, size in streams]
         for future in futures:
             try:
                 rows = future.result()
@@ -307,7 +309,7 @@ def openalex_citing_works(work_id, limit=12):
 def openalex_discovery_works(work_filter, limit, sort='cited_by_count:desc', max_page_size=None, select=OPENALEX_WORK_SELECT):
     limit = discovery_limit(limit)
     gathered = SearchResults()
-    cap = max_page_size or (200 if work_filter.startswith('cited_by:') else 100)
+    cap = max_page_size or 200
     page_size = min(limit, cap)
     for page in range(1, (limit + page_size - 1) // page_size + 1):
         query_dict = {"filter": work_filter, "sort": sort,
@@ -320,6 +322,12 @@ def openalex_discovery_works(work_filter, limit, sort='cited_by_count:desc', max
         except (ClientError, DiscoveryBudgetExceeded) as error:
             return gathered.keep_partial(error)
         gathered.extend(rows[:limit - len(gathered)])
+        total = (data.get('meta') or {}).get('count')
+        if isinstance(total, int) and total >= 0:
+            gathered.total_count = total
+            if len(gathered) >= total: break
+            if len(gathered) >= limit and work_filter.startswith('cited_by:'):
+                gathered.warning = f'Loaded {len(gathered)} of {total} indexed references; the remaining references exceeded this search budget.'
         if len(rows) < page_size:
             break
     return gathered
@@ -511,15 +519,15 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
     gathered = SearchResults()
     hop1_references = []
     hop1_citations = []
-    per_seed = max(10, math.ceil(limit/max(1,len(seed_papers))))
+    per_seed = citation_neighborhood_limit(limit, len(seed_papers))
     for seed_index, paper in enumerate(seed_papers[:24]):
         refs, cites = [], []
         # 1. OpenAlex first (if not in cooldown)
         work = None
         if not cooldowns().get('OpenAlex'):
-            if seed_works and seed_index < len(seed_works):
+            if seed_works is not None and seed_index < len(seed_works):
                 work = seed_works[seed_index]
-            if not work:
+            else:
                 try:
                     work = _core.openalex_work_for_paper(paper)
                 except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
@@ -529,42 +537,31 @@ def fetch_citation_graph_branch(seed_papers, api_key=None, include_iterative_cha
 
             if work:
                 work_id_clean = openalex_work_id(work.get("id"))
-                citing_works, ref_works = [], []
+                # Publish whichever direction finishes first; a slow incoming
+                # list must not hold an already downloaded bibliography hostage.
                 with ThreadPoolExecutor(max_workers=2) as executor:
-                    cite_fut = executor.submit(openalex_citing_works, work_id_clean, limit=per_seed)
-                    ref_fut = executor.submit(openalex_reference_works, work_id_clean, limit=per_seed, referenced_works=work.get("referenced_works") or [])
-                    try: citing_works = cite_fut.result()
-                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                    except Exception as error: gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex citing papers: ' + str(error)]))
-                    try: ref_works = ref_fut.result()
-                    except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
-                    except Exception as error: gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex references: ' + str(error)]))
-
-                if citing_works:
-                    if getattr(citing_works, "warning", ""):
-                        gathered.warning = ' · '.join(filter(None, [gathered.warning, citing_works.warning]))
-                    for rank, item in enumerate(citing_works, 1):
-                        record = recommendation_record(*openalex_recommendation_item(item), source="OpenAlex citing papers")
-                        record.update(branch="citationGraph", subType="Forward", hop=1, provider="OpenAlex",
-                                      retrievalEvidence=[{"channel":f"citations:{seed_index}:forward","rank":rank,"provider":"OpenAlex"}],
-                                      reason="Forward citation: downstream paper citing seed paper.")
-                        cites.append(record)
-                        gathered.append(record)
-                        hop1_citations.append(record)
-                    publish_partial(copy.deepcopy(gathered))
-
-                if ref_works:
-                    if getattr(ref_works, "warning", ""):
-                        gathered.warning = ' · '.join(filter(None, [gathered.warning, ref_works.warning]))
-                    for rank, ref_work in enumerate(ref_works, 1):
-                        record = recommendation_record(*openalex_recommendation_item(ref_work), source="OpenAlex references")
-                        record.update(branch="citationGraph", subType="Backward", hop=1, provider="OpenAlex",
-                                      retrievalEvidence=[{"channel":f"citations:{seed_index}:backward","rank":rank,"provider":"OpenAlex"}],
-                                      reason="Backward citation: foundational reference cited by seed paper.")
-                        refs.append(record)
-                        gathered.append(record)
-                        hop1_references.append(record)
-                    publish_partial(copy.deepcopy(gathered))
+                    futures = {
+                        submit_with_context(executor, openalex_citing_works, work_id_clean, limit=per_seed): 'forward',
+                        submit_with_context(executor, openalex_reference_works, work_id_clean, limit=per_seed,
+                                            referenced_works=work.get('referenced_works') or []): 'backward',
+                    }
+                    for future in as_completed(futures):
+                        direction = futures[future]
+                        try: rows = future.result()
+                        except (DiscoveryCancelled, DiscoveryBudgetExceeded): raise
+                        except Exception as error:
+                            gathered.warning = ' · '.join(filter(None, [gathered.warning, 'OpenAlex '+direction+': '+str(error)])); continue
+                        if getattr(rows, 'warning', ''):
+                            gathered.warning = ' · '.join(filter(None, [gathered.warning, rows.warning]))
+                        for rank, item in enumerate(rows, 1):
+                            record = recommendation_record(*openalex_recommendation_item(item), source='OpenAlex '+('references' if direction=='backward' else 'citing papers'))
+                            record.update(branch='citationGraph', subType='Backward' if direction=='backward' else 'Forward', hop=1, provider='OpenAlex',
+                                          retrievalEvidence=[{'channel':f'citations:{seed_index}:{direction}', 'rank':rank, 'provider':'OpenAlex'}],
+                                          reason='Cited by your seed paper.' if direction=='backward' else 'Cites your seed paper.')
+                            (refs if direction=='backward' else cites).append(record)
+                            (hop1_references if direction=='backward' else hop1_citations).append(record)
+                            gathered.append(record)
+                        publish_partial(copy.deepcopy(gathered))
 
         need_citations = not cites or bool(getattr(cites, 'warning', ''))
         need_references = not refs or bool(getattr(refs, 'warning', ''))
@@ -890,8 +887,8 @@ def fetch_author_trajectory_branch(seed_papers, seed_works=None, years=3, max_pe
 
     for seed_index, paper in enumerate((seed_papers or [])[:24]):
         check_cancelled()
-        work = seed_works[seed_index] if seed_works and seed_index < len(seed_works) else None
-        if work is None:
+        work = seed_works[seed_index] if seed_works is not None and seed_index < len(seed_works) else None
+        if seed_works is None:
             try:
                 work = _core.openalex_work_for_paper(paper)
             except (DiscoveryCancelled, DiscoveryBudgetExceeded):
@@ -972,11 +969,11 @@ def fetch_author_trajectory_branch(seed_papers, seed_works=None, years=3, max_pe
     return gathered
 
 
-def fetch_citation_network_branch(seed_papers, api_key=None, limit=30):
+def fetch_citation_network_branch(seed_papers, api_key=None, limit=30, seed_works=None):
     # Keep the existing API/workspace key while replacing both legacy network
     # searches with the supplied content-aware DBEF shared-reference method.
     from pulse_core.dbef_discovery import fetch_dbef_branch
-    return fetch_dbef_branch(seed_papers, api_key=api_key, limit=limit)
+    return fetch_dbef_branch(seed_papers, api_key=api_key, limit=limit, seed_works=seed_works)
 
 
 def fetch_semantic_search_branch(seed_papers, api_key=None, exclude_papers=None, limit=30, feedback=None):
@@ -1022,6 +1019,7 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
     from pulse_core.search_query import normalize_search_request, prepared_search
     payload, search_terms = normalize_search_request(payload)
     seed_papers, concept_query = validate_discovery_request(payload)
+    seed_papers = [dict(paper) for paper in seed_papers]
     if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
     if concept_query:
         # Topic searches have no synthetic seed, citation links or seed exclusions.
@@ -1062,46 +1060,51 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
     retrieval_limit = candidate_limit(limit)
     query_plan = []
     tasks = {}
-    resolved_seed_works = []
+    resolved_seed_works = [None] * min(24, len(seed_papers))
+    seed_resolution_lock, seed_resolution_ready = threading.Lock(), threading.Event()
+    seed_resolution_started = [False]
+    def resolve_seed_works():
+        with seed_resolution_lock:
+            owner = not seed_resolution_started[0]
+            if owner: seed_resolution_started[0] = True
+        if not owner:
+            while not seed_resolution_ready.wait(.05): check_cancelled()
+            return resolved_seed_works
+        prior = getattr(REQUEST_CONTEXT, 'deadline', None)
+        REQUEST_CONTEXT.deadline = min(prior, time.monotonic()+8) if prior else time.monotonic()+8
+        try:
+            if seed_papers:
+                with ThreadPoolExecutor(max_workers=min(6, len(seed_papers)), thread_name_prefix='pulse-seed-resolve') as executor:
+                    futures = {submit_with_context(executor, _core.openalex_work_for_paper, paper):index
+                               for index,paper in enumerate(seed_papers[:24])}
+                    for future in as_completed(futures):
+                        index = futures[future]
+                        try: work = future.result()
+                        except DiscoveryCancelled: raise
+                        except Exception: work = None
+                        resolved_seed_works[index] = work
+                        if isinstance(work, dict):
+                            metadata = openalex_to_metadata(work)
+                            seed_papers[index] = dict(seed_papers[index], **{key:metadata[key] for key in ('openAlexId','referenceIds','referenceCount')})
+        finally:
+            REQUEST_CONTEXT.deadline = prior
+            seed_resolution_ready.set()
+        return resolved_seed_works
     author_trajectory_enabled = branches.get(
-        'authorTrajectory',
-        branches.get('citationGraph', True) and branches.get('citationNetwork', True),
+        'authorTrajectory', branches.get('citationGraph', True) and branches.get('citationNetwork', True),
     ) if not concept_query else False
-    citation_branches_active = any([
-        branches.get('citationGraph', True),
-        branches.get('citationNetwork', True),
-        branches.get('citationCoCitation', branches.get('citationNetwork', True)),
-        author_trajectory_enabled,
-    ]) if not concept_query else False
-    if citation_branches_active:
-        # Resolve each seed once, in parallel. Later lookups by the co-citation
-        # and DBEF branches reuse the same cached response.
-        def resolve_seed(paper):
-            try:
-                return _core.openalex_work_for_paper(paper)
-            except (DiscoveryCancelled, DiscoveryBudgetExceeded):
-                raise
-            except Exception:
-                return None
-        seeds_to_resolve = seed_papers[:24]
-        if seeds_to_resolve:
-            with ThreadPoolExecutor(max_workers=min(6, len(seeds_to_resolve)), thread_name_prefix='pulse-seed-resolve') as executor:
-                resolved_seed_works = list(executor.map(resolve_seed, seeds_to_resolve))
     if payload.get('fullTextSearch'):
         fulltext_query = str(payload.get('researchQuestion') or ' '.join(str(p.get('title') or '') for p in seed_papers[:8]))
         tasks['fullText'] = lambda: search_fulltext_library(fulltext_query, retrieval_limit)
     if branches.get("citationGraph", True):
-        tasks["citationGraph"] = lambda: _core.fetch_citation_graph_branch(seed_papers, api_key=api_key, include_iterative_chase=include_iterative, limit=limit, depth=payload.get("depth"), seed_works=resolved_seed_works)
+        tasks["citationGraph"] = lambda: _core.fetch_citation_graph_branch(seed_papers, api_key=api_key, include_iterative_chase=include_iterative, limit=limit, depth=payload.get("depth"), seed_works=resolve_seed_works())
     if branches.get("citationNetwork", True):
-        tasks["citationNetwork"] = lambda: fetch_citation_network_branch(seed_papers, api_key=api_key, limit=limit)
+        tasks["citationNetwork"] = lambda: fetch_citation_network_branch(seed_papers, api_key=api_key, limit=limit, seed_works=resolve_seed_works())
     if branches.get('citationCoCitation',branches.get('citationNetwork',True)):
         from pulse_core.cocitation_discovery import fetch_cocitation_branch
-        tasks['citationCoCitation']=lambda:fetch_cocitation_branch(seed_papers,api_key=api_key,limit=limit)
-    if author_trajectory_enabled and (
-        branches.get('authorTrajectory') is True
-        or any(isinstance(w, dict) and w.get('authorships') for w in resolved_seed_works)
-    ):
-        tasks["authorTrajectory"] = lambda: _core.fetch_author_trajectory_branch(seed_papers, seed_works=resolved_seed_works, years=int(payload.get("authorTrajectoryYears") or 3))
+        tasks['citationCoCitation']=lambda:fetch_cocitation_branch(seed_papers,api_key=api_key,limit=limit,seed_works=resolve_seed_works())
+    if author_trajectory_enabled and (branches.get('authorTrajectory') is True or any(paper.get('authors') for paper in seed_papers)):
+        tasks["authorTrajectory"] = lambda: _core.fetch_author_trajectory_branch(seed_papers, seed_works=resolve_seed_works(), years=int(payload.get("authorTrajectoryYears") or 3))
     if branches.get("semanticSearch", True):
         tasks["semanticSearch"] = lambda: fetch_semantic_search_branch(seed_papers, api_key=api_key, limit=limit, feedback=feedback)
     if branches.get("lexicalSearch", branches.get("lexicalConceptual", True)):

@@ -4,9 +4,14 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pulse_core.constants import ClientError, APP_VERSION
-from pulse_performance import request_json, DiscoveryCancelled, DiscoveryBudgetExceeded
+from pulse_performance import request_json, DiscoveryCancelled, DiscoveryBudgetExceeded, check_cancelled
 
 def fetch_json(url, cache=True):
+    from pulse_core.openalex_cache import cached_work, remember_works
+    check_cancelled()
+    if cache:
+        found = cached_work(url)
+        if found is not None: return found
     headers = {"User-Agent": f"Pulse/{APP_VERSION}", "Accept": "application/json", "Accept-Encoding": "gzip"}
     if "api.openalex.org" in url:
         try:
@@ -32,7 +37,9 @@ def fetch_json(url, cache=True):
         method="GET",
     )
     try:
-        return request_json(request, timeout=12, cache=cache)
+        data = request_json(request, timeout=12, cache=cache)
+        if cache: remember_works(url, data)
+        return data
     except (DiscoveryCancelled, DiscoveryBudgetExceeded):
         raise
     except ProviderCooldown as error:
