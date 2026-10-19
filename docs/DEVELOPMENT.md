@@ -66,3 +66,12 @@ bash scripts/package-desktop.sh /tmp/pulse-2.0.1-release /path/to/pdf-dependenci
 ```
 
 The builder downloads the fixed model revision, bundles its licence, records SHA-256 values and freezes the interpreter, ONNX Runtime, NumPy and tokenizer into a relocatable executable. It verifies inference with an empty HOME and without a Python executable on PATH. Search does not download weights or execute remote model code. Staging rejects model-only manifests and machine-specific Python paths. The release check additionally denies access to network, Homebrew and the user's search runtime while running inference from the DMG. Windows packaging builds the same portable ranker format for Windows and verifies inference from the installed app.
+
+
+## 2.1 development and persistence
+
+The 2.1 build stores papers and workspace fields in `library.sqlite3` beside the existing settings file. First use imports a valid `library.json` (or an existing JSON backup), keeps the original file, and writes a `library_pre_sqlite_*.json` checkpoint. New ordinary saves update SQLite rows instead of rewriting the legacy file. Treat the database as authoritative after migration; close older Pulse versions before opening the upgraded app on the same profile. JSON export and Recovery provide portable copies; periodic JSON checkpoints are retained in the backups folder.
+
+Run `npm test` for the current backend, browser and research workflow checks. `tests/research_workflow.cjs` exercises multi-phrase/tag All/Any matching, reading queue, saved searches, watchlist seen-state and reload persistence with isolated synthetic data and mocked online results.
+
+The Mac build now freezes the backend with PyInstaller using a macOS 11-compatible Python 3.11 build interpreter. Install `scripts/requirements-macos-build.txt` in that build environment and set `PULSE_BACKEND_BUILD_PYTHON` when invoking `scripts/package-desktop.sh`; pass an empty PDF-dependencies argument and the portable ranker as the third argument. The resulting app needs no system Python. See [signing setup](SIGNING.md).

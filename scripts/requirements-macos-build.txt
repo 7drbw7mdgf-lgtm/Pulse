@@ -1,0 +1,4 @@
+# Freeze using a macOS 11-compatible Python 3.11 build interpreter.
+PyInstaller==6.22.3
+PyMuPDF==1.28.2
+certifi==2026.10.18

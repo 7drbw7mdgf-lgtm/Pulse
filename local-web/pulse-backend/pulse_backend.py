@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 
 if getattr(sys, 'frozen', False):
+    ca_bundle = Path(getattr(sys, '_MEIPASS', Path(sys.executable).parent)) / 'certifi' / 'cacert.pem'
+    if ca_bundle.is_file(): os.environ.setdefault('SSL_CERT_FILE', str(ca_bundle))
     os.environ.setdefault('PULSE_WEB_ROOT', str(Path(sys.executable).parent))
 
 import pulse_core

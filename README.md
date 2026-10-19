@@ -13,6 +13,10 @@ A private, local-first desktop workspace for scientific literature discovery and
 
 Both installers use the same application source and version. The Mac app is ad hoc signed and not Apple-notarized; the Windows installer is unsigned.
 
+## 2.1 development
+
+The next version adds multi-keyword/tag search, Fast/Enhanced ranking, saved searches and watchlists, a reading queue, transactional SQLite library storage, faster graph calculations and a bundled Mac Python backend. See the [2.1 development notes](docs/releases/2.1.0.md). The download links above remain the published stable release.
+
 ## What the app does
 
 - Follow author trajectories when discovering related research, and inspect available citation contexts and intent.

@@ -1019,6 +1019,8 @@ def run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_cand
 
 
 def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_candidates=None):
+    from pulse_core.search_query import normalize_search_request, prepared_search
+    payload, search_terms = normalize_search_request(payload)
     seed_papers, concept_query = validate_discovery_request(payload)
     if cancel_event and cancel_event.is_set(): raise DiscoveryCancelled()
     if concept_query:
@@ -1035,7 +1037,8 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
     concept_search = None
     if concept_query:
         if on_progress: on_progress({'stage':'keywords', 'searchMode':'concept', 'searchQuery':concept_query})
-        concept_search = prepare_concept_search(concept_query, settings, cancel_event)
+        concept_search = (prepared_search(search_terms, concept_query) if search_terms['structured'] else
+                          prepare_concept_search(concept_query, dict(settings, _fastConceptSearch=payload.get('rankingMode')=='fast'), cancel_event))
     bridge_concept = None
     if payload.get('bridgeMode') and not concept_query:
         # Bridging searches for what the selected papers share, as a concept.
@@ -1137,6 +1140,9 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
             from pulse_core.arxiv_search import search_arxiv
             tasks["arxiv"] = lambda: public_search("arxiv", search_arxiv)
     options = {
+        "queryKeywords": payload.get("queryKeywords") or [],
+        "queryTags": payload.get("queryTags") or [],
+        "queryMatch": payload.get("queryMatch", "all"),
         "steerKeywords": steer_keywords,
         "excludeKeywords": exclude_keywords,
         "strictExcludeKeywords": steering_terms(payload.get('strictExcludeKeywords') or []),

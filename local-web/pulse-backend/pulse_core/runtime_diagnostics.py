@@ -77,7 +77,12 @@ def run():
         pass
     assert process_alive(os.getpid())
     assert (ROOT / 'index.html').is_file(), str(ROOT)
-    assets = check_packaged_windows_assets() if getattr(sys, 'frozen', False) and sys.platform == 'win32' else {}
+    assets = check_packaged_windows_assets() if getattr(sys, 'frozen', False) and sys.platform in {'win32','darwin'} else {}
+    if getattr(sys, 'frozen', False):
+        import ssl
+        assert os.environ.get('SSL_CERT_FILE') and Path(os.environ['SSL_CERT_FILE']).is_file()
+        assert ssl.create_default_context().cert_store_stats()['x509_ca'] > 0
+        assets['bundledCertificateStore'] = True
     return {'ok': True, 'version': APP_VERSION, 'pdf': document['extractionSource'],
             'doiExtraction': True, 'sqliteFts5': True, 'fullTextPassages': True,
             'secretRoundTrip': True, 'managerLocks': True,

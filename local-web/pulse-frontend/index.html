@@ -1,7 +1,8 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai https://europepmc.org https://icite.od.nih.gov; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v2.0.2 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=ui-2.0.2-bib">
-<link rel="icon" type="image/png" href="favicon.png?v=2.0.2"> </head> <body> <div class="pulse-app-root" id="app">
+<title>Pulse v2.1.0 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=2.1.0">
+<link rel="icon" type="image/png" href="favicon.png?v=2.0.2"> <link rel="stylesheet" href="css/search-workflow.css?v=2.1.0">
+</head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
 <button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
@@ -88,10 +89,20 @@
 <label class="discovery-diversify"><input id="discoveryFastEmbed" type="checkbox" checked> Fast embedding (all-minilm) <small>Uses all-minilm for faster embedding; slightly less accurate.</small></label>
 <div class="discovery-popup-footer"><span>Sources, filters and ranking preferences also apply to concept search.</span><button id="discoveryOptionsDone" type="button">Done</button></div>
 </div></div>
-<label class="discovery-question" for="discoveryResearchQuestion"><span class="sr-only">Concept, key phrases or research question</span><input id="discoveryResearchQuestion" type="search" maxlength="1000" placeholder="Search a concept, key phrases or question, then press Enter…" autocomplete="off" title="Press Enter to search papers with AI-assisted keywords. The phrase also focuses Discover related." enterkeyhint="search"></label>
+<label class="discovery-question" for="discoveryResearchQuestion"><span class="sr-only">Concept, key phrases or research question</span><input id="discoveryResearchQuestion" type="search" maxlength="1000" placeholder="Keywords, phrases or #tags — e.g. biofilm, vesicles, #immunity" autocomplete="off" title="Separate keyword phrases with commas. Use All or Any matching, or enter a natural-language research question." enterkeyhint="search"></label>
+<button id="unifiedSearchButton" class="ribbon-discover-button" type="button">Search papers</button>
 <label class="ribbon-result-limit" for="discoveryResultLimit"><span>Results</span><select id="discoveryResultLimit" aria-label="Discovery result limit"><option value="50">Up to 50</option><option value="100">Up to 100</option><option value="200" selected>Up to 200</option><option value="500">Up to 500</option><option value="1000">Up to 1,000</option><option value="2000">Up to 2,000</option></select></label>
 <button id="ribbonDiscoverButton" class="ribbon-discover-button secondary" type="button" title="Discover papers related to your selected paper">Discover related</button>
 <button id="discoveryViewResults" class="ribbon-review-button" type="button" hidden>Review results</button>
+<div id="searchBuilder" class="search-builder-bar">
+<label for="searchScopeSelect">Search in <select id="searchScopeSelect"><option value="online">Online papers</option><option value="library">My library</option></select></label>
+<label for="searchMatchSelect">Match <select id="searchMatchSelect"><option value="all">All terms</option><option value="any">Any term</option></select></label>
+<label for="rankingModeSelect">Ranking <select id="rankingModeSelect"><option value="fast">Fast</option><option value="enhanced">Enhanced</option></select></label>
+<details id="searchTagsMenu"><summary id="searchTagsLabel">Tags</summary><div class="search-builder-panel"><label for="searchTagsFilter">Choose library tags</label><input id="searchTagsFilter" type="search" placeholder="Find a tag…"><div id="searchTagChoices"></div><p>Online searches use tags as keyword phrases. My library matches saved tags.</p></div></details>
+<span id="searchSelectedTags"></span>
+<details id="savedSearchesMenu"><summary>Saved searches<span id="savedSearchCount"></span></summary><div class="search-builder-panel"><label for="savedSearchName">Search name</label><input id="savedSearchName" type="text" maxlength="80" placeholder="Optional name"><button id="saveCurrentSearch" type="button">Save current search</button><p>Watchlists find matches you have not seen before. Click Check new to run a check; nothing runs automatically.</p><div id="savedSearchList"></div></div></details>
+<small class="search-builder-help">Combine phrases with commas, e.g. biofilm, vesicles, #immunity. Enhanced ranking uses local models and can take longer.</small>
+</div>
 <div id="discoveryRunProgress" class="discovery-run-progress" role="status" aria-live="polite" hidden><progress id="discoveryProgressBar" max="100" value="0" aria-label="Discovery progress"></progress><span id="discoveryProgressText">Searching…</span><button id="discoveryCancelSearch" type="button">Cancel</button></div>
 </div>
 <div id="ribbonReferencesPanel" class="pulse-ribbon-panel" role="tabpanel" aria-labelledby="ribbonReferencesTab" hidden>
@@ -367,6 +378,7 @@
 <p class="subtle"><a href="https://openalex.org" target="_blank" rel="noreferrer">Get an OpenAlex API key ↗</a></p></div>
 </section>
 <section data-settings-pane="managers" class="settings-pane mac-pane" hidden>
+<div class="mac-group-card"><div class="mac-group-title">Connection check</div><p class="subtle">Check saved-library storage, Mendeley account access and a configured Semantic Scholar key. This contacts the configured services without sending your library.</p><button id="checkPulseConnections" class="mac-btn" type="button">Check connections</button><div id="pulseConnectionResults" role="status" aria-live="polite"></div></div>
 <div class="mac-group-card"><div class="mac-group-title">Mendeley Connection Settings</div>
 <p class="subtle">Connect Mendeley to automatically sync citations and send discovered papers directly to your Mendeley library. Register your application at the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal ↗</a>.</p>
 <div class="mac-form-row"><label class="mac-form-label" for="settingsMendeleyClientId">Client ID</label><div class="mac-form-control"><input id="settingsMendeleyClientId" class="mac-input" placeholder="e.g. 26116" autocomplete="off"></div></div>
@@ -564,40 +576,42 @@
 <dialog id="crashReportDialog" class="record-dialog crash-report-dialog" aria-labelledby="crashReportTitle"><header><div><h2 id="crashReportTitle">Problem report</h2><small>This is exactly what Send uploads.</small></div><button id="crashReportClose" type="button" aria-label="Close problem report">×</button></header>
 <div class="record-dialog-body"><pre id="crashReportBody" class="crash-report-body"></pre><div class="record-actions"><button id="crashReportSend" class="button primary" type="button">Send report</button><button id="crashReportDelete" class="button secondary" type="button">Delete</button></div><p id="crashReportFeedback" class="record-feedback" role="status"></p></div></dialog>
 <div id="crashNotice" class="crash-notice" role="status" hidden><span id="crashNoticeText">Pulse recorded a problem.</span><button id="crashNoticeView" type="button">View report</button><button id="crashNoticeDismiss" type="button" aria-label="Dismiss">Dismiss</button></div>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=ui-2.0.2-bib"></script>
-<script src="js/map-tabs.js?v=ui-2.0.2-bib2"></script>
-<script src="js/paper-links.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_02.js?v=ui-2.0.0-audit"></script>
-<script src="js/part_03.js?v=ui-2.0.2-bib"></script>
-<script src="js/part_04.js?v=ui-2.0.2-bib"></script>
-<script src="js/part_05.js?v=ui-1.8.9-merge"></script>
-<script src="js/part_06.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_07.js?v=ui-2.0.2-bib"></script>
-<script src="graph-engine.js?v=ui-1.8.9"></script>
-<script src="js/part_08.js?v=ui-2.0.1"></script>
-<script src="js/part_09.js?v=ui-1.8.9-merge"></script>
-<script src="js/graph-runtime.js?v=ui-1.8.9"></script>
-<script src="js/part_10.js?v=ui-2.0.2-bib"></script>
-<script src="js/part_11.js?v=ui-2.0.2-bib"></script>
-<script src="js/part_12.js?v=ui-20261013-map2"></script>
-<script src="js/part_13.js?v=ui-2.0.2-bib"></script>
-<script src="js/part_14.js?v=ui-2.0.2-bib2"></script>
-<script src="js/map-interactions.js?v=ui-1.8.9-merge2"></script>
-<script src="js/part_15.js?v=ui-20261010-2"></script>
-<script src="js/part_23.js?v=ui-1.8.9-mendeley"></script>
-<script src="js/mendeley-sync.js?v=ui-1.8.9-merge"></script>
-<script src="js/part_24.js?v=ui-1.8.9"></script>
-<script src="js/library-sync.js?v=ui-2.0.1"></script>
-<script src="js/sync-and-reports.js?v=ui-2.0.1"></script>
-<script src="js/discovery-controls.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/publication-status.js?v=ui-20261012-evidence"></script>
-<script src="js/inspector.js?v=ui-1.8.9"></script> <script src="js/part_16.js?v=ui-2.0.2-bib"></script>
-<script src="js/part_17.js?v=ui-aplus-2-feedback"></script>
-<script src="js/part_18.js?v=ui-1.8.9"></script>
-<script src="js/discovery-review.js?v=ui-aplus-2-feedback"></script>
-<script src="js/part_19.js?v=ui-2.0.2-bib"></script>
-<script src="js/citation-lookup.js?v=ui-20261012-dbef-scale"></script>
-<script src="js/part_20.js?v=ui-2.0.2-bib"></script>
-<script src="js/timeline.js?v=ui-1.8.9"></script>
-<script src="js/trends.js?v=ui-2.0.2-bib"></script>
-<script src="js/part_21.js?v=ui-2.0.2-bib2"></script> <script src="js/part_22.js?v=ui-20261010-2"></script> </body> </html>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=2.1.0"></script>
+<script src="js/map-tabs.js?v=2.1.0"></script>
+<script src="js/paper-links.js?v=2.1.0"></script>
+<script src="js/part_02.js?v=2.1.0"></script>
+<script src="js/part_03.js?v=2.1.0"></script>
+<script src="js/part_04.js?v=2.1.0"></script>
+<script src="js/part_05.js?v=2.1.0"></script>
+<script src="js/part_06.js?v=2.1.0"></script>
+<script src="js/part_07.js?v=2.1.0"></script>
+<script src="graph-engine.js?v=2.1.0"></script>
+<script src="js/part_08.js?v=2.1.0"></script>
+<script src="js/part_09.js?v=2.1.0"></script>
+<script src="js/graph-runtime.js?v=2.1.0"></script>
+<script src="js/part_10.js?v=2.1.0"></script>
+<script src="js/part_11.js?v=2.1.0"></script>
+<script src="js/part_12.js?v=2.1.0"></script>
+<script src="js/part_13.js?v=2.1.0"></script>
+<script src="js/part_14.js?v=2.1.0"></script>
+<script src="js/map-interactions.js?v=2.1.0"></script>
+<script src="js/part_15.js?v=2.1.0"></script>
+<script src="js/part_23.js?v=2.1.0"></script>
+<script src="js/mendeley-sync.js?v=2.1.0"></script>
+<script src="js/part_24.js?v=2.1.0"></script>
+<script src="js/library-sync.js?v=2.1.0"></script>
+<script src="js/sync-and-reports.js?v=2.1.0"></script>
+<script src="js/discovery-controls.js?v=2.1.0"></script>
+<script src="js/publication-status.js?v=2.1.0"></script>
+<script src="js/inspector.js?v=2.1.0"></script> <script src="js/part_16.js?v=2.1.0"></script>
+<script src="js/part_17.js?v=2.1.0"></script>
+<script src="js/part_18.js?v=2.1.0"></script>
+<script src="js/discovery-review.js?v=2.1.0"></script>
+<script src="js/part_19.js?v=2.1.0"></script>
+<script src="js/citation-lookup.js?v=2.1.0"></script>
+<script src="js/part_20.js?v=2.1.0"></script>
+<script src="js/timeline.js?v=2.1.0"></script>
+<script src="js/trends.js?v=2.1.0"></script>
+<script src="js/connection-diagnostics.js?v=2.1.0"></script>
+<script src="js/search-workflow.js?v=2.1.0"></script>
+<script src="js/part_21.js?v=2.1.0"></script> <script src="js/part_22.js?v=2.1.0"></script> </body> </html>

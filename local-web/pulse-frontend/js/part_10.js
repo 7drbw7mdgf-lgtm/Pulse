@@ -142,7 +142,8 @@
       const visiblePapers = activeDrawingPapers;
       const visiblePaperIds = new Set(visiblePapers.map(p => p.id));
       const visibleById = new Map(visiblePapers.map(paper => [paper.id,paper]));
-      const visibleLinks = state.links.filter(link => visiblePaperIds.has(link.source) && visiblePaperIds.has(link.target));
+      const visibleLinks = typeof linksForPaperIds === 'function' ? linksForPaperIds(visiblePaperIds)
+        : state.links.filter(link => visiblePaperIds.has(link.source) && visiblePaperIds.has(link.target));
       const edgeBudget = Math.max(800,Math.min(1800,visiblePapers.length * 6));
       let sortedLinks = visibleLinks;
       if (visibleLinks.length > edgeBudget) {
@@ -412,6 +413,7 @@
     }
 
     function tableLinkCount(paper) {
+      if (typeof relationshipIndex === 'function') return relationshipIndex().byPaper.get(paper.id)?.length || 0;
       return state.links.filter(link => link.source === paper.id || link.target === paper.id).length;
     }
 

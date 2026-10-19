@@ -8,13 +8,13 @@ function discoveryConfiguration() {
   const depth = branches.citationGraph && ['1','2','3','iterative'].includes(String(state.discoveryDepth)) ? String(state.discoveryDepth) : '1';
   const searchSources=Object.fromEntries(['semanticScholar','europePmc','core','arxiv'].map(key=>[key,state.discoverySearchSources?.[key] !== false]));
   const limit=[50,100,200,500,1000,2000].includes(Number(state.discoveryLimit))?Number(state.discoveryLimit):200;
-  return {branches,searchSources,depth,limit,bridgeMode:Boolean(state.discoveryBridgeMode),aiTriage:Boolean(state.discoveryAiTriage),fastEmbed:Boolean(state.discoveryFastEmbed),fullTextSearch:Boolean(state.discoveryFullTextSearch),researchQuestion:String(state.discoveryResearchQuestion||'').trim(),strictExcludeKeywords:[...(state.discoveryStrictExclusions||[])],diversify:state.discoveryDiversify!==false,includeIterativeChase:depth !== '1',
+  return {...(typeof searchRequestOptions==='function'?searchRequestOptions():{}),branches,searchSources,depth,limit,bridgeMode:Boolean(state.discoveryBridgeMode),aiTriage:Boolean(state.discoveryAiTriage),fastEmbed:Boolean(state.discoveryFastEmbed),fullTextSearch:Boolean(state.discoveryFullTextSearch),researchQuestion:String(state.discoveryResearchQuestion||'').trim(),strictExcludeKeywords:[...(state.discoveryStrictExclusions||[])],diversify:state.discoveryDiversify!==false,includeIterativeChase:depth !== '1',
     steerKeywords:[...(state.recommendationSteerKeywords || [])],excludeKeywords:[...(state.recommendationExcludeKeywords || [])],
     recencyTilt:Number(state.recommendationRecencyTilt) || 0,impactTilt:Number(state.recommendationImpactTilt) || 0};
 }
 function discoveryConfigurationKey() {
   const options=discoveryConfiguration();
-  return 'citation-bonus-v1::'+Object.values(options.branches).map(Boolean).join('_')+'::'+options.depth+'::'+options.limit+'::'+Object.values(options.searchSources).map(Boolean).join('_')+'::'+JSON.stringify([options.researchQuestion,options.strictExcludeKeywords,options.diversify,options.bridgeMode,options.aiTriage,options.fastEmbed,options.fullTextSearch]);
+  return 'citation-bonus-v1::'+Object.values(options.branches).map(Boolean).join('_')+'::'+options.depth+'::'+options.limit+'::'+Object.values(options.searchSources).map(Boolean).join('_')+'::'+JSON.stringify([options.researchQuestion,options.strictExcludeKeywords,options.diversify,options.bridgeMode,options.aiTriage,options.fastEmbed,options.fullTextSearch,options.queryKeywords,options.queryTags,options.queryMatch,options.rankingMode]);
 }
 function discoveryOptionsLabel() {
   const options=discoveryConfiguration(),enabled=Object.keys(discoveryMethodKeys).filter(method=>options.branches[discoveryMethodKeys[method]]);
@@ -101,7 +101,7 @@ function initDiscoveryControls() {
   setRibbonTab(activeRibbonTab);
   document.getElementById('discoveryResultLimit')?.addEventListener('change',event=>{state.discoveryLimit=Number(event.currentTarget.value);discoveryOptionsChanged();});
   document.getElementById('discoveryResearchQuestion')?.addEventListener('input',event=>{state.discoveryResearchQuestion=event.currentTarget.value.slice(0,1000);syncDiscoveryControls();scheduleAutosave();});
-  document.getElementById('discoveryResearchQuestion')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();runConceptSearch();}});
+  document.getElementById('discoveryResearchQuestion')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();if(typeof runUnifiedSearch==='function')runUnifiedSearch();else runConceptSearch();}});
   document.getElementById('discoveryStrictExcludeInput')?.addEventListener('change',event=>{state.discoveryStrictExclusions=parseSteerList(event.currentTarget.value,16);discoveryOptionsChanged();});
   for(const key of ['discoveryBridgeMode','discoveryAiTriage','discoveryFastEmbed','discoveryFullTextSearch'])document.getElementById(key)?.addEventListener('change',event=>{state[key]=event.currentTarget.checked;discoveryOptionsChanged();});
   document.getElementById('discoveryDiversify')?.addEventListener('change',event=>{state.discoveryDiversify=event.currentTarget.checked;discoveryOptionsChanged();});

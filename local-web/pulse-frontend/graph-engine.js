@@ -63,175 +63,154 @@
   }
 
   function createEngine() {
-    let vectorKey = null;
-    let topologyKey = null;
-    let hasAnalysis = false;
-    let lastThreshold;
-    let clusterKey = null;
-    let similarities = [];
-    let topology = [];
-    let vectors = [];
-    let keywords = [];
-    let links = [];
-    let clusters = [];
-    let revision = 0;
-    const stats = {vectorBuilds: 0, similarityBuilds: 0, pairScores: 0, topologyBuilds: 0, clusterBuilds: 0};
-
+    let vectorKey = null, topologyKey = null, hasAnalysis = false, lastThreshold, revision = 0;
+    let similarities = [], scoredThreshold = Infinity, topology = [], vectors = [], keywords = [], links = [], clusters = [];
+    let documentCache = new Map(), oldFrequencies = new Map(), vectorMap = new Map(), keywordMap = new Map();
+    let oldCount = -1, oldSteer = null, oldStopwords = null, clusterIds = [], clusterPairs = [];
+    const pairCache = new Map();
+    const stats = {vectorBuilds:0,similarityBuilds:0,pairScores:0,topologyBuilds:0,clusterBuilds:0,
+      tokenizations:0,vectorUpdates:0,candidatePairs:0,pairCacheHits:0};
+    const signature = paper => JSON.stringify([paper.id,paper.title,paper.authors,paper.year,paper.journal,paper.abstract,paper.paperKeywords,paper.text]);
     function buildVectors(papers, graphSteerKeywords, stopwordValues) {
+      const stopKey = JSON.stringify(stopwordValues), steerKey = JSON.stringify(graphSteerKeywords);
       const stopwords = new Set(stopwordValues);
       function tokenize(text) {
-        const tokens = (text || '')
-          .toLowerCase()
-          .replace(/https?:\/\/\S+/g, ' ')
-          .replace(/[^\w\s-]/g, ' ')
-          .split(/\s+/)
-          .map(token => token.replace(/^-+|-+$/g, ''))
-          .filter(token => token.length > 2 && token.length < 32 && !stopwords.has(token) && !/^\d+$/.test(token));
-        const grams = [];
-        for (let index = 0; index < tokens.length - 1; index += 1) {
-          if (!stopwords.has(tokens[index]) && !stopwords.has(tokens[index + 1])) {
-            grams.push(`${tokens[index]} ${tokens[index + 1]}`);
+        const tokens = (text || '').toLowerCase().replace(/https?:\/\/\S+/g,' ').replace(/[^\w\s-]/g,' ')
+          .split(/\s+/).map(token=>token.replace(/^-+|-+$/g,''))
+          .filter(token=>token.length>2 && token.length<32 && !stopwords.has(token) && !/^\d+$/.test(token));
+        const grams=[];
+        for(let i=0;i<tokens.length-1;i++) if(!stopwords.has(tokens[i])&&!stopwords.has(tokens[i+1])) grams.push(`${tokens[i]} ${tokens[i+1]}`);
+        return tokens.concat(grams.filter(gram=>gram.length<42));
+      }
+      const steer = dedupeList(graphSteerKeywords.flatMap(term=>tokenize(term))).slice(0,24);
+      const docs = new Map(), frequencies = new Map();
+      for (const paper of papers) {
+        const key = signature(paper), previous = documentCache.get(paper.id);
+        let doc = previous;
+        if (!previous || previous.key!==key || oldStopwords!==stopKey) {
+          const tokens=tokenize(`${paper.title} ${(paper.authors||[]).join(' ')} ${paper.year||''} ${paper.journal||''} ${paper.abstract||''} ${(paper.paperKeywords||[]).join(' ')} ${paper.text}`);
+          const counts=new Map();for(const term of tokens) counts.set(term,(counts.get(term)||0)+1);
+          doc={key,counts};stats.tokenizations++;
+        }
+        docs.set(paper.id,doc);
+        for(const term of doc.counts.keys()) frequencies.set(term,(frequencies.get(term)||0)+1);
+      }
+      const changedTerms=new Set();
+      for(const [term,n] of frequencies) if(oldFrequencies.get(term)!==n) changedTerms.add(term);
+      for(const term of oldFrequencies.keys()) if(!frequencies.has(term)) changedTerms.add(term);
+      const globalChange=oldCount!==papers.length || oldSteer!==steerKey || oldStopwords!==stopKey;
+      const nextVectors=new Map(), nextKeywords=new Map(), n=Math.max(papers.length,1);
+      for(const paper of papers) {
+        const doc=docs.get(paper.id);
+        const changed=globalChange || documentCache.get(paper.id)!==doc || [...doc.counts.keys()].some(term=>changedTerms.has(term));
+        if(!changed && vectorMap.has(paper.id)) {
+          nextVectors.set(paper.id,vectorMap.get(paper.id));nextKeywords.set(paper.id,keywordMap.get(paper.id));continue;
+        }
+        const counts=new Map(doc.counts);
+        for(const term of steer) if(counts.has(term)) counts.set(term,counts.get(term)+6);
+        const vector=new Map();let norm=0;
+        for(const [term,count] of counts) {
+          const weight=(1+Math.log(count))*(Math.log((1+n)/(1+(frequencies.get(term)||0)))+1);
+          vector.set(term,weight);norm+=weight*weight;
+        }
+        const normalized=new Map(), divisor=Math.sqrt(norm)||1;
+        for(const [term,weight] of vector) normalized.set(term,weight/divisor);
+        nextVectors.set(paper.id,normalized);
+        nextKeywords.set(paper.id,[...vector.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(([term])=>term));
+        stats.vectorUpdates++;
+      }
+      documentCache=docs;oldFrequencies=frequencies;vectorMap=nextVectors;keywordMap=nextKeywords;
+      oldCount=papers.length;oldSteer=steerKey;oldStopwords=stopKey;
+      // Scores are reused only while both exact normalized vector objects match.
+      const liveVectors=new Set(vectorMap.values());
+      for(const [key,entry] of pairCache) if(!liveVectors.has(entry.a)||!liveVectors.has(entry.b)) pairCache.delete(key);
+      vectors=[...vectorMap].map(([id,vector])=>[id,[...vector]]);keywords=[...keywordMap];
+      scoredThreshold=Infinity;stats.vectorBuilds++;
+    }
+    function buildSimilarities(papers, threshold) {
+      const rows=papers.map(()=>[]), postings=new Map(), seen=new Uint32Array(papers.length), maxima=new Map();
+      for(const vector of vectorMap.values()) for(const [term,weight] of vector) maxima.set(term,Math.max(maxima.get(term)||0,weight));
+      // Exact L2 prefix join: any qualifying unit vector must share an indexed
+      // prefix term, because the unindexed suffix has norm strictly below t.
+      for(let j=0;j<papers.length;j++) {
+        const right=papers[j], b=vectorMap.get(right.id), candidates=[], epoch=j+1;
+        if(threshold<=0) for(let i=0;i<j;i++) candidates.push(i);
+        else for(const term of b.keys()) for(const i of postings.get(term)||[]) if(seen[i]!==epoch) {seen[i]=epoch;candidates.push(i);}
+        stats.candidatePairs+=candidates.length;
+        for(const i of candidates) {
+          const left=papers[i], a=vectorMap.get(left.id), key=pairKey(left.id,right.id), cached=pairCache.get(key);
+          let score;
+          if(cached && cached.a===a && cached.b===b) {score=cached.score;stats.pairCacheHits++;}
+          else {score=cosine(a,b);if(pairCache.size<1000000 || pairCache.has(key)) pairCache.set(key,{a,b,score});stats.pairScores++;}
+          if(score>=threshold) rows[i].push({source:left.id,target:right.id,score,type:'similarity'});
+        }
+        if(threshold>0) {
+          const terms=[...b.entries()].sort((a,b)=>(oldFrequencies.get(a[0])||0)-(oldFrequencies.get(b[0])||0));
+          let remainder=[...b.values()].reduce((sum,w)=>sum+w*w,0), maxRemainder=[...b].reduce((sum,[term,w])=>sum+w*maxima.get(term),0);
+          for(const [term,weight] of terms) {
+            if(remainder < threshold*threshold-1e-12 || maxRemainder < threshold-1e-12) break;
+            if(!postings.has(term)) postings.set(term,[]);
+            postings.get(term).push(j);remainder-=weight*weight;maxRemainder-=weight*maxima.get(term);
           }
         }
-        return tokens.concat(grams.filter(gram => gram.length < 42));
       }
-      const graphSteerTerms = dedupeList(graphSteerKeywords.flatMap(term => tokenize(term))).slice(0, 24);
-      const docs = papers.map(paper => ({
-        id: paper.id,
-        tokens: tokenize(`${paper.title} ${(paper.authors || []).join(' ')} ${paper.year || ''} ${paper.journal || ''} ${paper.abstract || ''} ${(paper.paperKeywords || []).join(' ')} ${paper.text}`)
-      }));
-      const docFreq = new Map();
-      docs.forEach(doc => new Set(doc.tokens).forEach(term => docFreq.set(term, (docFreq.get(term) || 0) + 1)));
-      const vectorMap = new Map();
-      const keywordMap = new Map();
-      const documentCount = Math.max(docs.length, 1);
-      docs.forEach(doc => {
-        const counts = new Map();
-        doc.tokens.forEach(term => counts.set(term, (counts.get(term) || 0) + 1));
-        graphSteerTerms.forEach(term => {
-          if (counts.has(term)) counts.set(term, counts.get(term) + 6);
-        });
-        const vector = new Map();
-        let norm = 0;
-        counts.forEach((count, term) => {
-          const tf = 1 + Math.log(count);
-          const idf = Math.log((1 + documentCount) / (1 + (docFreq.get(term) || 0))) + 1;
-          const weight = tf * idf;
-          vector.set(term, weight);
-          norm += weight * weight;
-        });
-        const normalized = new Map();
-        const divisor = Math.sqrt(norm) || 1;
-        vector.forEach((weight, term) => normalized.set(term, weight / divisor));
-        vectorMap.set(doc.id, normalized);
-        keywordMap.set(doc.id, [...vector.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([term]) => term));
-      });
-      similarities = [];
-      for (let i = 0; i < papers.length; i += 1) {
-        for (let j = i + 1; j < papers.length; j += 1) {
-          const source = papers[i].id;
-          const target = papers[j].id;
-          // Keep zero scores too: changing the threshold never changes scoring.
-          similarities.push({source, target, score: cosine(vectorMap.get(source), vectorMap.get(target)), type: 'similarity'});
-          stats.pairScores += 1;
-        }
-      }
-      vectors = [...vectorMap].map(([id, vector]) => [id, [...vector]]);
-      keywords = [...keywordMap];
-      stats.vectorBuilds += 1;
-      stats.similarityBuilds += 1;
+      similarities=rows.flat();scoredThreshold=threshold;stats.similarityBuilds++;
     }
-
     function buildTopology(papers) {
-      const operations = [];
-      const record = (...args) => operations.push(args);
-      const byOpenAlex = new Map(papers.map(paper => [normalizeOpenAlexId(paper.openAlexId || paper.openAlexUrl || ''), paper]).filter(([id]) => id));
-      const referenceSets = new Map(papers.map(paper => [paper.id, new Set((paper.referenceIds || []).map(normalizeOpenAlexId).filter(Boolean))]));
-      const citerSets = new Map(papers.map(paper => [paper.id, new Set((paper.citedByIds || []).map(normalizeOpenAlexId).filter(Boolean))]));
-      papers.forEach(paper => {
-        referenceSets.get(paper.id).forEach(referenceId => {
-          const cited = byOpenAlex.get(referenceId);
-          if (cited) record(paper.id, cited.id, 'citation', 0.98, `${compactTitle(paper.title)} cites ${compactTitle(cited.title)}`);
-        });
-      });
-      const overlapCount = (a, b) => {
-        const [small, large] = a.size < b.size ? [a, b] : [b, a];
-        let count = 0;
-        small.forEach(id => { if (large.has(id)) count += 1; });
-        return count;
-      };
-      for (let i = 0; i < papers.length; i += 1) {
-        for (let j = i + 1; j < papers.length; j += 1) {
-          const left = papers[i];
-          const right = papers[j];
-          const sharedRefs = overlapCount(referenceSets.get(left.id), referenceSets.get(right.id));
-          if (sharedRefs) {
-            record(left.id, right.id, 'bibliographic', Math.min(0.9, 0.42 + sharedRefs * 0.08), `${sharedRefs} shared reference${sharedRefs === 1 ? '' : 's'}`);
-          }
-          const sharedCiters = overlapCount(citerSets.get(left.id), citerSets.get(right.id));
-          if (sharedCiters) {
-            record(left.id, right.id, 'cocitation', Math.min(0.88, 0.38 + sharedCiters * 0.08), `${sharedCiters} shared citing paper${sharedCiters === 1 ? '' : 's'}`);
-          }
-        }
+      const operations=[], byOpenAlex=new Map(papers.map(p=>[normalizeOpenAlexId(p.openAlexId||p.openAlexUrl||''),p]).filter(([id])=>id));
+      const refs=papers.map(p=>new Set((p.referenceIds||[]).map(normalizeOpenAlexId).filter(Boolean)));
+      const citers=papers.map(p=>new Set((p.citedByIds||[]).map(normalizeOpenAlexId).filter(Boolean)));
+      papers.forEach((paper,i)=>refs[i].forEach(id=>{
+        const cited=byOpenAlex.get(id);
+        if(cited) operations.push([paper.id,cited.id,'citation',.98,`${compactTitle(paper.title)} cites ${compactTitle(cited.title)}`]);
+      }));
+      function overlapPairs(sets) {
+        const index=new Map(), pairs=new Map(), n=papers.length;
+        sets.forEach((values,j)=>values.forEach(value=>{
+          if(!index.has(value)) index.set(value,[]);
+          for(const i of index.get(value)) {const key=i*n+j;pairs.set(key,(pairs.get(key)||0)+1);}
+          index.get(value).push(j);
+        }));return pairs;
       }
-      topology = operations;
-      stats.topologyBuilds += 1;
+      const sharedRefs=overlapPairs(refs), sharedCiters=overlapPairs(citers), n=papers.length;
+      const keys=[...new Set([...sharedRefs.keys(),...sharedCiters.keys()])].sort((a,b)=>a-b);
+      for(const key of keys) {
+        const left=papers[Math.floor(key/n)],right=papers[key%n], r=sharedRefs.get(key),c=sharedCiters.get(key);
+        if(r) operations.push([left.id,right.id,'bibliographic',Math.min(.9,.42+r*.08),`${r} shared reference${r===1?'':'s'}`]);
+        if(c) operations.push([left.id,right.id,'cocitation',Math.min(.88,.38+c*.08),`${c} shared citing paper${c===1?'':'s'}`]);
+      }
+      topology=operations;stats.topologyBuilds++;
     }
-
     function analyse(payload) {
-      const papers = payload.papers || [];
-      const graphSteerKeywords = payload.graphSteerKeywords || [];
-      const stopwords = [...(payload.stopwords || [])];
-      const threshold = payload.threshold ?? 0.05;
-      const nextVectorKey = JSON.stringify([papers.map(paper => [paper.id, paper.title, paper.authors, paper.year, paper.journal, paper.abstract, paper.paperKeywords, paper.text]), graphSteerKeywords, stopwords]);
-      const nextTopologyKey = JSON.stringify(papers.map(paper => [paper.id, paper.title, paper.openAlexId, paper.openAlexUrl, paper.referenceIds, paper.citedByIds]));
-      const vectorsChanged = nextVectorKey !== vectorKey;
-      const topologyChanged = nextTopologyKey !== topologyKey;
-      if (vectorsChanged) {
-        buildVectors(papers, graphSteerKeywords, stopwords);
-        vectorKey = nextVectorKey;
-      }
-      if (topologyChanged) {
-        buildTopology(papers);
-        topologyKey = nextTopologyKey;
-      }
-      if (!hasAnalysis || vectorsChanged || topologyChanged || !Object.is(threshold, lastThreshold)) {
-        links = similarities.filter(link => link.score >= threshold).map(link => ({...link}));
-        const byPair = new Map(links.map(link => [pairKey(link.source, link.target), link]));
-        const rank = {similarity: 0, cocitation: 1, bibliographic: 2, citation: 3, mixed: 4};
-        topology.forEach(([source, target, type, score, evidence]) => {
-          if (!source || !target || source === target) return;
-          const key = pairKey(source, target);
-          const existing = byPair.get(key);
-          if (existing) {
-            existing.score = Math.max(existing.score || 0, score);
-            existing.evidence = dedupeList([existing.evidence, evidence].filter(Boolean)).join(' | ');
-            if (existing.type !== type) existing.type = rank[type] > rank[existing.type] ? type : (rank[type] === rank[existing.type] ? existing.type : 'mixed');
-            return;
-          }
-          // Citation evidence remains visible even below the similarity threshold.
-          const link = {source, target, score, type, evidence};
-          links.push(link);
-          byPair.set(key, link);
-        });
-        const nextClusterKey = JSON.stringify([papers.map(paper => paper.id), links.map(link => [link.source, link.target])]);
-        if (nextClusterKey !== clusterKey) {
-          clusters = findClusters(papers, links);
-          clusterKey = nextClusterKey;
-          stats.clusterBuilds += 1;
+      const papers=payload.papers||[], steer=payload.graphSteerKeywords||[], words=[...(payload.stopwords||[])], threshold=payload.threshold??.05;
+      const nextVectorKey=JSON.stringify([papers.map(signature),steer,words]);
+      const nextTopologyKey=JSON.stringify(papers.map(p=>[p.id,p.title,p.openAlexId,p.openAlexUrl,p.referenceIds,p.citedByIds]));
+      const vectorsChanged=nextVectorKey!==vectorKey, topologyChanged=nextTopologyKey!==topologyKey;
+      if(vectorsChanged) {buildVectors(papers,steer,words);vectorKey=nextVectorKey;}
+      if(topologyChanged) {buildTopology(papers);topologyKey=nextTopologyKey;}
+      if(vectorsChanged || threshold<scoredThreshold) buildSimilarities(papers,threshold);
+      if(!hasAnalysis || vectorsChanged || topologyChanged || !Object.is(threshold,lastThreshold)) {
+        const previousPairs=clusterPairs;
+        links=similarities.filter(link=>link.score>=threshold).map(link=>({...link}));
+        const byPair=new Map(links.map(link=>[pairKey(link.source,link.target),link]));
+        const rank={similarity:0,cocitation:1,bibliographic:2,citation:3,mixed:4};
+        for(const [source,target,type,score,evidence] of topology) {
+          if(!source||!target||source===target) continue;
+          const key=pairKey(source,target), existing=byPair.get(key);
+          if(existing) {
+            existing.score=Math.max(existing.score||0,score);
+            existing.evidence=dedupeList([existing.evidence,evidence].filter(Boolean)).join(' | ');
+            if(existing.type!==type) existing.type=rank[type]>rank[existing.type]?type:(rank[type]===rank[existing.type]?existing.type:'mixed');
+          } else {const link={source,target,score,type,evidence};links.push(link);byPair.set(key,link);}
         }
-        hasAnalysis = true;
-        lastThreshold = threshold;
-        revision += 1;
+        const ids=papers.map(p=>p.id);
+        if(ids.length!==clusterIds.length || ids.some((id,i)=>id!==clusterIds[i]) || links.length!==previousPairs.length || links.some((l,i)=>l.source!==previousPairs[i][0]||l.target!==previousPairs[i][1])) {
+          clusters=findClusters(papers,links);clusterIds=ids;clusterPairs=links.map(l=>[l.source,l.target]);stats.clusterBuilds++;
+        }
+        hasAnalysis=true;lastThreshold=threshold;revision++;
       }
-      return {
-        links: links.map(link => ({...link})),
-        clusters: clusters.map(cluster => [...cluster]),
-        vectors: vectors.map(([id, vector]) => [id, vector.map(entry => [...entry])]),
-        keywords: keywords.map(([id, terms]) => [id, [...terms]]),
-        revision,
-        stats: {...stats}
-      };
+      return {links:links.map(link=>({...link})),clusters:clusters.map(c=>[...c]),
+        vectors:vectors.map(([id,v])=>[id,v.map(entry=>[...entry])]),keywords:keywords.map(([id,t])=>[id,[...t]]),revision,stats:{...stats}};
     }
     return {analyse};
   }

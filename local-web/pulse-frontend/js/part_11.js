@@ -79,12 +79,45 @@
     }
 
     function linkId(link) {
-      return [link.source, link.target].sort().join('__');
+      const source = String(link.source), target = String(link.target);
+      return source < target ? source + '__' + target : target + '__' + source;
+    }
+
+    let relationshipIndexLinks = null, relationshipIndexLength = -1, relationshipIndexValue = null;
+    function relationshipIndex() {
+      const links = state.links || [];
+      if (relationshipIndexLinks === links && relationshipIndexLength === links.length) return relationshipIndexValue;
+      const byId = new Map(), byPaper = new Map(), strongestByPaper = new Map();
+      let topologyCount = 0;
+      for (const link of links) {
+        byId.set(linkId(link), link);
+        for (const id of [link.source, link.target]) {
+          if (!byPaper.has(id)) byPaper.set(id, []);
+          byPaper.get(id).push(link);
+          strongestByPaper.set(id, Math.max(strongestByPaper.get(id) || 0, Number(link.score) || 0));
+        }
+        if (link.type && link.type !== 'similarity') topologyCount++;
+      }
+      relationshipIndexLinks = links; relationshipIndexLength = links.length;
+      return relationshipIndexValue = {byId, byPaper, strongestByPaper, topologyCount};
     }
 
     function selectedLinkEndpoints() {
-      const link = state.links.find(item => linkId(item) === state.selectedLinkId);
+      if (!state.selectedLinkId) return new Set();
+      const link = relationshipIndex().byId.get(state.selectedLinkId);
       return new Set(link ? [link.source, link.target] : []);
+    }
+
+    let visibleRelationshipCache = null;
+    function linksForPaperIds(ids) {
+      const index = relationshipIndex(), key = JSON.stringify([...ids]);
+      if (visibleRelationshipCache?.index === index && visibleRelationshipCache.key === key) return visibleRelationshipCache.links;
+      const links = [];
+      for (const id of ids) for (const link of index.byPaper.get(id) || []) {
+        if (link.source === id && ids.has(link.target)) links.push(link);
+      }
+      visibleRelationshipCache = {index,key,links};
+      return links;
     }
 
     function compactTitle(title) {

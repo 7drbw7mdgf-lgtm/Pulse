@@ -1,17 +1,16 @@
-# Install Pulse 2.0.1
+# Install Pulse 2.1 on Mac
 
-Quit Pulse, open **Pulse-2.0.1.dmg**, and drag **Pulse.app** into **Applications**, replacing the previous copy.
+The local 2.1 build targets Apple Silicon and includes its Python interpreter, PDF/OCR dependencies and offline search ranker. You do not need to install Python. Ollama and optional local AI models are installed separately.
 
-An **Apple Silicon Mac**, **macOS 11 or later**, and **Python 3.10 or later** are required. Python for the main backend is installed separately. PDF extraction dependencies and the offline cross-encoder are included; Ollama and its optional model weights are installed separately.
+1. Open the Pulse 2.1 DMG and drag Pulse into Applications.
+2. Quit older Pulse instances before opening the upgraded app so they do not write to the same profile.
+3. Open Pulse from Applications. Its library remains in `~/Library/Application Support/pulse`.
+4. On first use, Pulse imports the existing JSON library into SQLite. It retains the original JSON and a migration checkpoint in `backups`; notes, tags, local full text and map assignments are preserved.
 
-The app is **ad hoc signed** and **has not been notarized by Apple**.
+Use **Export → JSON** for a portable current copy and **Recovery** to undo removals or restore a workspace. The old `library.json` becomes a migration checkpoint; after migration, `library.sqlite3` is the live library. Do not edit or copy an old JSON file over an active database. Move data with JSON export/import or copy the entire data folder while Pulse is closed.
 
-Your existing library remains in your user profile. The installer does not include personal papers or account credentials.
+Local development builds use an ad hoc signature until publisher credentials are configured. They are not Apple-notarized. See [signing setup](SIGNING.md). The included Allow Pulse helper is for the exact app version and is intended for user-controlled local builds.
 
-In **Settings → Search sources → Semantic Scholar**, enter an optional API key and choose **Save**. Saved keys stay encrypted on this computer. Public search remains available without a key; **Remove saved key** removes the locally saved key. A key supplied by the computer's environment takes precedence.
+For Mendeley, choose **Use Pulse sign-in** in Reference managers. If a connection fails, open **Settings → Connections → Check connections** for specific recovery advice. Optional Semantic Scholar keys live in **Settings → Search sources**.
 
-Timeline keeps only five nearby paper cards mounted, preserves native scrolling, and updates the inspector after scrolling settles. Year navigation and keyboard selection remain immediate.
-
-**Mendeley:** open **Library connections → Connect Mendeley** and complete browser sign-in. If this Mac has custom developer settings, choose **Use Pulse sign-in** first. Shared sign-in and library sync were verified on 17 October 2026 after the service credentials were repaired. Each Mac connects with its own Mendeley account; no developer application ID or secret is required. RIS export remains available.
-
-See the [2.0.1 release notes](releases/2.0.1.md).
+The published 2.0.1 and earlier Mac packages require Python 3.10+ installed separately; the bundled interpreter described here applies to 2.1 builds.

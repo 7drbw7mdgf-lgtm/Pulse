@@ -226,6 +226,7 @@ function bindLibraryRowEvents(root) {
     }
 
     function renderPapers() {
+      if(typeof renderResearchWorkflow==='function')renderResearchWorkflow();
       const areaOptions = paper => [
         `<option value="">No area</option>`,
         ...state.areas.map(area => `<option value="${area.id}" ${paper.areaId === area.id ? 'selected' : ''}>${escapeHtml(area.name)}</option>`)
@@ -244,8 +245,8 @@ function bindLibraryRowEvents(root) {
       };
       const clusterByPaper = new Map();
       state.clusters.forEach((cluster, index) => cluster.forEach(id => clusterByPaper.set(id, index)));
-      const strongestByPaper = new Map();
-      for (const link of state.links || []) {
+      const strongestByPaper = typeof relationshipIndex === 'function' ? relationshipIndex().strongestByPaper : new Map();
+      if (typeof relationshipIndex !== 'function') for (const link of state.links || []) {
         const score = Number(link.score || 0);
         strongestByPaper.set(link.source, Math.max(strongestByPaper.get(link.source) || 0, score));
         strongestByPaper.set(link.target, Math.max(strongestByPaper.get(link.target) || 0, score));
@@ -394,7 +395,7 @@ function bindLibraryRowEvents(root) {
       };
 
 
-      const hasFilter = Boolean(state.filterTags && state.filterTags.length > 0);
+      const hasFilter = Boolean((state.filterTags && state.filterTags.length > 0)||state.librarySearchTerms||state.readingQueueOnly);
       const displayPapers = libraryDisplayPapers({clusterByPaper});
 
       if (els.paperCount) {
@@ -410,7 +411,7 @@ function bindLibraryRowEvents(root) {
       const mode = state.libraryFullscreen ? 'table' : state.paperView === 'compact' ? 'compact' : 'expanded';
       const renderRow = mode === 'table' ? renderLibraryTableRow : mode === 'compact' ? renderCompactPaper : renderExpandedPaper;
       const emptyMarkup = hasFilter
-        ? `<div class="empty-filter-state" style="padding:24px 16px;text-align:center;color:var(--muted)"><p>No papers match the active tag filter${state.filterTags.length > 1 ? 's' : ''}.</p><button class="button small secondary" data-action="clear-filters-from-list" type="button">Clear tag filters</button></div>`
+        ? `<div class="empty-filter-state" style="padding:24px 16px;text-align:center;color:var(--muted)"><p>No papers match the current filters.</p><button class="button small secondary" data-action="clear-filters-from-list" type="button">Clear tag filters</button></div>`
         : '<div class="empty-filter-state" style="padding:24px 16px;text-align:center;color:var(--muted)">No papers in library yet.</div>';
       renderLibraryRows(displayPapers,{mode,renderRow,tableMarkup:renderLibraryTable([]),emptyMarkup,clusterByPaper});
       renderLibraryBulkActions(displayPapers);

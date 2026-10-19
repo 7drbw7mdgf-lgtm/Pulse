@@ -49,6 +49,10 @@ jobs:
       - name: Build installer
         id: build
         shell: pwsh
+        env:
+          PULSE_WINDOWS_CERT_BASE64: ${{ secrets.PULSE_WINDOWS_CERT_BASE64 }}
+          PULSE_WINDOWS_CERT_PASSWORD: ${{ secrets.PULSE_WINDOWS_CERT_PASSWORD }}
+          PULSE_WINDOWS_CERT_THUMBPRINT: ${{ secrets.PULSE_WINDOWS_CERT_THUMBPRINT }}
         run: ./scripts/package-windows.ps1
       - name: Install and verify native app
         shell: pwsh

@@ -2,7 +2,7 @@
 function libraryBulkPapers() {
   return state.papers.filter(paper => state.librarySelectedIds.has(paper.id));
 }
-function renderLibraryBulkActions(visiblePapers = state.papers.filter(paperMatchesFilters)) {
+function renderLibraryBulkActions(visiblePapers = state.papers.filter(paper=>paperMatchesFilters(paper)&&(typeof researchLibraryFilter!=='function'||researchLibraryFilter(paper)))) {
   const available = new Set(state.papers.map(paper => paper.id));
   for (const id of state.librarySelectedIds) if (!available.has(id)) state.librarySelectedIds.delete(id);
   const count = libraryBulkPapers().length;

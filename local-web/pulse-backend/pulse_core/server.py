@@ -178,6 +178,17 @@ class PulseHandler(SimpleHTTPRequestHandler):
         if path == "/api/library":
             self.write_json(200, load_library())
             return
+        if path == "/api/library/search":
+            try:
+                from pulse_core.search_query import parse_search
+                from pulse_core.storage import library_store
+                params = urllib.parse.parse_qs(parsed.query)
+                terms = parse_search(params.get('q',[''])[0], tags=params.get('tag',[]), match=params.get('match',['all'])[0])
+                words = terms['keywords'] or ([params.get('q',[''])[0]] if params.get('q',[''])[0].strip() and not terms['structured'] else [])
+                self.write_json(200, library_store().search(words,terms['tags'],terms['match'],int(params.get('limit',[200])[0]),int(params.get('offset',[0])[0])))
+            except ClientError as error: self.write_json(error.status, {'error':str(error)})
+            except (ValueError, TypeError): self.write_json(400, {'error':'Use valid search limits.'})
+            return
         if path == "/api/library/recovery":
             self.write_json(200, list_recovery())
             return
@@ -211,7 +222,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
             return
         path = parsed.path
         valid_post_endpoints = {
-            "/api/papers/metrics", "/api/papers/relations",
+            "/api/papers/metrics", "/api/papers/relations", "/api/connections/check",
             "/api/managers/config", "/api/managers/mendeley/connect", "/api/managers/mendeley/disconnect",
             "/api/managers/save", "/api/managers/search", "/api/managers/mendeley/sync-page", "/api/managers/mendeley/sync-preferences",
             "/api/agent/start",
@@ -249,7 +260,9 @@ class PulseHandler(SimpleHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length) or b"{}")
+            from pulse_core.connection_diagnostics import check_connections
             handlers = {
+                "/api/connections/check": check_connections,
                 "/api/papers/metrics": paper_metrics,
                 "/api/papers/relations": paper_relations,
                 "/api/managers/config": configure_mendeley,

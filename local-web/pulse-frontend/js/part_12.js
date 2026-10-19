@@ -352,7 +352,7 @@
 
     function selectedPapersForRecommendation() {
       if(state.discoveryBridgeMode && state.librarySelectedIds?.size>1)return state.papers.filter(p=>state.librarySelectedIds.has(p.id));
-      const selectedLink = state.links.find(item => linkId(item) === state.selectedLinkId);
+      const selectedLink = state.selectedLinkId ? relationshipIndex().byId.get(state.selectedLinkId) : null;
       if (selectedLink) {
         return [selectedLink.source, selectedLink.target]
           .map(id => state.papers.find(paper => paper.id === id))

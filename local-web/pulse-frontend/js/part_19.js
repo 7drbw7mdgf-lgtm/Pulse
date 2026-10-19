@@ -104,6 +104,9 @@
         discoveryDepth: state.discoveryDepth || '1',
         discoveryLimit: state.discoveryLimit || 200,
         discoveryResearchQuestion: state.discoveryResearchQuestion || '',
+        savedSearches: state.savedSearches || [], discoverySearchTags: state.discoverySearchTags || [],
+        discoveryQueryMatch: state.discoveryQueryMatch || 'all', discoveryRankingMode: state.discoveryRankingMode || 'fast',
+        discoverySearchScope: state.discoverySearchScope || 'online', librarySearchTerms: state.librarySearchTerms || null, readingQueueOnly: Boolean(state.readingQueueOnly),
         discoveryStrictExclusions: state.discoveryStrictExclusions || [],
         discoveryDiversify: state.discoveryDiversify !== false,
         discoveryBridgeMode: Boolean(state.discoveryBridgeMode), discoveryAiTriage: Boolean(state.discoveryAiTriage), discoveryFastEmbed: Boolean(state.discoveryFastEmbed), discoveryFullTextSearch: Boolean(state.discoveryFullTextSearch),
@@ -217,6 +220,7 @@
       state.discoveryDepth = ['1','2','3','iterative'].includes(String(data.discoveryDepth)) ? String(data.discoveryDepth) : '1';
       state.discoveryLimit = [50,100,200,500,1000,2000].includes(Number(data.discoveryLimit)) ? Number(data.discoveryLimit) : 200;
       state.discoveryResearchQuestion = String(data.discoveryResearchQuestion || '').slice(0,1000);
+      if(typeof restoreResearchWorkflow==='function')restoreResearchWorkflow(data);
       state.discoveryStrictExclusions = Array.isArray(data.discoveryStrictExclusions) ? data.discoveryStrictExclusions.slice(0,16) : [];
       state.discoveryDiversify = data.discoveryDiversify !== false;
       state.discoveryBridgeMode = Boolean(data.discoveryBridgeMode);state.discoveryAiTriage = data.discoveryAiTriage !== undefined ? Boolean(data.discoveryAiTriage) : false;state.discoveryFastEmbed = data.discoveryFastEmbed !== undefined ? Boolean(data.discoveryFastEmbed) : true;state.discoveryFullTextSearch = Boolean(data.discoveryFullTextSearch);

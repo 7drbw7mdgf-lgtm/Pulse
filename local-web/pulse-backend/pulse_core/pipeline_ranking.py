@@ -10,7 +10,7 @@ from pulse_core.doi_utils import normalize_doi
 from pulse_core.discovery_queries import terms, text_for_paper
 from pulse_core.metadata_resolution import similarity
 from pulse_core.search_merge import merge_search_records, title_key, known_count
-from pulse_core.search_limits import discovery_limit, MAX_CANDIDATE_POOL
+from pulse_core.search_limits import discovery_limit, MAX_CANDIDATE_POOL, SearchResults
 from pulse_core.discovery_feedback import paper_key, contrastive_profile, feedback_adjustment
 from pulse_core.ranking_evidence import dbef_quality, apply_network_assessments, graph_evidence
 from pulse_core.publication_records import fold_explicit_versions
@@ -404,6 +404,7 @@ def balanced_indices(records, scores, size):
 
 
 def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, options):
+    from pulse_core.search_query import matches_search
     ranking_started = time.monotonic()
     timings = options['_rankingTimings'] = {'embeddingSeconds': 0, 'pairwiseSeconds': 0}
     options['_semanticCount'] = options['_pairwiseCount'] = 0
@@ -432,6 +433,8 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
                 if record.get('authorTrajectoryName'): ev.setdefault('authorName', record['authorTrajectoryName'])
             candidates.append(record)
     records = merge_search_records(candidates)
+    if options.get('queryKeywords') or options.get('queryTags'):
+        records = [paper for paper in records if matches_search(paper, options.get('queryKeywords') or [], options.get('queryTags') or [], options.get('queryMatch','all'))]
     if not records: return []
     for record in records:
         for ev in record.get('retrievalEvidence') or []:

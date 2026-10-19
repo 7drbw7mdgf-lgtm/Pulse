@@ -33,9 +33,9 @@ fn background_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
 }
 
 fn backend_command(backend: &std::path::Path) -> Result<Command, Box<dyn std::error::Error>> {
-    #[cfg(windows)]
-    if backend.join("pulse_backend.exe").is_file() {
-        return Ok(background_command(backend.join("pulse_backend.exe")));
+    let frozen = backend.join(if cfg!(windows) { "pulse_backend.exe" } else { "pulse_backend" });
+    if frozen.is_file() {
+        return Ok(background_command(frozen));
     }
     let mut candidates: Vec<(std::ffi::OsString, Vec<&str>)> = Vec::new();
     if let Some(python) = std::env::var_os("PULSE_PYTHON") {

@@ -70,10 +70,11 @@
 
     function renderSelection() {
       if (typeof renderTrendsSelection === 'function') renderTrendsSelection();
+      const linkedEndpoints = selectedLinkEndpoints();
       els.map.querySelectorAll('.node').forEach(node => {
         node.classList.toggle('is-selected', node.dataset.id === state.selectedId);
         node.classList.toggle('is-centered', node.dataset.id === state.centerId);
-        node.classList.toggle('is-linked', selectedLinkEndpoints().has(node.dataset.id));
+        node.classList.toggle('is-linked', linkedEndpoints.has(node.dataset.id));
       });
       els.map.querySelectorAll('.edge').forEach(edge => edge.classList.toggle('is-selected', edge.dataset.link === state.selectedLinkId));
       els.map.querySelectorAll('.area-region').forEach(region => {
@@ -278,7 +279,7 @@
     }
 
     function paperMatchScore(paper) {
-      const strongest = state.links
+      const strongest = typeof relationshipIndex === 'function' ? (relationshipIndex().strongestByPaper.get(paper.id) || 0) : state.links
         .filter(link => link.source === paper.id || link.target === paper.id)
         .reduce((best, link) => Math.max(best, Number(link.score || 0)), 0);
       return Math.max(0, Math.min(99, Math.round(strongest * 100)));

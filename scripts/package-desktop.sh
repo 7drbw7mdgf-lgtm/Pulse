@@ -13,6 +13,9 @@ stage_args=()
 if [ -n "$python_dependencies" ]; then stage_args+=(--python-dependencies "$python_dependencies"); fi
 if [ -n "$search_runtime" ]; then stage_args+=(--search-runtime "$search_runtime"); fi
 python3 "$source_root/scripts/stage-desktop.py" "${stage_args[@]}"
+backend_python=${PULSE_BACKEND_BUILD_PYTHON:-python3}
+portable_runtime=${search_runtime:-"$source_root/.search-runtime"}
+"$backend_python" "$source_root/scripts/freeze-macos-backend.py" --work-dir "$release_dir/backend-build" --search-runtime "$portable_runtime"
 build_args=(build --ci --bundles app -- --locked)
 if [ "${PULSE_BUILD_OFFLINE:-0}" = 1 ]; then build_args+=(--offline); fi
 cd "$source_root/desktop"
@@ -43,6 +46,15 @@ fi
 ln -s /Applications "$release_dir/staging/Applications"
 image="Pulse-$version.dmg"
 hdiutil create -volname "Pulse $version" -srcfolder "$release_dir/staging" -format UDZO -imagekey zlib-level=9 "$release_dir/$image"
+if [ -n "${APPLE_SIGNING_IDENTITY:-}" ] && [ "${APPLE_SIGNING_IDENTITY}" != '-' ]; then
+  codesign --force --sign "$APPLE_SIGNING_IDENTITY" --timestamp "$release_dir/$image"
+fi
+if [ -n "${PULSE_NOTARY_PROFILE:-}" ]; then
+  [ -n "${APPLE_SIGNING_IDENTITY:-}" ] && [ "$APPLE_SIGNING_IDENTITY" != '-' ] || { echo 'Notarization requires an Apple signing identity.' >&2; exit 1; }
+  xcrun notarytool submit "$release_dir/$image" --keychain-profile "$PULSE_NOTARY_PROFILE" --wait
+  xcrun stapler staple "$release_dir/$image"
+  xcrun stapler validate "$release_dir/$image"
+fi
 hdiutil verify "$release_dir/$image"
 (cd "$release_dir" && shasum -a 256 "$image") > "$release_dir/Pulse-$version-SHA256SUMS.txt"
 printf 'Built %s\n' "$release_dir/$image"

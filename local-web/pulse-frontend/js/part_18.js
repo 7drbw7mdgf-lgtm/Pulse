@@ -105,7 +105,9 @@
     async function runDiscoveryPipeline(request={}) {
       if (state.discoveryLoading) return;
       const conceptMode=request.searchMode==='concept';
-      const query=String(request.query||'').trim();
+      const query=String(request.query||'').trim() || (typeof parseSearchQuery==='function'?parseSearchQuery(state.discoveryResearchQuestion).tags.join(', '):'');
+      const queryError=typeof parseSearchQuery==='function'?parseSearchQuery(state.discoveryResearchQuestion).error:'';
+      if(queryError){showToast(queryError);return;}
       const seeds = conceptMode?[]:selectedPapersForRecommendation();
       if (conceptMode&&!query) {showToast('Enter a concept or key phrase to search.');document.getElementById('discoveryResearchQuestion')?.focus();return;}
       if (!conceptMode&&!seeds.length) {
@@ -160,7 +162,7 @@
           data={...kept,status:'stopped',stoppedEarly:true};
         }
         if(data.status==='failed')throw new Error(data.error||'Discovery search failed.');
-        const recs = data.recommendations || [];
+        const recs = typeof recordSavedSearchResults==='function'?recordSavedSearchResults(data.recommendations||[],request,data):(data.recommendations||[]);
         state.discoverySearchErrors ||= new Map();
         state.discoverySearchErrors.set(key,data.errors || {});
         state.recommendations.set(key, recs);
@@ -351,7 +353,8 @@
     function updateMetrics() {
       const activePapers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
       const activeIds = new Set(activePapers.map(paper => paper.id));
-      const activeLinks = state.links.filter(link => activeIds.has(link.source) && activeIds.has(link.target));
+      const activeLinks = typeof linksForPaperIds === 'function' ? linksForPaperIds(activeIds)
+        : state.links.filter(link => activeIds.has(link.source) && activeIds.has(link.target));
       els.emptyState.style.display = activePapers.length ? 'none' : 'grid';
       if (!activePapers.length && state.papers.length > 0) {
         const currentMap = state.maps?.find(m => m.id === state.activeMapId);
@@ -399,7 +402,8 @@
       } else if (!state.links.length) {
         els.statusText.textContent = 'No links above the current threshold. Lower the threshold to reveal weaker relationships.';
       } else {
-        const topologyCount = state.links.filter(link => link.type && link.type !== 'similarity').length;
+        const topologyCount = typeof relationshipIndex === 'function' ? relationshipIndex().topologyCount
+          : state.links.filter(link => link.type && link.type !== 'similarity').length;
         els.statusText.textContent = `Showing ${state.links.length} links at ${thresholdPercent}% threshold${topologyCount ? `, including ${topologyCount} citation-topology links` : ''}.`;
       }
     }

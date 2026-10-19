@@ -67,7 +67,7 @@ def write_settings(settings):
         pass
     return settings
 
-def load_library():
+def _load_legacy_library():
     backup_dir = _core.CONFIG_DIR / "backups"
     backup_dir.mkdir(parents=True, exist_ok=True)
     if _core.LIBRARY_PATH.exists():
@@ -97,112 +97,41 @@ def load_library():
                 continue
     return {"format": "pulse-map", "version": APP_VERSION, "papers": []}
 
+def _library_checkpoint(data, reason):
+    backup_dir = _core.CONFIG_DIR / 'backups'
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    path = backup_dir / ('library_' + reason + '_' + datetime.now().strftime('%Y%m%d_%H%M%S_%f') + '.json')
+    _write_recovery(path, data)
+    # Leave the first JSON snapshot available for older versions and explicit export.
+    if not _core.LIBRARY_PATH.exists():
+        _write_recovery(_core.LIBRARY_PATH, data)
+    checkpoints = sorted(backup_dir.glob('library_checkpoint_*.json'), key=os.path.getmtime)
+    for old in checkpoints[:-10]:
+        old.unlink(missing_ok=True)
+
+def library_store():
+    from pulse_core.library_store import LibraryStore
+    return LibraryStore(_core.LIBRARY_PATH, _load_legacy_library, _library_checkpoint)
+
+def load_library():
+    with LIBRARY_WRITE_LOCK:
+        return library_store().read()
+
 def save_library(payload):
     with LIBRARY_WRITE_LOCK:
-        session = payload.get("_saveSession") if isinstance(payload, dict) else None
-        revision = payload.get("_saveRevision") if isinstance(payload, dict) else None
+        session = payload.get('_saveSession') if isinstance(payload, dict) else None
+        revision = payload.get('_saveRevision') if isinstance(payload, dict) else None
         ordered = isinstance(session, str) and 0 < len(session) <= 100 and isinstance(revision, int)
         if ordered and revision <= SAVE_REVISIONS.get(session, -1):
-            return {"ok": True, "superseded": True}
-        if isinstance(payload, dict) and payload.get('_saveMode') == 'paper-delta-v1':
-            payload, existing = _apply_library_delta(payload)
-            result = _core._save_library(payload, existing_data=existing)
-        else:
-            result = _core._save_library(payload)
+            return {'ok': True, 'superseded': True}
+        result = _core._save_library(payload)
         if ordered:
             SAVE_REVISIONS[session] = revision
-            if len(SAVE_REVISIONS) > 64:
-                SAVE_REVISIONS.pop(next(iter(SAVE_REVISIONS)))
+            if len(SAVE_REVISIONS) > 64: SAVE_REVISIONS.pop(next(iter(SAVE_REVISIONS)))
         return result
 
-def _apply_library_delta(payload):
-    """Apply a small client patch only to the exact acknowledged disk snapshot."""
-    token = payload.get('_baseStorageRevision')
-    if not isinstance(token, str) or not re.fullmatch(r'[a-f0-9]{32}', token):
-        raise ClientError(400, 'A valid library save baseline is required.')
-    try:
-        existing = json.loads(_core.LIBRARY_PATH.read_text('utf-8'))
-    except (OSError, ValueError):
-        existing = None
-    if not isinstance(existing, dict) or existing.get('_storageRevision') != token:
-        raise ClientError(409, 'The saved library changed elsewhere. Your changes are kept locally; reload or use Recovery before saving again.')
-    updates, removed, order = payload.get('upsertPapers'), payload.get('removePaperIds'), payload.get('paperOrder')
-    changes, missing = payload.get('workspaceChanges'), payload.get('removeWorkspaceKeys')
-    if not isinstance(updates, list) or not all(isinstance(p, dict) and isinstance(p.get('id'), str) and p['id'] for p in updates):
-        raise ClientError(400, 'Changed library papers must have IDs.')
-    if not isinstance(removed, list) or not all(isinstance(i, str) for i in removed) or len(set(removed)) != len(removed):
-        raise ClientError(400, 'Removed library paper IDs must be unique.')
-    if not isinstance(order, list) or not all(isinstance(i, str) for i in order) or len(set(order)) != len(order):
-        raise ClientError(400, 'Library paper order must contain unique IDs.')
-    if len({p['id'] for p in updates}) != len(updates) or set(removed) & {p['id'] for p in updates}:
-        raise ClientError(400, 'Changed library paper IDs must be unique and cannot also be removed.')
-    protected = {'papers', '_storageRevision', '_saveSession', '_saveRevision', '_saveMode', '_baseStorageRevision', 'savedAt'}
-    if (not isinstance(changes, dict) or set(changes) & protected or not isinstance(missing, list)
-        or not all(isinstance(key, str) for key in missing) or set(missing) & protected):
-        raise ClientError(400, 'Invalid library workspace changes.')
-    old_papers = existing.get('papers')
-    if not isinstance(old_papers, list) or not all(isinstance(p, dict) and isinstance(p.get('id'), str) for p in old_papers):
-        raise ClientError(409, 'Reload the saved library before making incremental changes.')
-    by_id = {p['id']: p for p in old_papers}
-    if len(by_id) != len(old_papers) or not set(removed) <= by_id.keys():
-        raise ClientError(409, 'Reload the saved library before making incremental changes.')
-    for identity in removed: by_id.pop(identity)
-    by_id.update({p['id']: p for p in updates})
-    if set(order) != by_id.keys():
-        raise ClientError(400, 'Library paper order must include every remaining paper.')
-    result = dict(existing)
-    for key in missing: result.pop(key, None)
-    result.update(changes)
-    result['papers'] = [by_id[identity] for identity in order]
-    result['_saveSession'], result['_saveRevision'] = payload.get('_saveSession'), payload.get('_saveRevision')
-    return result, existing
-
 def _save_library(payload, existing_data=None):
-    if not isinstance(payload, dict):
-        raise ClientError(400, "Library payload must be a JSON object.")
-    if not isinstance(payload.get("papers"), list) or not all(isinstance(paper, dict) for paper in payload["papers"]):
-        raise ClientError(400, "Library papers must be an array of paper objects.")
-    if not payload["papers"] and not payload.get("reset") and not payload.get("allowEmpty"):
-        if load_library().get("papers"):
-            raise ClientError(409, "An empty autosave cannot replace a saved library. Reload your papers or use Clear papers.")
-    _core.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    backup_dir = _core.CONFIG_DIR / "backups"
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    data = dict(payload)
-    data.pop("allowEmpty", None)
-    data["format"] = data.get("format") or "pulse-map"
-    data["version"] = data.get("version") or APP_VERSION
-    data["savedAt"] = time_iso()
-    data['_storageRevision'] = uuid.uuid4().hex
-    if _core.LIBRARY_PATH.exists() and _core.LIBRARY_PATH.stat().st_size > 10:
-        try:
-            if existing_data is None: json.loads(_core.LIBRARY_PATH.read_text("utf-8"))
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            backup_file = backup_dir / f"library_{ts}.json"
-            shutil.copy2(_core.LIBRARY_PATH, backup_file)
-            all_b = sorted(backup_dir.glob("library_*.json"), key=os.path.getmtime)
-            for old in all_b[:-10]:
-                try: old.unlink()
-                except OSError: pass
-        except Exception:
-            pass
-    temp_fd, temp_path = tempfile.mkstemp(dir=str(_core.CONFIG_DIR), prefix=".lib_tmp_", suffix=".json")
-    try:
-        with os.fdopen(temp_fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(temp_path, str(_core.LIBRARY_PATH))
-        try:
-            _core.LIBRARY_PATH.chmod(0o600)
-        except OSError:
-            pass
-    finally:
-        if os.path.exists(temp_path):
-            try: os.unlink(temp_path)
-            except OSError: pass
-    return {"ok": True, "path": str(_core.LIBRARY_PATH), "savedAt": data["savedAt"],
-            'storageRevision': data['_storageRevision'], 'deltaSupported': True}
+    return library_store().write(payload)
 
 def _validate_workspace(data):
     if not isinstance(data, dict) or not isinstance(data.get('papers'), list) or not all(isinstance(p, dict) and isinstance(p.get('id'), str) for p in data['papers']):
@@ -267,6 +196,9 @@ def change_library(payload):
         else:
             ids = None
             after = {'papers': [], 'areas': [], 'reset': True, 'format': 'pulse-map', 'mendeleyIgnored':before.get('mendeleyIgnored',[]), 'mendeleySyncPaused':True}
+        if reason == 'clear':
+            for key in ('savedSearches', 'discoverySearchTags', 'discoveryQueryMatch', 'discoveryRankingMode', 'discoverySearchScope'):
+                if key in before: after[key] = copy.deepcopy(before[key])
         # Recovery must be durable before the destructive write is attempted.
         identity = _snapshot(before, reason, ids)
         _core._save_library(dict(after, allowEmpty=True))

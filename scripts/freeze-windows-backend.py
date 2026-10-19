@@ -45,7 +45,7 @@ def main():
                     '--icon', str(ROOT / 'desktop/src-tauri/icons/icon.ico'),
                     '--distpath', str(work / 'dist'), '--workpath', str(work / 'build'),
                     '--specpath', str(work), '--paths', str(backend),
-                    '--collect-submodules', 'pulse_core', '--collect-all', 'pymupdf',
+                    '--collect-submodules', 'pulse_core', '--collect-all', 'pymupdf', '--collect-all', 'certifi',
                     '--add-data', str(backend / 'pulse_core/mendeley-client.json') + ':pulse_core',
                     '--add-data', str(backend / 'pulse_core/relay-client.json') + ':pulse_core',
                     '--add-data', str(backend / 'pulse_core/reranker_worker.py') + ':pulse_core',

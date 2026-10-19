@@ -71,8 +71,9 @@ function paperCitationText(paper) {
 
 // Other papers in the library linked to this one, strongest first.
 function libraryNeighbours(paper) {
-  return (state.links || [])
-    .filter(link => link.source === paper.id || link.target === paper.id)
+  const neighbours = typeof relationshipIndex === 'function' ? (relationshipIndex().byPaper.get(paper.id) || [])
+    : (state.links || []).filter(link => link.source === paper.id || link.target === paper.id);
+  return neighbours
     .map(link => {
       const other = state.papers.find(item => item.id === (link.source === paper.id ? link.target : link.source));
       if (!other) return null;
@@ -126,7 +127,7 @@ function libraryDisplayPapers({clusterByPaper} = {}) {
   }
   // Extract each sort value once. Group lookup and author parsing must not run
   // inside the comparator, which is called O(n log n) times.
-  const rows = state.papers.filter(paperMatchesFilters).map((paper,index) => {
+  const rows = state.papers.filter(paper=>paperMatchesFilters(paper)&&(typeof researchLibraryFilter!=='function'||researchLibraryFilter(paper))).map((paper,index) => {
     let value = paper[sortKey] || '';
     if (sortKey === 'authors') value = paperAuthors(paper)[0] || '';
     else if (sortKey === 'citations') value = paperCitationCount(paper) ?? -1;
