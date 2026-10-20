@@ -8,6 +8,8 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -23,6 +25,19 @@ namespace PulseSetup {
         public Update(string text, double? fraction = null) { Text = text; Fraction = fraction; }
     }
     public sealed class SetupCore : IDisposable {
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        static extern SafeFileHandle CreateFile(string name, uint access, uint share, IntPtr security, uint creation, uint flags, IntPtr template);
+        static void MarkDownloaded(string path, Uri source) {
+            if (Environment.OSVersion.Platform != PlatformID.Win32NT) return;
+            // Framework File.WriteAllText rejects ADS paths; the native file API supports them.
+            using (var handle = CreateFile(path + ":Zone.Identifier", 0x40000000, 1, IntPtr.Zero, 2, 0x80, IntPtr.Zero)) {
+                if (handle.IsInvalid) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), "Could not mark the file as an Internet download.");
+                using (var stream = new FileStream(handle, FileAccess.Write)) {
+                    var bytes = Encoding.UTF8.GetBytes("[ZoneTransfer]\r\nZoneId=3\r\nHostUrl=" + source.AbsoluteUri + "\r\n");
+                    stream.Write(bytes, 0, bytes.Length);
+                }
+            }
+        }
         public const string Repo = "7drbw7mdgf-lgtm/Pulse";
         public static readonly string[] Models = { "gemma3:4b", "nomic-embed-text" };
         public readonly string Cache;
@@ -144,7 +159,7 @@ namespace PulseSetup {
                 if (!Verified(temporary, asset)) throw new Exception("The download failed SHA-256 verification. It was discarded. Check your connection and retry.");
                 // Preserve Windows' normal downloaded-app checks for executable payloads.
                 if (asset.name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                    File.WriteAllText(temporary + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\nHostUrl=" + uri.AbsoluteUri + "\r\n");
+                    MarkDownloaded(temporary, uri);
                 token.ThrowIfCancellationRequested(); File.Move(temporary, path); return path;
             } finally { if (File.Exists(temporary)) File.Delete(temporary); }
         }
