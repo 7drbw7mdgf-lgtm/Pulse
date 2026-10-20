@@ -60,7 +60,7 @@ function mergeMendeleyRecords(records, account) {
   return {added,updated,preserved,removed,duplicates};
 }
 async function syncMendeleyLibrary(manual=false) {
-  if (managerUi.syncing || !state.autosaveReady || state.libraryMutation || state.clearingLibrary || !managerUi.status?.mendeley?.connected) return;
+  if (state.pulseUpdateRestarting || managerUi.syncing || !state.autosaveReady || state.libraryMutation || state.clearingLibrary || !managerUi.status?.mendeley?.connected) return;
   if (!manual && (state.mendeleySyncPaused || managerUi.status.mendeley.automaticSync===false)) return;
   managerUi.syncing=true;const epoch=state.syncEpoch || 0;
   managerUi.syncMessage='Checking your Mendeley library…';updateManagers();

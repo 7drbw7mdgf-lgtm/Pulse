@@ -1,0 +1,7 @@
+.pulse-update-progress { width:100%; height:8px; margin:12px 0; accent-color:var(--accent,#6484df); }
+.pulse-update-notes { white-space:pre-wrap; max-height:220px; overflow:auto; font:inherit; font-size:12px; color:var(--muted,#7b8497); }
+.pulse-update-banner { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); z-index:170; display:flex; align-items:center; gap:14px; padding:13px 18px; border:1px solid var(--line,#dce1e8); border-radius:13px; background:var(--panel,#fff); color:var(--ink,#263044); box-shadow:0 8px 35px #0002; }
+.pulse-update-banner[hidden],.pulse-update-overlay[hidden] { display:none; }
+.pulse-update-overlay { position:fixed; inset:0; display:grid; place-items:center; z-index:10000; background:#182236c9; color:white; text-align:center; }
+.pulse-update-overlay div { padding:32px; max-width:450px; }
+.update-error { color:#bf4e45; }

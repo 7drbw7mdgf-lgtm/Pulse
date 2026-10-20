@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-pulse-update-info"
+description = "Enables the pulse_update_info command without any pre-configured scope."
+commands.allow = ["pulse_update_info"]
+
+[[permission]]
+identifier = "deny-pulse-update-info"
+description = "Denies the pulse_update_info command without any pre-configured scope."
+commands.deny = ["pulse_update_info"]

@@ -28,6 +28,10 @@ fi
 target_dir=${CARGO_TARGET_DIR:-"$source_root/desktop/src-tauri/target"}
 app_path="$target_dir/release/bundle/macos/Pulse.app"
 codesign --verify --deep --strict "$app_path"
+update_archive="$target_dir/release/bundle/macos/Pulse.app.tar.gz"
+[ -f "$update_archive" ] && [ -s "$update_archive.sig" ] || { echo 'Signed updater bundle is missing. Configure TAURI_SIGNING_PRIVATE_KEY before building.' >&2; exit 1; }
+cp "$update_archive" "$release_dir/Pulse-$version-macOS-arm64.app.tar.gz"
+cp "$update_archive.sig" "$release_dir/Pulse-$version-macOS-arm64.app.tar.gz.sig"
 mkdir -p "$release_dir/staging"
 ditto "$app_path" "$release_dir/staging/Pulse.app"
 # Stamp the helper with the version it ships with, so it accepts this app.
@@ -44,6 +48,7 @@ fi
 if [ -f "$source_root/docs/PERFORMANCE.md" ]; then
   cp "$source_root/docs/PERFORMANCE.md" "$release_dir/staging/PERFORMANCE.md"
 fi
+cp "$source_root/docs/APP-UPDATES.md" "$release_dir/staging/APP-UPDATES.md"
 if [ -f "$source_root/docs/releases/$version.md" ]; then
   mkdir -p "$release_dir/staging/releases"
   cp "$source_root/docs/releases/$version.md" "$release_dir/staging/releases/$version.md"
@@ -61,5 +66,5 @@ if [ -n "${PULSE_NOTARY_PROFILE:-}" ]; then
   xcrun stapler validate "$release_dir/$image"
 fi
 hdiutil verify "$release_dir/$image"
-(cd "$release_dir" && shasum -a 256 "$image") > "$release_dir/Pulse-$version-SHA256SUMS.txt"
+(cd "$release_dir" && shasum -a 256 "$image" "Pulse-$version-macOS-arm64.app.tar.gz") > "$release_dir/Pulse-$version-SHA256SUMS.txt"
 printf 'Built %s\n' "$release_dir/$image"

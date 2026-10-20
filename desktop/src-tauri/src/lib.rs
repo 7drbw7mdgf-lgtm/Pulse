@@ -13,6 +13,7 @@ use std::{
 };
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
+mod updates;
 
 struct BackendState(Mutex<Option<Child>>);
 #[derive(Deserialize)]
@@ -33,7 +34,11 @@ fn background_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
 }
 
 fn backend_command(backend: &std::path::Path) -> Result<Command, Box<dyn std::error::Error>> {
-    let frozen = backend.join(if cfg!(windows) { "pulse_backend.exe" } else { "pulse_backend" });
+    let frozen = backend.join(if cfg!(windows) {
+        "pulse_backend.exe"
+    } else {
+        "pulse_backend"
+    });
     if frozen.is_file() {
         return Ok(background_command(frozen));
     }
@@ -167,10 +172,24 @@ fn stop_backend(app: &tauri::AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(BackendState(Mutex::new(None)))
+        .manage(updates::UpdateState::default())
+        .invoke_handler(tauri::generate_handler![
+            updates::pulse_update_info,
+            updates::pulse_update_check,
+            updates::pulse_update_download,
+            updates::pulse_update_cancel,
+            updates::pulse_update_preferences,
+            updates::pulse_update_install,
+        ])
         .setup(|app| {
             let handle = app.handle().clone();
             let (child, launch) = launch_backend(&handle)?;
+            *app.state::<updates::UpdateState>()
+                .port
+                .lock()
+                .map_err(|_| "Update origin state is unavailable")? = Some(launch.port);
             *app.state::<BackendState>()
                 .0
                 .lock()
@@ -182,14 +201,19 @@ pub fn run() {
             .parse()?;
             let open_navigation = handle.clone();
             let open_window = handle.clone();
-            let port = launch.port;
             let result = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
                 .disable_drag_drop_handler()
                 .title("Pulse — Scientific Literature Discovery & Synthesis")
                 .inner_size(1400.0, 920.0)
                 .min_inner_size(1024.0, 720.0)
                 .on_navigation(move |url| {
-                    if url.host_str() == Some("127.0.0.1") && url.port() == Some(port) {
+                    let port = open_navigation
+                        .state::<updates::UpdateState>()
+                        .port
+                        .lock()
+                        .ok()
+                        .and_then(|port| *port);
+                    if url.host_str() == Some("127.0.0.1") && url.port() == port && port.is_some() {
                         return true;
                     }
                     if matches!(url.scheme(), "blob" | "data") {
@@ -247,6 +271,16 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window
+                    .app_handle()
+                    .state::<updates::UpdateState>()
+                    .installing
+                    .load(std::sync::atomic::Ordering::SeqCst)
+                {
+                    api.prevent_close();
+                }
+            }
             if matches!(event, tauri::WindowEvent::Destroyed) {
                 stop_backend(window.app_handle());
             }

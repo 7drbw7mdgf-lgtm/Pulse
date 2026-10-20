@@ -1,0 +1,11 @@
+{
+  "identifier": "pulse-updates",
+  "description": "Only Pulse's main loopback window can manage signed application updates.",
+  "local": false,
+  "remote": { "urls": ["http://127.0.0.1:*"] },
+  "windows": ["main"],
+  "permissions": [
+    "allow-pulse-update-info", "allow-pulse-update-check", "allow-pulse-update-download",
+    "allow-pulse-update-cancel", "allow-pulse-update-preferences", "allow-pulse-update-install"
+  ]
+}

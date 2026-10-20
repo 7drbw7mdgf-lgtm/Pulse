@@ -1,14 +1,14 @@
 {
   "name": "pulse-literature",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "private": true,
   "description": "Local scientific literature discovery and paper linkage workspace",
   "license": "MIT",
   "scripts": {
     "start": "python3 local-web/pulse-backend/pulse_backend.py",
     "test": "npm run test:workspace && npm run test:discovery-ui",
-    "test:workspace": "cd local-web && python3 -m unittest discover -s tests -p 'test_*.py' && node tests/parser.cjs && node tests/library.cjs && node tests/bulk_library.cjs && node tests/selection.cjs && node tests/inspector_sections.cjs && node tests/discovery_options.cjs && node tests/discovery_selection.cjs && node tests/discovery_review.cjs && node tests/literature_search.cjs && node tests/timeline.cjs && node tests/navigation.cjs && node tests/selected_report.cjs && node tests/mendeley_ui.cjs && node tests/semantic_scholar_settings.cjs && node tests/metadata_export.cjs && node tests/mendeley_sync.cjs && node tests/inspector.cjs && node tests/bridges_passages.cjs && node tests/discovery_ux.cjs && node tests/publication_status.cjs && node tests/map_interactions.cjs && node tests/map_tabs.cjs && node tests/test_ticked_papers_on_graph.cjs && node tests/test_library_group_color.cjs && node tests/graph_runtime.cjs && node tests/graph_incremental.cjs && node tests/library_performance.cjs && node tests/autosave_performance.cjs && node tests/trends.cjs && node --test tests/library_sync.test.mjs ../services/relay/test/relay.test.mjs && node tests/tags_and_bibliography.cjs",
-    "test:discovery-ui": "node tests/discovery_workspace.cjs && node tests/concept_search.cjs && node tests/search_quality_upgrade.cjs && node tests/research_workflow.cjs",
+    "test:workspace": "cd local-web && python3 -m unittest discover -s tests -p 'test_*.py' && node tests/parser.cjs && node tests/library.cjs && node tests/bulk_library.cjs && node tests/selection.cjs && node tests/inspector_sections.cjs && node tests/discovery_options.cjs && node tests/discovery_selection.cjs && node tests/discovery_review.cjs && node tests/literature_search.cjs && node tests/timeline.cjs && node tests/navigation.cjs && node tests/selected_report.cjs && node tests/mendeley_ui.cjs && node tests/semantic_scholar_settings.cjs && node tests/metadata_export.cjs && node tests/mendeley_sync.cjs && node tests/inspector.cjs && node tests/bridges_passages.cjs && node tests/discovery_ux.cjs && node tests/publication_status.cjs && node tests/map_interactions.cjs && node tests/map_tabs.cjs && node tests/test_ticked_papers_on_graph.cjs && node tests/test_library_group_color.cjs && node tests/graph_runtime.cjs && node tests/graph_incremental.cjs && node tests/library_performance.cjs && node tests/autosave_performance.cjs && node tests/trends.cjs && node --test tests/library_sync.test.mjs ../services/relay/test/relay.test.mjs && node tests/tags_and_bibliography.cjs && node tests/app_updates.cjs",
+    "test:discovery-ui": "node tests/discovery_workspace.cjs && node tests/concept_search.cjs && node tests/search_quality_upgrade.cjs && node tests/research_workflow.cjs && node tests/app_updates_ui.cjs",
     "test:performance:workspace": "node local-web/tests/large_library_benchmark.cjs"
   },
   "devDependencies": {

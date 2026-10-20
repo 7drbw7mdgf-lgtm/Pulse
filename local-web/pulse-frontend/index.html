@@ -1,7 +1,7 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai https://europepmc.org https://icite.od.nih.gov; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v2.1.1 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=2.1.1">
-<link rel="icon" type="image/png" href="favicon.png?v=2.0.2"> <link rel="stylesheet" href="css/search-workflow.css?v=2.1.1">
+<title>Pulse v2.1.2 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=2.1.2">
+<link rel="icon" type="image/png" href="favicon.png?v=2.0.2"> <link rel="stylesheet" href="css/search-workflow.css?v=2.1.2">
 </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
 <aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
@@ -265,6 +265,7 @@
 <button class="mac-sidebar-item" data-settings-tab="search" type="button"><span class="mac-sidebar-icon">⌕</span><span>Search sources</span></button>
 <button class="mac-sidebar-item" data-settings-tab="managers" type="button"><span class="mac-sidebar-icon">📚</span><span>Mendeley &amp; Zotero</span></button>
 <button class="mac-sidebar-item" data-settings-tab="sync" type="button"><span class="mac-sidebar-icon">⇅</span><span>Sync &amp; privacy</span></button>
+<button class="mac-sidebar-item" data-settings-tab="updates" type="button"><span class="mac-sidebar-icon">↓</span><span>App updates</span></button>
 </nav>
 <div class="settings-content mac-settings-body">
 <section data-settings-pane="backend" class="settings-pane mac-pane">
@@ -412,6 +413,17 @@
 <div class="mac-form-actions"><button id="crashReportsRefresh" class="mac-btn" type="button">Refresh</button><button id="crashReportsDeleteAll" class="mac-btn" type="button">Delete all</button></div>
 </div>
 </section>
+<section data-settings-pane="updates" class="settings-pane mac-pane" hidden>
+<div class="mac-group-card"><div class="mac-group-title">Pulse updates</div>
+<p id="pulseUpdateVersion" class="subtle">Pulse desktop</p>
+<p>New releases download from GitHub and are verified before installation. Your library and connection settings stay in place.</p>
+<label class="mac-check-label"><input id="pulseUpdateAuto" type="checkbox" checked> Automatically download updates</label>
+<p class="subtle">Pulse checks when it opens and every six hours while active. You choose when to restart.</p>
+<p id="pulseUpdateStatus" role="status" aria-live="polite">Preparing updater…</p>
+<progress id="pulseUpdateProgress" class="pulse-update-progress" max="1" hidden aria-label="Update download progress"></progress>
+<pre id="pulseUpdateNotes" class="pulse-update-notes" hidden></pre>
+<div class="mac-form-actions"><button id="pulseUpdateCheck" class="mac-btn" type="button">Check for updates</button><button id="pulseUpdateDownload" class="mac-btn primary" type="button" hidden>Download update</button><button id="pulseUpdateCancel" class="mac-btn" type="button" hidden>Cancel download</button><button id="pulseUpdateInstall" class="mac-btn primary" type="button" hidden>Restart &amp; update</button></div>
+</div></section>
 <section data-settings-pane="storage" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card">
 <div class="mac-group-title">Storage Information</div>
@@ -576,42 +588,45 @@
 <dialog id="crashReportDialog" class="record-dialog crash-report-dialog" aria-labelledby="crashReportTitle"><header><div><h2 id="crashReportTitle">Problem report</h2><small>This is exactly what Send uploads.</small></div><button id="crashReportClose" type="button" aria-label="Close problem report">×</button></header>
 <div class="record-dialog-body"><pre id="crashReportBody" class="crash-report-body"></pre><div class="record-actions"><button id="crashReportSend" class="button primary" type="button">Send report</button><button id="crashReportDelete" class="button secondary" type="button">Delete</button></div><p id="crashReportFeedback" class="record-feedback" role="status"></p></div></dialog>
 <div id="crashNotice" class="crash-notice" role="status" hidden><span id="crashNoticeText">Pulse recorded a problem.</span><button id="crashNoticeView" type="button">View report</button><button id="crashNoticeDismiss" type="button" aria-label="Dismiss">Dismiss</button></div>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=2.1.1"></script>
-<script src="js/map-tabs.js?v=2.1.1"></script>
-<script src="js/paper-links.js?v=2.1.1"></script>
-<script src="js/part_02.js?v=2.1.1"></script>
-<script src="js/part_03.js?v=2.1.1"></script>
-<script src="js/part_04.js?v=2.1.1"></script>
-<script src="js/part_05.js?v=2.1.1"></script>
-<script src="js/part_06.js?v=2.1.1"></script>
-<script src="js/part_07.js?v=2.1.1"></script>
-<script src="graph-engine.js?v=2.1.1"></script>
-<script src="js/part_08.js?v=2.1.1"></script>
-<script src="js/part_09.js?v=2.1.1"></script>
-<script src="js/graph-runtime.js?v=2.1.1"></script>
-<script src="js/part_10.js?v=2.1.1"></script>
-<script src="js/part_11.js?v=2.1.1"></script>
-<script src="js/part_12.js?v=2.1.1"></script>
-<script src="js/part_13.js?v=2.1.1"></script>
-<script src="js/part_14.js?v=2.1.1"></script>
-<script src="js/map-interactions.js?v=2.1.1"></script>
-<script src="js/part_15.js?v=2.1.1"></script>
-<script src="js/part_23.js?v=2.1.1"></script>
-<script src="js/mendeley-sync.js?v=2.1.1"></script>
-<script src="js/part_24.js?v=2.1.1"></script>
-<script src="js/library-sync.js?v=2.1.1"></script>
-<script src="js/sync-and-reports.js?v=2.1.1"></script>
-<script src="js/discovery-controls.js?v=2.1.1"></script>
-<script src="js/publication-status.js?v=2.1.1"></script>
-<script src="js/inspector.js?v=2.1.1"></script> <script src="js/part_16.js?v=2.1.1"></script>
-<script src="js/part_17.js?v=2.1.1"></script>
-<script src="js/part_18.js?v=2.1.1"></script>
-<script src="js/discovery-review.js?v=2.1.1"></script>
-<script src="js/part_19.js?v=2.1.1"></script>
-<script src="js/citation-lookup.js?v=2.1.1"></script>
-<script src="js/part_20.js?v=2.1.1"></script>
-<script src="js/timeline.js?v=2.1.1"></script>
-<script src="js/trends.js?v=2.1.1"></script>
-<script src="js/connection-diagnostics.js?v=2.1.1"></script>
-<script src="js/search-workflow.js?v=2.1.1"></script>
-<script src="js/part_21.js?v=2.1.1"></script> <script src="js/part_22.js?v=2.1.1"></script> </body> </html>
+<div id="pulseUpdateBanner" class="pulse-update-banner" role="status" hidden><span id="pulseUpdateBannerText"></span><button id="pulseUpdateBannerDetails" class="mac-btn" type="button">Details</button><button id="pulseUpdateBannerRestart" class="mac-btn primary" type="button">Restart &amp; update</button></div>
+<div id="pulseUpdateRestartOverlay" class="pulse-update-overlay" role="alert" hidden><div><h2>Updating Pulse</h2><p>Saving your library and installing the update. Pulse will reopen when it is ready.</p></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=2.1.2"></script>
+<script src="js/map-tabs.js?v=2.1.2"></script>
+<script src="js/paper-links.js?v=2.1.2"></script>
+<script src="js/part_02.js?v=2.1.2"></script>
+<script src="js/part_03.js?v=2.1.2"></script>
+<script src="js/part_04.js?v=2.1.2"></script>
+<script src="js/part_05.js?v=2.1.2"></script>
+<script src="js/part_06.js?v=2.1.2"></script>
+<script src="js/part_07.js?v=2.1.2"></script>
+<script src="graph-engine.js?v=2.1.2"></script>
+<script src="js/part_08.js?v=2.1.2"></script>
+<script src="js/part_09.js?v=2.1.2"></script>
+<script src="js/graph-runtime.js?v=2.1.2"></script>
+<script src="js/part_10.js?v=2.1.2"></script>
+<script src="js/part_11.js?v=2.1.2"></script>
+<script src="js/part_12.js?v=2.1.2"></script>
+<script src="js/part_13.js?v=2.1.2"></script>
+<script src="js/part_14.js?v=2.1.2"></script>
+<script src="js/map-interactions.js?v=2.1.2"></script>
+<script src="js/part_15.js?v=2.1.2"></script>
+<script src="js/part_23.js?v=2.1.2"></script>
+<script src="js/mendeley-sync.js?v=2.1.2"></script>
+<script src="js/part_24.js?v=2.1.2"></script>
+<script src="js/library-sync.js?v=2.1.2"></script>
+<script src="js/sync-and-reports.js?v=2.1.2"></script>
+<script src="js/discovery-controls.js?v=2.1.2"></script>
+<script src="js/publication-status.js?v=2.1.2"></script>
+<script src="js/inspector.js?v=2.1.2"></script> <script src="js/part_16.js?v=2.1.2"></script>
+<script src="js/part_17.js?v=2.1.2"></script>
+<script src="js/part_18.js?v=2.1.2"></script>
+<script src="js/discovery-review.js?v=2.1.2"></script>
+<script src="js/part_19.js?v=2.1.2"></script>
+<script src="js/citation-lookup.js?v=2.1.2"></script>
+<script src="js/part_20.js?v=2.1.2"></script>
+<script src="js/timeline.js?v=2.1.2"></script>
+<script src="js/trends.js?v=2.1.2"></script>
+<script src="js/connection-diagnostics.js?v=2.1.2"></script>
+<script src="js/search-workflow.js?v=2.1.2"></script>
+<script src="js/app-updates.js?v=2.1.2"></script>
+<script src="js/part_21.js?v=2.1.2"></script> <script src="js/part_22.js?v=2.1.2"></script> </body> </html>

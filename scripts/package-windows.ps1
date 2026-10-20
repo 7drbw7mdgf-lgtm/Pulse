@@ -18,6 +18,13 @@ try {
     $BaseConfig = Join-Path $Root 'desktop/src-tauri/tauri.windows.conf.json'
     $Signing = Start-PulseWindowsSigning $Output $BaseConfig
     $TauriConfig = if ($Signing) { $Signing.Configuration } else { $BaseConfig }
+    if ($env:PULSE_DEFER_UPDATE_SIGNING -eq '1') {
+        $Configuration = Get-Content $TauriConfig -Raw | ConvertFrom-Json -AsHashtable
+        if (-not $Configuration.bundle) { $Configuration.bundle = @{} }
+        $Configuration.bundle.createUpdaterArtifacts = $false
+        $TauriConfig = Join-Path $Output 'tauri-deferred-update-signing.json'
+        $Configuration | ConvertTo-Json -Depth 30 | Set-Content $TauriConfig -Encoding utf8NoBOM
+    }
     Invoke-Checked python @("-m", "pip", "install", "-r", "scripts/requirements-windows-build.txt")
     # Keep inference dependencies out of the main backend freeze. Both runtimes
     # carry their own interpreter and work without a user Python installation.
@@ -47,6 +54,11 @@ try {
     $Name = "Pulse-$Version-Windows-x64-Setup.exe"
     $Setup = Join-Path $Output $Name
     Copy-Item $Installers[0].FullName $Setup -Force
+    $UpdateSignature = $Installers[0].FullName + '.sig'
+    if ($env:PULSE_DEFER_UPDATE_SIGNING -ne '1') {
+        if (-not (Test-Path $UpdateSignature)) { throw 'Signed updater artifact missing. Configure TAURI_SIGNING_PRIVATE_KEY or explicitly defer signing for a local release-signing step.' }
+        Copy-Item $UpdateSignature ($Setup + '.sig') -Force
+    }
     $Signed = $false
     if ($Signing) {
         $Signature = Get-AuthenticodeSignature $Setup

@@ -1,6 +1,6 @@
 [package]
 name = "pulse-desktop"
-version = "2.1.1"
+version = "2.1.2"
 description = "Pulse - Scientific Literature Discovery & Synthesis"
 authors = ["Pulse"]
 edition = "2021"
@@ -19,3 +19,7 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tokio = { version = "1", features = ["process", "sync", "rt-multi-thread", "macros", "io-util", "time"] }
 dirs = "5"
+tauri-plugin-updater = "~2.14.0"
+
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }

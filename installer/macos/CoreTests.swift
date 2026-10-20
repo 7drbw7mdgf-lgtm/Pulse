@@ -63,7 +63,8 @@ import Foundation
         if let index = CommandLine.arguments.firstIndex(of: "--package"), CommandLine.arguments.count > index + 1 {
             let image = URL(fileURLWithPath: CommandLine.arguments[index + 1])
             let app = root.appendingPathComponent("Applications/Pulse.app")
-            try SetupEngine(cache: root).installPulse(image, version: "2.1.1", destination: app)
+            let version = image.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "Pulse-", with: "")
+            try SetupEngine(cache: root).installPulse(image, version: version, destination: app)
             expect(Bundle(url: app)?.bundleIdentifier == "com.pulse.desktop", "real DMG installs into isolated directory")
             let backend = app.appendingPathComponent("Contents/Resources/resources/backend/pulse_backend")
             expect(fm.isExecutableFile(atPath: backend.path), "bundled backend survives installation")

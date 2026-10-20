@@ -4,7 +4,7 @@ const graphScalarFields = ['id','title','year','journal','abstract','text','open
 const graphArrayFields = ['authors','paperKeywords','referenceIds','citedByIds'];
 const graphFallbackEngine = PulseGraph.createEngine();
 const graphWorkerScript = typeof document !== 'undefined' && document.currentScript?.src
-  ? new URL('../graph-worker.js?v=2.1.1',document.currentScript.src).href : 'graph-worker.js';
+  ? new URL('../graph-worker.js?v=2.1.2',document.currentScript.src).href : 'graph-worker.js';
 let graphWorker = null, graphWorkerDisabled = false, graphRequestId = 0;
 let graphAnalysisJob = null, graphAnalysisDesired = null, graphAnalysisReady = null;
 let graphLayoutJob = null, graphLayoutDesired = null, graphAnalysisResolve = null;

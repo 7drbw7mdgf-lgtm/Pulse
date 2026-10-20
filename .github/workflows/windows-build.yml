@@ -38,6 +38,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           Pop-Location
+          python -m unittest discover -s installer/tests
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test services/relay/test/relay.test.mjs local-web/tests/library_sync.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Read release version
@@ -53,7 +55,14 @@ jobs:
           PULSE_WINDOWS_CERT_BASE64: ${{ secrets.PULSE_WINDOWS_CERT_BASE64 }}
           PULSE_WINDOWS_CERT_PASSWORD: ${{ secrets.PULSE_WINDOWS_CERT_PASSWORD }}
           PULSE_WINDOWS_CERT_THUMBPRINT: ${{ secrets.PULSE_WINDOWS_CERT_THUMBPRINT }}
+          PULSE_DEFER_UPDATE_SIGNING: '1'
         run: ./scripts/package-windows.ps1
+      - name: Test native updater and signature verification
+        shell: pwsh
+        working-directory: desktop/src-tauri
+        run: |
+          cargo test --release --locked --lib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install and verify native app
         shell: pwsh
         run: |
@@ -70,6 +79,7 @@ jobs:
           name: Pulse-${{ steps.version.outputs.version }}-Windows-x64
           path: |
             outputs/windows/Pulse-${{ steps.version.outputs.version }}-Windows-x64-Setup.exe
+            outputs/windows/Pulse-${{ steps.version.outputs.version }}-Windows-x64-Setup.exe.sig
             outputs/windows/SHA256SUMS.txt
             outputs/windows/verification.json
           if-no-files-found: error
