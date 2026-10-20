@@ -17,6 +17,8 @@ Both installers use the same application source and version. The Mac app is ad h
 
 The next version adds multi-keyword/tag search, Fast/Enhanced ranking, saved searches and watchlists, a reading queue, transactional SQLite library storage, faster graph calculations and a bundled Mac Python backend. The citation update adds shared-reference/co-citation ranking, full indexed reference retrieval and shared OpenAlex caching. See the [2.1.1 development notes](docs/releases/2.1.1.md). The download links above remain the published stable release.
 
+A [lightweight native setup wizard](installer/README.md) is prepared for Mac and Windows. It downloads and verifies the app from GitHub, with optional Ollama and AI model setup. It requires a published 2.1.1+ release with a component manifest; the older stable release does not support this setup flow yet.
+
 ## What the app does
 
 - Follow author trajectories when discovering related research, and inspect available citation contexts and intent.

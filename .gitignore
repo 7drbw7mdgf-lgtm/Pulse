@@ -13,6 +13,8 @@ desktop/frontend/
 desktop/src-tauri/resources/
 desktop/src-tauri/target/
 desktop/src-tauri/gen/
+installer/**/bin/
+installer/**/obj/
 
 # Optional local search model and dependency runtime
 .search-runtime

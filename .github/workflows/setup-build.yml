@@ -1,0 +1,43 @@
+name: Build lightweight setup wizards
+on:
+  push:
+    paths: ['installer/**', 'scripts/*setup*', 'scripts/create-install-manifest.py', '.github/workflows/setup-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test manifest and native setup core
+        run: |
+          python3 -m unittest discover -s installer/tests
+          bash scripts/test-setup-macos.sh
+      - name: Build native Apple silicon wizard
+        run: bash scripts/package-setup-macos.sh outputs/setup
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pulse-Setup-Mac-arm64
+          path: |
+            outputs/setup/Pulse-Setup-Mac-arm64.zip
+            outputs/setup/Pulse-Setup-Mac-arm64-SHA256SUMS.txt
+          if-no-files-found: error
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test and build native x64 wizard
+        shell: pwsh
+        env:
+          PULSE_WINDOWS_CERT_BASE64: ${{ secrets.PULSE_WINDOWS_CERT_BASE64 }}
+          PULSE_WINDOWS_CERT_PASSWORD: ${{ secrets.PULSE_WINDOWS_CERT_PASSWORD }}
+          PULSE_WINDOWS_CERT_THUMBPRINT: ${{ secrets.PULSE_WINDOWS_CERT_THUMBPRINT }}
+        run: ./scripts/package-setup-windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pulse-Setup-Windows-x64
+          path: |
+            outputs/setup/Pulse-Setup-Windows-x64.exe
+            outputs/setup/Pulse-Setup-Windows-x64-SHA256SUMS.txt
+          if-no-files-found: error
