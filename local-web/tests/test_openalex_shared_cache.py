@@ -47,7 +47,8 @@ class OpenAlexSharedCacheTests(unittest.TestCase):
         openalex_cache.remember_works('https://api.openalex.org/works/W1?api_key=synthetic-private-key&mailto=private@example.com',{'id':'W1','title':'Public metadata'})
         db=Path(self.folder.name)/'openalex-works.sqlite3'
         self.assertNotIn(b'synthetic-private-key',db.read_bytes());self.assertNotIn(b'private@example.com',db.read_bytes())
-        self.assertEqual(db.stat().st_mode & 0o777,0o600)
+        if os.name != 'nt':  # Windows reports DOS read/write bits, not the profile's ACL.
+            self.assertEqual(db.stat().st_mode & 0o777,0o600)
         connection=sqlite3.connect(db)
         try:
             connection.execute('UPDATE works SET expires=0');connection.commit()

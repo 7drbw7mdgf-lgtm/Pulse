@@ -3,6 +3,7 @@ from pathlib import Path
 import sqlite3
 import threading
 import unittest
+from contextlib import closing
 from unittest.mock import patch
 import test_library_save as fixtures
 from test_library_save import storage, core, ClientError
@@ -27,7 +28,7 @@ class SQLiteLibraryTests(unittest.TestCase):
             'upsertPapers':[dict(papers[4],notes='Edited')],'removePaperIds':[],'paperOrder':[p['id'] for p in papers],
             'workspaceChanges':{},'removeWorkspaceKeys':[]})
         self.assertEqual(result['changedPapers'],1);self.assertEqual(core.LIBRARY_PATH.read_bytes(),baseline)
-        with sqlite3.connect(core.LIBRARY_PATH.with_suffix('.sqlite3')) as db:self.assertEqual(db.execute('SELECT id FROM updates').fetchall(),[('4',)])
+        with closing(sqlite3.connect(core.LIBRARY_PATH.with_suffix('.sqlite3'))) as db:self.assertEqual(db.execute('SELECT id FROM updates').fetchall(),[('4',)])
         self.assertEqual(storage.load_library()['papers'][4]['notes'],'Edited')
     def test_indexed_phrase_and_tag_search_all_any_and_removed_indexes(self):
         storage.save_library({'papers':[{'id':'a','title':'Outer membrane vesicles','abstract':'Biofilm formation','userTags':['Immunity']},
