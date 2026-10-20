@@ -481,7 +481,8 @@ mod tests {
         });
         // This local fixture is compiled only into tests; production has a fixed HTTPS GitHub feed.
         let config = serde_json::json!({
-            "pubkey":include_str!("../tests/fixtures/update.pub").trim(),"requireSignedVersion":true,"endpoints":[]
+            "pubkey":include_str!("../tests/fixtures/update.pub").trim(),"requireSignedVersion":true,"endpoints":[],
+            "dangerousInsecureTransportProtocol":true
         });
         let mut context = tauri::test::mock_context(tauri::test::noop_assets());
         context
