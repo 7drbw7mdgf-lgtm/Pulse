@@ -333,21 +333,29 @@
 
 
     function initFrankTheme() {
-      const saved = localStorage.getItem('pulse-theme') || localStorage.getItem('iratxe-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      let saved=window.__PULSE_THEME_PREFERENCE__;
+      try {saved ||= localStorage.getItem('pulse-theme') || localStorage.getItem('iratxe-theme');}catch(_){}
+      saved ||= 'system';
       applyFrankTheme(saved);
       els.themeToggle?.addEventListener('click', () => applyFrankTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{
+        if(document.documentElement.getAttribute('data-pulse-theme')==='system')applyFrankTheme('system');
+      });
     }
 
     function applyFrankTheme(theme) {
-      theme = theme === 'dark' ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', theme);
-      localStorage.setItem('pulse-theme', theme);
+      theme = ['system','light','dark','sepia','contrast'].includes(theme) ? theme : 'light';
+      const resolved=theme==='dark'||theme==='contrast'||(theme==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+      document.documentElement.setAttribute('data-theme', resolved);
+      document.documentElement.setAttribute('data-pulse-theme', theme);
+      try{localStorage.setItem('pulse-theme', theme);}catch(_){}
       if (els.themeToggle) {
-        const label = `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`;
+        const label = `Switch to ${resolved === 'dark' ? 'light' : 'dark'} theme`;
         els.themeToggle.setAttribute('aria-label', label);
-        els.themeToggle.setAttribute('aria-pressed', String(theme === 'dark'));
+        els.themeToggle.setAttribute('aria-pressed', String(resolved === 'dark'));
         els.themeToggle.title = `${label} (⌘D)`;
       }
+      if(typeof PulseSettings!=='undefined')PulseSettings.themeChanged(theme);
     }
 
     function updateSaveStatePill(status) {
@@ -375,7 +383,9 @@
           els.cloudProviderInput.value = settings.cloudProvider;
         }
         renderBackendStatus(settings);
+        return true;
       } catch (error) {
         renderBackendStatus(null, `${error.message}\n\nBackend URL: ${apiBase || window.location.origin}`);
+        return false;
       }
     }

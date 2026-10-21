@@ -416,14 +416,16 @@ const state = {
 
     function setSettingsOpen(open) {
       const wasOpen = !els.settingsPanel.hidden;
+      if(!open&&wasOpen&&typeof PulseSettings!=='undefined')PulseSettings.closed();
       if (open && !wasOpen) {
         state.settingsPreviousRail = activeRail() === 'settings' ? workspaceRail() : activeRail();
         highlightRail('settings');
       }
       els.settingsPanel.hidden = !open;
       els.settingsButton.setAttribute('aria-expanded', String(open));
-      if (open) loadBackendSettings();
+      if (open) state.settingsLoadPromise=loadBackendSettings();
       else if (wasOpen && activeRail() === 'settings') highlightRail(state.settingsPreviousRail || workspaceRail());
+      if(open&&!wasOpen&&typeof PulseSettings!=='undefined')PulseSettings.opened();
     }
 
     function discoveryPaperKey(item) {

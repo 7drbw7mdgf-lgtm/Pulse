@@ -1,5 +1,6 @@
 /* Search completeness, targeted retries and opt-in ranking experiments. */
 const PulseSearch = (() => {
+  let preferencesReady=false;
   async function post(path,payload={}){
     const response=await fetch(backendUrl(path),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify(payload)});
     const data=await response.json();if(!response.ok)throw Error(data.error||'Search settings could not be updated.');return data;
@@ -33,6 +34,7 @@ const PulseSearch = (() => {
       document.getElementById('adaptiveCitationIntent').value=data.structuralIntent;
       document.getElementById('biomedicalRouterToggle').checked=data.biomedicalRouter;
       document.getElementById('biomedicalModelFolder').value=data.biomedicalModelPath;
+      preferencesReady=true;
       status.textContent=data.biomedicalModelAvailable?'Biomedical model verified. Routing remains experimental.':'MiniLM is available by default. Add the optional biomedical model to activate routing.';
     } catch(error){status.textContent=error.message;}
   }
@@ -53,5 +55,11 @@ const PulseSearch = (() => {
     document.getElementById('cleanSearchCache').onclick=async()=>{try{const data=await post('/api/search/cache',{action:'clean'});document.getElementById('searchCacheStatus').textContent=`${data.entries} cached responses · ${(data.bytes/1048576).toFixed(1)} MB · ${data.removed} expired or excess responses removed`;}catch(error){document.getElementById('searchCacheStatus').textContent=error.message;}};
     settings();
   });
-  return {render,retry};
+  function preferencePayload(){
+    const adaptive=document.getElementById('adaptiveCitationToggle');
+    if(!adaptive||!preferencesReady)return {};
+    return {searchAdaptiveStructure:adaptive.checked,searchStructuralIntent:document.getElementById('adaptiveCitationIntent').value,
+      searchBiomedicalRouter:document.getElementById('biomedicalRouterToggle').checked,searchBiomedicalModelPath:document.getElementById('biomedicalModelFolder').value};
+  }
+  return {render,retry,preferencePayload};
 })();

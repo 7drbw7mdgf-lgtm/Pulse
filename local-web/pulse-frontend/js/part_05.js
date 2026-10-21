@@ -15,6 +15,7 @@
           method: 'POST',
           headers: apiHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
+            ...(typeof PulseSearch!=='undefined'?PulseSearch.preferencePayload():{}),
             aiProvider: els.aiProviderInput.value,
             cloudProvider: els.cloudProviderInput.value,
             cloudModel: els.cloudModelInput ? els.cloudModelInput.value.trim() : 'gemini-2.5-flash',
@@ -50,10 +51,12 @@
         else if (clearSemanticScholarApiKey) showToast('Semantic Scholar key cleared.');
         else if (clearDimensionsApiKey) showToast('Dimensions key cleared.');
         else showToast('Backend settings saved.');
+        return true;
       } catch (error) {
         els.backendStatus.classList.add('is-error');
         els.backendStatus.textContent = error.message;
         if (els.backendDiagnostics) els.backendDiagnostics.textContent = error.message;
+        return false;
       } finally {
         els.saveSettingsButton.disabled = false;
         if (els.clearDimensionsKeyButton) els.clearDimensionsKeyButton.disabled = false;

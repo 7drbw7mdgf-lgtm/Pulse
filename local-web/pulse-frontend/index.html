@@ -240,35 +240,45 @@
 <p id="clearPapersDescription">This removes the papers, their tags, map areas and graph links from this workspace. You can restore this workspace from Recovery, including after restarting Pulse.</p>
 <div class="clear-papers-dialog-actions"><button id="clearPapersCancel" class="button" type="button">Cancel</button><button id="clearPapersConfirm" class="button clear-papers-confirm" type="button">Clear all papers</button></div>
 </dialog>
-<!-- MODALS: MACOS NATIVE WINDOW REVAMP -->
-<div id="settingsPanel" class="settings-panel mac-window-panel" hidden>
-<div class="settings-card mac-settings-window" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-<div class="mac-window-titlebar">
-<div class="mac-traffic-lights">
-<button id="settingsCloseButton" class="mac-traffic-dot mac-dot-close" type="button" aria-label="Close settings window" title="Close"></button>
-<span class="mac-traffic-dot mac-dot-minimize" aria-hidden="true"></span> <span class="mac-traffic-dot mac-dot-zoom" aria-hidden="true"></span>
-</div>
-<span id="settingsTitle" class="mac-window-title">Settings</span>
-<div class="mac-titlebar-right"></div>
-</div>
-<div class="settings-shell mac-settings-shell">
-<nav class="settings-nav mac-settings-sidebar" aria-label="Settings sections">
-<button class="mac-sidebar-item is-active" data-settings-tab="backend" type="button">
-<span class="mac-sidebar-icon">✨</span> <span>AI &amp; Models</span>
-</button>
-<button class="mac-sidebar-item" data-settings-tab="extraction" type="button">
-<span class="mac-sidebar-icon">📄</span> <span>Paper Scanning</span>
-</button>
-<button class="mac-sidebar-item" data-settings-tab="storage" type="button">
-<span class="mac-sidebar-icon">💾</span> <span>Storage &amp; Reset</span>
-</button>
-<button class="mac-sidebar-item" data-settings-tab="search" type="button"><span class="mac-sidebar-icon">⌕</span><span>Search sources</span></button>
-<button class="mac-sidebar-item" data-settings-tab="managers" type="button"><span class="mac-sidebar-icon">📚</span><span>Mendeley &amp; Zotero</span></button>
-<button class="mac-sidebar-item" data-settings-tab="sync" type="button"><span class="mac-sidebar-icon">⇅</span><span>Sync &amp; privacy</span></button>
-<button class="mac-sidebar-item" data-settings-tab="updates" type="button"><span class="mac-sidebar-icon">↓</span><span>App updates</span></button>
+<!-- APPLICATION OPTIONS -->
+<div id="settingsPanel" class="settings-panel options-panel" hidden>
+<div class="settings-card mac-settings-window options-window" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" tabindex="-1">
+<header class="options-titlebar"><div class="options-brand" aria-hidden="true">P</div><span id="settingsTitle">Pulse Options</span><button id="settingsCloseButton" class="options-close" type="button" aria-label="Close settings" title="Close">×</button></header>
+<div class="settings-shell mac-settings-shell options-shell">
+<aside class="options-sidebar">
+<label class="options-search"><span aria-hidden="true">⌕</span><input id="settingsSearch" type="search" placeholder="Find a setting" autocomplete="off" aria-label="Find a setting"><kbd>⌘F</kbd></label>
+<nav class="settings-nav mac-settings-sidebar options-nav" aria-label="Settings categories" role="tablist" aria-orientation="vertical">
+<button id="settings-tab-general" class="mac-sidebar-item is-active" data-settings-tab="general" role="tab" aria-selected="true" aria-controls="settings-pane-general" type="button">General</button>
+<button id="settings-tab-search" class="mac-sidebar-item" data-settings-tab="search" role="tab" aria-selected="false" aria-controls="settings-pane-search" tabindex="-1" type="button">Search &amp; discovery</button>
+<button id="settings-tab-backend" class="mac-sidebar-item" data-settings-tab="backend" role="tab" aria-selected="false" aria-controls="settings-pane-backend" tabindex="-1" type="button">AI &amp; models</button>
+<button id="settings-tab-extraction" class="mac-sidebar-item" data-settings-tab="extraction" role="tab" aria-selected="false" aria-controls="settings-pane-extraction" tabindex="-1" type="button">Paper scanning</button>
+<button id="settings-tab-managers" class="mac-sidebar-item" data-settings-tab="managers" role="tab" aria-selected="false" aria-controls="settings-pane-managers" tabindex="-1" type="button">Reference managers</button>
+<button id="settings-tab-sync" class="mac-sidebar-item" data-settings-tab="sync" role="tab" aria-selected="false" aria-controls="settings-pane-sync" tabindex="-1" type="button">Sync &amp; privacy</button>
+<button id="settings-tab-storage" class="mac-sidebar-item" data-settings-tab="storage" role="tab" aria-selected="false" aria-controls="settings-pane-storage" tabindex="-1" type="button">Storage &amp; recovery</button>
+<button id="settings-tab-updates" class="mac-sidebar-item" data-settings-tab="updates" role="tab" aria-selected="false" aria-controls="settings-pane-updates" tabindex="-1" type="button">Updates</button>
 </nav>
-<div class="settings-content mac-settings-body">
-<section data-settings-pane="backend" class="settings-pane mac-pane">
+<p class="options-sidebar-note">Preferences for your<br>research workspace.</p>
+</aside>
+<main class="options-main">
+<header class="options-page-heading"><h2 id="settingsPageTitle">General</h2><p id="settingsPageDescription">Personalize the way Pulse looks on this computer.</p></header>
+<div id="settingsSearchResults" class="options-search-results" role="region" aria-label="Settings search results" hidden></div>
+<div class="settings-content mac-settings-body options-body">
+<section id="settings-pane-general" data-settings-pane="general" class="settings-pane mac-pane" role="tabpanel" aria-labelledby="settings-tab-general">
+<div class="mac-group-card"><div class="mac-group-title">Personalize your workspace</div>
+<div class="mac-form-row"><label class="mac-form-label" for="settingsTheme">Application theme</label><div class="mac-form-control"><select id="settingsTheme" class="mac-select"><option value="system">Use system setting</option><option value="light">Light</option><option value="dark">Dark</option><option value="sepia">Sepia</option><option value="contrast">High Contrast</option></select></div></div>
+<p class="subtle">Choose a theme below. System follows your device’s light or dark appearance.</p>
+<div class="theme-choices" role="radiogroup" aria-label="Application theme">
+<label class="theme-choice" data-theme-choice="system"><input type="radio" name="pulseTheme" value="system"><span class="theme-swatch swatch-system" aria-hidden="true"><i></i><b></b><em></em></span><strong>System</strong><small>Match device</small></label>
+<label class="theme-choice" data-theme-choice="light"><input type="radio" name="pulseTheme" value="light"><span class="theme-swatch swatch-light" aria-hidden="true"><i></i><b></b><em></em></span><strong>Light</strong><small>Clean &amp; bright</small></label>
+<label class="theme-choice" data-theme-choice="dark"><input type="radio" name="pulseTheme" value="dark"><span class="theme-swatch swatch-dark" aria-hidden="true"><i></i><b></b><em></em></span><strong>Dark</strong><small>Low-light focus</small></label>
+<label class="theme-choice" data-theme-choice="sepia"><input type="radio" name="pulseTheme" value="sepia"><span class="theme-swatch swatch-sepia" aria-hidden="true"><i></i><b></b><em></em></span><strong>Sepia</strong><small>Warm paper</small></label>
+<label class="theme-choice" data-theme-choice="contrast"><input type="radio" name="pulseTheme" value="contrast"><span class="theme-swatch swatch-contrast" aria-hidden="true"><i></i><b></b><em></em></span><strong>High Contrast</strong><small>Sharper edges</small></label>
+</div><div class="theme-save-status"><p id="themePreferenceStatus" class="subtle" role="status">Appearance is saved automatically on this computer.</p><button id="settingsThemeRetry" class="mac-btn" type="button" hidden>Retry save</button></div></div>
+<div class="mac-group-card"><div class="mac-group-title">Workspace preview</div>
+<div class="theme-workspace-preview" aria-label="Preview of your chosen theme"><div class="theme-preview-rail"><span>P</span><i></i><i></i><i></i></div><div class="theme-preview-library"><strong>Library</strong><span class="theme-preview-paper">A place for your research<small>Authors · Publication year</small></span><span class="theme-preview-line"></span><span class="theme-preview-line short"></span><span class="theme-preview-tag">Reading list</span></div><div class="theme-preview-map"><svg viewBox="0 0 250 140" aria-hidden="true"><path d="M45 75 123 46 202 87M123 46 137 113M45 75 137 113 202 87"/><circle cx="45" cy="75" r="12"/><circle cx="123" cy="46" r="18"/><circle cx="202" cy="87" r="12"/><circle cx="137" cy="113" r="9"/></svg><span>Your connections, in focus</span></div></div>
+<p class="subtle">Themes change the interface and canvas. Paper content and your research data stay the same.</p></div>
+</section>
+<section id="settings-pane-backend" role="tabpanel" aria-labelledby="settings-tab-backend" data-settings-pane="backend" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card">
 <div class="mac-group-title">AI Engine</div>
 <div class="mac-form-row">
@@ -312,7 +322,7 @@
 </div>
 </div>
 </div>
-<div class="mac-group-card"><div class="mac-group-title">Full-text library</div><p>Import S2ORC JSONL or JSONL.GZ excerpts for passage lookup. PMC open-access text is retrieved automatically.</p><input id="s2orcFileInput" type="file" accept=".jsonl,.json,.gz"><p id="s2orcImportStatus" role="status"></p></div>
+
 <div id="cloudSettingsStep" class="mac-group-card" hidden>
 <div class="mac-group-title">Cloud Credentials</div>
 <div class="mac-form-row">
@@ -347,7 +357,7 @@
 <input id="backendUrlInput" type="hidden">
 </div>
 </section>
-<section data-settings-pane="extraction" class="settings-pane mac-pane" hidden>
+<section id="settings-pane-extraction" role="tabpanel" aria-labelledby="settings-tab-extraction" data-settings-pane="extraction" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card">
 <div class="mac-group-title">Paper Ingestion Pipeline</div>
 <div class="mac-toggle-row">
@@ -358,8 +368,9 @@
 <input id="autoGemmaExtractionInput" type="checkbox" class="mac-switch" checked>
 </div>
 </div>
+<div class="mac-group-card"><div class="mac-group-title">Full-text library</div><p>Import S2ORC JSONL or JSONL.GZ excerpts for passage lookup. PMC open-access text is retrieved automatically.</p><input id="s2orcFileInput" type="file" accept=".jsonl,.json,.gz"><p id="s2orcImportStatus" role="status"></p></div>
 </section>
-<section data-settings-pane="search" class="settings-pane mac-pane" hidden>
+<section id="settings-pane-search" role="tabpanel" aria-labelledby="settings-tab-search" data-settings-pane="search" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card"><div class="mac-group-title">Search quality benchmark</div><p class="subtle">Review 40 research questions, relevant papers and landmark labels. Provisional judgments stay separate from reviewed evidence.</p><a class="mac-btn" href="benchmark-review.html" target="_blank" rel="noreferrer">Review benchmark questions ↗</a></div>
 <div class="mac-group-card"><div class="mac-group-title">Semantic Scholar</div>
 <p class="subtle">Add your API key to use it for paper searches, citations and recommendations. Public search is also available without a key. Your saved key stays encrypted on this computer.</p>
@@ -378,7 +389,7 @@
 <div class="mac-form-actions"><button id="clearOpenAlexKeyButton" class="mac-btn" type="button">Remove key</button><button class="mac-btn primary" data-save-settings type="button">Save</button></div>
 <p class="subtle"><a href="https://openalex.org" target="_blank" rel="noreferrer">Get an OpenAlex API key ↗</a></p></div>
 </section>
-<section data-settings-pane="managers" class="settings-pane mac-pane" hidden>
+<section id="settings-pane-managers" role="tabpanel" aria-labelledby="settings-tab-managers" data-settings-pane="managers" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card"><div class="mac-group-title">Connection check</div><p class="subtle">Check saved-library storage, Mendeley account access and a configured Semantic Scholar key. This contacts the configured services without sending your library.</p><button id="checkPulseConnections" class="mac-btn" type="button">Check connections</button><div id="pulseConnectionResults" role="status" aria-live="polite"></div></div>
 <div class="mac-group-card"><div class="mac-group-title">Mendeley Connection Settings</div>
 <p class="subtle">Connect Mendeley to automatically sync citations and send discovered papers directly to your Mendeley library. Register your application at the <a href="https://dev.mendeley.com/myapps.html" target="_blank" rel="noreferrer">Mendeley Developer Portal ↗</a>.</p>
@@ -393,7 +404,7 @@
 <div class="mac-form-actions"><button id="settingsOpenZoteroDialogButton" class="mac-btn" type="button">Check Zotero Connection</button></div>
 </div>
 </section>
-<section data-settings-pane="sync" class="settings-pane mac-pane" hidden>
+<section id="settings-pane-sync" role="tabpanel" aria-labelledby="settings-tab-sync" data-settings-pane="sync" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card"><div class="mac-group-title">Sync between your computers</div>
 <p class="subtle">Keep the library, notes, tags, reading status and maps the same on each computer. Everything is encrypted on this computer with a key made from your sync code; Pulse’s relay stores only data it cannot read. PDFs, extracted full text and map positions stay on the computer where they were made. Papers removed on another computer can be restored from Recovery.</p>
 <p id="syncStatusText" class="subtle" role="status">Sync is off.</p>
@@ -413,7 +424,7 @@
 <div class="mac-form-actions"><button id="crashReportsRefresh" class="mac-btn" type="button">Refresh</button><button id="crashReportsDeleteAll" class="mac-btn" type="button">Delete all</button></div>
 </div>
 </section>
-<section data-settings-pane="updates" class="settings-pane mac-pane" hidden>
+<section id="settings-pane-updates" role="tabpanel" aria-labelledby="settings-tab-updates" data-settings-pane="updates" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card"><div class="mac-group-title">Pulse updates</div>
 <p id="pulseUpdateVersion" class="subtle">Pulse desktop</p>
 <p>New releases download from GitHub and are verified before installation. Your library and connection settings stay in place.</p>
@@ -424,13 +435,14 @@
 <pre id="pulseUpdateNotes" class="pulse-update-notes" hidden></pre>
 <div class="mac-form-actions"><button id="pulseUpdateCheck" class="mac-btn" type="button">Check for updates</button><button id="pulseUpdateDownload" class="mac-btn primary" type="button" hidden>Download update</button><button id="pulseUpdateCancel" class="mac-btn" type="button" hidden>Cancel download</button><button id="pulseUpdateInstall" class="mac-btn primary" type="button" hidden>Restart &amp; update</button></div>
 </div></section>
-<section data-settings-pane="storage" class="settings-pane mac-pane" hidden>
+<section id="settings-pane-storage" role="tabpanel" aria-labelledby="settings-tab-storage" data-settings-pane="storage" class="settings-pane mac-pane" hidden>
 <div class="mac-group-card">
-<div class="mac-group-title">Storage Information</div>
+<div class="mac-group-title">Local library</div>
 <div class="mac-stats-grid">
 <div class="mac-stat-box"><span class="mac-stat-label">Papers in Library</span><strong id="storagePaperCount">0</strong></div> <div class="mac-stat-box"><span class="mac-stat-label">Saved Linkages</span><strong id="storageLinkCount">0</strong></div>
 </div>
 </div>
+<div class="mac-group-card"><div class="mac-group-title">Recovery</div><p class="subtle">Restore removed papers or recover a previous workspace without losing your current library.</p><div class="mac-form-actions"><button id="settingsOpenRecovery" class="mac-btn" type="button">Open recovery</button></div></div>
 <div class="mac-group-card mac-danger-group">
 <div class="mac-group-title mac-danger-text">Danger Zone</div>
 <div class="mac-danger-box">
@@ -440,7 +452,9 @@
 </div>
 </section>
 </div>
+</main>
 </div>
+<footer class="options-footer"><p id="settingsFooterStatus" role="status">Appearance is saved automatically.</p><button id="settingsApplyButton" class="mac-btn primary" type="button" hidden>Apply changes</button><button id="settingsDoneButton" class="mac-btn" type="button">Close</button></footer>
 </div>
 </div>
 <!-- LITERATURE DISCOVERY RESULTS MODAL -->
@@ -630,8 +644,10 @@
 <script src="js/connection-diagnostics.js?v=2.1.2"></script>
 <script src="js/search-workflow.js?v=2.1.2"></script>
 <link rel="stylesheet" href="css/research-tools.css?v=1">
+<link rel="stylesheet" href="css/settings-options.css?v=1">
 <script src="js/research-evidence.js?v=1"></script>
 <script src="js/screening.js?v=1"></script>
 <script src="js/research-search.js?v=1"></script>
 <script src="js/app-updates.js?v=2.1.2"></script>
+<script src="js/settings-options.js?v=1"></script>
 <script src="js/part_21.js?v=2.1.2"></script> <script src="js/part_22.js?v=2.1.2"></script> </body> </html>

@@ -167,9 +167,15 @@
     }
 
     function setSettingsTab(tab) {
+      const valid=[...document.querySelectorAll('[data-settings-tab]')].some(button=>button.dataset.settingsTab===tab);
+      if(!valid)tab='general';
+      state.settingsTab=tab;
       document.querySelectorAll('[data-settings-tab]').forEach(button => {
-        button.classList.toggle('is-active', button.dataset.settingsTab === tab);
+        const active=button.dataset.settingsTab===tab;
+        button.classList.toggle('is-active',active);
+        button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;
       });
+      if(typeof PulseSettings!=='undefined')PulseSettings.pageChanged(tab);
       document.querySelectorAll('[data-settings-pane]').forEach(pane => {
         pane.hidden = pane.dataset.settingsPane !== tab;
       });

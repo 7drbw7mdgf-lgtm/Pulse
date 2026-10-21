@@ -54,6 +54,7 @@ from pulse_core.mendeley_sync import page as mendeley_sync_page, preferences as 
 from pulse_core.paper_agent import agent_status, PAPER_SUMMARY_JOBS
 from pulse_core.passages import retrieve_passages, import_s2orc
 from pulse_core.research_evidence import verify_citation
+from pulse_core.appearance import load_theme, save_appearance
 from pulse_core.screening import handle as screening_action
 from pulse_core.cache_maintenance import handle as cache_action
 from pulse_core.ranking_experiments import status as ranking_status
@@ -257,6 +258,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/discovery/cancel",
             "/api/discovery/warm",
             "/api/discovery/compare",
+            "/api/appearance",
             "/api/papers/status",
             "/api/citations/chase",
             "/api/citations/network",
@@ -308,6 +310,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/discovery/pipeline": run_discovery_pipeline,
                 "/api/discovery/warm": lambda p: (threading.Thread(target=warm_paper_discovery, args=(p.get("paper"), p.get("options") if isinstance(p.get("options"), dict) else None), daemon=True, name="pulse-warm").start() if isinstance(p, dict) and isinstance(p.get("paper"), dict) else None, {"warmed": True})[1],
                 "/api/discovery/compare": handle_discovery_compare,
+                "/api/appearance": save_appearance,
                 "/api/papers/status":publication_status,
                 "/api/citations/chase": iterative_citation_chase,
                 "/api/citations/network": citation_network_triangulation,
@@ -426,6 +429,8 @@ class PulseHandler(SimpleHTTPRequestHandler):
         markup = ROOT.joinpath("index.html").read_text("utf-8")
         if allow_token_injection:
             token_script = f"<script>window.__PULSE_API_TOKEN__ = {json.dumps(API_TOKEN)}; window.__IRATXE_API_TOKEN__ = {json.dumps(API_TOKEN)};</script>"
+            theme = load_theme()
+            token_script += '<script>window.__PULSE_THEME_PREFERENCE__=' + json.dumps(theme) + ';if(window.__PULSE_THEME_PREFERENCE__){const p=window.__PULSE_THEME_PREFERENCE__;document.documentElement.setAttribute("data-pulse-theme",p);document.documentElement.setAttribute("data-theme",p==="dark"||p==="contrast"||(p==="system"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light");}</script>'
             if "</head>" in markup:
                 markup = markup.replace("</head>", f"{token_script}\n</head>", 1)
             else:

@@ -15,6 +15,8 @@ Both installers use the same application source and version. The Mac app is ad h
 
 Unreleased source additions: [full-text evidence and citation verification, formal screening projects, source retries, cache maintenance and opt-in ranking experiments](docs/search/RESEARCH-WORKFLOWS.md). These additions are not in the 2.1.2 installers linked above.
 
+The source also includes [Word-style settings with searchable categories and five appearance themes](docs/SETTINGS.md).
+
 ## Setup and future updates
 
 - [Small Mac setup wizard](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest/download/Pulse-Setup-Mac-arm64.zip)
