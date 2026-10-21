@@ -37,10 +37,11 @@ function localSearchMatches(paper,terms) {
   return !tests.length|| (terms.match==='any'?tests.some(Boolean):tests.every(Boolean));
 }
 function researchLibraryFilter(paper) {
-  return (!state.readingQueueOnly||paper.readingStatus==='to-read')&&localSearchMatches(paper,state.librarySearchTerms);
+  return (!state.readingQueueOnly||paper.readingStatus==='to-read')&&localSearchMatches(paper,state.librarySearchTerms)&&(typeof PulseLibraryTools==='undefined'||PulseLibraryTools.matchesActive(paper));
 }
 function clearLibrarySearch() {
   state.librarySearchTerms=null;state.readingQueueOnly=false;
+  if(state.libraryFeatures)state.libraryFeatures.activeCollectionId=null;
   renderPapers();renderResearchWorkflow();scheduleAutosave();
 }
 function runUnifiedSearch() {
@@ -90,7 +91,8 @@ function recordSavedSearchResults(records,request,data) {
   const key=paper=>typeof discoveryPaperKey==='function'?discoveryPaperKey(paper):String(paper.doi||paper.paperId||paper.title||'').toLowerCase();
   const seen=new Set(item.seenKeys||[]), hadBaseline=item.baseline, fresh=records.filter(paper=>!seen.has(key(paper)));
   records.forEach(paper=>seen.add(key(paper)));
-  item.seenKeys=[...seen].slice(-2000);item.baseline=true;item.lastChecked=new Date().toISOString();item.newCount=hadBaseline?fresh.length:0;item.checkError='';
+  item.seenKeys=[...seen].slice(-20000);item.baseline=true;item.lastChecked=new Date().toISOString();item.newCount=hadBaseline?fresh.length:0;item.checkError='';
+  if(item.watching&&hadBaseline&&typeof PulseWatchlists!=='undefined')PulseWatchlists.capture(item,fresh);
   scheduleAutosave();renderResearchWorkflow();
   return request.onlyNew&&hadBaseline?fresh:records;
 }
@@ -105,7 +107,8 @@ function restoreResearchWorkflow(data) {
   state.savedSearches=(Array.isArray(data.savedSearches)?data.savedSearches:[]).filter(item=>item&&typeof item.id==='string'&&item.config&&typeof item.config==='object').slice(0,50).map(item=>({
     id:item.id.slice(0,80),name:String(item.name||'Saved search').slice(0,80),createdAt:item.createdAt,lastChecked:item.lastChecked,
     watching:Boolean(item.watching),archived:Boolean(item.archived),baseline:Boolean(item.baseline),newCount:Number(item.newCount)||0,
-    seenKeys:(Array.isArray(item.seenKeys)?item.seenKeys:[]).filter(x=>typeof x==='string').slice(-2000),config:{
+    frequency:['daily','weekly'].includes(item.frequency)?item.frequency:'manual',nextCheck:Number(item.nextCheck)||0,checkError:String(item.checkError||'').slice(0,300),
+    seenKeys:(Array.isArray(item.seenKeys)?item.seenKeys:[]).filter(x=>typeof x==='string').slice(-20000),config:{
       query:String(item.config.query||'').slice(0,1000),tags:(Array.isArray(item.config.tags)?item.config.tags:[]).filter(x=>typeof x==='string').slice(0,12),
       match:item.config.match==='any'?'any':'all',rankingMode:item.config.rankingMode==='enhanced'?'enhanced':'fast',scope:item.config.scope==='library'?'library':'online',
       sources:Object.fromEntries(['semanticScholar','europePmc','core','arxiv'].map(k=>[k,item.config.sources?.[k]!==false])),limit:[50,100,200,500,1000,2000].includes(item.config.limit)?item.config.limit:200}}));
@@ -133,6 +136,7 @@ function renderResearchWorkflow() {
   list.innerHTML=active.map(item=>`<div class="saved-search-row"><button type="button" data-saved-load="${escapeHtml(item.id)}" title="Load search">${escapeHtml(item.name)}</button><small>${escapeHtml(item.checkError||(!item.baseline?'Not checked yet':item.newCount?`${item.newCount} new matches`:'No new matches'))}</small><div class="saved-search-actions"><label><input type="checkbox" data-saved-watch="${escapeHtml(item.id)}" ${item.watching?'checked':''}> Watch</label><button type="button" data-saved-run="${escapeHtml(item.id)}" ${state.discoveryLoading?'disabled':''}>${item.watching?'Check new':'Run'}</button><button type="button" data-saved-remove="${escapeHtml(item.id)}" aria-label="Remove ${escapeHtml(item.name)}">Remove</button></div></div>`).join('')||'<p>Save searches to return to the same keywords, tags and sources.</p>';
   list.innerHTML+=archived.map(item=>`<button type="button" data-saved-restore="${escapeHtml(item.id)}">Restore ${escapeHtml(item.name)}</button>`).join('');
   const status=document.getElementById('savedSearchCount');if(status)status.textContent=active.length?` (${active.length})`:'';
+  if(typeof PulseWatchlists!=='undefined')PulseWatchlists.decorate();
 }
 function startTrendsTopicSearch(topic) {
   state.discoveryResearchQuestion='"'+String(topic).replace(/"/g,'""')+'"';state.discoverySearchTags=[];state.discoverySearchScope='online';

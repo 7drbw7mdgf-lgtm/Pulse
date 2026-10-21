@@ -187,7 +187,18 @@ def extract_paper_cell(column_def, paper, settings=None, cancel_event=None):
     col_id = column_def.get("id") or column_def.get("name")
     abstract = str(paper.get("abstract") or "").strip()
     full_text = str(paper.get("text") or "").strip()
-    blocks = paper.get('evidencePassages') or []
+    blocks = []
+    for block in paper.get('evidencePassages') or []:
+        if block.get('evidenceColumn') and block.get('pdfId'):
+            try:
+                from pulse_core.pdf_reader import passage
+                verified=passage({'id':block['pdfId'],'page':block.get('page'),'quote':block.get('text'),'section':block.get('section')})
+                if block['evidenceColumn'] == col_id:
+                    return {'value':verified['text'],'quote':verified['text'],'grounded':True,'reviewerSelected':True,
+                            'passage':verified['text'],'provenance':dict(verified,paperId=paper.get('id'))}
+            except Exception:
+                continue
+        blocks.append(block)
     has_full_text = bool(blocks) or len(full_text) > max(1000, len(abstract) + 500)
     source_text = (full_text or '\n\n'.join(p.get('text','') for p in blocks)) if has_full_text else abstract
     source_type = "paper" if has_full_text else "abstract"
@@ -205,7 +216,7 @@ def extract_paper_cell(column_def, paper, settings=None, cancel_event=None):
             raw = heuristic_extract_column(col_id, block['text'], source_type='paper', title=str(paper.get('title') or ''))
             cell = verify_grounded_cell(raw.get('value'),raw.get('quote'),block['text'],source_type='paper')
             if cell['grounded']:
-                cell['provenance'] = {key:block.get(key) for key in ('section','page','anchor','url','source') if block.get(key)}
+                cell['provenance'] = {key:block.get(key) for key in ('section','page','anchor','url','source','pdfId','paperId') if block.get(key)}
                 cell['passage'] = context_excerpt(block['text'],cell['quote'])
                 return cell
         return {'value':'Not stated in the paper','quote':'','grounded':False}

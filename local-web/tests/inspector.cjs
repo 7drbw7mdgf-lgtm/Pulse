@@ -126,7 +126,10 @@ const tiku = { id: 'tiku', title: 'Host immunity and cellular responses to bacte
   const cleaned = ctx.normalizeImportedPaper({ title: 'Imported', readingStatus: 'maybe', relevance: 'yes', notes: 'x'.repeat(25000), userTags: 'a; b' }, 'test');
   assert.equal(cleaned.readingStatus, '');
   assert.equal(cleaned.relevance, '');
-  assert.equal(cleaned.notes.length, 20000);
+  assert.equal(cleaned.notes.length, 25000, 'Long notes from merged records are preserved');
+  const merged = ctx.normalizeImportedPaper({title:'Merged',notes:'a'.repeat(25000)+'\n\n'+'b'.repeat(25000),userTags:Array.from({length:40},(_,i)=>'tag-'+i)},'test');
+  assert.equal(merged.notes.length,50002);
+  assert.equal(merged.userTags.length,40,'Merged tags are preserved beyond the normal editing limit');
   assert.deepEqual([...cleaned.userTags], ['a', 'b']);
   // Library sync links copies of a paper by syncId; reloading the library must keep it.
   const synced = ctx.normalizeImportedPaper({ title: 'Synced', syncId: 'ab'.repeat(16) }, 'test');

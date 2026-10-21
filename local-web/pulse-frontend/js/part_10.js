@@ -62,6 +62,8 @@
     }
     function renderWorkspacePanels() {
       if (typeof PulseNetworkSearch !== 'undefined') PulseNetworkSearch.refresh();
+      if (typeof PulseMapTools !== 'undefined') PulseMapTools.refresh();
+      if (typeof PulseLibraryTools !== 'undefined') PulseLibraryTools.refresh();
       if (typeof renderMultiSelection === 'function') renderMultiSelection();
       renderTagFilterBar();
       if (state.mode === 'table') renderTableView();

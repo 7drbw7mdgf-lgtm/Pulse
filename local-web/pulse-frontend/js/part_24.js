@@ -114,7 +114,7 @@ async function refreshLibraryRecovery() {
   document.getElementById('libraryUndo').disabled = !state.libraryUndoId || state.libraryMutation;
   const list = document.getElementById('libraryRecoveryList');
   list.innerHTML = result.items.length ? result.items.map(item => {
-    const label = item.reason === 'remove' ? 'Removed papers' : item.reason === 'clear' ? 'Cleared workspace' : 'Before workspace restore';
+    const label = item.reason === 'remove' ? 'Removed papers' : item.reason === 'clear' ? 'Cleared workspace' : item.reason === 'merge' ? 'Before duplicate merge' : 'Before workspace restore';
     return `<div class="library-recovery-item"><div><strong>${label}</strong><small>${item.count} paper${item.count === 1 ? '' : 's'} · ${escapeHtml(new Date(item.createdAt).toLocaleString())}</small></div><button class="button small secondary" type="button" data-recovery-id="${escapeHtml(item.id)}" ${item.restoredAt ? 'disabled' : ''}>${item.restoredAt ? 'Restored' : item.reason === 'remove' ? 'Restore papers' : 'Restore workspace'}</button></div>`;
   }).join('') : '<p>No recovery points yet. Removed papers and cleared workspaces will appear here.</p>';
   list.querySelectorAll('[data-recovery-id]').forEach(button => button.addEventListener('click', async () => {

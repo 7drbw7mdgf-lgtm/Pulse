@@ -34,7 +34,20 @@ def local_paper(paper, saved):
         if same_id and doi and other and doi != other:
             raise ClientError(409, 'The saved paper DOI conflicts with the selected paper.')
         if same_id or (doi and doi == other):
-            return dict(paper, **candidate)
+            merged=dict(paper, **candidate)
+            # A quote can be sent to the matrix before the coalesced autosave.
+            # Accept only quotations verified against the local attachment.
+            if 'evidencePassages' in paper:
+                pending=[]
+                for block in paper.get('evidencePassages') or []:
+                    if not isinstance(block,dict) or not block.get('pdfId') or not block.get('evidenceColumn'): continue
+                    try:
+                        from pulse_core.pdf_reader import passage
+                        passage({'id':block['pdfId'],'page':block.get('page'),'quote':block.get('text')})
+                        pending.append(block)
+                    except ClientError: continue
+                merged['evidencePassages']=[block for block in candidate.get('evidencePassages') or [] if not (block.get('pdfId') and block.get('evidenceColumn'))]+pending
+            return merged
     return dict(paper)
 
 
@@ -61,7 +74,7 @@ def hydrate(papers, use_open_access=True):
         paper = local_paper(paper, saved)
         text = str(paper.get('text') or '').strip()
         abstract = str(paper.get('abstract') or '').strip()
-        if text and text != abstract:
+        if (text and text != abstract) or paper.get('evidencePassages'):
             paper['evidencePassages'] = text_blocks(paper)
             paper['evidenceSource'] = 'Local imported text'
             return paper

@@ -226,6 +226,7 @@ function bindLibraryRowEvents(root) {
     }
 
     function renderPapers() {
+      if(typeof PulseNetworkSearch!=='undefined')PulseNetworkSearch.refresh();
       if(typeof renderResearchWorkflow==='function')renderResearchWorkflow();
       const areaOptions = paper => [
         `<option value="">No area</option>`,
@@ -395,7 +396,7 @@ function bindLibraryRowEvents(root) {
       };
 
 
-      const hasFilter = Boolean((state.filterTags && state.filterTags.length > 0)||state.librarySearchTerms||state.readingQueueOnly);
+      const hasFilter = Boolean((state.filterTags && state.filterTags.length > 0)||state.librarySearchTerms||state.readingQueueOnly||state.libraryFeatures?.activeCollectionId);
       const displayPapers = libraryDisplayPapers({clusterByPaper});
 
       if (els.paperCount) {

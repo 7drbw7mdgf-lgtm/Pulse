@@ -67,6 +67,7 @@
       }
       if (incoming.metadataSource) existing.metadataSource = incoming.metadataSource;
       if (incoming.metadataNote) existing.metadataNote = incoming.metadataNote;
+      if(incoming.pdfAttachments?.length)existing.pdfAttachments=[...(existing.pdfAttachments||[]),...incoming.pdfAttachments.filter(file=>!(existing.pdfAttachments||[]).some(row=>row.id===file.id))];
     }
 
     function addParsedPapers(papers) {
@@ -255,6 +256,10 @@
       }
       if (browserTextIsUnsafe && !backendText && !paper.metadataMatch?.matched) {
         paper.metadataNote = 'No readable PDF text was found. Add the paper title, DOI or other metadata to search.';
+      }
+      if((file.name||'').toLowerCase().endsWith('.pdf')&&typeof PulsePDF!=='undefined'){
+        try{const attachment=await PulsePDF.store(file.name,buffer);paper.pdfAttachments=[attachment];paper.evidencePassages=(paper.evidencePassages||[]).map(row=>({...row,pdfId:attachment.id,paperId:paper.id}));}
+        catch(error){paper.metadataNote=(paper.metadataNote?paper.metadataNote+' ':'')+'PDF reader: '+error.message;}
       }
       return paper;
     }

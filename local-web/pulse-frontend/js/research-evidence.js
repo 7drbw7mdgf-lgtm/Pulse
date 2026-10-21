@@ -26,6 +26,11 @@ const PulseEvidence = (() => {
     if(at>=0){context.append(document.createTextNode(text.slice(0,at)));const mark=document.createElement('mark');mark.textContent=cell.quote;context.append(mark,document.createTextNode(text.slice(at+cell.quote.length)));}
     else context.textContent=text;
     const link=root.querySelector('[data-evidence-link]');link.hidden=true;
+    root.querySelector('[data-evidence-pdf]')?.remove();
+    if(p.pdfId&&typeof PulsePDF!=='undefined'){
+      const button=document.createElement('button');button.dataset.evidencePdf='';button.type='button';button.className='mac-btn';button.textContent='Open PDF page '+p.page;
+      button.onclick=()=>{const paper=state.papers.find(row=>row.id===p.paperId||(row.pdfAttachments||[]).some(file=>file.id===p.pdfId));if(paper)PulsePDF.open(paper.id,p.page,p.pdfId);else showToast('Attach the original PDF to this paper to open the page.');};root.append(button);
+    }
     try {const url=new URL(p.url||'');if(url.protocol==='https:'&&!url.username&&!url.password){if(p.anchor)url.hash=p.anchor;link.href=url.href;link.hidden=false;}}catch(_){}
     if(!root.open)root.showModal();
   }

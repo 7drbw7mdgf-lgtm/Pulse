@@ -99,7 +99,9 @@ function addPaperUserTag(paper, value) {
   if (!tag) return false;
   const tags = paperUserTags(paper);
   if (tags.some(existing => existing.toLowerCase() === tag.toLowerCase())) return false;
-  paper.userTags = [...tags, tag].slice(0, 24);
+  // Merges may preserve more than the normal 24-tag editing limit.
+  if (tags.length >= 24) return false;
+  paper.userTags = [...tags, tag];
   return true;
 }
 

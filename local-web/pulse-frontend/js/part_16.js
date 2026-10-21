@@ -144,6 +144,7 @@ function bindInspectorSections() {
             </label>
           </div>
           <div class="insp-actions">
+            <button class="insp-btn" type="button" data-read-pdf>Read PDF</button>
             <a class="insp-btn primary" href="${escapeHtml(openHref || `https://scholar.google.com/scholar?q=${encodeURIComponent(paperMetadataSearchText(paper))}`)}" target="_blank" rel="noreferrer">${inspectorIcon('open')}${openHref ? 'Open paper' : 'Find paper'}</a>
             <button class="insp-btn soft" data-action="run-discovery-pipeline" type="button" ${state.discoveryLoading || !Object.values(discoveryConfiguration().branches).some(Boolean) ? 'disabled' : ''}>${inspectorIcon('discover')}${state.discoveryLoading ? 'Discovering…' : 'Discover related'}</button>
             <div class="insp-more">
@@ -298,9 +299,10 @@ function bindInspectorSections() {
         </section>
         <section class="insp-section">
           <label class="insp-label" for="inspectorNotes">Notes</label>
-          <textarea id="inspectorNotes" class="insp-notes" rows="8" maxlength="20000" placeholder="What does this paper show, and how will you use it?">${escapeHtml(paper.notes || '')}</textarea>
+          <textarea id="inspectorNotes" class="insp-notes" rows="8" maxlength="200000" placeholder="What does this paper show, and how will you use it?">${escapeHtml(paper.notes || '')}</textarea>
           <span class="insp-saved">${inspectorIcon('lock')}<span data-notes-status>Saved on this computer only</span></span>
         </section>
+        ${typeof PulsePDF!=='undefined'?PulsePDF.linksMarkup(paper):''}
         <button class="insp-btn block" type="button" data-action="open-agent">${inspectorIcon('chat')}Ask the AI agent about this paper</button>`;
     }
 
@@ -316,6 +318,7 @@ function bindInspectorSections() {
     function updatePaperPersonalField(paper, field, value) {
       paper[field] = value;
       scheduleAutosave();
+      if(typeof renderPapers==='function')renderPapers();
     }
 
     function bindInspector(paper, recommendations) {
@@ -345,11 +348,11 @@ function bindInspectorSections() {
       }));
       const notes = root.querySelector('#inspectorNotes');
       notes?.addEventListener('input', () => {
-        paper.notes = notes.value.slice(0, 20000);
+        paper.notes = notes.value;
         const label = root.querySelector('[data-notes-status]');
         if (label) label.textContent = 'Saving…';
         clearTimeout(state.inspectorNotesTimer);
-        state.inspectorNotesTimer = setTimeout(() => { scheduleAutosave(); if (label) label.textContent = 'Saved on this computer only'; }, 600);
+        state.inspectorNotesTimer = setTimeout(() => { scheduleAutosave(); if(state.librarySearchTerms||state.libraryFeatures?.activeCollectionId)renderPapers();if(typeof PulseNetworkSearch!=='undefined')PulseNetworkSearch.refresh();if (label) label.textContent = 'Saved on this computer only'; }, 600);
       });
       const tagInput = root.querySelector('[data-action="add-user-tag"]');
       tagInput?.addEventListener('keydown', event => {

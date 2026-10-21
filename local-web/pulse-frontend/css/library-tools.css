@@ -1,0 +1,11 @@
+.library-organise-tools { display:flex; flex-wrap:wrap; gap:5px; padding:6px 10px; border-bottom:1px solid var(--line); }
+.library-organise-tools button,.library-organise-tools select { font:10.5px var(--font-ui); padding:5px 7px; border:1px solid var(--line); border-radius:5px; background:var(--surface); color:var(--ink-2); cursor:pointer; }
+.library-organise-tools select { width:100%; }
+.library-tool-tabs { display:flex; gap:8px; padding-bottom:12px; border-bottom:1px solid var(--line); }
+.library-tool-tabs [aria-pressed=true] { color:var(--accent); background:var(--accent-soft); border-color:var(--accent-line); }
+.collection-list>div { display:flex; gap:6px; align-items:center; margin:8px 0; }.collection-list>div>button:first-child { flex:1; text-align:left; }.collection-list small { margin-left:8px; color:var(--muted); }
+.duplicate-layout { display:grid; grid-template-columns:170px minmax(0,1fr); gap:16px; }.duplicate-pairs { max-height:500px; overflow:auto; }.duplicate-pairs button { width:100%; text-align:left; margin-bottom:6px; }.duplicate-pairs small { display:block; color:var(--muted); font-size:10px; margin-top:5px; }
+.duplicate-pairs [aria-pressed=true] { border-color:var(--accent); }.duplicate-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:11px; }.duplicate-table td,.duplicate-table th { border:1px solid var(--line); padding:8px; vertical-align:top; overflow-wrap:anywhere; }.duplicate-table th { width:22%; text-align:left; }.duplicate-table label { display:flex; align-items:flex-start; gap:6px; }.duplicate-table input { flex:none; }.duplicate-table span { white-space:pre-wrap; max-height:220px; overflow:auto; }.duplicate-warning { color:var(--accent) !important; }
+.library-tools-dialog { width:1000px; }.watch-inbox article { padding:14px 0; border-top:1px solid var(--line); }.watch-inbox h3 { margin:0 0 7px; font-size:14px; }.watch-inbox details { padding:10px 0; }.watch-inbox small { color:var(--muted); }.watch-inbox button { margin-right:6px; }
+.watch-frequency { display:flex; align-items:center; gap:6px; margin-top:8px; font-size:11px; }
+@media(max-width:700px) { .duplicate-layout { grid-template-columns:1fr; }.duplicate-pairs { max-height:130px; }.library-tool-tabs { flex-wrap:wrap; } }

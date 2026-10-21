@@ -197,7 +197,7 @@ def change_library(payload):
             ids = None
             after = {'papers': [], 'areas': [], 'reset': True, 'format': 'pulse-map', 'mendeleyIgnored':before.get('mendeleyIgnored',[]), 'mendeleySyncPaused':True}
         if reason == 'clear':
-            for key in ('savedSearches', 'discoverySearchTags', 'discoveryQueryMatch', 'discoveryRankingMode', 'discoverySearchScope'):
+            for key in ('savedSearches', 'discoverySearchTags', 'discoveryQueryMatch', 'discoveryRankingMode', 'discoverySearchScope', 'libraryFeatures'):
                 if key in before: after[key] = copy.deepcopy(before[key])
         # Recovery must be durable before the destructive write is attempted.
         identity = _snapshot(before, reason, ids)
@@ -216,7 +216,18 @@ def restore_recovery(payload):
         if snapshot.get('restoredAt'): raise ClientError(409, 'This recovery point has already been restored.')
         current = _validate_workspace(payload.get('workspace'))
         saved = _validate_workspace(snapshot['workspace'])
-        if snapshot.get('paperIds') is not None:
+        if snapshot.get('reason') == 'merge':
+            affected=set(snapshot.get('paperIds') or [])
+            master=next((p for p in current['papers'] if p['id']==snapshot.get('mergedId')),None)
+            from pulse_core.library_merge import FIELDS
+            protected=FIELDS|{'notes','userTags','mapIds','pdfAttachments','pdfAnnotations','pdfQuotes'}
+            merged=snapshot.get('mergedPaper') or {}
+            if master is None or any((master.get(key) or '') != (merged.get(key) or '') for key in protected):
+                raise ClientError(409, 'The merged paper has changed since the merge. Export its new edits before restoring the original records.')
+            after=copy.deepcopy(current)
+            after['papers']=[p for p in current['papers'] if p['id'] not in affected]+[p for p in saved['papers'] if p['id'] in affected]
+            after['links']=[link for link in current.get('links',[]) if link.get('source') not in affected and link.get('target') not in affected]+[link for link in saved.get('links',[]) if link.get('source') in affected or link.get('target') in affected]
+        elif snapshot.get('paperIds') is not None:
             after = copy.deepcopy(current)
             existing = {p['id'] for p in current['papers']}
             restored = [p for p in saved['papers'] if p['id'] in snapshot['paperIds'] and p['id'] not in existing]

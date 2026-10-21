@@ -81,6 +81,7 @@
       card.classList.toggle('is-multi-selected', selected.has(card.dataset.paper));
     });
     renderSelectionBar();
+    if (typeof PulseMapTools !== 'undefined') PulseMapTools.refresh();
   }
 
   function renderSelectionBar() {

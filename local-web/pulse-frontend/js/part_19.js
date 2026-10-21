@@ -105,6 +105,7 @@
         discoveryLimit: state.discoveryLimit || 200,
         discoveryResearchQuestion: state.discoveryResearchQuestion || '',
         savedSearches: state.savedSearches || [], discoverySearchTags: state.discoverySearchTags || [],
+        libraryFeatures: state.libraryFeatures || {},
         discoveryQueryMatch: state.discoveryQueryMatch || 'all', discoveryRankingMode: state.discoveryRankingMode || 'fast',
         discoverySearchScope: state.discoverySearchScope || 'online', librarySearchTerms: state.librarySearchTerms || null, readingQueueOnly: Boolean(state.readingQueueOnly),
         discoveryStrictExclusions: state.discoveryStrictExclusions || [],
@@ -169,6 +170,7 @@
           mapId: paper.mapId || '',
           readingStatus: paper.readingStatus || '', relevance: paper.relevance || '',
           notes: paper.notes || '', userTags: paper.userTags || [],
+          tags:paper.tags||[],mergedAliases:paper.mergedAliases||[],pdfAttachments:paper.pdfAttachments||[],pdfAnnotations:paper.pdfAnnotations||[],pdfQuotes:paper.pdfQuotes||[],
           text: paper.text || '',
           size: paper.size || 0,
           x: paper.x || 0,
@@ -223,6 +225,7 @@
       state.discoveryLimit = [50,100,200,500,1000,2000].includes(Number(data.discoveryLimit)) ? Number(data.discoveryLimit) : 200;
       state.discoveryResearchQuestion = String(data.discoveryResearchQuestion || '').slice(0,1000);
       if(typeof restoreResearchWorkflow==='function')restoreResearchWorkflow(data);
+      if(typeof PulseLibraryTools!=='undefined')PulseLibraryTools.restore(data.libraryFeatures);
       state.discoveryStrictExclusions = Array.isArray(data.discoveryStrictExclusions) ? data.discoveryStrictExclusions.slice(0,16) : [];
       state.discoveryDiversify = data.discoveryDiversify !== false;
       state.discoveryBridgeMode = Boolean(data.discoveryBridgeMode);state.discoveryAiTriage = data.discoveryAiTriage !== undefined ? Boolean(data.discoveryAiTriage) : false;state.discoveryFastEmbed = data.discoveryFastEmbed !== undefined ? Boolean(data.discoveryFastEmbed) : true;state.discoveryFullTextSearch = Boolean(data.discoveryFullTextSearch);

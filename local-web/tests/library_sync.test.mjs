@@ -10,6 +10,12 @@ globalThis.paperIdentityKey = paper => paper.doi ? `doi:${paper.doi.toLowerCase(
 require('../pulse-frontend/js/library-sync.js');
 const S = globalThis;
 
+test('PDF attachments, highlights, page quotations and merge aliases remain local', () => {
+  const view=S.paperSyncView({id:'paper',title:'Public metadata',notes:'User note',pdfAttachments:[{id:'pdf'}],pdfAnnotations:[{quote:'Local PDF text'}],pdfQuotes:[{quote:'Local quote'}],mergedAliases:[{id:'old'}]});
+  assert.equal(view.title,'Public metadata');assert.equal(view.notes,'User note');
+  for(const field of ['pdfAttachments','pdfAnnotations','pdfQuotes','mergedAliases'])assert.equal(field in view,false);
+});
+
 function relayFor(env) {
   return async (op, body) => {
     const response = await worker.fetch(new Request(`https://relay.example/sync/v1/${op}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }), env);

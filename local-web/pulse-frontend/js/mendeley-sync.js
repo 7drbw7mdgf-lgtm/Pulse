@@ -25,6 +25,7 @@ function mergeMendeleyRecords(records, account) {
     if (ignored.has(key) || ignored.has(mendeleyRemoteKey(account,'identity:'+paperIdentityKey(record)))) {removed++; continue;}
     if (primary.get(paperIdentityKey(record))!==record) {duplicates++; continue;}
     let paper=state.papers.find(p=>p.mendeleySource?.account===account && p.mendeleySource.id===record.remoteId);
+    if(!paper){const merged=state.papers.find(p=>(p.mergedAliases||[]).some(alias=>alias.mendeleySource?.account===account&&alias.mendeleySource.id===record.remoteId));if(merged){duplicates++;continue;}}
     if (!paper) {
       paper=state.papers.find(p=>paperIdentityKey(p)===paperIdentityKey(record));
       if (paper && handled.has(paper)) {duplicates++; continue;}

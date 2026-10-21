@@ -1,6 +1,7 @@
 import re
 import time
 import math
+import os
 from pathlib import Path
 from pulse_core.security import decode_pdf_streams
 
@@ -54,7 +55,7 @@ def ordered_page_text(page,textpage=None):
 
 
 def local_ocr(page):
-    data=Path(__file__).resolve().parent.parent/'ocr-data'
+    data=Path(os.environ['PULSE_OCR_DATA']) if os.environ.get('PULSE_OCR_DATA') else Path(__file__).resolve().parent.parent/'ocr-data'
     if not (data/'eng.traineddata').is_file():raise RuntimeError('Local OCR language data unavailable')
     area=float(page.rect.width)*float(page.rect.height)
     if not math.isfinite(area) or area<=0 or area>20_000_000:raise ValueError('Page geometry exceeds the local OCR rendering budget')
