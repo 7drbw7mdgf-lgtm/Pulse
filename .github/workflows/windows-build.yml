@@ -60,8 +60,10 @@ jobs:
       - name: Test native updater and signature verification
         shell: pwsh
         working-directory: desktop/src-tauri
+        env:
+          PULSE_TEST_MANIFEST: '1'
         run: |
-          cargo test --release --locked --lib
+          cargo test --release --locked --target x86_64-pc-windows-msvc --lib
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install and verify native app
         shell: pwsh
