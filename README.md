@@ -13,6 +13,8 @@ A private, local-first desktop workspace for scientific literature discovery and
 
 Both installers use the same application source and version. The Mac app is ad hoc signed and not Apple-notarized; the Windows installer is unsigned.
 
+Source updates after 2.1.4 add [automatic open-PDF previews, optional download for local annotation and vertically scrolling paper details](docs/PDF-ACCESS.md). These updates require a future installer/update build; the published 2.1.4 packages are unchanged.
+
 This release includes [focus maps, resizable panels, network match navigation, typed paths, smart collections, duplicate review, PDF reading and scheduled watchlists](docs/WORKSPACE-TOOLS.md). It also includes [full-text evidence, citation verification and formal screening](docs/search/RESEARCH-WORKFLOWS.md), plus [searchable settings and five themes](docs/SETTINGS.md).
 
 ## Setup and future updates

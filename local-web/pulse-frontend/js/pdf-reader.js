@@ -1,37 +1,100 @@
 /* Local page images plus a selectable text layer; annotations stay in the library. */
 const PulsePDF = (() => {
   let paperId=null,attachmentId=null,pageNumber=1,pageData=null,selection=null,revision=0,undo=null;
+  let previewFile=null,lookupController=null,openRevision=0,downloading=false;
   const cache=new Map(),colors={yellow:'#ffe66b',green:'#92e5aa',blue:'#8bc9ff',pink:'#f7a3d2'};
   const paper=()=>state.papers.find(p=>p.id===paperId),root=()=>document.getElementById('pdfReaderDialog');
   const get=id=>document.getElementById(id);
-  async function request(endpoint,payload) {
+  async function request(endpoint,payload,signal) {
     await backendReady;
-    const response=await fetch(backendUrl('/api/reader/'+endpoint),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify(payload)});
-    const data=await response.json();if(!response.ok)throw Error(data.error||'PDF request failed.');return data;
+    const response=await fetch(backendUrl('/api/reader/'+endpoint),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify(payload),signal});
+    const data=await response.json();if(!response.ok){const error=Error(data.error||'PDF request failed.');error.status=response.status;throw error;}return data;
   }
   async function store(name,buffer){return request('attach',{name,contentBase64:arrayBufferToBase64(buffer)});}
+  function displayMode() {
+    const preview=Boolean(previewFile),file=previewFile||(paper()?.pdfAttachments||[]).find(row=>row.id===attachmentId);
+    root().classList.toggle('is-preview',preview);
+    get('pdfReadMode').textContent=preview?'Preview':attachmentId?'Local copy':'PDF reader';
+    get('pdfAnnotationSidebar').hidden=!attachmentId||preview;
+    get('pdfPreviewNotice').hidden=!preview;
+    get('pdfDownloadCopy').hidden=!attachmentId;
+    get('pdfDownloadCopy').textContent=preview?'Download & annotate':'Download original PDF';
+    get('pdfDownloadCopy').disabled=downloading;
+    get('pdfUndoAnnotation').hidden=preview||!attachmentId;
+    get('pdfAttachmentSelect').innerHTML=(paper()?.pdfAttachments||[]).map(row=>`<option value="${escapeHtml(row.id)}">${escapeHtml(row.name)}</option>`).join('');
+    if(preview&&!get('pdfAttachmentSelect').querySelector(`option[value="${previewFile.id}"]`)){
+      const option=new Option('Open PDF preview',previewFile.id);get('pdfAttachmentSelect').add(option);
+    }
+    get('pdfAttachmentSelect').value=attachmentId||'';
+    get('pdfAttachmentSelect').hidden=!get('pdfAttachmentSelect').options.length;
+    const href=safeHref(file?.url||'');get('pdfSourceLink').hidden=!href;get('pdfSourceLink').href=href||'#';
+    get('pdfSourceLink').textContent=file?.source?'Source: '+file.source:'PDF source';
+    updateSelection();
+  }
   async function open(id,page=1,pdfId=null) {
+    lookupController?.abort();const generation=++openRevision;previewFile=null;
     paperId=id;const p=paper();if(!p)return showToast('This paper is no longer in the library.');
     attachmentId=pdfId||(p.pdfAttachments||[])[0]?.id||null;pageNumber=Number(page)||1;selection=null;pageData=null;revision++;
     get('pdfReaderTitle').textContent=p.title;
-    get('pdfAttachmentSelect').innerHTML=(p.pdfAttachments||[]).map(file=>`<option value="${escapeHtml(file.id)}">${escapeHtml(file.name)}</option>`).join('');
-    get('pdfAttachmentSelect').value=attachmentId||'';
+    get('pdfPageNumber').value=1;get('pdfPageTotal').textContent='';get('pdfFindOpen').disabled=false;
+    displayMode();
     if(!root().open)root().showModal();
-    await loadPage();
+    if(!attachmentId)return findOpenPDF();
+    if(!await loadPage()&&generation===openRevision&&root().open)return findOpenPDF();
+  }
+  async function findOpenPDF() {
+    const p=paper();if(!p)return;
+    lookupController?.abort();lookupController=new AbortController();const generation=++openRevision;
+    const lookupPaper=Object.fromEntries(['title','authors','year','doi','pmid','pmcid','openAlexId','arxivId','url','pdfUrl','fullTextUrl','fullTextLinks','openAccessPdf'].map(key=>[key,p[key]]));
+    revision++;attachmentId=null;previewFile=null;pageData=null;selection=null;displayMode();
+    get('pdfPageSurface').replaceChildren();get('pdfPageTotal').textContent='';
+    get('pdfPrevPage').disabled=true;get('pdfNextPage').disabled=true;get('pdfFindOpen').disabled=true;
+    get('pdfReaderStatus').textContent='Finding a freely available PDF…';
+    try{
+      const file=await request('preview',{paper:lookupPaper},lookupController.signal);
+      if(generation!==openRevision||!root().open)return;
+      previewFile=file;attachmentId=file.id;pageNumber=1;displayMode();await loadPage();
+    }catch(error){if(generation===openRevision&&error.name!=='AbortError')get('pdfReaderStatus').textContent=error.message;}
+    finally{if(generation===openRevision)get('pdfFindOpen').disabled=false;}
+  }
+  async function downloadCopy() {
+    if(!attachmentId||downloading||!paper())return;
+    const targetId=paperId,generation=openRevision,identity=attachmentId;
+    const file=previewFile||(paper().pdfAttachments||[]).find(row=>row.id===identity);
+    downloading=true;displayMode();get('pdfReaderStatus').textContent='Downloading PDF…';
+    try{
+      if(previewFile){
+        if(state.libraryMutation||state.clearingLibrary)throw Error('Wait for the current library change to finish, then download again.');
+        const kept=await request('keep',{id:identity,name:file.name,url:file.url,source:file.source});
+        const p=state.papers.find(row=>row.id===targetId);if(!p)throw Error('This paper is no longer in the library.');
+        p.pdfAttachments ||= [];const existing=p.pdfAttachments.find(row=>row.id===kept.id);
+        if(existing)Object.assign(existing,kept);else p.pdfAttachments.push(kept);
+        scheduleAutosave();
+        if(await saveLibrary()===false)throw Error('The PDF copy is saved locally, but the library could not be saved. Try downloading again.');
+        if(generation===openRevision){previewFile=null;displayMode();drawPage();renderAnnotations();renderDetails();}
+      }
+      const response=await fetch(backendUrl('/api/reader/file/'+identity),{headers:apiHeaders()});
+      if(!response.ok)throw Error('The PDF file could not be downloaded. Try again.');
+      const url=URL.createObjectURL(await response.blob()),anchor=document.createElement('a');
+      anchor.href=url;anchor.download=(file?.name||'Paper.pdf').replace(/[\\/:*?"<>|\x00-\x1f]/g,'_');anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      if(generation===openRevision)get('pdfReaderStatus').textContent='Local copy saved. You can now highlight, annotate and quote this PDF.';
+    }catch(error){if(generation===openRevision)get('pdfReaderStatus').textContent=error.message;}
+    finally{downloading=false;if(root().open)displayMode();}
   }
   async function attach(file) {
     if(!file||!paper())return;
+    lookupController?.abort();const generation=++openRevision;
     const id=paperId;get('pdfReaderStatus').textContent='Attaching PDF…';get('pdfAttachInput').disabled=true;
     try{const attachment=await store(file.name,await file.arrayBuffer()),p=state.papers.find(row=>row.id===id);if(!p)return;
       p.pdfAttachments ||= [];if(!p.pdfAttachments.some(row=>row.id===attachment.id))p.pdfAttachments.push(attachment);
-      scheduleAutosave();if(paperId===id)await open(id,1,attachment.id);renderDetails();
+      scheduleAutosave();if(paperId===id&&generation===openRevision&&root().open)await open(id,1,attachment.id);renderDetails();
     }catch(error){get('pdfReaderStatus').textContent=error.message;}finally{get('pdfAttachInput').disabled=false;get('pdfAttachInput').value='';}
   }
   async function loadPage() {
     const token=++revision;selection=null;updateSelection();
     get('pdfPageSurface').replaceChildren();get('pdfReaderStatus').textContent=attachmentId?'Loading page…':'Attach a local PDF to read and annotate it here. PDFs stay on this computer.';
     get('pdfPrevPage').disabled=true;get('pdfNextPage').disabled=true;
-    if(!attachmentId){renderAnnotations();return;}
+    if(!attachmentId){renderAnnotations();return false;}
     try {
       const key=attachmentId+':'+pageNumber;
       const data=cache.get(key)||await request('page',{id:attachmentId,page:pageNumber,scale:1.4});
@@ -39,9 +102,10 @@ const PulsePDF = (() => {
       cache.set(key,data);while(cache.size>3)cache.delete(cache.keys().next().value);
       pageData=data;pageNumber=data.page;get('pdfPageNumber').value=pageNumber;get('pdfPageNumber').max=data.pages;
       get('pdfPageTotal').textContent='/ '+data.pages;get('pdfPrevPage').disabled=pageNumber<=1;get('pdfNextPage').disabled=pageNumber>=data.pages;
-      get('pdfReaderStatus').textContent=data.warning||`${data.source} · select text to highlight or quote it`;
+      get('pdfReaderStatus').textContent=data.warning||(previewFile?`${previewFile.source} · ${data.pages} pages`:`${data.source} · select text to highlight or quote it`);
       drawPage();renderAnnotations();
-    }catch(error){if(token===revision)get('pdfReaderStatus').textContent=error.message;}
+      return true;
+    }catch(error){if(token===revision)get('pdfReaderStatus').textContent=error.message;return false;}
   }
   function drawPage() {
     if(!pageData)return;
@@ -69,10 +133,10 @@ const PulsePDF = (() => {
   }
   function updateSelection() {
     get('pdfSelectedQuote').textContent=selection?selection.quote.slice(0,400):'Select text on the page.';
-    for(const id of ['pdfSaveHighlight','pdfQuoteNotes','pdfQuoteMatrix'])get(id).disabled=!selection;
+    for(const id of ['pdfSaveHighlight','pdfQuoteNotes','pdfQuoteMatrix'])get(id).disabled=!selection||Boolean(previewFile);
   }
   async function save(kind='highlight') {
-    if(!selection||!paper())return;
+    if(!selection||!paper()||previewFile)return;
     const selected={...selection},targetId=paperId,color=get('pdfHighlightColor').value,memo=get('pdfAnnotationMemo').value,section=get('pdfEvidenceColumn').selectedOptions[0].textContent;
     get('pdfReaderStatus').textContent='Verifying selected passage…';
     try {
@@ -109,9 +173,10 @@ const PulsePDF = (() => {
   }
   document.addEventListener('DOMContentLoaded',()=>{
     const dialog=document.createElement('dialog');dialog.id='pdfReaderDialog';dialog.className='pulse-tool-dialog pdf-reader';
-    dialog.innerHTML='<header><h2 id="pdfReaderTitle">PDF reader</h2><button id="pdfReaderClose" type="button" aria-label="Close PDF reader">×</button></header><div class="pdf-toolbar"><label class="pdf-attach-button">Attach PDF<input id="pdfAttachInput" type="file" accept="application/pdf,.pdf"></label><select id="pdfAttachmentSelect" aria-label="PDF attachment"></select><button id="pdfPrevPage" type="button" aria-label="Previous PDF page">←</button><label>Page <input id="pdfPageNumber" type="number" value="1" min="1" aria-label="PDF page"></label><span id="pdfPageTotal"></span><button id="pdfNextPage" type="button" aria-label="Next PDF page">→</button><select id="pdfZoom" aria-label="PDF zoom"><option value="fit">Fit width</option><option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select><button id="pdfUndoAnnotation" type="button" disabled>Undo remove</button></div><p id="pdfReaderStatus" role="status"></p><div class="pdf-reader-body"><div id="pdfViewport" class="pdf-viewport"><div id="pdfPageSurface" class="pdf-page"></div></div><aside class="pdf-sidebar"><h3>Highlight &amp; quote</h3><blockquote id="pdfSelectedQuote">Select text on the page.</blockquote><label>Colour<select id="pdfHighlightColor"><option value="yellow">Yellow</option><option value="green">Green</option><option value="blue">Blue</option><option value="pink">Pink</option></select></label><label>Memo<textarea id="pdfAnnotationMemo" rows="2" maxlength="20000"></textarea></label><button id="pdfSaveHighlight" type="button" disabled>Save highlight</button><button id="pdfQuoteNotes" type="button" disabled>Quote to Notes</button><label>Evidence column<select id="pdfEvidenceColumn"><option value="finding">Finding</option><option value="method">Method</option><option value="limitation">Limitation</option><option value="system">Study system</option><option value="aim">Aim</option></select></label><button id="pdfQuoteMatrix" type="button" disabled>Quote to Evidence Matrix</button><h3>Saved highlights</h3><div id="pdfAnnotations"></div></aside></div>';
-    document.body.append(dialog);get('pdfReaderClose').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{revision++;selection=null;pageData=null;cache.clear();get('pdfPageSurface').replaceChildren();});
-    get('pdfAttachInput').onchange=event=>attach(event.target.files[0]);get('pdfAttachmentSelect').onchange=()=>{attachmentId=get('pdfAttachmentSelect').value;pageNumber=1;loadPage();};
+    dialog.innerHTML='<header><h2 id="pdfReaderTitle">PDF reader</h2><button id="pdfReaderClose" type="button" aria-label="Close PDF reader">×</button></header><div class="pdf-access-bar"><span id="pdfReadMode" class="pdf-mode-badge">PDF reader</span><a id="pdfSourceLink" target="_blank" rel="noreferrer" hidden>PDF source</a><button id="pdfDownloadCopy" type="button" hidden>Download &amp; annotate</button></div><p id="pdfPreviewNotice" class="pdf-preview-notice" hidden>This is a preview. Download a local copy to add highlights, memos and quotations.</p><div class="pdf-toolbar"><button id="pdfFindOpen" type="button">Find open PDF</button><label class="pdf-attach-button">Attach PDF<input id="pdfAttachInput" type="file" accept="application/pdf,.pdf"></label><select id="pdfAttachmentSelect" aria-label="PDF attachment"></select><button id="pdfPrevPage" type="button" aria-label="Previous PDF page">←</button><label>Page <input id="pdfPageNumber" type="number" value="1" min="1" aria-label="PDF page"></label><span id="pdfPageTotal"></span><button id="pdfNextPage" type="button" aria-label="Next PDF page">→</button><select id="pdfZoom" aria-label="PDF zoom"><option value="fit">Fit width</option><option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select><button id="pdfUndoAnnotation" type="button" disabled>Undo remove</button></div><p id="pdfReaderStatus" role="status"></p><div class="pdf-reader-body"><div id="pdfViewport" class="pdf-viewport"><div id="pdfPageSurface" class="pdf-page"></div></div><aside id="pdfAnnotationSidebar" class="pdf-sidebar"><h3>Highlight &amp; quote</h3><blockquote id="pdfSelectedQuote">Select text on the page.</blockquote><label>Colour<select id="pdfHighlightColor"><option value="yellow">Yellow</option><option value="green">Green</option><option value="blue">Blue</option><option value="pink">Pink</option></select></label><label>Memo<textarea id="pdfAnnotationMemo" rows="2" maxlength="20000"></textarea></label><button id="pdfSaveHighlight" type="button" disabled>Save highlight</button><button id="pdfQuoteNotes" type="button" disabled>Quote to Notes</button><label>Evidence column<select id="pdfEvidenceColumn"><option value="finding">Finding</option><option value="method">Method</option><option value="limitation">Limitation</option><option value="system">Study system</option><option value="aim">Aim</option></select></label><button id="pdfQuoteMatrix" type="button" disabled>Quote to Evidence Matrix</button><h3>Saved highlights</h3><div id="pdfAnnotations"></div></aside></div>';
+    document.body.append(dialog);get('pdfReaderClose').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{if(dialog.open)return;lookupController?.abort();openRevision++;revision++;selection=null;pageData=null;cache.clear();get('pdfPageSurface').replaceChildren();});
+    get('pdfFindOpen').onclick=findOpenPDF;get('pdfDownloadCopy').onclick=downloadCopy;
+    get('pdfAttachInput').onchange=event=>attach(event.target.files[0]);get('pdfAttachmentSelect').onchange=()=>{lookupController?.abort();openRevision++;get('pdfFindOpen').disabled=false;attachmentId=get('pdfAttachmentSelect').value;if(previewFile?.id!==attachmentId)previewFile=null;pageNumber=1;displayMode();loadPage();};
     get('pdfPrevPage').onclick=()=>{pageNumber--;loadPage();};get('pdfNextPage').onclick=()=>{pageNumber++;loadPage();};
     get('pdfPageNumber').onchange=()=>{pageNumber=Math.max(1,Math.min(pageData?.pages||1,Number(get('pdfPageNumber').value)||1));loadPage();};get('pdfZoom').onchange=drawPage;
     get('pdfPageSurface').addEventListener('mouseup',captureSelection);get('pdfPageSurface').addEventListener('keyup',captureSelection);

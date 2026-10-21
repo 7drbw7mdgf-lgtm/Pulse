@@ -144,8 +144,8 @@ function bindInspectorSections() {
             </label>
           </div>
           <div class="insp-actions">
-            <button class="insp-btn" type="button" data-read-pdf>Read PDF</button>
-            <a class="insp-btn primary" href="${escapeHtml(openHref || `https://scholar.google.com/scholar?q=${encodeURIComponent(paperMetadataSearchText(paper))}`)}" target="_blank" rel="noreferrer">${inspectorIcon('open')}${openHref ? 'Open paper' : 'Find paper'}</a>
+            <button class="insp-btn primary" type="button" data-read-pdf>Read PDF</button>
+            <a class="insp-btn" href="${escapeHtml(openHref || `https://scholar.google.com/scholar?q=${encodeURIComponent(paperMetadataSearchText(paper))}`)}" target="_blank" rel="noreferrer">${inspectorIcon('open')}${openHref ? 'Open paper' : 'Find paper'}</a>
             <button class="insp-btn soft" data-action="run-discovery-pipeline" type="button" ${state.discoveryLoading || !Object.values(discoveryConfiguration().branches).some(Boolean) ? 'disabled' : ''}>${inspectorIcon('discover')}${state.discoveryLoading ? 'Discovering…' : 'Discover related'}</button>
             <div class="insp-more">
               <button class="insp-btn icon" type="button" data-action="toggle-more" aria-haspopup="menu" aria-expanded="false" aria-controls="inspectorMoreMenu" aria-label="More actions for this paper"><svg viewBox="0 0 24 24" aria-hidden="true" class="filled"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>

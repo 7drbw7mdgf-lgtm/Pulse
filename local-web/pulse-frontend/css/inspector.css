@@ -8,7 +8,11 @@
 .inspector-nav .inspector-panel-button:disabled { opacity: .35; cursor: default; }
 .inspector-nav .inspector-panel-button svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
+.inspector-content { min-width:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; overflow-wrap:anywhere; }
 .inspector-content.inspector-v2 { padding: 0; display: flex; flex-direction: column; }
+.inspector-v2 *, .inspector-nav { min-width:0; box-sizing:border-box; }
+.inspector-v2 .insp-head,.inspector-v2 .insp-body { flex-shrink:0; max-width:100%; }
+.inspector-position { overflow:hidden; text-overflow:ellipsis; }
 .inspector-v2 svg { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .inspector-v2 svg.filled { fill: currentColor; stroke: none; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
@@ -32,8 +36,11 @@ a.insp-chip:hover { filter: brightness(.96); }
 .insp-status-chip.is-reading { background: var(--accent-soft); color: var(--accent); }
 .insp-status-chip.is-read { background: var(--ok-soft); color: var(--ok); }
 
-.insp-actions { display: flex; gap: 8px; }
-.insp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.insp-actions { display: flex; flex-wrap:wrap; gap: 8px; }
+.insp-actions > .insp-btn[data-read-pdf],.insp-actions > a { flex:1 1 calc(50% - 4px); }
+.insp-actions > .insp-btn.soft { flex:1 1 calc(100% - 44px); }
+.insp-actions > .insp-more { flex:0 0 36px; }
+.insp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height:36px; height:auto; max-width:100%; padding:7px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 600; text-decoration: none; cursor: pointer; white-space:normal; text-align:center; }
 .insp-btn:hover:not(:disabled) { background: var(--surface-2); }
 .insp-btn:disabled { opacity: .5; cursor: default; }
 .insp-btn.primary { flex: 1; background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
@@ -52,8 +59,8 @@ a.insp-chip:hover { filter: brightness(.96); }
 .insp-menu [role="menuitem"].danger { color: var(--danger, #c0352b); }
 .insp-menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 4px; }
 
-.insp-tabs { display: flex; gap: 2px; margin: 2px -4px 0; }
-.insp-tab { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 550; cursor: pointer; }
+.insp-tabs { display: flex; justify-content:space-between; gap: 0; margin: 2px 0 0; }
+.insp-tab { display: inline-flex; align-items: center; gap: 3px; height: 36px; padding: 0 5px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; color: var(--muted); font: inherit; font-size: 11.5px; font-weight: 550; cursor: pointer; }
 .insp-tab:hover { color: var(--ink); }
 .insp-tab[aria-selected="true"] { color: var(--ink); font-weight: 650; border-bottom-color: var(--accent); }
 .insp-tab-count { padding: 0 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 10.5px; font-weight: 700; line-height: 17px; }
@@ -68,7 +75,7 @@ a.insp-chip:hover { filter: brightness(.96); }
 .insp-link.small { font-size: 11.5px; }
 .insp-abstract { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--ink); }
 
-.insp-metrics { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
+.insp-metrics { display: flex; flex-wrap:wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
 .insp-metric-values { display: flex; gap: 16px; font-variant-numeric: tabular-nums; }
 .insp-metric-values div { display: flex; flex-direction: column; }
 .insp-metric-values strong { font-size: 15px; color: var(--ink); }

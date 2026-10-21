@@ -4,21 +4,33 @@ import hashlib
 import os
 import re
 import tempfile
+import json
+import threading
+import time
+from collections import OrderedDict
 from functools import lru_cache
 from pulse_core.constants import CONFIG_DIR, ClientError
 
 MAX_BYTES=50*1024*1024
+PREVIEW_TTL=24*60*60
+PREVIEW_CACHE_BYTES=256*1024*1024
+PREVIEWS=OrderedDict()
+PREVIEW_LOCK=threading.Lock()
 
 def engine():
     try: import pymupdf
     except ImportError: raise ClientError(503,'The PDF reader requires the bundled PyMuPDF component. Install the full Pulse package.')
     return pymupdf
 
-def path_for(identity):
+def path_for(identity, permanent=False):
     if not isinstance(identity,str) or not re.fullmatch(r'[a-f0-9]{64}',identity):
         raise ClientError(400,'Choose a valid PDF attachment.')
     path=CONFIG_DIR/'pdfs'/(identity+'.pdf')
-    if not path.is_file(): raise ClientError(404,'This PDF is not available on this computer. Attach the file again.')
+    if not path.is_file() and not permanent:
+        path=CONFIG_DIR/'pdf-previews'/(identity+'.pdf')
+        if path.is_file() and time.time()-path.stat().st_mtime>PREVIEW_TTL:
+            path.unlink(missing_ok=True)
+    if not path.is_file(): raise ClientError(404,'This PDF is not available on this computer. Find an open PDF or attach the file again.')
     return path
 
 def attach(payload):
@@ -26,6 +38,9 @@ def attach(payload):
     if not isinstance(content,str) or len(content)>MAX_BYTES*4//3+8: raise ClientError(413,'Choose a PDF smaller than 50 MB.')
     try: raw=base64.b64decode(content,validate=True)
     except (ValueError,TypeError): raise ClientError(400,'The PDF upload is invalid.')
+    return store_bytes(raw,payload.get('name'))
+
+def store_bytes(raw,name=None,preview=False):
     if len(raw)>MAX_BYTES or not raw.startswith(b'%PDF-'): raise ClientError(400,'Choose a valid PDF smaller than 50 MB.')
     fitz=engine()
     try:
@@ -35,7 +50,7 @@ def attach(payload):
             if not 0<count<=10000: raise ClientError(400,'The PDF page count is not supported.')
     except ClientError: raise
     except Exception: raise ClientError(400,'This PDF cannot be opened.')
-    identity=hashlib.sha256(raw).hexdigest();directory=CONFIG_DIR/'pdfs';directory.mkdir(parents=True,exist_ok=True)
+    identity=hashlib.sha256(raw).hexdigest();directory=CONFIG_DIR/('pdf-previews' if preview else 'pdfs');directory.mkdir(parents=True,exist_ok=True,mode=0o700)
     path=directory/(identity+'.pdf')
     if not path.exists():
         fd,temp=tempfile.mkstemp(dir=directory,prefix='.pdf-')
@@ -44,7 +59,49 @@ def attach(payload):
             os.replace(temp,path)
         finally:
             if os.path.exists(temp): os.unlink(temp)
-    return {'id':identity,'name':str(payload.get('name') or 'Paper.pdf')[:240],'pages':count,'size':len(raw)}
+    if preview:
+        # Preview bytes are a bounded temporary render cache, never library attachments.
+        os.utime(path,None)
+        total=0
+        files=[]
+        for item in directory.glob('*.pdf'):
+            try: files.append((item,item.stat()))
+            except FileNotFoundError: pass
+        for item,stat in sorted(files,key=lambda row:row[1].st_mtime,reverse=True):
+            total+=stat.st_size
+            if item!=path and (time.time()-stat.st_mtime>PREVIEW_TTL or total>PREVIEW_CACHE_BYTES):
+                item.unlink(missing_ok=True)
+    return {'id':identity,'name':str(name or 'Paper.pdf')[:240],'pages':count,'size':len(raw)}
+
+def preview(payload):
+    from pulse_core.pdf_access import find_pdf
+    paper=payload.get('paper')
+    if not isinstance(paper,dict): raise ClientError(400,'Choose a paper to preview.')
+    paper={key:str(paper.get(key) or '')[:4096] for key in ('title','doi','pmid','pmcid','openAlexId','arxivId','url','pdfUrl','fullTextUrl','year')} | {
+        'authors':[str(value)[:240] for value in paper.get('authors',[])[:30]] if isinstance(paper.get('authors'),list) else [],
+        'fullTextLinks':[row for row in paper.get('fullTextLinks',[])[:12] if isinstance(row,dict)] if isinstance(paper.get('fullTextLinks'),list) else [],
+        'openAccessPdf':paper.get('openAccessPdf') if isinstance(paper.get('openAccessPdf'),dict) else None}
+    key=json.dumps(paper,sort_keys=True)
+    with PREVIEW_LOCK:
+        cached=PREVIEWS.get(key)
+        if cached and cached[0]>time.monotonic():
+            try:
+                path_for(cached[1]['id'])
+                PREVIEWS.move_to_end(key)
+                return dict(cached[1])
+            except ClientError: pass
+    raw,url,source=find_pdf(paper)
+    result=dict(store_bytes(raw,(paper.get('title') or 'Paper')[:180]+'.pdf',preview=True),preview=True,url=url,source=source)
+    with PREVIEW_LOCK:
+        PREVIEWS[key]=(time.monotonic()+900,result)
+        PREVIEWS.move_to_end(key)
+        while len(PREVIEWS)>128: PREVIEWS.popitem(last=False)
+    return result
+
+def keep(payload):
+    identity=payload.get('id');path=path_for(identity)
+    result=store_bytes(path.read_bytes(),payload.get('name'))
+    return dict(result,source=str(payload.get('source') or 'Open PDF')[:100],url=str(payload.get('url') or '')[:4096])
 
 def page(payload):
     fitz=engine();path=path_for(payload.get('id'))
@@ -78,7 +135,11 @@ def page_text(identity,number):
         return {'words':words,'text':' '.join(word[4] for word in words),'source':source,'warning':warning}
 
 def passage(payload):
-    fitz=engine();path=path_for(payload.get('id'))
+    fitz=engine()
+    try: path=path_for(payload.get('id'),permanent=True)
+    except ClientError as error:
+        if error.status==404: raise ClientError(409,'Download this PDF to your library before highlighting or quoting it.')
+        raise
     try: number=int(payload.get('page',0))
     except (ValueError,TypeError): raise ClientError(400,'Choose a valid page.')
     quote=str(payload.get('quote') or '').strip()

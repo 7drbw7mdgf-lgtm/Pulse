@@ -24,7 +24,11 @@ Use **Duplicates** above the Library filter. Suspected pairs share a DOI, PMID, 
 
 ## PDF reading and quotations
 
-Choose a paper and **Read PDF** in its details. Attach a local PDF, or use a PDF already imported after this feature was added. Older imports need the original file attached once. PDF files are stored by content hash under the local profile's `pdfs` folder. Exported library JSON contains attachment references and annotations, not the PDF binaries; moving a library to another computer requires copying or reattaching those PDFs.
+Choose a paper and **Read PDF** in its details. Pulse opens a saved local copy first. Otherwise it looks for a freely accessible PDF through existing full-text links, OpenAlex and Europe PMC; Unpaywall is also available when a contact email is configured. It can inspect an open article page for its PDF link. Records without identifiers need a unique exact title match, with author/year checks when supplied. Unavailable, ambiguous or access-restricted PDFs remain unavailable; attach your own copy when needed.
+
+An online copy opens as a **Preview**. Page navigation, zoom and text selection work without adding an attachment or enabling edits. **Download & annotate** saves a local copy with the paper, downloads the original PDF file, and enables highlights, memos and page-linked quotations. **Download original PDF** exports the original bytes; Pulse annotations remain in the library. Preview rendering uses a temporary cache, bounded to 256 MB with 24-hour expiry on access/maintenance. Only an explicit download or local attachment creates a retained copy. See [PDF access details](PDF-ACCESS.md).
+
+Attach a local PDF, or use a PDF imported after attachment support was added. PDF files are stored by content hash under the local profile's `pdfs` folder. Exported library JSON contains attachment references and annotations, not the PDF binaries; moving a library to another computer requires copying or reattaching those PDFs. Older imports and missing copies can now be found online when an open PDF is available.
 
 Use page navigation and zoom, select text, choose a highlight colour and optionally add a memo. Saved highlights can be revisited, edited and removed, with Undo for the last removal. Scanned pages use bundled English OCR when available; a page without selectable text or OCR reports that limitation.
 

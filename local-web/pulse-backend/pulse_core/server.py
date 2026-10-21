@@ -156,6 +156,18 @@ class PulseHandler(SimpleHTTPRequestHandler):
         if not self.request_is_allowed(parsed):
             return
         path = parsed.path
+        if path.startswith('/api/reader/file/'):
+            try:
+                data=pdf_reader.path_for(path.rsplit('/',1)[-1]).read_bytes()
+                self.send_response(200)
+                self.send_header('Content-Type','application/pdf')
+                self.send_header('Content-Disposition','attachment; filename="paper.pdf"')
+                self.send_header('Content-Length',str(len(data)))
+                self.send_header('Cache-Control','no-store')
+                self.end_headers()
+                self.wfile.write(data)
+            except ClientError as error: self.write_json(error.status,{'error':str(error)})
+            return
         if path == "/api/managers/status":
             self.write_json(200, manager_status())
             return
@@ -245,7 +257,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/settings",
             "/api/library",
             "/api/library/change", "/api/library/recovery/restore",
-            "/api/library/merge", "/api/reader/attach", "/api/reader/page", "/api/reader/passage",
+            "/api/library/merge", "/api/reader/attach", "/api/reader/page", "/api/reader/passage", "/api/reader/preview", "/api/reader/keep",
             "/api/test",
             "/api/metadata/doi",
             "/api/metadata/resolve", "/api/metadata/citation", "/api/metadata/citation/verify",
@@ -302,6 +314,8 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/reader/attach": pdf_reader.attach,
                 "/api/reader/page": pdf_reader.page,
                 "/api/reader/passage": pdf_reader.passage,
+                "/api/reader/preview": pdf_reader.preview,
+                "/api/reader/keep": pdf_reader.keep,
                 "/api/library/recovery/restore": restore_recovery,
                 "/api/metadata/doi": lookup_doi_metadata,
                 "/api/metadata/resolve": resolve_metadata,
