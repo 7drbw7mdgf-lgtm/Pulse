@@ -1,0 +1,2 @@
+# Cryptographic fixtures must retain the exact bytes that were signed.
+desktop/src-tauri/tests/fixtures/payload.txt -text
