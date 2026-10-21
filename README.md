@@ -2,29 +2,27 @@
 
 A private, local-first desktop workspace for scientific literature discovery and synthesis.
 
-[![Release](https://img.shields.io/badge/release-v2.1.2-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v2.1.2)
+[![Release](https://img.shields.io/badge/release-v2.1.4-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v2.1.4)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Download Pulse 2.1.2
+## Download Pulse 2.1.4
 
-- **[Mac — Apple Silicon](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.2/Pulse-2.1.2.dmg)** — macOS 11+, with Python, PDF tools, OCR and the offline search ranker included. [Installation guide](docs/MACOS-INSTALL.md).
-- **[Windows — x64](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.2/Pulse-2.1.2-Windows-x64-Setup.exe)** — Windows 10/11. Python, PDF extraction, OCR and the offline search ranker are bundled. [Installation guide](docs/WINDOWS-INSTALL.md).
-- [Checksums](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.2/Pulse-2.1.2-SHA256SUMS.txt) · [Release notes](docs/releases/2.1.2.md) · [Previous releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases).
+- **[Mac — Apple Silicon](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.4/Pulse-2.1.4.dmg)** — macOS 11+, with Python, PDF tools, OCR and the offline search ranker included. [Installation guide](docs/MACOS-INSTALL.md).
+- **[Windows — x64](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.4/Pulse-2.1.4-Windows-x64-Setup.exe)** — Windows 10/11. Python, PDF extraction, OCR and the offline search ranker are bundled. [Installation guide](docs/WINDOWS-INSTALL.md).
+- [Checksums](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.4/Pulse-2.1.4-SHA256SUMS.txt) · [Release notes](docs/releases/2.1.4.md) · [Previous releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases).
 
 Both installers use the same application source and version. The Mac app is ad hoc signed and not Apple-notarized; the Windows installer is unsigned.
 
-Unreleased source additions: [full-text evidence and citation verification, formal screening projects, source retries, cache maintenance and opt-in ranking experiments](docs/search/RESEARCH-WORKFLOWS.md). These additions are not in the 2.1.2 installers linked above.
-
-The source also includes [Word-style settings with searchable categories and five appearance themes](docs/SETTINGS.md).
+This release includes [focus maps, resizable panels, network match navigation, typed paths, smart collections, duplicate review, PDF reading and scheduled watchlists](docs/WORKSPACE-TOOLS.md). It also includes [full-text evidence, citation verification and formal screening](docs/search/RESEARCH-WORKFLOWS.md), plus [searchable settings and five themes](docs/SETTINGS.md).
 
 ## Setup and future updates
 
 - [Small Mac setup wizard](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest/download/Pulse-Setup-Mac-arm64.zip)
 - [Small Windows setup wizard](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest/download/Pulse-Setup-Windows-x64.exe)
 
-Setup downloads the app from GitHub and can add optional local AI components. Install 2.1.2 once, then use **Settings → App updates** for future releases: Pulse downloads signed updates in the background and saves your library before **Restart & update**. [Update guide](docs/APP-UPDATES.md) · [Setup details](installer/README.md).
+Setup downloads the app from GitHub and can add optional local AI components. Install Pulse 2.1.2 or later once, then use **Settings → App updates** for future releases: Pulse downloads signed updates in the background and saves your library before **Restart & update**. [Update guide](docs/APP-UPDATES.md) · [Setup details](installer/README.md).
 
-This release adds multi-keyword/tag search, Fast/Enhanced ranking, saved searches and watchlists, a reading queue, SQLite library storage, faster graphs, complete indexed references and shared OpenAlex caching. Citation benchmark results were mixed across datasets; see the [citation evaluation](docs/search/CITATION-STRUCTURE.md).
+Multi-keyword/tag search, Fast/Enhanced ranking, saved searches, a reading queue, SQLite library storage, faster graphs, complete indexed references and shared OpenAlex caching are included. Citation benchmark results were mixed across datasets; see the [citation evaluation](docs/search/CITATION-STRUCTURE.md).
 
 ## What the app does
 
@@ -40,7 +38,7 @@ This release adds multi-keyword/tag search, Fast/Enhanced ranking, saved searche
 - Connect Mendeley through Pulse sign-in, sync citations while preserving local edits, or transfer citations to Zotero Desktop. If this computer has old Mendeley developer settings, choose **Use Pulse sign-in**. [Connection guide](docs/MENDELEY-ACTIVATION.md).
 - Use an optional local Ollama installation for paper reports. Ollama and its model weights are installed separately.
 
-Pulse 2.1.2 caches relationships, graph layouts and Trends aggregates, moves larger graph calculations into a worker, keeps unchanged library rows, and combines autosaves with changed-paper transfers. See [performance validation](docs/PERFORMANCE.md).
+Pulse 2.1.4 caches relationships, graph layouts and Trends aggregates, moves larger graph calculations into a worker, keeps unchanged library rows, and combines autosaves with changed-paper transfers. See [performance validation](docs/PERFORMANCE.md).
 
 Your library and local AI analysis stay on your computer by default. Optional library sync sends encrypted library data to the configured relay; PDFs and extracted text stay local. Online discovery and reference-manager actions contact their selected services. Problem reports require your review before sending. No personal library or account credentials are included in either installer.
 

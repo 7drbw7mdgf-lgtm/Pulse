@@ -1,12 +1,12 @@
-# Pulse 2.1.2 for Windows
+# Pulse 2.1.4 for Windows
 
 The Windows installer targets **Windows 10/11, x64**. It includes the Pulse desktop window, Python backend, PyMuPDF PDF reader and SQLite full-text support. Users do not need Python, Rust or Node.js. ARM64 Windows is not separately packaged; x64 compatibility depends on the device's Windows emulation support.
 
-Both Windows and Mac use the same 2.1.2 frontend and backend, including Trends, background graph calculations, cached layouts, retained library rows, lighter autosave, Semantic Scholar settings and smoother Timeline scrolling.
+Both Windows and Mac use the same 2.1.4 frontend and backend, including Trends, background graph calculations, cached layouts, retained library rows, lighter autosave, Semantic Scholar settings and smoother Timeline scrolling. Version 2.1.4 also adds focus maps, resizable panels, network search navigation and paths, smart collections, duplicate review with undo, local PDF annotations and scheduled watchlists. See the [workspace tools guide](WORKSPACE-TOOLS.md).
 
 ## Install
 
-Run `Pulse-2.1.2-Windows-x64-Setup.exe` and follow the setup prompts. Pulse installs for the current Windows user and adds a Start menu shortcut. The setup downloads Microsoft's WebView2 runtime if the computer does not already have it; that step needs an internet connection.
+Run `Pulse-2.1.4-Windows-x64-Setup.exe` and follow the setup prompts. Pulse installs for the current Windows user and adds a Start menu shortcut. The setup downloads Microsoft's WebView2 runtime if the computer does not already have it; that step needs an internet connection.
 
 The Windows installer is unsigned. Windows may show an unknown-publisher or SmartScreen warning. Check that the file came from this project and that its SHA-256 matches the supplied checksum. A production signing certificate is not included.
 
@@ -24,7 +24,7 @@ On a Windows x64 development computer, install PowerShell 7, Python 3.12, Node.j
 
 ```powershell
 pwsh -File scripts/package-windows.ps1
-python scripts/verify-windows-package.py --installer outputs/windows/Pulse-2.1.2-Windows-x64-Setup.exe --report outputs/windows/verification.json
+python scripts/verify-windows-package.py --installer outputs/windows/Pulse-2.1.4-Windows-x64-Setup.exe --report outputs/windows/verification.json
 ```
 
 The first command produces the setup and checksum. The second installs a temporary copy and tests its bundled backend, native window, library persistence, authenticated API, PDF and DOI extraction, full-text passages and backend shutdown. It uses synthetic records and an isolated profile. These checks do not establish live provider accuracy, account authorization or AI report quality.
@@ -37,4 +37,4 @@ Windows packaging builds a separate portable ONNX ranker with its own Python and
 
 The installed-app CI check requires a scanned synthetic PDF to produce OCR text and an offline query to rank a relevant synthetic paper above an unrelated one. It also checks the native window, session authentication, library persistence, passage retrieval, manager APIs, and backend shutdown. A successful source test or installer build alone does not satisfy these checks.
 
-After installing 2.1.2 once, future versions download inside **Settings → App updates**. Pulse verifies signed packages, saves your library and restarts through the native updater. The [small setup wizard](../installer/README.md) can install optional local AI components.
+After installing 2.1.2 or later once, future versions download inside **Settings → App updates**. Pulse verifies signed packages, saves your library and restarts through the native updater. The [small setup wizard](../installer/README.md) can install optional local AI components.
