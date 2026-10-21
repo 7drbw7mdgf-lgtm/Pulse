@@ -1,0 +1,21 @@
+.network-search { display:flex; align-items:center; flex-wrap:wrap; gap:7px; flex:none; min-width:0; padding:8px 10px; border-bottom:1px solid var(--line); background:var(--surface); }
+.network-search-field { display:flex; align-items:center; flex:1 1 140px; gap:7px; min-width:0; margin:0; }
+.network-search-field>svg { width:14px; height:14px; flex:none; color:var(--muted); }
+#networkSearchInput { min-width:0; width:100%; height:32px; border:0; border-radius:4px; padding:5px 0; background:transparent; color:var(--ink); font:12px var(--font-ui); outline:none; box-shadow:none; }
+#networkSearchInput:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+#networkSearchInput::-webkit-search-cancel-button { display:none; }
+.network-search-clear { width:23px; height:28px; flex:none; padding:0; border:0; border-radius:4px; color:var(--muted); background:transparent; font-size:20px; cursor:pointer; }
+.network-search-clear:disabled { visibility:hidden; }
+.network-search-clear:hover { color:var(--ink); background:var(--surface-2); }
+.network-search-options { display:flex; align-items:center; justify-content:space-between; flex:1 1 156px; gap:8px; min-width:0; }
+#networkSearchMatch { width:85px; flex:none; min-height:28px; height:28px; padding:4px 22px 4px 7px; border:1px solid var(--line); border-radius:5px; background-color:var(--surface); color:var(--ink-2); font-size:10.5px; }
+.network-search-status { display:flex; flex-direction:column; flex:1; min-width:0; min-height:28px; color:var(--muted); font-size:10px; line-height:14px; }
+.network-search-status>span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.network-search-status>span:first-child { color:var(--ink-2); font-weight:550; }
+.timeline-active #networkSearch,.trends-active #networkSearch { display:none; }
+#map.network-search-active .node.is-network-dimmed { opacity:.17 !important; }
+#map.network-search-active .node.is-network-match { opacity:1 !important; }
+#map.network-search-active .node.is-network-match .node-main-circle { stroke:var(--accent) !important; stroke-width:3px !important; vector-effect:non-scaling-stroke; }
+#map.network-search-active .node.is-network-match .node-label { fill:var(--accent); font-weight:700; opacity:1 !important; }
+#map.network-search-active .edge.is-network-match { stroke:var(--accent) !important; stroke-width:2.5px; opacity:1 !important; vector-effect:non-scaling-stroke; }
+#map.network-search-active .edge.is-network-dimmed { opacity:.04 !important; }

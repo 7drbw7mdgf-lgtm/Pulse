@@ -1,0 +1,100 @@
+/* Keep the toolbar below the map, with secondary controls in an upward disclosure. */
+.canvas-dock-modern,
+:root[data-theme="dark"] .canvas-dock-modern {
+  position:relative;
+  inset:auto;
+  transform:none;
+  align-self:center;
+  flex:none;
+  width:660px;
+  max-width:calc(100% - 24px);
+  margin:8px 12px 12px;
+  padding:10px;
+  gap:8px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface);
+  color:var(--ink);
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  backdrop-filter:none;
+  font-family:var(--font-ui);
+}
+.canvas-dock-modern .dock-row { justify-content:flex-start; gap:8px; }
+.canvas-dock-modern .dock-row-top { padding:0 0 8px; border-bottom:1px solid var(--line); }
+.canvas-dock-modern .dock-dropdown-label { flex:1 1 130px; min-width:0; gap:8px; color:var(--muted); font-size:11px; font-weight:500; }
+.canvas-dock-modern .dock-dropdown-label select {
+  flex:1;
+  width:0;
+  min-width:0;
+  height:30px;
+  min-height:30px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:3px 22px 3px 8px;
+  background-color:var(--surface-2);
+  color:var(--ink);
+  font:11px var(--font-ui);
+  cursor:pointer;
+}
+.canvas-dock-modern .dock-threshold-control { flex:1.3 1 185px; min-width:0; height:30px; gap:8px; color:var(--muted); font-size:11px; font-weight:500; }
+.canvas-dock-modern .dock-threshold-control label { white-space:nowrap; }
+.canvas-dock-modern #threshold { flex:1; width:70px; min-width:40px; height:20px; margin:0; padding:0; accent-color:var(--accent); cursor:pointer; }
+.canvas-dock-modern .dock-pill-value { min-width:28px; color:var(--accent); font:600 11px var(--font-ui); font-variant-numeric:tabular-nums; text-align:right; }
+.canvas-dock-modern .dock-mode-toggle { flex:none; gap:0; padding:2px; border-radius:7px; background:var(--surface-2); }
+.canvas-dock-modern .dock-icon-btn {
+  flex:none;
+  width:auto;
+  min-height:30px;
+  height:30px;
+  gap:5px;
+  padding:0 8px;
+  border-radius:5px;
+  color:var(--ink-2);
+  background:transparent;
+  border:1px solid transparent;
+  font:500 11px var(--font-ui);
+  text-decoration:none;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.canvas-dock-modern .dock-icon-btn svg { width:14px; height:14px; stroke-width:1.7; }
+.canvas-dock-modern .dock-icon-btn:hover { background:var(--surface-2); border-color:var(--line); color:var(--ink); }
+.canvas-dock-modern .dock-mode-toggle .dock-icon-btn.is-active { background:var(--surface); border-color:var(--line); color:var(--accent); box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.canvas-dock-modern .dock-metrics-pill-group { flex:1 1 130px; gap:5px; justify-content:center; color:var(--muted); font-size:10.5px; white-space:nowrap; }
+.canvas-dock-modern .metric-pill strong { color:var(--ink-2); font-weight:600; font-variant-numeric:tabular-nums; }
+.canvas-dock-modern .dock-tools-group { flex:none; gap:3px; margin-left:auto; }
+.canvas-dock-modern .dock-clear-btn { color:var(--muted); }
+.canvas-dock-modern .dock-clear-btn.is-undo { color:var(--accent); background:var(--accent-soft); border-color:var(--accent-line); }
+.dock-tools-menu { position:static; }
+.canvas-dock-modern .dock-tools-menu > summary { list-style:none; border-color:var(--line); }
+.dock-tools-menu > summary::-webkit-details-marker { display:none; }
+.dock-tools-menu .dock-tools-chevron { width:12px; margin-left:1px; }
+.canvas-dock-modern .dock-tools-menu[open] > summary { background:var(--accent-soft); color:var(--accent); border-color:var(--accent-line); }
+.dock-tools-menu[open] .dock-tools-chevron { transform:rotate(180deg); }
+.dock-tools-popup {
+  position:absolute;
+  right:0;
+  bottom:calc(100% + 8px);
+  width:256px;
+  max-width:100%;
+  max-height:var(--map-tools-height, calc(100vh - 210px));
+  overflow:auto;
+  padding:12px;
+  border:1px solid var(--line-strong);
+  border-radius:10px;
+  background:var(--surface);
+  box-shadow:0 8px 30px rgba(0,0,0,.14);
+  color:var(--ink);
+}
+.dock-tools-heading { font-size:12px; font-weight:650; margin:0 0 12px; }
+.canvas-dock-modern .dock-label-setting { display:flex; margin-bottom:10px; }
+.dock-spacing-tools { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding-bottom:10px; border-bottom:1px solid var(--line); }
+.dock-tools-popup button { display:flex; align-items:center; gap:7px; min-height:32px; width:100%; padding:6px 8px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--ink-2); font:11px var(--font-ui); text-align:left; cursor:pointer; }
+.dock-tools-popup button svg { flex:none; width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:1.7; }
+.dock-spacing-tools button { justify-content:center; gap:5px; padding:6px 4px; border-color:var(--line); background:var(--surface-2); font-size:10.5px; white-space:nowrap; }
+.dock-tools-popup button:hover { background:var(--surface-2); color:var(--ink); border-color:var(--line); }
+.dock-panel-tools { padding:6px 0; }
+.dock-tool-arrow { margin-left:auto; font-size:16px; color:var(--muted); }
+.dock-library-metric { padding-top:9px; border-top:1px solid var(--line); font-size:10px; color:var(--muted); }
+.dock-library-metric strong { font-weight:500; }
+.canvas-dock-modern :is(button,summary,select,input):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }

@@ -61,6 +61,7 @@
       });
     }
     function renderWorkspacePanels() {
+      if (typeof PulseNetworkSearch !== 'undefined') PulseNetworkSearch.refresh();
       if (typeof renderMultiSelection === 'function') renderMultiSelection();
       renderTagFilterBar();
       if (state.mode === 'table') renderTableView();

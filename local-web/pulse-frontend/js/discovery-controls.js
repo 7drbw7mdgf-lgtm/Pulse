@@ -18,7 +18,7 @@ function discoveryConfigurationKey() {
 }
 function discoveryOptionsLabel() {
   const options=discoveryConfiguration(),enabled=Object.keys(discoveryMethodKeys).filter(method=>options.branches[discoveryMethodKeys[method]]);
-  const names={citations:'Citations',network:'DBEF',cocitation:'Co-citation',semantic:'Semantic',concepts:'Concepts'};
+  const names={citations:'Citations',network:'Shared references',cocitation:'Co-citation',semantic:'Similar papers',concepts:'Keywords & topics'};
   const methods=enabled.length===5?'All methods':enabled.length===0?'No methods':enabled.length===1?names[enabled[0]]:`${enabled.length} methods`;
   const parts=[methods];
   if(options.branches.citationGraph)parts.push(options.depth==='iterative'?'Iterative':options.depth+'-hop');
@@ -48,6 +48,8 @@ function syncDiscoveryControls() {
     const active=button.dataset.depth===options.depth;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));
     button.disabled=!options.branches.citationGraph;
   });
+  const citationOptions=document.getElementById('discoveryCitationOptions');
+  if(citationOptions)citationOptions.hidden=!options.branches.citationGraph;
   popup.querySelectorAll('[data-search-source]').forEach(button=>{
     const active=options.searchSources[button.dataset.searchSource];button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));
     button.disabled=false; // Standalone concept searches always use these source choices.
