@@ -76,6 +76,15 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     await page.selectOption('#canvasLinksSelect', 'all');
     await page.locator('#threshold').focus(); await page.keyboard.press('Home');
     assert.equal(await page.locator('#thresholdValue').innerText(), '1%');
+    await page.setViewportSize({width:1457,height:1031});
+    await page.evaluate(()=>els.app.style.setProperty('--library-width','220px'));
+    const controls=['#canvasLayoutSelect','#canvasLinksSelect','#threshold','#mapModePan','#mapModeSelect','#mapClearAll','#mapToolsMenu > summary'];
+    const centers=[];
+    for(const selector of controls){const box=await page.locator(selector).boundingBox();centers.push(box.y+box.height/2);}
+    assert(Math.max(...centers)-Math.min(...centers)<=4,'All map controls share one row at the annotated canvas width');
+    assert((await page.locator('#canvasLayoutSelect').boundingBox()).width<=75,'Layout field is compact');
+    assert((await page.locator('#canvasLinksSelect').boundingBox()).width<=100,'Links field is compact');
+    if(process.env.PULSE_UI_SCREENSHOTS){fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});await page.locator('.canvas-dock-modern').screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'map-toolbar-single-row.png')});}
     await page.click('#inspectorToggle');
     for (const size of [{width:1440,height:1031},{width:976,height:1031},{width:800,height:720}]) {
       await page.setViewportSize(size);

@@ -1,4 +1,5 @@
 /* Keep the toolbar below the map, with secondary controls in an upward disclosure. */
+.pulse-col-canvas { container:map-controls / inline-size; }
 .canvas-dock-modern,
 :root[data-theme="dark"] .canvas-dock-modern {
   position:relative;
@@ -98,3 +99,51 @@
 .dock-library-metric { padding-top:9px; border-top:1px solid var(--line); font-size:10px; color:var(--muted); }
 .dock-library-metric strong { font-weight:500; }
 .canvas-dock-modern :is(button,summary,select,input):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* Short fields leave room for the pointer and action buttons on the same row.
+   Smaller canvases retain the wrapping layout rather than clipping controls. */
+@container map-controls (min-width:580px) {
+  .canvas-dock-modern,
+  :root[data-theme="dark"] .canvas-dock-modern {
+    display:flex;
+    flex-direction:row;
+    align-items:flex-end;
+    flex-wrap:nowrap;
+    width:660px;
+    padding:8px;
+    gap:6px;
+  }
+  .canvas-dock-modern .dock-row { display:contents; }
+  .canvas-dock-modern .dock-row-top .dock-dropdown-label {
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    flex:0 1 72px;
+    min-width:58px;
+    gap:3px;
+    font-size:10px;
+  }
+  .canvas-dock-modern .dock-row-top .dock-link-control { flex-basis:96px; min-width:76px; }
+  .canvas-dock-modern .dock-row-top select { width:100%; flex:none; padding-right:16px; }
+  .canvas-dock-modern .dock-threshold-control {
+    display:grid;
+    grid-template-columns:minmax(36px,1fr) 26px;
+    grid-template-rows:12px 30px;
+    flex:0 1 94px;
+    min-width:74px;
+    height:45px;
+    gap:3px 5px;
+    font-size:10px;
+  }
+  .canvas-dock-modern .dock-threshold-control label { grid-column:1 / -1; }
+  .canvas-dock-modern #threshold { width:100%; min-width:0; align-self:center; }
+  .canvas-dock-modern .dock-pill-value { min-width:0; align-self:center; }
+  .canvas-dock-modern .dock-metrics-pill-group { flex:1 0 auto; height:30px; gap:3px; font-size:10px; }
+  .canvas-dock-modern .dock-tools-group { margin-left:0; }
+  .canvas-dock-modern .dock-icon-btn { gap:4px; padding:0 6px; }
+}
+@container map-controls (min-width:580px) and (max-width:639px) {
+  .canvas-dock-modern,
+  :root[data-theme="dark"] .canvas-dock-modern { gap:4px; padding:8px 6px; }
+  .canvas-dock-modern .dock-clear-btn .dock-btn-label { display:none; }
+}
