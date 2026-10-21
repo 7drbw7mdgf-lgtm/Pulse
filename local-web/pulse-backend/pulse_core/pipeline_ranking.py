@@ -485,8 +485,10 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
     qualities=[dbef_quality(record,options.get('dbefPolicy')) for record in records]
     graphs,options['_networkEvidence']=graph_evidence(records,qualities,options)
     structures = citation_structure(records, seed_papers)
-    structure_weight = max(0, min(.3, float(options.get('citationStructureWeight', .06))))
-    backward_weight = max(0, min(.1, float(options.get('backwardCitationWeight', .03))))
+    from pulse_core.ranking_experiments import structural_policy
+    policy=structural_policy(options,seed_papers,structures)
+    options['_structuralPolicy']=policy
+    structure_weight,backward_weight=policy['weight'],policy['backwardWeight']
     for record in records:
         channels = {}
         for evidence in record.get('retrievalEvidence') or []:
@@ -521,7 +523,7 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
         cb = citation_link_bonus(rec, pool_context, topic=rel) if not is_rej else 0.0
         comb_prior = min(cb + fp, max(cb, fp) + 0.03) if cb > 0 and fp > 0 else (cb + fp)
         p_val = ((.7 * rel + .3 * raw_rrf[i] / peak_rrf) / (.88 if graphs[i]['renormalize'] else 1) +
-                 (.12 * graphs[i]['prelim']) + comb_prior + structure_weight * structures[i]['strength'])
+                 (.12 * graphs[i]['prelim']) + comb_prior + structure_weight * structures[i]['strength'] * (min(1,rel/.3) if policy['topicGate'] else 1))
         prelim.append(p_val)
     indices = balanced_indices(records, prelim, MAX_CANDIDATE_POOL)
     records, relevance, raw_rrf, prelim, qualities = ([records[i] for i in indices], [relevance[i] for i in indices], [raw_rrf[i] for i in indices], [prelim[i] for i in indices], [qualities[i] for i in indices])
@@ -622,10 +624,11 @@ def merge_and_rank_pipeline_candidates(candidates_by_branch, seed_papers, option
                 ctx_bonus += 0.010
             ctx_bonus = min(0.045, ctx_bonus) * max(0.25, topic_support)
             score += ctx_bonus
-        structural_bonus = structure_weight * structures[i]['strength']
+        structural_bonus = structure_weight * structures[i]['strength'] * (min(1,topic_support/.3) if policy['topicGate'] else 1)
         backward = any(str(ev.get('channel') or '').startswith('citations:') and
                        str(ev.get('channel') or '').endswith(':backward') for ev in record.get('retrievalEvidence') or [])
         backward_bonus = backward_weight * max(structures[i]['strength'], min(1, topic_support/.3)) if backward else 0.0
+        if policy['topicGate']:backward_bonus*=min(1,topic_support/.3)
         if grade != 0: score += structural_bonus + backward_bonus
         record['citationStructure'] = structures[i]
         score += .06*min(2,float(options.get('impactTilt') or 0))*impact*topic_support

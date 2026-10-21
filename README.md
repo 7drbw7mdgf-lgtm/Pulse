@@ -13,6 +13,8 @@ A private, local-first desktop workspace for scientific literature discovery and
 
 Both installers use the same application source and version. The Mac app is ad hoc signed and not Apple-notarized; the Windows installer is unsigned.
 
+Unreleased source additions: [full-text evidence and citation verification, formal screening projects, source retries, cache maintenance and opt-in ranking experiments](docs/search/RESEARCH-WORKFLOWS.md). These additions are not in the 2.1.2 installers linked above.
+
 ## Setup and future updates
 
 - [Small Mac setup wizard](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest/download/Pulse-Setup-Mac-arm64.zip)

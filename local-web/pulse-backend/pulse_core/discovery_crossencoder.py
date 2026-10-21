@@ -73,6 +73,8 @@ def clear_score_cache():
 
 
 def _find_search_runtime(settings):
+    if settings.get('_runtimeOverride'):
+        return settings['_runtimeOverride']
     py_env = os.environ.get('PULSE_RERANKER_PYTHON') or settings.get('searchRerankerPython')
     mod_env = os.environ.get('PULSE_RERANKER_MODEL') or settings.get('searchRerankerModel')
     if py_env and mod_env:
@@ -124,6 +126,7 @@ def _find_search_runtime(settings):
 
 
 def crossencoder_scores(settings, queries, records, cancel_event=None, nonblocking=False):
+    budget=max(1,min(12,float(settings.get('_rankTimeBudget',12))))
     if cancel_event and cancel_event.is_set():raise DiscoveryCancelled()
     if not records:return [], 'No papers require pairwise ranking.'
     python, model = _find_search_runtime(settings)
@@ -142,7 +145,7 @@ def crossencoder_scores(settings, queries, records, cancel_event=None, nonblocki
     else:
         while not _inference_lock.acquire(timeout=.05):
             if cancel_event and cancel_event.is_set():raise DiscoveryCancelled()
-            if time.monotonic()-started>12:return None,'Pairwise ranking time budget reached; showing collected results.'
+            if time.monotonic()-started>budget:return None,'Pairwise ranking time budget reached; showing collected results.'
     try:
         cfg_dir = config_directory()
         with _cache_lock:
@@ -159,7 +162,7 @@ def crossencoder_scores(settings, queries, records, cancel_event=None, nonblocki
         positions={key:index for index,key in enumerate(keys)}
         payload_data = {'model': str(model.resolve()), 'queries': queries[:2],
             'records':[prepared[positions[key]] for key in missing], 'maxWindows':PAIRWISE_MAX_WINDOWS}
-        scores,notice=_infer(python,worker,payload_data,len(missing),cancel_event,max(1,12-(time.monotonic()-started)))
+        scores,notice=_infer(python,worker,payload_data,len(missing),cancel_event,max(1,budget-(time.monotonic()-started)))
         if scores is None:return None,notice
         with _cache_lock:
             for key,score in zip(missing,scores):

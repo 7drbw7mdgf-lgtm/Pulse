@@ -414,6 +414,7 @@ function discoveryRating(item) {
   return (state.discoveryJudgements||[]).find(row=>row.paperKey===discoveryPaperKey(item)&&discoveryContextKey(row.context)===discoveryContextKey(context))?.grade;
 }
 function labelDiscoveryPaper(item,grade,options={}) {
+  const previousGrade=discoveryRating(item);
   const context=discoveryReviewContext(),contextKey=discoveryContextKey(context),paperKey=discoveryPaperKey(item);
   state.discoveryJudgements=(state.discoveryJudgements||[]).filter(row=>!(row.paperKey===paperKey&&discoveryContextKey(row.context)===contextKey));
   if(grade===0||grade===1||grade===2)state.discoveryJudgements.push({paperKey,contextKey,context,grade,paper:{...item},labelledAt:new Date().toISOString()});
@@ -429,7 +430,8 @@ function labelDiscoveryPaper(item,grade,options={}) {
     state.discoveryMovedUpCount=movedUp;
     state.discoveryMovedUpNote=movedUp>0?`${movedUp} moved up`:'';
   }
-  scheduleAutosave();renderDiscoveryModal({preservePosition:true});
+  if(!options.deferRender){scheduleAutosave();renderDiscoveryModal({preservePosition:true});}
+  if(options.screening!==false&&typeof PulseScreening!=='undefined')PulseScreening.recordGrade(item,grade,previousGrade);
 }
 function exportDiscoveryBenchmark() {
   const groups=new Map();

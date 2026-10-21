@@ -198,6 +198,7 @@ def _scan_file_for_metadata_local(payload):
             "title": parsed.get("title") or "", "text": text, "bibliographyText": bibliography, "metadata": parsed,
             "extractionSource": document.get("extractionSource"),
             "bibliographyProvenance":document.get('bibliographyProvenance'),
+            "evidencePassages":document.get('evidencePassages') or [],
             "textAvailable": bool(text), "pageCount": document.get("pageCount")}
 
 

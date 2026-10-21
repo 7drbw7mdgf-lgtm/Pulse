@@ -248,7 +248,7 @@ def bootstrap_ci(values, n_boot=BOOTSTRAP_SAMPLES, seed=BOOTSTRAP_SEED):
     }
 
 
-def rank_case_under_variant(case, variant="baseline", custom_rerankers=None):
+def rank_case_under_variant(case, variant="baseline", custom_rerankers=None, ranking_options=None):
     """Re-rank one frozen pool case offline under a named variant."""
     raw_branches = copy.deepcopy(case["candidates_by_branch"])
     seed_papers = copy.deepcopy(case["seed_papers"])
@@ -287,6 +287,7 @@ def rank_case_under_variant(case, variant="baseline", custom_rerankers=None):
             options["_semanticReranker"] = custom_rerankers["semantic"]
         if custom_rerankers.get("pairwise"):
             options["_pairwiseReranker"] = custom_rerankers["pairwise"]
+    options.update(ranking_options or {})
 
     t0 = time.perf_counter()
     ranked = merge_and_rank_pipeline_candidates(raw_branches, seed_papers, options)
@@ -322,7 +323,7 @@ def rank_case_under_variant(case, variant="baseline", custom_rerankers=None):
     return ranked, ranking_ms
 
 
-def evaluate_variant_on_dataset(dataset_doc, variant="baseline", custom_rerankers=None):
+def evaluate_variant_on_dataset(dataset_doc, variant="baseline", custom_rerankers=None, ranking_options=None):
     per_seed = []
     metric_names = (
         "nDCG@10",
@@ -338,7 +339,7 @@ def evaluate_variant_on_dataset(dataset_doc, variant="baseline", custom_reranker
         "rankingMs",
     )
     for case in dataset_doc.get("cases") or []:
-        ranked, ranking_ms = rank_case_under_variant(case, variant=variant, custom_rerankers=custom_rerankers)
+        ranked, ranking_ms = rank_case_under_variant(case, variant=variant, custom_rerankers=custom_rerankers,ranking_options=ranking_options)
         m = compute_case_metrics(ranked, case.get("qrels") or {}, ranking_ms=ranking_ms)
         m["case_id"] = case.get("case_id")
         per_seed.append(m)

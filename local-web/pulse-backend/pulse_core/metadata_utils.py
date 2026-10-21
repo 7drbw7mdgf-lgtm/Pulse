@@ -164,6 +164,7 @@ def openalex_to_metadata(item):
         "referenceCount": len(item['referenced_works']) if isinstance(item.get('referenced_works'),list) else None,
         "citationCountsByYear": item.get('counts_by_year') if isinstance(item.get('counts_by_year'),list) else [],
         "field": ((item.get("primary_topic") or {}).get("field") or {}).get("display_name") or "",
+        "primaryTopic": item.get('primary_topic') if isinstance(item.get('primary_topic'),dict) else {},
         "metadataSource": "OpenAlex",
         "isRetracted":item.get('is_retracted') is True,
         "volume": str((item.get("biblio") or {}).get("volume") or ""),

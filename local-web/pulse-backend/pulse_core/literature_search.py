@@ -147,12 +147,12 @@ def literature_query(seeds, steer_keywords=None):
     return query_text(" ".join(dict.fromkeys(terms)))
 
 
-def fetch_search(url, source, api_key=""):
+def fetch_search(url, source, api_key="", timeout=14):
     headers = {"User-Agent": "Pulse/" + APP_VERSION, "Accept": "application/json"}
     if api_key:
         headers["Authorization"] = "Bearer " + api_key
     try:
-        data = request_json(urllib.request.Request(url, headers=headers), timeout=14)
+        data = request_json(urllib.request.Request(url, headers=headers), timeout=timeout)
         if not isinstance(data, dict):
             raise ClientError(502, source + " returned an invalid search response.")
         return data
@@ -172,7 +172,7 @@ def fetch_search(url, source, api_key=""):
         raise ClientError(502, source + " could not be reached. Try again later.") from None
 
 
-def search_europe_pmc(query, limit=30, doi="", structured=False):
+def search_europe_pmc(query, limit=30, doi="", structured=False, timeout=14):
     query = 'DOI:"' + normalize_doi(doi) + '"' if doi else (str(query)[:1000] if structured else query_text(query))
     if not query:
         return []
@@ -184,7 +184,7 @@ def search_europe_pmc(query, limit=30, doi="", structured=False):
         page_size = min(1000, limit - received)
         params = urllib.parse.urlencode({"query": query, "format": "json", "resultType": "core", "pageSize": page_size, "synonym":"YES", "cursorMark": cursor})
         try:
-            data = fetch_search("https://www.ebi.ac.uk/europepmc/webservices/rest/search?" + params, "Europe PMC")
+            data = fetch_search("https://www.ebi.ac.uk/europepmc/webservices/rest/search?" + params, "Europe PMC", timeout=timeout)
             if not isinstance(data.get("resultList"), dict) or not isinstance(data["resultList"].get("result"), list):
                 raise ClientError(502, "Europe PMC returned an invalid search response.")
         except (ClientError, DiscoveryBudgetExceeded) as error:

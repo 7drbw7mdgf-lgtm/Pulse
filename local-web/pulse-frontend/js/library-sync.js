@@ -10,7 +10,7 @@
 (function (root) {
   'use strict';
   const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-  const LOCAL_ONLY = new Set(['id', 'syncId', 'x', 'y', 'size', 'selected', 'mapId', 'text', 'bibliographyText', 'citationMetrics']);
+  const LOCAL_ONLY = new Set(['id', 'syncId', 'x', 'y', 'size', 'selected', 'mapId', 'text', 'bibliographyText', 'evidencePassages', 'citationMetrics']);
   const NOTE_FIELDS = new Set(['notes']);
   const WORKSPACE_SID = 'workspace';
   const PUSH_BATCH = 100;

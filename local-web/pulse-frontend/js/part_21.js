@@ -36,6 +36,7 @@
     });
     window.addEventListener('keydown', event => {
       if (event.key === 'Escape') {
+        if(event.defaultPrevented||document.querySelector('dialog[open]'))return;
         if (els.tagActionMenu && !els.tagActionMenu.hidden) {
           closeTagActionMenu();
         } else if (els.discoveryModal && !els.discoveryModal.hidden) {

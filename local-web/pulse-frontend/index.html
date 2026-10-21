@@ -516,7 +516,7 @@
   <header>
     <div>
       <h2 id="discoveryCompareTitle">Compare papers (Evidence matrix)</h2>
-      <small id="discoveryCompareSubtitle">Sentences picked automatically from each abstract by fixed rules (no AI). They can be the wrong sentence: check each cell against its quote.</small>
+      <small id="discoveryCompareSubtitle">Sentences extracted from local full text, available open-access articles or abstracts. Check each cell against its source; extraction can select the wrong sentence.</small>
     </div>
     <button id="discoveryCompareCloseBtn" type="button" aria-label="Close comparison">×</button>
   </header>
@@ -527,6 +527,7 @@
         <button id="compareExportCsvBtn" class="button secondary" type="button">Export CSV</button>
         <button id="compareExportMdBtn" class="button secondary" type="button">Export Markdown</button>
         <button id="compareRerunBtn" class="button secondary" type="button">Rerun</button>
+        <label><input id="compareUseOpenAccess" type="checkbox" checked> Retrieve available open-access text</label>
       </div>
     </div>
     <div id="compareStatus" class="compare-status" role="status"></div>
@@ -628,5 +629,9 @@
 <script src="js/trends.js?v=2.1.2"></script>
 <script src="js/connection-diagnostics.js?v=2.1.2"></script>
 <script src="js/search-workflow.js?v=2.1.2"></script>
+<link rel="stylesheet" href="css/research-tools.css?v=1">
+<script src="js/research-evidence.js?v=1"></script>
+<script src="js/screening.js?v=1"></script>
+<script src="js/research-search.js?v=1"></script>
 <script src="js/app-updates.js?v=2.1.2"></script>
 <script src="js/part_21.js?v=2.1.2"></script> <script src="js/part_22.js?v=2.1.2"></script> </body> </html>

@@ -53,6 +53,10 @@ from pulse_core import sync_relay, crash_reports
 from pulse_core.mendeley_sync import page as mendeley_sync_page, preferences as mendeley_sync_preferences
 from pulse_core.paper_agent import agent_status, PAPER_SUMMARY_JOBS
 from pulse_core.passages import retrieve_passages, import_s2orc
+from pulse_core.research_evidence import verify_citation
+from pulse_core.screening import handle as screening_action
+from pulse_core.cache_maintenance import handle as cache_action
+from pulse_core.ranking_experiments import status as ranking_status
 from pulse_core.ollama_mgr import (
     OLLAMA_PROCESS,
     start_ollama_runtime_background,
@@ -85,6 +89,8 @@ def handle_discovery_compare(payload):
                 and isinstance(c.get("name", ""), str) and len(c.get("name", "")) <= 60 for c in columns)):
             raise ClientError(400, "Choose 1 to 8 columns with short names.")
     settings = load_settings()
+    from pulse_core.research_evidence import hydrate
+    papers = hydrate(papers, use_open_access=payload.get('useOpenAccess') is True)
     matrix = generate_evidence_matrix(papers, columns=columns, settings=settings, max_papers=15)
     fmt = payload.get("format")
     if fmt == "csv":
@@ -228,6 +234,10 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/agent/start",
             "/api/agent/cancel",
             "/api/papers/passages", "/api/corpus/s2orc/import",
+            "/api/citations/verify-context",
+            "/api/reviews",
+            "/api/search/cache",
+            "/api/search/ranking",
             "/api/analyze",
             "/api/settings",
             "/api/library",
@@ -275,6 +285,10 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/agent/start": PAPER_SUMMARY_JOBS.start,
                 "/api/agent/cancel": PAPER_SUMMARY_JOBS.cancel,
                 "/api/papers/passages": retrieve_passages,
+                "/api/citations/verify-context": verify_citation,
+                "/api/reviews": screening_action,
+                "/api/search/cache": cache_action,
+                "/api/search/ranking": lambda p: ranking_status(load_settings()),
                 "/api/corpus/s2orc/import": import_s2orc,
                 "/api/settings": lambda p: public_settings(save_settings(p)),
                 "/api/library": save_library,
@@ -526,6 +540,8 @@ def main():
         except Exception:
             pass
     threading.Thread(target=_warmup_background, name="pulse-launch-warmup", daemon=True).start()
+    from pulse_core.cache_maintenance import start as start_cache_maintenance
+    start_cache_maintenance()
     start_parent_watchdog()
     print(f"Serving Pulse on http://127.0.0.1:{bound_port}/index.html", flush=True)
     try:

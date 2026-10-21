@@ -66,6 +66,7 @@ def cached_document(paper, directory=None):
                 doc = json.loads(row[0])
                 # Matching one identifier must not override a conflicting known DOI.
                 if paper.get('doi') and doc.get('doi') and normalize_doi(paper['doi']).lower() != normalize_doi(doc['doi']).lower(): continue
+                if paper.get('pmid') and doc.get('pmid') and str(paper['pmid'])!=str(doc['pmid']):continue
                 return doc
     finally: db.close()
 
@@ -127,6 +128,7 @@ def parse_pmc_xml(raw, expected):
     pmcid = str(ids.get('pmc') or ids.get('pmcid') or expected.get('pmcid') or '').upper()
     if pmcid.isdigit(): pmcid = 'PMC'+pmcid
     if expected.get('doi') and normalize_doi(expected['doi']).lower() != doi: raise ClientError(409, 'The retrieved article DOI does not match this paper.')
+    if expected.get('pmid') and str(expected['pmid']) != ids.get('pmid'): raise ClientError(409, 'The retrieved article PMID does not match this paper.')
     if expected.get('pmcid') and pmcid != str(expected['pmcid']).upper(): raise ClientError(409, 'The retrieved archive identifier does not match this paper.')
     body = root.find('.//body')
     if body is None: raise ClientError(404, 'This archive record has no article body.')
@@ -143,26 +145,56 @@ def parse_pmc_xml(raw, expected):
     permissions = root.find('.//permissions')
     licence = ' '.join(permissions.itertext()).strip() if permissions is not None else 'Open-access PMC archive; consult article permissions.'
     title = root.find('.//article-title')
+    references = []
+    for ref in root.iter('ref'):
+        ref_identifiers = {p.get('pub-id-type'): ''.join(p.itertext()).strip() for p in ref.iter('pub-id')}
+        references.append({'id':ref.get('id',''), 'doi':normalize_doi(ref_identifiers.get('doi')), 'pmid':ref_identifiers.get('pmid','')})
+    citation_passages = []
+    for p in body.iter('p'):
+        pieces, spans, length = [], [], 0
+        def append(value):
+            nonlocal length
+            pieces.append(value);length+=len(value)
+        def inline(node):
+            start=length
+            append(node.text or '')
+            for child in node:
+                inline(child);append(child.tail or '')
+            if node.tag=='xref' and node.get('ref-type')=='bibr':
+                spans.append((start,length,(node.get('rid') or '').split()))
+        inline(p)
+        text=''.join(pieces)
+        from pulse_core.evidence_matrix import _SENTENCE_SPLIT
+        boundaries=[0]+[match.end() for match in _SENTENCE_SPLIT.finditer(text)]+[len(text)]
+        for start,end in zip(boundaries,boundaries[1:]):
+            ref_ids=list(dict.fromkeys(rid for left,right,values in spans if left<end and right>start for rid in values))
+            if ref_ids:
+                citation_passages.append({'text':' '.join(text[start:end].split()), 'referenceIds':ref_ids,
+                    'anchor':p.get('id',''), 'url':'https://europepmc.org/articles/'+pmcid})
     return {'source': 'PMC / Europe PMC', 'title': ''.join(title.itertext()) if title is not None else expected.get('title', ''),
             'doi': doi, 'pmcid': pmcid, 'pmid': ids.get('pmid') or '', 'url': 'https://europepmc.org/articles/'+pmcid,
-            'license': licence[:1200], 'retrievedAt': int(time.time()), 'passages': passages[:2000]}
+            'license': licence[:1200], 'retrievedAt': int(time.time()), 'passages': passages[:2000],
+            'references':references, 'citationPassages':citation_passages[:2000]}
 
 
-def get_document(paper, directory=None):
+def get_document(paper, directory=None, refresh=False, timeout=15):
+    deadline=time.monotonic()+timeout
     doc = cached_document(paper, directory)
-    if doc: return doc
+    if doc and (not refresh or 'references' in doc): return doc
     pmcid = str(paper.get('pmcid') or '').upper()
     if not re.fullmatch(r'PMC\d+', pmcid):
         doi, pmid = normalize_doi(paper.get('doi')), str(paper.get('pmid') or '')
         if not doi and not pmid.isdigit(): return None
-        rows = search_europe_pmc('', limit=3, doi=doi) if doi else search_europe_pmc('EXT_ID:'+pmid+' AND SRC:MED', limit=3, structured=True)
+        rows = search_europe_pmc('', limit=3, doi=doi, timeout=timeout) if doi else search_europe_pmc('EXT_ID:'+pmid+' AND SRC:MED', limit=3, structured=True, timeout=timeout)
         match = next((row for row in rows if row.get('pmcid') and ((doi and normalize_doi(row.get('doi')).lower()==doi.lower()) or (not doi and str(row.get('pmid'))==pmid))), None)
         if not match: return None
         pmcid = str(match['pmcid']).upper()
     if not re.fullmatch(r'PMC\d+', pmcid): return None
     check_cancelled()
     request = urllib.request.Request('https://www.ebi.ac.uk/europepmc/webservices/rest/'+pmcid+'/fullTextXML', headers={'Accept': 'application/xml', 'User-Agent': 'Pulse literature reader'})
-    with urllib.request.urlopen(request, timeout=15) as response: raw = response.read(MAX_XML+1)
+    remaining=deadline-time.monotonic()
+    if remaining<=0:raise TimeoutError('Full-text lookup exceeded its time budget.')
+    with urllib.request.urlopen(request, timeout=remaining) as response: raw = response.read(MAX_XML+1)
     check_cancelled()
     doc = parse_pmc_xml(raw, dict(paper, pmcid=pmcid))
     cache_document(doc, directory)

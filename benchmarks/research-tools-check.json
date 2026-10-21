@@ -1,0 +1,247 @@
+{
+  "scope": "Fixed-pool text/citation ranking only; no live retrieval or neural models.",
+  "heldOut": false,
+  "policy": "adaptive, auto intent; defaults unchanged",
+  "datasets": {
+    "relish": {
+      "cases": 100,
+      "fixed": {
+        "nDCG@20": {
+          "mean": 0.3031,
+          "ci_low": 0.2718,
+          "ci_high": 0.3357,
+          "ci_half_width": 0.032,
+          "n": 100
+        },
+        "Recall@50": {
+          "mean": 0.2072,
+          "ci_low": 0.1858,
+          "ci_high": 0.2296,
+          "ci_half_width": 0.0219,
+          "n": 100
+        }
+      },
+      "adaptive": {
+        "nDCG@20": {
+          "mean": 0.3043,
+          "ci_low": 0.2736,
+          "ci_high": 0.3363,
+          "ci_half_width": 0.0313,
+          "n": 100
+        },
+        "Recall@50": {
+          "mean": 0.2088,
+          "ci_low": 0.1874,
+          "ci_high": 0.2311,
+          "ci_half_width": 0.0219,
+          "n": 100
+        }
+      },
+      "pairedDelta": {
+        "nDCG@20": {
+          "mean": 0.0011,
+          "ci_low": -0.0008,
+          "ci_high": 0.0031,
+          "ci_half_width": 0.0019,
+          "n": 100
+        },
+        "Recall@50": {
+          "mean": 0.0016,
+          "ci_low": 0.0005,
+          "ci_high": 0.003,
+          "ci_half_width": 0.0013,
+          "n": 100
+        }
+      }
+    },
+    "synergy": {
+      "cases": 16,
+      "fixed": {
+        "nDCG@20": {
+          "mean": 0.2332,
+          "ci_low": 0.1458,
+          "ci_high": 0.3263,
+          "ci_half_width": 0.0902,
+          "n": 16
+        },
+        "Recall@50": {
+          "mean": 0.1724,
+          "ci_low": 0.0859,
+          "ci_high": 0.2736,
+          "ci_half_width": 0.0938,
+          "n": 16
+        }
+      },
+      "adaptive": {
+        "nDCG@20": {
+          "mean": 0.2294,
+          "ci_low": 0.1396,
+          "ci_high": 0.3234,
+          "ci_half_width": 0.0919,
+          "n": 16
+        },
+        "Recall@50": {
+          "mean": 0.1675,
+          "ci_low": 0.084,
+          "ci_high": 0.2678,
+          "ci_half_width": 0.0919,
+          "n": 16
+        }
+      },
+      "pairedDelta": {
+        "nDCG@20": {
+          "mean": -0.0038,
+          "ci_low": -0.0109,
+          "ci_high": 0.0004,
+          "ci_half_width": 0.0056,
+          "n": 16
+        },
+        "Recall@50": {
+          "mean": -0.0049,
+          "ci_low": -0.0147,
+          "ci_high": 0.0,
+          "ci_half_width": 0.0073,
+          "n": 16
+        }
+      }
+    },
+    "scidocs": {
+      "cases": 25,
+      "fixed": {
+        "nDCG@20": {
+          "mean": 0.0768,
+          "ci_low": 0.0386,
+          "ci_high": 0.1168,
+          "ci_half_width": 0.0391,
+          "n": 25
+        },
+        "Recall@50": {
+          "mean": 0.1267,
+          "ci_low": 0.076,
+          "ci_high": 0.1827,
+          "ci_half_width": 0.0533,
+          "n": 25
+        }
+      },
+      "adaptive": {
+        "nDCG@20": {
+          "mean": 0.0767,
+          "ci_low": 0.0386,
+          "ci_high": 0.1169,
+          "ci_half_width": 0.0392,
+          "n": 25
+        },
+        "Recall@50": {
+          "mean": 0.1307,
+          "ci_low": 0.0787,
+          "ci_high": 0.1867,
+          "ci_half_width": 0.054,
+          "n": 25
+        }
+      },
+      "pairedDelta": {
+        "nDCG@20": {
+          "mean": -0.0001,
+          "ci_low": -0.0003,
+          "ci_high": 0.0001,
+          "ci_half_width": 0.0002,
+          "n": 25
+        },
+        "Recall@50": {
+          "mean": 0.004,
+          "ci_low": 0.0,
+          "ci_high": 0.012,
+          "ci_half_width": 0.006,
+          "n": 25
+        }
+      }
+    },
+    "headtohead": {
+      "cases": 5,
+      "fixed": {
+        "nDCG@20": {
+          "mean": 0.4022,
+          "ci_low": 0.3082,
+          "ci_high": 0.5553,
+          "ci_half_width": 0.1235,
+          "n": 5
+        },
+        "Recall@50": {
+          "mean": 0.6133,
+          "ci_low": 0.5333,
+          "ci_high": 0.68,
+          "ci_half_width": 0.0733,
+          "n": 5
+        }
+      },
+      "adaptive": {
+        "nDCG@20": {
+          "mean": 0.4017,
+          "ci_low": 0.3084,
+          "ci_high": 0.5536,
+          "ci_half_width": 0.1226,
+          "n": 5
+        },
+        "Recall@50": {
+          "mean": 0.6133,
+          "ci_low": 0.5333,
+          "ci_high": 0.68,
+          "ci_half_width": 0.0733,
+          "n": 5
+        }
+      },
+      "pairedDelta": {
+        "nDCG@20": {
+          "mean": -0.0004,
+          "ci_low": -0.0018,
+          "ci_high": 0.0004,
+          "ci_half_width": 0.0011,
+          "n": 5
+        },
+        "Recall@50": {
+          "mean": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.0,
+          "ci_half_width": 0.0,
+          "n": 5
+        }
+      }
+    }
+  },
+  "generatedAt": "2026-10-21T08:03:10.382855+00:00",
+  "baseCommit": "d837ea071da79bd97f22e56b6b20d862568a60b1",
+  "biomedicalSmoke": {
+    "scope": "Offline component smoke check, not a relevance benchmark.",
+    "results": [
+      {
+        "condition": "cold",
+        "seconds": 6.283,
+        "scores": [
+          0.9894121951512792,
+          1.4334250231158499e-05
+        ],
+        "notice": "Experimental biomedical blend used for 1 papers; MiniLM retained for all candidates."
+      },
+      {
+        "condition": "warm",
+        "seconds": 0.002,
+        "scores": [
+          0.9894121951512792,
+          1.4334250231158499e-05
+        ],
+        "notice": "Experimental biomedical blend used for 1 papers; MiniLM retained for all candidates."
+      }
+    ]
+  },
+  "biomedicalConversion": {
+    "model": "ncbi/MedCPT-Cross-Encoder",
+    "revision": "71caf65d4927987813984f54c284405a13fcca49",
+    "quantization": "float32; int8 conversion exceeded score tolerance",
+    "probeMaxLogitError": 0.4533975124359131,
+    "probeMaxScoreError": 0.08499270677566528,
+    "floatMaxLogitError": 3.2901763916015625e-05,
+    "qualityValidation": "Three conversion probes only, not a relevance evaluation. Enable only as an experiment.",
+    "int8Accepted": false,
+    "activeMaxLogitError": 3.2901763916015625e-05
+  }
+}

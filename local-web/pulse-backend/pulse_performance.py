@@ -374,14 +374,15 @@ def _disk_http_cache_set(key, url, headers, data, status=200):
             (key, url, headers, body, status, expires_at, used, size)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
             (key, clean_url, json.dumps(clean_headers), compressed, status, expires_at, now, size))
-        total = conn.execute('SELECT SUM(size) FROM http_cache').fetchone()[0] or 0
-        if total > 1024 * 1024 * 1024:
+        count,total = conn.execute('SELECT COUNT(*),COALESCE(SUM(size),0) FROM http_cache').fetchone()
+        if total > 256 * 1024 * 1024 or count>10000:
             conn.execute('DELETE FROM http_cache WHERE expires_at < ?', (now,))
-            total = conn.execute('SELECT SUM(size) FROM http_cache').fetchone()[0] or 0
-            if total > 900 * 1024 * 1024:
-                conn.execute('''DELETE FROM http_cache WHERE key IN (
-                    SELECT key FROM http_cache ORDER BY used ASC LIMIT 200
-                )''')
+            rows=conn.execute('SELECT key,size FROM http_cache ORDER BY (expires_at-used>86400) DESC,used DESC').fetchall()
+            kept=0;used=0;remove=[]
+            for cache_key,cache_size in rows:
+                if kept>=10000 or used+cache_size>240*1024*1024:remove.append((cache_key,))
+                else:kept+=1;used+=cache_size
+            conn.executemany('DELETE FROM http_cache WHERE key=?',remove)
         conn.commit()
     except Exception:
         pass

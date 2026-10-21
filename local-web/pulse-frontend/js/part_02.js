@@ -480,6 +480,7 @@ const discoveryBoundCheckboxes=new WeakSet();
             <p>${escapeHtml(discoveryAuthorLine(item, 6))}${publication ? ` · ${escapeHtml(publication)}` : ''}</p>
           </div>
           <div class="dv-paper-facts">${doiHref ? `<a href="${escapeHtml(doiHref)}" target="_blank" rel="noreferrer" aria-label="DOI ${escapeHtml(doi)}">${escapeHtml(doi)}</a>\n` : ''}<span title="${escapeHtml(item.citationCountSource || '')}">${citationText === '—' ? 'Citation count unavailable' : escapeHtml(citationText)}</span></div>
+          ${typeof PulseEvidence!=='undefined'&&discoveryReviewContext().seedPapers?.some(p=>p.doi||p.pmid)?`<button class="dv-btn small" data-verify-citation="${escapeHtml(discoveryPaperKey(item))}">Verify citation passage</button>`:''}
           <div class="dv-suggested-card">
             <h4>WHY PULSE SUGGESTED THIS</h4>
             <ul>
@@ -733,6 +734,8 @@ const discoveryBoundCheckboxes=new WeakSet();
         }
       }
 
+      if(typeof PulseScreening!=='undefined')PulseScreening.render();
+      if(typeof PulseSearch!=='undefined')PulseSearch.render();
       if (!filtered.length) {
         els.discoveryPaperList.innerHTML = `
           <div class="discovery-empty-state">
@@ -860,7 +863,12 @@ const discoveryBoundCheckboxes=new WeakSet();
         }
         else if (action === 'bulk-relevant' || action === 'bulk-not') {
           state.discoveryUserTouchedRelevance = true;
-          selectedDiscoveryPapers().forEach(result => labelDiscoveryPaper(result, action === 'bulk-relevant' ? 2 : 0));
+          const papers=selectedDiscoveryPapers(),grade=action==='bulk-relevant'?2:0;
+          const prior=papers.map(discoveryRating);
+          if(typeof PulseScreening!=='undefined'&&!PulseScreening.canBatch(papers.length))return showToast('Screen up to 500 selected papers at a time.');
+          papers.forEach(result=>labelDiscoveryPaper(result,grade,{screening:false,rerank:false,deferRender:true}));
+          scheduleAutosave();
+          if(typeof PulseScreening!=='undefined')PulseScreening.recordGrades(papers,grade,prior);
           state.discoverySelectedKeys.clear();
           renderDiscoveryModal();
         } else if (action === 'bulk-compare') {
@@ -928,7 +936,7 @@ const discoveryBoundCheckboxes=new WeakSet();
             const res = await fetch(backendUrl('/api/discovery/compare'), {
               method: 'POST',
               headers: apiHeaders({'Content-Type': 'application/json'}),
-              body: JSON.stringify({ papers: _lastComparedPapers.map(citationPaperPayload), format: 'csv' })
+              body: JSON.stringify({ papers: _lastComparedPapers.map(typeof comparisonPaperPayload==='function'?comparisonPaperPayload:citationPaperPayload), format: 'csv', useOpenAccess:false })
             });
             const data = await res.json();
             if (data.csv && typeof downloadRecordFile === 'function') {
@@ -947,7 +955,7 @@ const discoveryBoundCheckboxes=new WeakSet();
             const res = await fetch(backendUrl('/api/discovery/compare'), {
               method: 'POST',
               headers: apiHeaders({'Content-Type': 'application/json'}),
-              body: JSON.stringify({ papers: _lastComparedPapers.map(citationPaperPayload), format: 'markdown' })
+              body: JSON.stringify({ papers: _lastComparedPapers.map(typeof comparisonPaperPayload==='function'?comparisonPaperPayload:citationPaperPayload), format: 'markdown', useOpenAccess:false })
             });
             const data = await res.json();
             if (data.markdown && typeof downloadRecordFile === 'function') {
@@ -972,7 +980,7 @@ const discoveryBoundCheckboxes=new WeakSet();
         const res = await fetch(backendUrl('/api/discovery/compare'), {
           method: 'POST',
           headers: apiHeaders({'Content-Type': 'application/json'}),
-          body: JSON.stringify({ papers: _lastComparedPapers.map(citationPaperPayload) })
+          body: JSON.stringify({ papers: _lastComparedPapers.map(typeof comparisonPaperPayload==='function'?comparisonPaperPayload:citationPaperPayload), useOpenAccess:document.getElementById('compareUseOpenAccess')?.checked!==false })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Comparison failed.');
@@ -984,6 +992,7 @@ const discoveryBoundCheckboxes=new WeakSet();
     }
 
     function renderCompareTable(matrix) {
+      if(typeof PulseEvidence!=='undefined')PulseEvidence.accept(matrix);
       const status = document.getElementById('compareStatus');
       const thead = document.getElementById('compareTableHead');
       const tbody = document.getElementById('compareTableBody');
@@ -996,7 +1005,7 @@ const discoveryBoundCheckboxes=new WeakSet();
         </tr>`;
       }
       if (tbody) {
-        tbody.innerHTML = (matrix.rows || []).map(r => {
+        tbody.innerHTML = (matrix.rows || []).map((r,rowIndex) => {
           const cells = columns.map(c => {
             const cell = (r.cells || {})[c.id || c.name] || {};
             const val = escapeHtml(cell.value || 'Not stated');
@@ -1004,13 +1013,14 @@ const discoveryBoundCheckboxes=new WeakSet();
             const isNotStated = !cell.grounded || /^not stated/i.test(cell.value || '');
             return `<td class="${isNotStated ? 'is-not-stated' : 'is-extracted'}" title="${quote ? `Extracted from: “${quote}”` : ''}">
               <div class="compare-cell-val">${val}</div>
-              ${quote ? `<small class="compare-cell-quote">“${quote}”</small>` : ''}
+              ${quote ? `<small class="compare-cell-quote">“${quote}”</small><button class="mac-btn evidence-source" data-evidence-cell="${rowIndex}" data-evidence-column="${escapeHtml(c.id||c.name)}">View source${cell.provenance?.page?' · p. '+escapeHtml(cell.provenance.page):''}</button>` : ''}
             </td>`;
           }).join('');
           return `<tr>
             <td class="compare-paper-cell">
               <strong>${escapeHtml(cleanDiscoveryTitle(r.title))}</strong>
               <small>${escapeHtml(r.meta || '')}</small>
+              <small>${escapeHtml(r.source||r.sourceType||'')}${r.warning?' · '+escapeHtml(r.warning):''}</small>
             </td>
             ${cells}
           </tr>`;

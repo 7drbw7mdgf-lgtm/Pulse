@@ -105,6 +105,7 @@ def extract_document(raw, name):
         if info.get('keywords'):
             metadata['keywords'] = info['keywords']
         chunks = []
+        evidence_passages = []
         identifiers = []
         warnings=[];ocr_pages=[];layout_pages=[];started=time.monotonic()
         try:
@@ -126,6 +127,12 @@ def extract_document(raw, name):
                     except Exception:warnings.append(f'Page {index+1} could not be read with local OCR; verify its references manually.')
                 else:warnings.append(f'Page {index+1} needs OCR beyond the extraction budget; verify its references manually.')
             chunks.append(native)
+            remaining=350000-sum(len(p['text']) for p in evidence_passages)
+            if remaining>0:
+                evidence_passages.append({'text':native[:min(30000,remaining)], 'page':index+1, 'section':'Article text',
+                    'source':'Local PDF / OCR' if index+1 in ocr_pages else 'Local PDF'})
+            if len(native)>min(30000,max(0,remaining)) and not any('Evidence text is capped' in w for w in warnings):
+                warnings.append('Evidence text is capped at 350,000 characters and 30,000 per page; some text is omitted.')
             if columns:layout_pages.append(index+1)
             if index < 3:
                 identifiers += [link.get('uri') or '' for link in page.get_links()]
@@ -147,6 +154,7 @@ def extract_document(raw, name):
         # Readable page text and structured identifiers precede binary scanning.
         return {'text': text, 'metadata': metadata, 'doiText': '\n'.join(identifiers),
                 'extractionSource': 'PyMuPDF + local OCR' if ocr_pages else 'PyMuPDF', 'pageCount': len(doc), 'textAvailable': bool(text),
+                'evidencePassages':evidence_passages,
                 'bibliographyProvenance':{'layoutPages':layout_pages,'ocrPages':ocr_pages,'pagesRead':len(page_indices),
                     'pageCount':len(doc),'completeExtraction':not warnings,'warnings':warnings}}
 

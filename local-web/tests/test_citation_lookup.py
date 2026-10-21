@@ -76,7 +76,7 @@ class CitationLookupTests(unittest.TestCase):
 
     def test_europe_pmc_paginates_beyond_old_limit_with_safe_page_size(self):
         calls=[]
-        def fetch(url,source):
+        def fetch(url,source,timeout=14):
             query=urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
             calls.append((query['cursorMark'][0],int(query['pageSize'][0])))
             start=0 if query['cursorMark'][0]=='*' else 1000

@@ -1085,7 +1085,7 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
                         resolved_seed_works[index] = work
                         if isinstance(work, dict):
                             metadata = openalex_to_metadata(work)
-                            seed_papers[index] = dict(seed_papers[index], **{key:metadata[key] for key in ('openAlexId','referenceIds','referenceCount')})
+                            seed_papers[index] = dict(seed_papers[index], **{key:metadata[key] for key in ('openAlexId','referenceIds','referenceCount','primaryTopic','field')})
         finally:
             REQUEST_CONTEXT.deadline = prior
             seed_resolution_ready.set()
@@ -1142,6 +1142,11 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
         if sources.get("arxiv", False):
             from pulse_core.arxiv_search import search_arxiv
             tasks["arxiv"] = lambda: public_search("arxiv", search_arxiv)
+    if payload.get('retryBranches') is not None:
+        requested = payload['retryBranches']
+        if not isinstance(requested,list) or not 1<=len(requested)<=12 or any(not isinstance(name,str) or name not in tasks for name in requested):
+            raise ClientError(400, 'Choose enabled search sources to retry.')
+        tasks={name:task for name,task in tasks.items() if name in requested}
     options = {
         "queryKeywords": payload.get("queryKeywords") or [],
         "queryTags": payload.get("queryTags") or [],
@@ -1150,6 +1155,8 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
         "excludeKeywords": exclude_keywords,
         "strictExcludeKeywords": steering_terms(payload.get('strictExcludeKeywords') or []),
         "researchQuestion": str(payload.get('researchQuestion') or '')[:1000],
+        "adaptiveStructure":settings.get('searchAdaptiveStructure') is True,
+        "structuralIntent":settings.get('searchStructuralIntent','auto'),
         "diversify": payload.get('diversify',True),
         "excludeDois": list(payload.get("excludeDois") or []) + [p.get("doi") for p in seed_papers if p.get("doi")],
         "excludeTitles": list(payload.get("excludeTitles") or []) + [p.get("title") for p in seed_papers if p.get("title")],
@@ -1365,7 +1372,8 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
                 fast_mode=fast_mode,feedback=feedback,feedback_scores=options['_feedbackSemantic']
             )
         if payload.get('pairwiseRerank', True):
-            options['_pairwiseReranker'] = lambda queries,records: crossencoder_scores(settings,queries,records,cancel_event)
+            from pulse_core.ranking_experiments import routed_scores
+            options['_pairwiseReranker'] = lambda queries,records: routed_scores(settings,queries,records,seed_papers,cancel_event)
         if payload.get('aiTriage'):
             question = options['researchQuestion'] or 'Related research to: '+ '; '.join(str(p.get('title') or '') for p in seed_papers[:8])
             options['_aiTriage'] = lambda records: triage(records,question,settings,cancel_event)
@@ -1392,6 +1400,7 @@ def _run_discovery_pipeline(payload, on_progress=None, cancel_event=None, on_can
         "bridgeMode": bool(payload.get('bridgeMode')),
         "aiReviewedCount": options.get('_aiReviewedCount', 0),
         "pairwiseRankingNotice": options.get('_pairwiseNotice'),
+        "structuralPolicy":options.get('_structuralPolicy'),
         "semanticRankedCount": options.get('_semanticCount', 0),
         "pairwiseRankedCount": options.get('_pairwiseCount', 0),
         "matchCalibration": options.get('_calibrationApplied') or 'evidence-based',

@@ -106,31 +106,35 @@
       if (state.discoveryLoading) return;
       const conceptMode=request.searchMode==='concept';
       const query=String(request.query||'').trim() || (typeof parseSearchQuery==='function'?parseSearchQuery(state.discoveryResearchQuestion).tags.join(', '):'');
-      const queryError=typeof parseSearchQuery==='function'?parseSearchQuery(state.discoveryResearchQuestion).error:'';
+      const queryError=!request.retryBranches&&typeof parseSearchQuery==='function'?parseSearchQuery(state.discoveryResearchQuestion).error:'';
       if(queryError){showToast(queryError);return;}
-      const seeds = conceptMode?[]:selectedPapersForRecommendation();
+      const seeds = conceptMode?[]:(request.seedPapers||selectedPapersForRecommendation());
       if (conceptMode&&!query) {showToast('Enter a concept or key phrase to search.');document.getElementById('discoveryResearchQuestion')?.focus();return;}
       if (!conceptMode&&!seeds.length) {
         showToast('Select a paper first to run literature discovery.');
         return;
       }
-      const options = discoveryConfiguration();
+      const options = {...discoveryConfiguration(),...(request.configuration||{})};
       if(conceptMode)Object.assign(options,{researchQuestion:query,searchMode:'concept',query,bridgeMode:false,depth:'1',includeIterativeChase:false,
         branches:{citationGraph:false,citationNetwork:false,citationCoCitation:false,semanticSearch:false,lexicalSearch:true}});
       if(options.bridgeMode && seeds.length>8){showToast('Select up to eight seed papers for one bridge search.');return;}
       if(options.bridgeMode && new Set(seeds.map(discoveryPaperKey)).size<2){showToast('Select at least two different seed papers to find bridges.');return;}
       if (!Object.values(options.branches).some(Boolean) && !options.fullTextSearch) { showToast('Choose at least one discovery method.'); return; }
       if (options.branches.lexicalSearch && !Object.values(options.searchSources).some(Boolean) && !options.fullTextSearch && !['citationGraph','citationNetwork','citationCoCitation','semanticSearch'].some(method=>options.branches[method])) { showToast('Choose at least one search source.'); return; }
-      const key = conceptMode?'concept::'+JSON.stringify(options):recommendationKey(seeds);
+      const key = request.resultKey || (conceptMode?'concept::'+JSON.stringify(options):recommendationKey(seeds));
+      const retryBase=request.retryBranches?{records:[...(state.discoveryResultKey===key?state.discoveryResults:state.recommendations.get(key)||[])],info:state.discoveryRunInfo?.get(key)||{}}:null;
+      if(request.retryBranches)options.retryBranches=request.retryBranches;
       const displaySeed=conceptMode?{title:query,isConceptQuery:true}:seeds[0];
-      const runContext={researchQuestion:options.researchQuestion,seedPapers:seeds.map(citationPaperPayload),searchMode:conceptMode?'concept':'related',bridgeMode:Boolean(!conceptMode&&options.bridgeMode&&seeds.length>1)};
+      const runContext={researchQuestion:options.researchQuestion,seedPapers:seeds.map(citationPaperPayload),searchMode:conceptMode?'concept':'related',bridgeMode:Boolean(!conceptMode&&options.bridgeMode&&seeds.length>1),configuration:{...options}};
+      delete runContext.configuration.retryBranches;
       state.discoveryLoading = true;
+      if(typeof PulseSearch!=='undefined')PulseSearch.render();
       state.recommendationLoadingKey = key;
       state.discoveryJobId=null;state.discoveryCancelRequested=false;state.discoveryStopReview=false;state.discoveryProgressText=conceptMode?'Preparing search keywords…':'Searching your selected sources…';state.discoveryProgressPercent=0;
       state.discoveryRunContext=runContext;
       renderDetails();syncDiscoveryControls();
       // Show progress (and the first results) while the slower sources are still searching.
-      if(typeof openDiscoverySearching==='function')openDiscoverySearching(displaySeed,key,options);
+      if(!retryBase&&typeof openDiscoverySearching==='function')openDiscoverySearching(displaySeed,key,options);
       let partial=null;
       try {
         const response = await fetch(backendUrl('/api/discovery/start'), {
@@ -150,7 +154,7 @@
           state.discoveryProgressText=data.stage==='keywords'?(data.searchMode==='bridge'?'Finding what the selected papers share…':'Preparing search keywords…'):(data.stage==='refining'||data.stage==='ranking')?'Refining…':!data.total?'Preparing searches…':`${data.completed||0} of ${data.total} searches complete · ${(data.recommendations||[]).length} candidates`;
           state.discoveryProgressPercent=(data.stage==='refining'||data.stage==='ranking')?95:Math.min(85,85*(data.completed||0)/Math.max(1,data.total||1));syncDiscoveryControls();
           if((data.recommendations||[]).length)partial=data;
-          if(typeof updateDiscoverySearching==='function')updateDiscoverySearching(data);
+          if(!retryBase&&typeof updateDiscoverySearching==='function')updateDiscoverySearching(data);
           await new Promise(resolve=>setTimeout(resolve,650));
           const poll=await fetch(backendUrl('/api/discovery/jobs/'+encodeURIComponent(data.id)),{headers:apiHeaders()});
           data=await poll.json();if(!poll.ok)throw new Error(data.error||'Could not check discovery progress.');
@@ -158,19 +162,35 @@
         if(data.status==='cancelled'||state.discoveryCancelRequested){
           // "Stop and review" keeps the results found so far; a plain cancel discards them.
           const kept=(data.recommendations||[]).length?data:partial;
-          if(!state.discoveryStopReview||!kept){state.discoverySearching=null;if(els.discoveryModal&&!els.discoveryModal.hidden)closeDiscoveryModal();showToast('Discovery cancelled.');return;}
+          if(!state.discoveryStopReview||!kept){state.discoverySearching=null;if(!retryBase&&els.discoveryModal&&!els.discoveryModal.hidden)closeDiscoveryModal();showToast(retryBase?'Source retry cancelled. Previous results retained.':'Discovery cancelled.');return;}
           data={...kept,status:'stopped',stoppedEarly:true};
         }
         if(data.status==='failed')throw new Error(data.error||'Discovery search failed.');
-        const recs = typeof recordSavedSearchResults==='function'?recordSavedSearchResults(data.recommendations||[],request,data):(data.recommendations||[]);
+        let recs = typeof recordSavedSearchResults==='function'?recordSavedSearchResults(data.recommendations||[],request,data):(data.recommendations||[]);
+        const capturedRecords=recs;
+        const capturedInfo={...data};
+        if(retryBase){
+          const seen=new Set(retryBase.records.map(discoveryPaperKey)),fresh=recs.filter(p=>{const id=discoveryPaperKey(p);if(seen.has(id))return false;seen.add(id);return true;});
+          recs=[...retryBase.records,...fresh.map(p=>({...p,score:null}))];
+          const errors={...(retryBase.info.errors||{})};for(const name of request.retryBranches)delete errors[name];
+          const notices={...(retryBase.info.notices||{})};for(const name of request.retryBranches)delete notices[name];
+          data={...retryBase.info,...data,sourceCounts:{...retryBase.info.sourceCounts,...data.sourceCounts},errors:{...errors,...data.errors},
+            notices:{...notices,...data.notices},
+            providerContributions:{...retryBase.info.providerContributions,...data.providerContributions},
+            queriesExecuted:{...retryBase.info.queriesExecuted,...data.queriesExecuted},
+            branchesExecuted:[...new Set([...(retryBase.info.branchesExecuted||[]),...(data.branchesExecuted||[])])],
+            retryNotice:`Source retry added ${fresh.length} papers. Existing order is preserved; run a full search to rank all papers together.`};
+        }
         state.discoverySearchErrors ||= new Map();
         state.discoverySearchErrors.set(key,data.errors || {});
         state.recommendations.set(key, recs);
         state.discoveryRunInfo ||= new Map();state.discoveryRunInfo.set(key,{...data,runContext});
+        if(typeof PulseScreening!=='undefined')PulseScreening.afterSearch(capturedRecords,capturedInfo,runContext);
         state.discoveryLastRun={key,recommendations:recs,seed:displaySeed};
-        if (conceptMode||recommendationKey(selectedPapersForRecommendation()) === key) {
+        if ((retryBase&&state.discoveryResultKey===key)||conceptMode||recommendationKey(selectedPapersForRecommendation()) === key) {
           state.discoveryResultKey=key;state.discoveryRunContext=runContext;
-          openDiscoveryModal(recs, displaySeed,key);
+          if(retryBase){state.discoveryResults=recs;renderDiscoveryModal({preservePosition:true});}
+          else openDiscoveryModal(recs, displaySeed,key);
         } else if (state.discoverySearching?.key === key) {
           // The selection changed during the search; results stay under "Review results".
           state.discoverySearching = null;
@@ -180,10 +200,11 @@
         showToast(`Found ${recs.length} ${conceptMode?'matching':'related'} paper${recs.length === 1 ? '' : 's'}${unavailable ? ` · ${unavailable} search source${unavailable===1?'':'s'} reported a problem` : ` for "${compactTitle(displaySeed.title)}"`}.`);
       } catch (error) {
         showToast(error.message);
-        if(state.discoverySearching){state.discoverySearching=null;if(els.discoveryModal&&!els.discoveryModal.hidden)closeDiscoveryModal();}
+        if(state.discoverySearching){state.discoverySearching=null;if(!retryBase&&els.discoveryModal&&!els.discoveryModal.hidden)closeDiscoveryModal();}
 
       } finally {
         state.discoveryLoading = false;state.discoveryStopReview=false;
+        if(typeof PulseSearch!=='undefined')PulseSearch.render();
         state.recommendationLoadingKey = null;state.discoveryJobId=null;state.discoveryCancelRequested=false;
         render();syncDiscoveryControls();
       }

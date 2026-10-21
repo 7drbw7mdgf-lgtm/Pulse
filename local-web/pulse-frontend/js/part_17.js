@@ -261,6 +261,7 @@
         abstract: String(paper.abstract || '').slice(0,6000),
         s2PaperId: paper.s2PaperId || '',
         openAlexId: paper.openAlexId || '',
+        field:paper.field||'',primaryTopic:paper.primaryTopic||null,
         openAlexUrl: paper.openAlexUrl || '',
         techniques: paper.techniques || [],
         organisms: paper.organisms || [],

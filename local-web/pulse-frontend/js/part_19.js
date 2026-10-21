@@ -123,6 +123,8 @@
           title: paper.title,
           name: paper.name,
           bibliographyText: libraryBibliographyText(paper),
+          evidencePassages: paper.evidencePassages || [],
+          field:paper.field||'',primaryTopic:paper.primaryTopic||null,
           referenceText: String(paper.referenceText || '').slice(0,12000), citationMatch: paper.citationMatch || null, bibliographyParent: paper.bibliographyParent || null,
           metadataVerification: paper.metadataVerification || null, publicationDates: paper.publicationDates || {},
           publicationStatus:paper.publicationStatus||null,publicationRelations:paper.publicationRelations||[],publicationNotices:paper.publicationNotices||[],publicationRole:paper.publicationRole||'',isRetracted:paper.isRetracted===true,

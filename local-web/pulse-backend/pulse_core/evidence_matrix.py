@@ -5,9 +5,11 @@ source text and the value appears in that quote. Extraction can still pick the w
 interface labels cells as automatically extracted and shows the quote for checking.
 """
 import collections
+import copy
 import concurrent.futures
 import csv
 import hashlib
+import html
 import io
 import json
 import re
@@ -185,29 +187,52 @@ def extract_paper_cell(column_def, paper, settings=None, cancel_event=None):
     col_id = column_def.get("id") or column_def.get("name")
     abstract = str(paper.get("abstract") or "").strip()
     full_text = str(paper.get("text") or "").strip()
-    has_full_text = len(full_text) > max(1000, len(abstract) + 500)
-    source_text = full_text if has_full_text else abstract
+    blocks = paper.get('evidencePassages') or []
+    has_full_text = bool(blocks) or len(full_text) > max(1000, len(abstract) + 500)
+    source_text = (full_text or '\n\n'.join(p.get('text','') for p in blocks)) if has_full_text else abstract
     source_type = "paper" if has_full_text else "abstract"
 
     if not source_text:
         return {"value": f"Not stated in the {source_type}", "quote": "", "grounded": False}
 
     # Deterministic grounded heuristic extraction
+    if blocks:
+        preferred = {'system':r'method|material|study|participant', 'method':r'method|material',
+            'finding':r'result|conclu|discussion', 'limitation':r'limit|discussion'}
+        eligible = [p for p in blocks if not re.search(r'references|bibliography|acknowledg', p.get('section',''), re.I)]
+        eligible.sort(key=lambda p: not bool(re.search(preferred.get(col_id, r'^$'),p.get('section',''),re.I)))
+        for block in eligible:
+            raw = heuristic_extract_column(col_id, block['text'], source_type='paper', title=str(paper.get('title') or ''))
+            cell = verify_grounded_cell(raw.get('value'),raw.get('quote'),block['text'],source_type='paper')
+            if cell['grounded']:
+                cell['provenance'] = {key:block.get(key) for key in ('section','page','anchor','url','source') if block.get(key)}
+                cell['passage'] = context_excerpt(block['text'],cell['quote'])
+                return cell
+        return {'value':'Not stated in the paper','quote':'','grounded':False}
     raw = heuristic_extract_column(col_id, source_text, source_type=source_type, title=str(paper.get("title") or ""))
-    return verify_grounded_cell(raw.get("value"), raw.get("quote"), source_text, source_type=source_type)
+    cell = verify_grounded_cell(raw.get("value"), raw.get("quote"), source_text, source_type=source_type)
+    if cell['grounded']: cell.update(provenance={'source':'Abstract' if source_type=='abstract' else 'Local imported text'},passage=context_excerpt(source_text,cell['quote']))
+    return cell
+
+
+def context_excerpt(text,quote):
+    normalized=normalize_whitespace(text)
+    index=normalized.find(quote)
+    start=max(0,index-1500) if index>=0 else 0
+    return normalized[start:start+max(6000,len(quote)+3000)]
 
 
 def build_evidence_row(paper, columns, settings=None, cancel_event=None):
     paper_id = str(paper.get("id") or paper.get("doi") or paper.get("title") or "")
     abstract = str(paper.get("abstract") or "")
     text = str(paper.get("text") or "")
-    text_hash = hashlib.sha256((abstract + "\n" + text[:20000]).encode("utf-8")).hexdigest()[:16]
+    text_hash = hashlib.sha256(json.dumps([abstract,text,paper.get('title'),paper.get('evidencePassages'),paper.get('evidenceWarning')],sort_keys=True).encode()).hexdigest()
     col_ids = [c.get("id") or c.get("name") for c in columns]
     cache_key = f"{paper_id}:{text_hash}:{','.join(col_ids)}"
 
     with _CACHE_LOCK:
         if cache_key in _MATRIX_CACHE:
-            return _MATRIX_CACHE[cache_key]
+            return copy.deepcopy(_MATRIX_CACHE[cache_key])
 
     with _CONCURRENCY_SEMAPHORE:
         cells = {}
@@ -227,12 +252,13 @@ def build_evidence_row(paper, columns, settings=None, cancel_event=None):
         "meta": meta,
         "doi": paper.get("doi") or "",
         "url": paper.get("url") or "",
-        "sourceType": "paper" if len(text) > max(1000, len(abstract) + 500) else "abstract",
+        "sourceType": "paper" if paper.get('evidencePassages') or len(text) > max(1000, len(abstract) + 500) else "abstract",
+        "source":paper.get('evidenceSource') or '', 'warning':paper.get('evidenceWarning') or '',
         "cells": cells,
     }
 
     with _CACHE_LOCK:
-        _MATRIX_CACHE[cache_key] = row
+        _MATRIX_CACHE[cache_key] = copy.deepcopy(row)
         while len(_MATRIX_CACHE) > 500:
             _MATRIX_CACHE.popitem(last=False)
 
@@ -285,7 +311,7 @@ def generate_evidence_matrix(papers, columns=None, settings=None, max_workers=2,
 def _csv_safe(value):
     """Stop spreadsheet apps from running a cell as a formula (CSV injection)."""
     text = str(value if value is not None else "")
-    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+    return "'" + text if text[:1] in ("\t","\r") or text.lstrip()[:1] in ("=", "+", "-", "@") else text
 
 
 def export_matrix_csv(matrix):
@@ -293,6 +319,7 @@ def export_matrix_csv(matrix):
     writer = csv.writer(output)
     cols = matrix.get("columns") or DEFAULT_COLUMNS
     header = ["Paper", "Meta", "DOI"] + [c.get("name") or c.get("id") for c in cols]
+    for c in cols: header.extend([str(c.get('name') or c.get('id'))+' quote',str(c.get('name') or c.get('id'))+' source'])
     writer.writerow([_csv_safe(h) for h in header])
     for r in matrix.get("rows") or []:
         row_vals = [r.get("title"), r.get("meta"), r.get("doi")]
@@ -300,23 +327,34 @@ def export_matrix_csv(matrix):
             cid = c.get("id") or c.get("name")
             cell = (r.get("cells") or {}).get(cid, {})
             row_vals.append(cell.get("value", ""))
+        for c in cols:
+            cell=(r.get('cells') or {}).get(c.get('id') or c.get('name'),{})
+            row_vals.extend([cell.get('quote',''),json.dumps(cell.get('provenance') or {},ensure_ascii=False)])
         writer.writerow([_csv_safe(v) for v in row_vals])
     return output.getvalue()
 
 
 def export_matrix_markdown(matrix):
+    def clean(value):return html.escape(normalize_whitespace(value),quote=False).replace('|','\\|')
     cols = matrix.get("columns") or DEFAULT_COLUMNS
-    headers = ["Paper", "Meta"] + [c.get("name") or c.get("id") for c in cols]
+    headers = ["Paper", "Meta"] + [clean(c.get("name") or c.get("id")) for c in cols]
     lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
     for r in matrix.get("rows") or []:
         row_vals = [
-            str(r.get("title") or "").replace("|", "-"),
-            str(r.get("meta") or "").replace("|", "-"),
+            clean(r.get("title") or ""),
+            clean(r.get("meta") or ""),
         ]
         for c in cols:
             cid = c.get("id") or c.get("name")
             cell = (r.get("cells") or {}).get(cid, {})
-            val = str(cell.get("value") or "").replace("|", "-")
+            val = clean(cell.get("value") or "")
             row_vals.append(val)
         lines.append("| " + " | ".join(row_vals) + " |")
+    lines.extend(['','Supporting quotations and provenance (automatically extracted; check context):',''])
+    for r in matrix.get('rows') or []:
+        for c in cols:
+            cell=(r.get('cells') or {}).get(c.get('id') or c.get('name'),{})
+            if cell.get('quote'):
+                lines.extend([clean(r.get('title'))+' · '+clean(c.get('name') or c.get('id')),
+                    '> '+clean(cell['quote']),clean(json.dumps(cell.get('provenance') or {},ensure_ascii=False)),''])
     return "\n".join(lines) + "\n"

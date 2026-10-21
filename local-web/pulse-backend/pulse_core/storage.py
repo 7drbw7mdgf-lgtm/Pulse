@@ -259,6 +259,17 @@ def save_settings(payload):
     s2_key = payload.get("semanticScholarApiKey")
     api_key = payload.get("apiKey") or payload.get("geminiApiKey")
     settings = dict(current)
+    for key in ('searchAdaptiveStructure','searchBiomedicalRouter'):
+        if key in payload:
+            if not isinstance(payload[key],bool):raise ClientError(400,'Ranking experiment switches must be true or false.')
+            settings[key]=payload[key]
+    if 'searchStructuralIntent' in payload:
+        if payload['searchStructuralIntent'] not in ('auto','bibliography','focused'):raise ClientError(400,'Choose an adaptive citation intent.')
+        settings['searchStructuralIntent']=payload['searchStructuralIntent']
+    if 'searchBiomedicalModelPath' in payload:
+        value=payload['searchBiomedicalModelPath']
+        if not isinstance(value,str) or len(value)>4096:raise ClientError(400,'Choose a local biomedical model folder.')
+        settings['searchBiomedicalModelPath']=value.strip()
     settings["aiProvider"] = ai_provider
     settings["cloudProvider"] = cloud_provider
     settings["cloudModel"] = cloud_model

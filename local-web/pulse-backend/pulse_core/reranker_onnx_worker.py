@@ -1,5 +1,6 @@
 """Offline ONNX cross-encoder worker; also frozen as a portable executable."""
 import json
+import collections
 import math
 import os
 from pathlib import Path
@@ -12,17 +13,21 @@ _CACHED_SESSION = None
 _CACHED_TOKENIZER = None
 _CACHED_INPUTS = None
 _CACHED_MODEL_ROOT = None
+_RESOURCE_CACHE = collections.OrderedDict()
 
 
 def _get_resources(model_path):
     global _CACHED_SESSION, _CACHED_TOKENIZER, _CACHED_INPUTS, _CACHED_MODEL_ROOT
     root_str = str(Path(model_path).resolve())
-    if _CACHED_SESSION is not None and _CACHED_MODEL_ROOT == root_str:
-        return _CACHED_SESSION, _CACHED_TOKENIZER, _CACHED_INPUTS
+    root = Path(model_path)
+    key=(root_str,*[(p.stat().st_mtime_ns,p.stat().st_size) for p in (root/'model.onnx',root/'tokenizer.json')])
+    if key in _RESOURCE_CACHE:
+        _RESOURCE_CACHE.move_to_end(key)
+        return _RESOURCE_CACHE[key]
     import numpy as np
     import onnxruntime as ort
+    ort.disable_telemetry_events()
     from tokenizers import Tokenizer
-    root = Path(model_path)
     tokenizer = Tokenizer.from_file(str(root / 'tokenizer.json'))
     tokenizer.no_truncation()
     tokenizer.no_padding()
@@ -32,6 +37,8 @@ def _get_resources(model_path):
     session = ort.InferenceSession(str(root / 'model.onnx'), sess_options=options,
                                    providers=['CPUExecutionProvider'])
     inputs = {item.name for item in session.get_inputs()}
+    _RESOURCE_CACHE[key]=(session,tokenizer,inputs)
+    while len(_RESOURCE_CACHE)>2:_RESOURCE_CACHE.popitem(last=False)
     _CACHED_SESSION = session
     _CACHED_TOKENIZER = tokenizer
     _CACHED_INPUTS = inputs

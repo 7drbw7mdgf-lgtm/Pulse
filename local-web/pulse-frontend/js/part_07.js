@@ -57,6 +57,7 @@
       mergeDoiMetadata(existing, incoming);
       if(incoming.bibliographyText)existing.bibliographyText=incoming.bibliographyText;
       if(incoming.bibliographyProvenance)existing.bibliographyProvenance=incoming.bibliographyProvenance;
+      if(incoming.evidencePassages?.length)existing.evidencePassages=incoming.evidencePassages;
       if(incoming.metadataVerification?.verified)existing.metadataVerification=incoming.metadataVerification;
       if (!existing.name && incoming.name) existing.name = incoming.name;
       if (!existing.size && incoming.size) existing.size = incoming.size;
@@ -232,6 +233,7 @@
         text: usableText.slice(0, 120000),
         bibliographyText: scanned?.bibliographyText || extractBibliographyText(safeRaw),
         bibliographyProvenance: scanned?.bibliographyProvenance || null,
+        evidencePassages: scanned?.evidencePassages || [],
         size: file.size,
         x: 0,
         y: 0

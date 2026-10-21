@@ -18,6 +18,8 @@ def main():
     parser.add_argument('--pools-dir',type=Path)
     parser.add_argument('--compare',type=Path)
     parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--policy',choices=('fixed','adaptive'),default='fixed')
+    parser.add_argument('--intent',choices=('auto','bibliography','focused'),default='auto')
     args=parser.parse_args()
     sys.path.insert(0,str(args.source.resolve()/'tools'))
     import benchmark_independent as benchmark
@@ -25,11 +27,13 @@ def main():
     results={}
     for name in ('relish','synergy','scidocs','headtohead'):
         data=benchmark.load_pool_file(pools/(name+'_pools.json.gz'))
-        result=benchmark.evaluate_variant_on_dataset(data,'sec1_author_trajectory')
+        result=benchmark.evaluate_variant_on_dataset(data,'sec1_author_trajectory',ranking_options={
+            'adaptiveStructure':args.policy=='adaptive','structuralIntent':args.intent})
         results[name]=result
         print(name,{metric:result['summary'][metric]['mean'] for metric in ('nDCG@20','Recall@20','Recall@50')},flush=True)
     report={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),
             'source':str(args.source.resolve()),'scope':'Fixed-pool text/citation ranking only; no live retrieval or neural models.',
+            'policy':args.policy,'intent':args.intent,'heldOut':False,
             'datasets':results}
     if args.compare:
         previous=json.loads(args.compare.read_text())
