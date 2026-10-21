@@ -34,12 +34,14 @@ def executable_path(pid):
         kernel.CloseHandle(handle)
 
 
-def has_window(pid):
+def has_window(pid, close=False):
     user = ctypes.WinDLL('user32')
     callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
     user.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
     user.IsWindowVisible.argtypes = [wintypes.HWND]
     user.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+    user.PostMessageW.restype = wintypes.BOOL
     found = []
     def inspect(hwnd, _):
         owner = wintypes.DWORD()
@@ -48,6 +50,8 @@ def has_window(pid):
         user.GetWindowTextW(hwnd, title, len(title))
         if owner.value == pid and user.IsWindowVisible(hwnd) and 'Pulse' in title.value:
             found.append(True)
+            if close:
+                assert user.PostMessageW(hwnd, 0x0010, 0, 0), 'Could not close the Pulse window'
         return True
     user.EnumWindows.argtypes = [callback_type, wintypes.LPARAM]
     user.EnumWindows(callback_type(inspect), 0)
@@ -65,7 +69,10 @@ def main():
     installer = args.installer.resolve()
     assert installer.is_file()
     report = {'installer': installer.name, 'sha256': hashlib.sha256(installer.read_bytes()).hexdigest()}
-    with tempfile.TemporaryDirectory(prefix='pulse-windows-verify-') as folder:
+    # WebView2 can release temporary cache locks after the launcher has exited.
+    # Best-effort removal must not mask a check failure or fail a passing run.
+    # Normal window close and backend shutdown are explicitly checked below.
+    with tempfile.TemporaryDirectory(prefix='pulse-windows-verify-', ignore_cleanup_errors=True) as folder:
         root = Path(folder)
         install = root / 'app'
         # NSIS requires /D last and an unquoted destination, including any spaces.
@@ -157,8 +164,18 @@ def main():
             assert isinstance(request('/api/managers/status'), dict)
             report['agentAndManagerApis'] = True
         finally:
-            application.terminate()
-            application.wait(timeout=20)
+            closed_window = application.poll() is None and has_window(application.pid, close=True)
+            if application.poll() is None and not closed_window:
+                application.terminate()
+            try:
+                application.wait(timeout=20)
+            except subprocess.TimeoutExpired:
+                subprocess.run(['taskkill', '/F', '/T', '/PID', str(application.pid)],
+                               capture_output=True, timeout=20)
+                raise AssertionError('Pulse did not exit after its window was closed')
+            if closed_window:
+                assert application.returncode == 0, f'Pulse close exited {application.returncode}'
+                report['nativeWindowClose'] = True
             native_log.close()
             if backend_pid:
                 deadline = time.monotonic() + 15
@@ -169,6 +186,7 @@ def main():
             uninstallers = list(install.glob('*uninstall*.exe'))
             if uninstallers:
                 subprocess.run([str(uninstallers[0]), '/S'], timeout=60)
+        assert report.get('nativeWindowClose'), 'Normal Pulse window shutdown was not verified'
         report['ok'] = True
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2) + '\n')
