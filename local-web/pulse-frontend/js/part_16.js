@@ -121,7 +121,9 @@ function bindInspectorSections() {
       const doiHref = cleanDoi ? `https://doi.org/${encodeURI(cleanDoi)}` : '';
       const openHref = (typeof paperOpenUrl === 'function' ? paperOpenUrl(paper) : '') || doiHref;
       const fullText = safeHref(paper.fullTextUrl || '');
-      const venue = [paper.journal ? `<i>${escapeHtml(paper.journal)}</i>` : '', escapeHtml(inspectorPagination(paper))].filter(Boolean).join(' ');
+      // bioRxiv/medRxiv preprints show their server, posted version and subject category.
+      const preprint = paper.preprint ? [`<i>${escapeHtml(paper.preprint.server)}</i> preprint`, paper.preprint.version ? `v${escapeHtml(paper.preprint.version)}` : '', escapeHtml(paper.preprint.category || '')].filter(Boolean).join(' · ') : '';
+      const venue = preprint || [paper.journal ? `<i>${escapeHtml(paper.journal)}</i>` : '', escapeHtml(inspectorPagination(paper))].filter(Boolean).join(' ');
       const meta = [escapeHtml(inspectorAuthorLine(paper)), escapeHtml(paper.year || 'No year'), venue].filter(Boolean).join(' · ');
       const provenance = paper.metadataNote || (paper.doiVerified ? 'Identity confirmed from the DOI record.' : 'DOI found in the imported file; not yet confirmed.');
 

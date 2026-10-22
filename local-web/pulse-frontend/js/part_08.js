@@ -1,3 +1,10 @@
+/* bioRxiv/medRxiv details kept with a paper: server, posted version, category and licence. */
+function preprintDetails(value){
+  if(!value||typeof value!=='object'||!['bioRxiv','medRxiv'].includes(value.server))return null;
+  const text=(item,limit)=>String(item||'').slice(0,limit);
+  return {server:value.server,version:text(value.version,6).replace(/\D/g,''),versions:Math.max(0,Math.min(999,Number(value.versions)||0)),category:text(value.category,80),license:text(value.license,40),postedDate:text(value.postedDate,10)};
+}
+
 
     function parseCsvRecords(text, name) {
       const rows = parseCsv(text);
@@ -107,7 +114,7 @@
         bibliographyText: String(paper.bibliographyText || (typeof extractBibliographyText==='function'?extractBibliographyText(paper.text || ''):'')).slice(0,120000),
         referenceText: String(paper.referenceText || '').slice(0,12000), citationMatch: paper.citationMatch || null, bibliographyParent: paper.bibliographyParent || null,
         metadataVerification: paper.metadataVerification || null, publicationDates: paper.publicationDates || {},
-        publicationStatus:paper.publicationStatus||null,publicationRelations:paper.publicationRelations||[],publicationNotices:paper.publicationNotices||[],publicationRole:paper.publicationRole||'',isRetracted:paper.isRetracted===true,
+        publicationStatus:paper.publicationStatus||null,preprint:typeof preprintDetails==='function'?preprintDetails(paper.preprint):paper.preprint||null,publicationRelations:paper.publicationRelations||[],publicationNotices:paper.publicationNotices||[],publicationRole:paper.publicationRole||'',isRetracted:paper.isRetracted===true,
         authorDetails: paper.authorDetails || [], referenceAuthorDetails:paper.referenceAuthorDetails || [], referenceEntries:paper.referenceEntries || [], bibliographyProvenance:paper.bibliographyProvenance || null,
         size: Number(paper.size || 0),
         x: Number(paper.x || 0),
@@ -212,6 +219,7 @@
     function mergeDoiMetadata(paper, metadata) {
       for(const field of ['publicationStatus','publicationRelations','publicationNotices','publicationRole','authorDetails'])if(metadata[field]!==undefined)paper[field]=metadata[field];
       if(metadata.isRetracted===true)paper.isRetracted=true;
+      if(metadata.preprint)paper.preprint=preprintDetails(metadata.preprint);
       if (metadata.title) paper.title = metadata.title;
       if ((metadata.authors || []).length) paper.authors = paperAuthors(metadata);
       if (metadata.date) paper.date = metadata.date;

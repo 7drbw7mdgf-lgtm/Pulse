@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 from pulse_core.constants import APP_VERSION, ClientError
 from pulse_core.doi_utils import normalize_doi
 
-LOOKUPS = ThreadPoolExecutor(max_workers=3, thread_name_prefix='pdf-access')
+LOOKUPS = ThreadPoolExecutor(max_workers=4, thread_name_prefix='pdf-access')
 MAX_HTML = 1024 * 1024
 
 
@@ -262,7 +262,8 @@ def unpaywall_links(paper):
 
 def find_pdf(paper):
     deadline = time.monotonic()+30
-    futures = [LOOKUPS.submit(provider, paper) for provider in (openalex_links, europe_pmc_links, unpaywall_links)]
+    from pulse_core.preprint_servers import preprint_pdf_links
+    futures = [LOOKUPS.submit(provider, paper) for provider in (openalex_links, europe_pmc_links, unpaywall_links, preprint_pdf_links)]
     seen, cloud_seen, failures, attempts = set(), set(), [], 0
     def try_links(rows):
         nonlocal attempts

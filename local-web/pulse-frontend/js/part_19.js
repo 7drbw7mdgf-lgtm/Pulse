@@ -128,7 +128,7 @@
           field:paper.field||'',primaryTopic:paper.primaryTopic||null,
           referenceText: String(paper.referenceText || '').slice(0,12000), citationMatch: paper.citationMatch || null, bibliographyParent: paper.bibliographyParent || null,
           metadataVerification: paper.metadataVerification || null, publicationDates: paper.publicationDates || {},
-          publicationStatus:paper.publicationStatus||null,publicationRelations:paper.publicationRelations||[],publicationNotices:paper.publicationNotices||[],publicationRole:paper.publicationRole||'',isRetracted:paper.isRetracted===true,
+          publicationStatus:paper.publicationStatus||null,preprint:paper.preprint||null,publicationRelations:paper.publicationRelations||[],publicationNotices:paper.publicationNotices||[],publicationRole:paper.publicationRole||'',isRetracted:paper.isRetracted===true,
           authorDetails:paper.authorDetails || [],referenceAuthorDetails:paper.referenceAuthorDetails || [], referenceEntries:paper.referenceEntries || [], bibliographyProvenance:paper.bibliographyProvenance || null,
           authors: paper.authors || [],
           date: paper.date || '',

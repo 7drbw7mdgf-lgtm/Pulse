@@ -8,6 +8,8 @@ The **Reference managers** ribbon tab contains the existing Zotero and Mendeley 
 
 [Europe PMC](https://europepmc.org/RestfulWebService) supplies biomedical article metadata, abstracts, publication identifiers and available free full-text links. [CORE](https://api.core.ac.uk/docs/v3) supplies research metadata and repository/full-text links. Search does not download full papers automatically or bypass access restrictions.
 
+bioRxiv and medRxiv preprints appear in search through Europe PMC and Semantic Scholar, which index both servers. The bioRxiv API cannot be searched by keyword or author, so it is used to complete a known preprint DOI, not as a search source; see [PDF access](PDF-ACCESS.md).
+
 Matching DOI records are combined. A record without a DOI can join a unique matching title when author/year evidence agrees. Conflicting DOIs or editions remain separate unless explicit preprint/published types, near-identical titles, matching authors and compatible dates support grouping them as versions. Results retain the contributing sources, available bibliographic fields and provider-specific citation counts. Adding results to the library preserves their full-text links and identifiers. Imported-paper metadata lookup also tries these sources when Crossref and OpenAlex cannot identify a match; ambiguous results do not overwrite extracted metadata.
 
 Both sources offer public metadata search. CORE's allowance can vary, and unavailable or rate-limited sources are reported above the results while other searches continue. Requests use Pulse's bounded, cached transport.

@@ -82,6 +82,27 @@ def lookup_doi_metadata(payload):
         sources.append("OpenAlex")
     except ClientError as error:
         errors.append(str(error))
+    from .preprint_servers import is_preprint_doi, preprint_record
+    if is_preprint_doi(doi):
+        # bioRxiv/medRxiv add the posted version, category, abstract and the journal version it became.
+        try:
+            record = preprint_record(doi)
+        except ClientError as error:
+            record = None
+            errors.append(str(error))
+        if record:
+            fill = {key: value for key, value in record.items() if key not in ("fullTextLinks",)}
+            metadata = merge_metadata(metadata, fill)
+            # Some indexes fold a preprint into its journal article; this DOI is the posted preprint.
+            for key in ("journal", "publicationType", "year", "date", "url", "publisher", "abstract"):
+                if record.get(key):metadata[key] = record[key]
+            relations = {}
+            for relation in metadata.get("publicationRelations") or []:
+                relations.setdefault((relation.get("type"), normalize_doi(relation.get("doi")).casefold()), relation)
+            metadata["publicationRelations"] = list(relations.values())
+            metadata["preprint"] = record["preprint"]
+            metadata["fullTextLinks"] = list(metadata.get("fullTextLinks") or []) + [row for row in record.get("fullTextLinks") or [] if row not in (metadata.get("fullTextLinks") or [])]
+            sources.append(record["preprint"]["server"])
     if not metadata.get("title") and not metadata.get("authors"):
         raise ClientError(404, "No usable metadata was found for that DOI. " + " ".join(errors[:2]))
     title_match = doi_title_match(expected_title, metadata.get("title") or "")
