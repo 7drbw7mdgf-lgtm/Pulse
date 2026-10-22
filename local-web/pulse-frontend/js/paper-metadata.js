@@ -64,9 +64,12 @@ function preprintDetails(value){
       return rows;
     }
 
-    function normalizeImportedPaper(paper, source) {
+    function normalizeImportedPaper(paper, source, { existing = false } = {}) {
+      const added = paper.addedAt || paper.dateAdded || paper.importedAt;
+      const addedTime = typeof added === 'string' ? Date.parse(added) : NaN;
       return {
         id: paper.id || uid(),
+        addedAt: Number.isFinite(addedTime) ? new Date(addedTime).toISOString() : (existing ? '' : new Date().toISOString()),
         selected: paper.selected !== false,
         name: paper.name || source,
         title: cleanField(paper.title || paper.name || 'Untitled paper'),

@@ -133,6 +133,8 @@ button:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
 .library-table th.library-col-group { width:110px; }
 .library-table th.library-col-authors { width:17%; }
 .library-table th.library-col-year { width:58px; }
+.library-table th.library-col-addedAt { width:110px; }
+.library-table .library-addedAt-cell { white-space:nowrap; font-variant-numeric:tabular-nums; }
 .library-table th.library-col-journal { width:14%; }
 .library-table th.library-col-citations { width:76px; }
 .library-table th.library-col-doi { width:13%; }

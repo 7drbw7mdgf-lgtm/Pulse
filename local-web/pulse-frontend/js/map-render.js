@@ -52,7 +52,7 @@
       window.paperGroupInfo = paperGroupInfo;
     }
 
-    let graphDrawingKey = '', graphDrawingLinks = null;
+    let graphDrawingKey = '', graphDrawingLinks = null, graphInitialCameraCheck = true, graphViewportSize = '';
     function updateGraphSelectionClasses() {
       const linked = selectedLinkEndpoints();
       els.map.querySelectorAll('.node').forEach(node => {
@@ -108,6 +108,9 @@
         return;
       }
       const rect = els.map.getBoundingClientRect();
+      const viewportSize=`${Math.round(rect.width)}:${Math.round(rect.height)}`;
+      if(graphViewportSize && viewportSize!==graphViewportSize)state.mapNeedsFit=true;
+      graphViewportSize=viewportSize;
       const width = Math.max(rect.width, 640);
       const height = Math.max(rect.height, 520);
       const safeHeight = Math.max(360, height - bottomDockSpace());
@@ -116,6 +119,12 @@
       els.map.classList.toggle('no-grid', !state.graphStyle.showGrid);
       layout(width, safeHeight);
       applyAreaContainment();
+      if ((graphInitialCameraCheck || state.mapCameraCheck || state.mapNeedsFit) && !state.graphAnalysisPending && !state.graphLayoutPending) {
+        const papers=typeof activeMapPapers==='function'?activeMapPapers():state.papers,v=state.view;
+        const visible=papers.some(p=>p.x>=v.x&&p.x<=v.x+v.width&&p.y>=v.y&&p.y<=v.y+v.height);
+        if (state.mapNeedsFit || (papers.length && !visible)) fitCanvasToMap();
+        graphInitialCameraCheck=false;state.mapCameraCheck=false;state.mapNeedsFit=false;
+      }
       if (!state.graphAnalysisPending && !state.graphLayoutPending && !isRecenteringAnimation && typeof rememberGraphLayout === 'function') rememberGraphLayout(width,safeHeight);
       const activeDrawingPapers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
       const drawingKey = JSON.stringify([width,safeHeight,state.mode,state.centerId,state.activeMapId,state.graphAnalysisRevision || 0,

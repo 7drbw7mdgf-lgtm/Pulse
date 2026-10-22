@@ -9,7 +9,9 @@
 .map-focus .pulse-main-viewport { width:100%; }
 .network-action,.network-search-actions button { border:1px solid var(--line); border-radius:5px; color:var(--ink-2); background:var(--surface); padding:6px 9px; font:11px var(--font-ui); white-space:nowrap; cursor:pointer; }
 .network-action:hover,.network-search-actions button:hover { color:var(--accent); border-color:var(--accent-line); }
-.network-search-options { flex-wrap:wrap; }
+.network-search-options { flex:0 1 auto; flex-wrap:wrap; }
+.network-search-status { flex:1 0 78px; }
+.dock-map-actions { padding:6px 0; border-bottom:1px solid var(--line); }
 #networkSearchMatch { max-width:100%; }
 .network-search-actions button { white-space:normal; }
 .network-search-results { overflow-wrap:anywhere; }
@@ -84,7 +86,7 @@
 .whats-new-header-title { display:flex; flex-direction:column; gap:4px; }
 .whats-new-header-title h2 { margin:0; font-size:22px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px; }
 .whats-new-badge { display:inline-block; width:fit-content; padding:2px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent); font-size:11px; font-weight:700; }
-.whats-new-feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin:20px 0; max-height:55vh; overflow-y:auto; padding-right:4px; }
+.whats-new-feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap:14px; margin:20px 0; max-height:55vh; overflow-y:auto; overflow-x:hidden; padding-right:4px; }
 .whats-new-card { display:flex; gap:12px; padding:12px; background:var(--surface-2); border-radius:10px; border:1px solid var(--line); }
 .whats-new-icon { font-size:24px; flex-shrink:0; line-height:1; }
 .whats-new-content h3 { margin:0 0 4px 0; font-size:13px; font-weight:600; color:var(--ink); }

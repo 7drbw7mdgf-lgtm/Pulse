@@ -108,6 +108,7 @@
   function setActiveMapTab(mapId) {
     initMapState();
     if (!state.maps.some(m => m.id === mapId)) return;
+    if(state.activeMapId!==mapId){state.mapNeedsFit=true;state.centerId=null;state.selectedLinkId=null;}
     state.activeMapId = mapId;
     for (const paper of state.papers) {
       paper.selected = isPaperOnActiveMap(paper);
@@ -133,6 +134,7 @@
     }
     if (state.activeMapId === mapId) {
       state.activeMapId = state.maps[0].id;
+      state.mapNeedsFit=true;state.centerId=null;state.selectedLinkId=null;
     }
     for (const paper of state.papers) {
       paper.selected = isPaperOnActiveMap(paper);

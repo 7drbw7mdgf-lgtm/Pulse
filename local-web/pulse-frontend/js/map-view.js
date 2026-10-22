@@ -40,9 +40,15 @@
       renderTableView();
     }
 
+    let mapViewportWidth = 0, mapViewportHeight = 0;
     function updateViewSize(width, height) {
-      state.view.width = width;
-      state.view.height = height;
+      if (mapViewportWidth && mapViewportHeight) {
+        const cx=state.view.x+state.view.width/2,cy=state.view.y+state.view.height/2;
+        state.view.width *= width/mapViewportWidth;
+        state.view.height *= height/mapViewportHeight;
+        state.view.x=cx-state.view.width/2;state.view.y=cy-state.view.height/2;
+      }
+      mapViewportWidth=width;mapViewportHeight=height;
     }
 
     function panCanvas(direction) {
@@ -61,21 +67,21 @@
     }
 
     function fitCanvasToMap() {
-      if (!state.papers.length) {
+      const papers=(typeof activeMapPapers==='function'?activeMapPapers():state.papers).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
+      if (!papers.length) {
         state.view.x = 0;
         state.view.y = 0;
-        return;
+      } else {
+        const rect=els.map.getBoundingClientRect(),pixelWidth=Math.max(1,rect.width),pixelHeight=Math.max(1,rect.height);
+        const usableHeight=Math.max(100,pixelHeight-(typeof bottomDockSpace==='function'?bottomDockSpace():0));
+        const xs=papers.map(p=>p.x),ys=papers.map(p=>p.y),padding=Math.max(72,(state.graphStyle?.nodeSize||22)+40);
+        const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),ratio=pixelWidth/usableHeight;
+        let width=Math.max(180,maxX-minX+padding*2),height=Math.max(160,maxY-minY+padding*2);
+        if(width/height<ratio)width=height*ratio;else height=width/ratio;
+        Object.assign(state.view,{x:(minX+maxX-width)/2,y:(minY+maxY-height)/2,width,height:height*pixelHeight/usableHeight});
       }
-      const xs = state.papers.map(paper => paper.x || 0);
-      const ys = state.papers.map(paper => paper.y || 0);
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-      const mapCenterX = (minX + maxX) / 2;
-      const mapCenterY = (minY + maxY) / 2;
-      state.view.x = mapCenterX - state.view.width / 2;
-      state.view.y = mapCenterY - state.view.height / 2;
+      els.map.setAttribute('viewBox',`${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
+      if(typeof scheduleAutosave==='function')scheduleAutosave();
     }
 
     function linkId(link) {

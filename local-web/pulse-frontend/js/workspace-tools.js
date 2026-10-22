@@ -173,6 +173,7 @@ const PulseMapTools = (() => {
     if (!control) return;
     const isOpening = control.hidden;
     control.hidden = !isOpening;
+    document.getElementById('openTimelineProgression')?.setAttribute('aria-expanded',String(isOpening));
     if (isOpening) {
       const papers = activeMapPapers();
       const years = papers.map(p => Number(p.year)).filter(y => Number.isFinite(y) && y > 1900 && y < 2050);
@@ -269,7 +270,9 @@ const PulseMapTools = (() => {
   }
   document.addEventListener('DOMContentLoaded',()=>{
     const controls=document.querySelector('.network-search-options');
-    controls.insertAdjacentHTML('beforeend','<button id="openPaperPaths" class="network-action" type="button">Paths</button><button id="openTimelineProgression" class="network-action" type="button" title="Timeline progression playback">Progression</button><button id="exportMapSvgButton" class="network-action" type="button" title="Export publication-quality vector SVG">Export SVG</button><button id="focusMapButton" class="network-action" type="button" aria-pressed="false">Focus map</button>');
+    controls.insertAdjacentHTML('beforeend','<button id="openPaperPaths" class="network-action" type="button">Paths</button><button id="focusMapButton" class="network-action" type="button" aria-pressed="false">Focus map</button>');
+    document.querySelector('#mapToolsPopup .dock-panel-tools').insertAdjacentHTML('beforebegin','<div class="dock-map-actions" role="group" aria-label="Map actions"><button id="mapFitViewButton" type="button"><span>Fit map to view</span></button><button id="openTimelineProgression" type="button" aria-controls="mapTimelineControl" aria-expanded="false"><span>Timeline progression</span></button><button id="exportMapSvgButton" type="button"><span>Export map as SVG</span></button></div>');
+    document.getElementById('mapFitViewButton').onclick=()=>fitCanvasToMap();
     document.getElementById('focusMapButton').onclick=()=>toggleFocus();
     document.getElementById('openPaperPaths').onclick=openPaths;
     document.getElementById('openTimelineProgression').onclick=toggleTimelineSlider;
