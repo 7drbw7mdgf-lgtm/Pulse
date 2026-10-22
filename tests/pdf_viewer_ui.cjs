@@ -84,19 +84,40 @@ d.save(sys.argv[1])`,pdf]);
 
   // Drawing and selecting work on whichever page is under the pointer.
   await page.selectOption('#pdfZoom','0.5');await page.waitForFunction(()=>document.querySelector('.pdf-page[data-pdf-page="3"]>img')?.complete);
-  await page.locator('[data-pdf-workspace="edit"]').click();await page.locator('[data-pdf-tool="rectangle"]').click();
+  await page.locator('[data-pdf-tool="rectangle"]').click();
   await page.evaluate(()=>{const v=document.getElementById('pdfViewport'),p=document.querySelector('.pdf-page[data-pdf-page="3"]');v.scrollTop=p.offsetTop+document.getElementById('pdfPageStack').offsetTop-v.clientHeight/2+60;});
   await page.waitForTimeout(100);assert.notEqual(await current(),3,'Page 3 is on screen but not yet current');
   const third=await page.locator('.pdf-page[data-pdf-page="3"]').boundingBox();
   await page.mouse.move(third.x+40,third.y+60);await page.mouse.down();await page.mouse.move(third.x+140,third.y+120,{steps:4});await page.mouse.up();
   await page.waitForFunction(()=>state.papers[0].pdfAnnotations?.some(a=>a.kind==='rectangle'&&a.page===3));
   assert.equal(await page.evaluate(()=>PulsePDF.context().pageNumber),3,'Drawing on a page makes it current');
-  await page.locator('[data-pdf-workspace="read"]').click();
+  await page.locator('[data-pdf-tool="select"]').click();
   await page.waitForFunction(()=>document.querySelectorAll('.pdf-page[data-pdf-page="4"] .pdf-text-layer span').length>3);
   await page.evaluate(()=>{const layer=document.querySelector('.pdf-page[data-pdf-page="4"] .pdf-text-layer'),range=document.createRange();range.selectNodeContents(layer);const s=window.getSelection();s.removeAllRanges();s.addRange(range);document.getElementById('pdfPageStack').dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));});
   assert.equal(await page.evaluate(()=>PulsePDF.context().selection?.page),4);assert.match(await page.locator('#pdfSelectedQuote').innerText(),/Findings continue/);
+
+  // Acrobat-style direct annotation: the selection bar, comments typed where you click, and editable pins.
+  assert.equal(await page.locator('#pdfSelectionBar').isVisible(),true,'Selecting text shows the bubble bar');
+  await page.locator('#pdfSelectionBar [data-pdf-selection="underline"]').click();
+  await page.waitForFunction(()=>state.papers[0].pdfAnnotations.some(a=>a.kind==='underline'&&a.page===4));
+  assert.equal(await page.locator('#pdfSelectionBar').isVisible(),false);
+  await page.locator('[data-pdf-tool="note"]').click();assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),false,'Tools do not open the side panel');
+  await page.evaluate(()=>{const v=document.getElementById('pdfViewport'),p=document.querySelector('.pdf-page[data-pdf-page="4"]');v.scrollTop=p.offsetTop+document.getElementById('pdfPageStack').offsetTop-40;});await page.waitForTimeout(100);
+  const fourth=await page.locator('.pdf-page[data-pdf-page="4"]').boundingBox();await page.mouse.click(fourth.x+120,fourth.y+90);
+  await page.locator('.pdf-inline-note textarea').fill('Check this finding');await page.keyboard.press('Control+Enter');
+  await page.waitForFunction(()=>state.papers[0].pdfAnnotations.some(a=>a.kind==='note'&&a.page===4&&a.memo==='Check this finding'));
+  await page.locator('.pdf-page[data-pdf-page="4"] .pdf-note-pin').click();assert.equal(await page.locator('.pdf-inline-note textarea').inputValue(),'Check this finding');
+  await page.locator('.pdf-inline-note textarea').fill('Checked against table 2');await page.click('.pdf-inline-note [data-pdf-post]');
+  await page.waitForFunction(()=>state.papers[0].pdfAnnotations.some(a=>a.kind==='note'&&a.memo==='Checked against table 2'));
+  await page.locator('.pdf-page[data-pdf-page="4"] .pdf-note-pin').click();await page.click('.pdf-inline-note [data-pdf-delete]');
+  await page.waitForFunction(()=>!state.papers[0].pdfAnnotations.some(a=>a.kind==='note'));
+  await page.locator('[data-pdf-tool="text"]').click();await page.click('#pdfToolOptions [data-pdf-color="red"]');await page.click('#pdfToolOptions [data-pdf-size="1"]');
+  await page.mouse.click(fourth.x+60,fourth.y+200);await page.keyboard.type('Typed on the page');await page.mouse.click(fourth.x+60,fourth.y+320);
+  await page.waitForFunction(()=>state.papers[0].pdfAnnotations.some(a=>a.kind==='text'&&a.text==='Typed on the page'&&a.color==='red'&&a.fontSize===14&&a.page===4));
+  await page.keyboard.press('Escape');assert.equal(await page.locator('[data-pdf-tool="select"]').getAttribute('aria-pressed'),'true','Escape returns to the select tool');
+  assert.equal(await page.locator('#pdfReaderDialog').evaluate(d=>d.open),true,'Escape from a tool keeps the reader open');
   if(process.env.PULSE_UI_SCREENSHOTS){fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'pdf-viewer-continuous.png')});}
   assert.deepEqual(errors,[]);
-  console.log('PASS: continuous scroll with lazy sharp pages, zoom presets/keys/Ctrl+scroll/fit page, keyboard paging, bookmarks contents, internal and web links, remembered reading position and per-page drawing/selection.');
+  console.log('PASS: continuous scroll with lazy sharp pages, zoom presets/keys/Ctrl+scroll/fit page, keyboard paging, bookmarks contents, internal and web links, remembered reading position, per-page drawing/selection, selection bubble bar, inline comments/text and editable pins.');
  }finally{await browser?.close();const stopped=new Promise(resolve=>backend.once('exit',resolve));backend.kill();await stopped;fs.rmSync(profile,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

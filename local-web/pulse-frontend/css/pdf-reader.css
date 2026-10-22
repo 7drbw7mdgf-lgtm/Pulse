@@ -2,7 +2,7 @@
 .pdf-reader[open] { display:flex; flex-direction:column; }.pdf-reader>header { flex:none; }.pdf-reader h2 { font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pdf-toolbar { display:flex; align-items:center; gap:7px; flex-wrap:wrap; flex:none; }.pdf-toolbar input[type=number] { width:60px; padding:5px; }.pdf-toolbar select { max-width:200px; }.pdf-toolbar label { display:flex; gap:5px; align-items:center; }
 .pdf-attach-button { position:relative; padding:7px 10px; border:1px solid var(--line); border-radius:5px; background:var(--surface-2); cursor:pointer; }.pdf-attach-button input { position:absolute; inset:0; opacity:0; width:100%; cursor:pointer; }
-#pdfReaderStatus { flex:none; margin:7px 0; min-height:20px; font-size:11px; }
+#pdfReaderStatus { flex:none; margin:7px 0; min-height:20px; font-size:11px; }#pdfReaderStatus:empty { display:none; }
 .pdf-reader-body { display:flex; min-height:0; flex:1; gap:12px; }.pdf-viewport { position:relative; min-width:0; flex:1; overflow:auto; background:var(--surface-3); padding:18px; overscroll-behavior:contain; }.pdf-viewport:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
 .pdf-page-stack { position:relative; width:max-content; min-width:100%; }
 .pdf-page { position:relative; margin:0 auto 16px; flex:none; background:white; box-shadow:0 2px 8px #0003; }.pdf-page:last-child { margin-bottom:0; }.pdf-page>img { width:100%; height:100%; display:block; pointer-events:none; user-select:none; }
@@ -17,7 +17,6 @@
 .is-preview .pdf-mode-badge { background:var(--accent-soft); color:var(--accent); }
 #pdfSourceLink { min-width:0; overflow-wrap:anywhere; font-size:11px; color:var(--accent); }
 #pdfDownloadCopy { margin-left:auto; background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:650; }
-.pdf-preview-notice { margin:0 0 10px; padding:8px 10px; border-radius:6px; background:var(--accent-soft); font-size:12px; flex:none; }
 .pdf-reader [hidden] { display:none !important; }
 .pdf-toolbar>* { min-width:0; max-width:100%; }
 .pdf-sidebar select,.pdf-sidebar textarea { max-width:100%; min-width:0; width:100%; }

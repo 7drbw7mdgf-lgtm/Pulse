@@ -338,11 +338,11 @@
     function selectLinkage(id) {
       state.selectedLinkId = id;
       state.selectedId = null;
+      if (state.libraryFullscreen) setLibraryFullscreen(false);
+      // A chosen link opens the details panel, as choosing a paper does.
+      if (!state.inspectorVisible) setInspectorVisible(true);
       render();
-      if (els.details) {
-        els.details.hidden = false;
-        els.details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
+      if (els.details) els.detailsContent.scrollTop = 0;
     }
 
     function clearLinkageSelection() {

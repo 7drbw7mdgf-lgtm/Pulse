@@ -22,6 +22,9 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
   await page.route('**/*',route=>new URL(route.request().url()).origin===url?route.continue():route.abort());
   await page.goto(url);await page.waitForFunction(()=>state.autosaveReady&&document.querySelectorAll('#map .node').length===3);
   assert.equal(await page.locator('#details').isVisible(),false,'Map details start closed');
+  await page.locator('#map .edge-hit').first().click();await page.waitForFunction(()=>state.selectedLinkId&&state.inspectorVisible);
+  assert.equal(await page.locator('#details').isVisible(),true,'Choosing a link opens the details panel');
+  await page.click('#inspectorToggle');assert.equal(await page.locator('#details').isVisible(),false);
   await page.click('#focusMapButton');await page.click('#focusMapButton');assert.equal(await page.locator('#details').isVisible(),false,'Focus mode preserves a closed details panel');
   await page.click('#inspectorReopen');
   await page.click('#focusMapButton');assert.equal(await page.locator('#colLibrary').isVisible(),false);assert.equal(await page.locator('#details').isVisible(),false);
@@ -54,7 +57,7 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
   assert.equal(merged.year,'2023');assert.match(merged.notes,/First memo/);assert.match(merged.notes,/Second memo/);assert.deepEqual(merged.userTags,['host','bacteria']);assert.deepEqual(merged.mapIds,['map-1','map-2']);
   await page.click('#undoDuplicateMerge');await page.waitForFunction(()=>state.papers.length===4);assert.equal(await page.evaluate(()=>state.papers.find(p=>p.id==='a').notes),'First memo');await page.click('#closeLibraryTools');
   await page.evaluate(()=>{state.selectedId='a';renderDetails();});await page.click('[data-read-pdf]');await page.setInputFiles('#pdfAttachInput',pdf);await page.waitForFunction(()=>document.querySelectorAll('.pdf-text-layer span').length>3);
-  await page.locator('[data-pdf-workspace="comment"]').click();
+  await page.click('#pdfSidebarToggle');
   async function selectPage(){await page.evaluate(()=>{const layer=document.querySelector('#pdfPageSurface .pdf-text-layer'),range=document.createRange();range.selectNodeContents(layer);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);document.getElementById('pdfPageSurface').dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));});}
   await selectPage();await page.fill('#pdfAnnotationMemo','Important source passage');await page.click('#pdfQuoteNotes');await page.waitForFunction(()=>state.papers.find(p=>p.id==='a').pdfQuotes?.length===1);
   assert.match(await page.evaluate(()=>state.papers.find(p=>p.id==='a').notes),/PDF p\. 1/);assert.equal(await page.locator('.pdf-highlights span').count()>0,true);

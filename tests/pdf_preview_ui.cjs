@@ -62,22 +62,25 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
   assert.equal(saved.suggestedFilename(),'Open paper.pdf');assert.equal(fs.readFileSync(await saved.path()).subarray(0,5).toString(),'%PDF-');
   await page.waitForFunction(()=>document.getElementById('pdfReadMode').textContent==='Local copy');
   assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),false,'Downloaded copies start with the right panel closed');assert.equal(fs.existsSync(path.join(profile,'pdfs',identity+'.pdf')),true);
-  assert.equal(await page.locator('[data-pdf-workspace="read"]').getAttribute('aria-selected'),'true');
+  assert.equal(await page.locator('[data-pdf-tool="select"]').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('#pdfDock').isVisible(),true,'Tool bubbles float over the page');
+  assert.equal(await page.locator('.pdf-workspace-tabs').count(),0,'Workspace tabs are replaced by the tool dock');
   assert.equal(await page.locator('#pdfSidebarToggle').getAttribute('aria-expanded'),'false');
   await page.click('#pdfSidebarToggle');assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),true);assert.equal(await page.locator('#pdfSidebarToggle').getAttribute('aria-expanded'),'true');
   await page.click('#pdfPrevPage');await page.waitForFunction(()=>PulsePDF.context().pageData?.page===1);
   assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),true,'Paging preserves an explicitly opened panel');
   await page.click('#pdfNextPage');await page.waitForFunction(()=>PulsePDF.context().pageData?.page===2);
   await page.click('#pdfSidebarToggle');assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),false);
-  await page.locator('[data-pdf-workspace="comment"]').click();assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),true,'Comment workspace opens its properties');
+  await page.locator('[data-pdf-tool="note"]').click();assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),false,'Choosing a tool does not open the side panel');await page.locator('[data-pdf-tool="select"]').click();
   await page.evaluate(()=>{const layer=document.querySelector('#pdfPageSurface .pdf-text-layer'),range=document.createRange();range.selectNodeContents(layer);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);document.getElementById('pdfPageSurface').dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));});
-  await page.fill('#pdfAnnotationMemo',long);await page.click('#pdfSaveHighlight');await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.length===1);
+  await page.locator('#pdfSelectionBar [data-pdf-selection="comment"]').click();await page.fill('.pdf-inline-note textarea',long);await page.click('.pdf-inline-note [data-pdf-post]');
+  await page.waitForFunction(long=>{const a=state.papers.find(p=>p.id==='open').pdfAnnotations;return a.length===1&&a[0].kind==='highlight'&&a[0].memo===long;},long);
+  await page.click('#pdfSidebarToggle');
   const sidebar=await page.locator('#pdfAnnotationSidebar').evaluate(el=>[el.scrollWidth,el.clientWidth]);assert(sidebar[0]<=sidebar[1]+1,'Reader sidebar wraps long text');
   await page.fill('#pdfSearchText','small sample size');await page.click('#pdfRunSearch');
   await page.waitForFunction(()=>document.querySelectorAll('[data-pdf-match]').length===1&&document.querySelector('.pdf-search-match'));
-  await page.locator('[data-pdf-workspace="edit"]').click();await page.click('#pdfSidebarToggle');await page.locator('[data-pdf-tool="text"]').click();
-  assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),true,'Choosing an editing tool reopens its properties');
-  await page.locator('#pdfPageSurface').click({position:{x:100,y:200}});await page.fill('#pdfTextValue','Reader edit test');await page.click('#pdfPlaceMark');
+  await page.locator('[data-pdf-tool="text"]').click();
+  assert.equal(await page.locator('#pdfToolOptions').isVisible(),true,'Text shows floating colour and size options');assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),true,'An opened panel stays open');
+  await page.locator('#pdfPageSurface').click({position:{x:100,y:200}});await page.fill('.pdf-inline-text textarea','Reader edit test');await page.keyboard.press('Control+Enter');
   await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.some(a=>a.kind==='text'));
   await page.locator('[data-pdf-tool="rectangle"]').click();
   let surface=await page.locator('#pdfPageSurface').boundingBox();
@@ -86,12 +89,12 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
   await page.locator('[data-pdf-tool="ink"]').click();surface=await page.locator('#pdfPageSurface').boundingBox();
   await page.mouse.move(surface.x+100,surface.y+330);await page.mouse.down();await page.mouse.move(surface.x+170,surface.y+350,{steps:5});await page.mouse.move(surface.x+220,surface.y+325,{steps:5});await page.mouse.up();
   await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.some(a=>a.kind==='ink'));
-  await page.locator('[data-pdf-workspace="comment"]').click();await page.locator('[data-pdf-tool="note"]').click();
-  await page.locator('#pdfPageSurface').click({position:{x:290,y:220}});await page.fill('#pdfAnnotationMemo','Check statistical method');await page.click('#pdfPlaceMark');
+  await page.locator('[data-pdf-tool="note"]').click();
+  await page.locator('#pdfPageSurface').click({position:{x:290,y:220}});await page.fill('.pdf-inline-note textarea','Check statistical method');await page.click('.pdf-inline-note [data-pdf-post]');
   await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.some(a=>a.kind==='note'));
   await page.click('#pdfUndoAnnotation');await page.waitForFunction(()=>!state.papers.find(p=>p.id==='open').pdfAnnotations.some(a=>a.kind==='note'));
   await page.click('#pdfRedo');await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.some(a=>a.kind==='note'));
-  await page.locator('[data-pdf-workspace="pages"]').click();await page.locator('[data-pdf-page-edit="rotate-right"]').click();
+  await page.click('#pdfPageMenuButton');await page.locator('[data-pdf-page-edit="rotate-right"]').click();
   await page.waitForFunction(()=>PulsePDF.context().pageData?.rotation===90);
   await page.locator('[data-pdf-page-edit="earlier"]').click();await page.waitForFunction(()=>PulsePDF.context().sourcePage===2&&PulsePDF.context().pageNumber===1);
   await page.fill('#pdfPageNumber','2');await page.locator('#pdfPageNumber').press('Tab');await page.waitForFunction(()=>PulsePDF.context().sourcePage===1&&PulsePDF.context().pageData?.page===1);
@@ -102,7 +105,7 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
   if(process.env.PULSE_UI_SCREENSHOTS){
    fs.copyFileSync(await edited.path(),path.join(process.env.PULSE_UI_SCREENSHOTS,'edited-copy.pdf'));
    const render=spawnSync(python,['-c',"import pymupdf,sys;d=pymupdf.open(sys.argv[1]);d[0].get_pixmap(matrix=pymupdf.Matrix(1,1)).save(sys.argv[2])",await edited.path(),path.join(process.env.PULSE_UI_SCREENSHOTS,'edited-copy.png')]);assert.equal(render.status,0,String(render.stderr));
-   await page.locator('[data-pdf-workspace="comment"]').click();await page.screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'pdf-editor-workspace.png')});
+   await page.screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'pdf-editor-workspace.png')});
   }
   await page.click('#pdfReaderClose');await page.evaluate(()=>saveLibrary());await page.reload();await page.waitForFunction(()=>state.autosaveReady);
   const before=lookups;await page.evaluate(()=>PulsePDF.open('open',2));await page.waitForFunction(()=>document.querySelectorAll('.pdf-text-layer span').length>3);

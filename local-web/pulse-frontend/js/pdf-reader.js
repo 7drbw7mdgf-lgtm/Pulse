@@ -29,9 +29,8 @@ const PulsePDF = (() => {
     root().classList.toggle('is-preview',preview);
     get('pdfReadMode').textContent=preview?'Preview':attachmentId?'Local copy':'PDF reader';
     get('pdfAnnotationSidebar').hidden=!attachmentId||preview;
-    get('pdfPreviewNotice').hidden=!preview;
     get('pdfDownloadCopy').hidden=!attachmentId;
-    get('pdfDownloadCopy').textContent=preview?'Download & annotate':'Download original PDF';
+    get('pdfDownloadCopy').textContent=preview?'Download & annotate':'Download';get('pdfDownloadCopy').title=preview?'Keep a local copy to highlight, comment and quote':'Download the original PDF';
     get('pdfDownloadCopy').disabled=downloading;
     get('pdfUndoAnnotation').hidden=preview||!attachmentId;
     get('pdfAttachmentSelect').innerHTML=(paper()?.pdfAttachments||[]).map(row=>`<option value="${escapeHtml(row.id)}">${escapeHtml(row.name)}</option>`).join('');
@@ -39,9 +38,11 @@ const PulsePDF = (() => {
       const option=new Option('Open PDF preview',previewFile.id);get('pdfAttachmentSelect').add(option);
     }
     get('pdfAttachmentSelect').value=attachmentId||'';
-    get('pdfAttachmentSelect').hidden=!get('pdfAttachmentSelect').options.length;
+    get('pdfAttachmentSelect').hidden=get('pdfAttachmentSelect').options.length<2;
     const href=safeHref(file?.url||'');get('pdfSourceLink').hidden=!href;get('pdfSourceLink').href=href||'#';
-    get('pdfSourceLink').textContent=file?.source?'Source: '+file.source:'PDF source';
+    get('pdfSourceLink').textContent=file?.source||'PDF source';get('pdfSourceLink').title=file?.source?'Open the source: '+file.source:'Open the PDF source';
+    // Finding another copy is only needed before a local copy exists.
+    get('pdfFindOpen').hidden=Boolean(attachmentId&&!preview);
     updateSelection();
     notify('state');
   }
@@ -169,6 +170,7 @@ const PulsePDF = (() => {
   function resize(anchor=null) {
     if(!pages.length)return;
     const viewport=get('pdfViewport'),at=anchor||{x:viewport.clientWidth/2,y:viewport.clientHeight*.3};
+    if(pin&&pin.top!=null&&Math.abs(viewport.scrollTop-pin.top)>2)pin=null;
     const target=pages[indexAt(viewport.scrollTop+at.y)],fraction=target?(viewport.scrollTop+at.y-pageTop(target))/Math.max(1,target.el.offsetHeight):0;
     const across=(viewport.scrollLeft+at.x)/Math.max(1,viewport.scrollWidth);
     currentScale=Math.max(.25,Math.min(4,zoom==='fit'||zoom==='page'?fitScale():Number(zoom)||1));
@@ -190,7 +192,7 @@ const PulsePDF = (() => {
     get('pdfPrevPage').disabled=pageNumber<=1;get('pdfNextPage').disabled=pageNumber>=order().length;
     if(changed){rememberPosition();if(r?.data){status(r.data);notify('page');}}
   }
-  function status(data){get('pdfReaderStatus').textContent=data.warning||(previewFile?`${previewFile.source} · ${info?.pages||data.pages} pages`:`${data.source} · select text to highlight or quote it`);}
+  function status(data){get('pdfReaderStatus').textContent=data.warning||'';}
   function onScroll() {
     if(scrollFrame)return;
     scrollFrame=requestAnimationFrame(()=>{scrollFrame=0;if(!pages.length)return;const viewport=get('pdfViewport');
@@ -314,7 +316,8 @@ const PulsePDF = (() => {
       ' ':()=>paged?navigate(pageNumber+(event.shiftKey?-1:1)):scroll(event.shiftKey?-screen:screen),Home:()=>navigate(1),End:()=>navigate(pages.length)}[event.key];
     if(action){event.preventDefault();action();}
   }
-  function captureSelection() {
+  function captureSelection(event) {
+    if(event?.target?.closest?.('.pdf-inline,.pdf-note-pin'))return;
     const selected=window.getSelection(),pageOf=node=>(node?.nodeType===1?node:node?.parentElement)?.closest?.('.pdf-page');
     if(!selected?.rangeCount||selected.isCollapsed)return;
     const surface=pageOf(selected.anchorNode),r=surface?.pdfRecord;if(!r||surface!==pageOf(selected.focusNode)||!get('pdfPageStack').contains(surface))return;
@@ -370,7 +373,7 @@ const PulsePDF = (() => {
   }
   document.addEventListener('DOMContentLoaded',()=>{
     const dialog=document.createElement('dialog');dialog.id='pdfReaderDialog';dialog.className='pulse-tool-dialog pdf-reader';
-    dialog.innerHTML='<header><h2 id="pdfReaderTitle">PDF reader</h2><button id="pdfReaderClose" type="button" aria-label="Close PDF reader">×</button></header><div class="pdf-access-bar"><span id="pdfReadMode" class="pdf-mode-badge">PDF reader</span><a id="pdfSourceLink" target="_blank" rel="noreferrer" hidden>PDF source</a><button id="pdfDownloadCopy" type="button" hidden>Download &amp; annotate</button></div><p id="pdfPreviewNotice" class="pdf-preview-notice" hidden>This is a preview. Download a local copy to add highlights, memos and quotations.</p><div class="pdf-toolbar"><button id="pdfFindOpen" type="button">Find open PDF</button><label class="pdf-attach-button">Attach PDF<input id="pdfAttachInput" type="file" accept="application/pdf,.pdf"></label><select id="pdfAttachmentSelect" aria-label="PDF attachment"></select><button id="pdfPrevPage" type="button" aria-label="Previous PDF page" title="Previous page (←)">←</button><label>Page <input id="pdfPageNumber" type="number" value="1" min="1" aria-label="PDF page"></label><span id="pdfPageTotal"></span><button id="pdfNextPage" type="button" aria-label="Next PDF page" title="Next page (→)">→</button><span class="pdf-zoom-controls"><button id="pdfZoomOut" type="button" aria-label="Zoom out" title="Zoom out (Cmd/Ctrl −)">−</button><select id="pdfZoom" aria-label="PDF zoom"><option value="fit">Fit width</option><option value="page">Fit page</option><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select><button id="pdfZoomIn" type="button" aria-label="Zoom in" title="Zoom in (Cmd/Ctrl +)">+</button></span><button id="pdfUndoAnnotation" type="button" disabled>Undo remove</button></div><p id="pdfReaderStatus" role="status"></p><div class="pdf-reader-body"><div id="pdfViewport" class="pdf-viewport" tabindex="0" aria-label="PDF pages"><div id="pdfPageStack" class="pdf-page-stack"></div></div><aside id="pdfAnnotationSidebar" class="pdf-sidebar"><h3>Highlight &amp; quote</h3><blockquote id="pdfSelectedQuote">Select text on the page.</blockquote><label>Colour<select id="pdfHighlightColor"><option value="yellow">Yellow</option><option value="green">Green</option><option value="blue">Blue</option><option value="pink">Pink</option></select></label><label>Memo<textarea id="pdfAnnotationMemo" rows="2" maxlength="20000"></textarea></label><button id="pdfSaveHighlight" type="button" disabled>Save highlight</button><button id="pdfQuoteNotes" type="button" disabled>Quote to Notes</button><label>Evidence column<select id="pdfEvidenceColumn"><option value="finding">Finding</option><option value="method">Method</option><option value="limitation">Limitation</option><option value="system">Study system</option><option value="aim">Aim</option></select></label><button id="pdfQuoteMatrix" type="button" disabled>Quote to Evidence Matrix</button><h3>Saved highlights</h3><div id="pdfAnnotations"></div></aside></div>';
+    dialog.innerHTML='<header><h2 id="pdfReaderTitle">PDF reader</h2><button id="pdfReaderClose" type="button" aria-label="Close PDF reader">×</button></header><div class="pdf-access-bar"><span id="pdfReadMode" class="pdf-mode-badge">PDF reader</span><a id="pdfSourceLink" target="_blank" rel="noreferrer" hidden>PDF source</a><button id="pdfDownloadCopy" type="button" hidden>Download &amp; annotate</button></div><div class="pdf-toolbar"><button id="pdfFindOpen" type="button" title="Find a freely available copy of this paper">Find PDF</button><label class="pdf-attach-button" title="Attach a PDF from this computer">Attach<input id="pdfAttachInput" type="file" accept="application/pdf,.pdf"></label><select id="pdfAttachmentSelect" aria-label="PDF attachment"></select><button id="pdfPrevPage" type="button" aria-label="Previous PDF page" title="Previous page (←)">←</button><label><span class="pdf-sr">Page</span><input id="pdfPageNumber" type="number" value="1" min="1" aria-label="PDF page"></label><span id="pdfPageTotal"></span><button id="pdfNextPage" type="button" aria-label="Next PDF page" title="Next page (→)">→</button><span class="pdf-zoom-controls"><button id="pdfZoomOut" type="button" aria-label="Zoom out" title="Zoom out (Cmd/Ctrl −)">−</button><select id="pdfZoom" aria-label="PDF zoom"><option value="fit">Fit width</option><option value="page">Fit page</option><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select><button id="pdfZoomIn" type="button" aria-label="Zoom in" title="Zoom in (Cmd/Ctrl +)">+</button></span><button id="pdfUndoAnnotation" type="button" disabled>Undo remove</button></div><p id="pdfReaderStatus" role="status"></p><div class="pdf-reader-body"><div id="pdfViewport" class="pdf-viewport" tabindex="0" aria-label="PDF pages"><div id="pdfPageStack" class="pdf-page-stack"></div></div><aside id="pdfAnnotationSidebar" class="pdf-sidebar"><h3>Highlight &amp; quote</h3><blockquote id="pdfSelectedQuote">Select text on the page.</blockquote><label>Colour<select id="pdfHighlightColor"><option value="yellow">Yellow</option><option value="green">Green</option><option value="blue">Blue</option><option value="pink">Pink</option></select></label><label>Memo<textarea id="pdfAnnotationMemo" rows="2" maxlength="20000"></textarea></label><button id="pdfSaveHighlight" type="button" disabled>Save highlight</button><button id="pdfQuoteNotes" type="button" disabled>Quote to Notes</button><label>Evidence column<select id="pdfEvidenceColumn"><option value="finding">Finding</option><option value="method">Method</option><option value="limitation">Limitation</option><option value="system">Study system</option><option value="aim">Aim</option></select></label><button id="pdfQuoteMatrix" type="button" disabled>Quote to Evidence Matrix</button><h3>Saved highlights</h3><div id="pdfAnnotations"></div></aside></div>';
     document.body.append(dialog);get('pdfReaderClose').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{if(dialog.open)return;lookupController?.abort();openRevision++;revision++;selection=null;clearPages();});
     get('pdfFindOpen').onclick=findOpenPDF;get('pdfDownloadCopy').onclick=downloadCopy;
     get('pdfAttachInput').onchange=event=>attach(event.target.files[0]);get('pdfAttachmentSelect').onchange=()=>{lookupController?.abort();openRevision++;get('pdfFindOpen').disabled=false;attachmentId=get('pdfAttachmentSelect').value;if(previewFile?.id!==attachmentId)previewFile=null;displayMode();loadDocument();};

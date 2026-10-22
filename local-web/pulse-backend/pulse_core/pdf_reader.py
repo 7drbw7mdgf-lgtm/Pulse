@@ -216,7 +216,8 @@ def search(payload):
     with PDF_ENGINE_LOCK, fitz.open(path) as doc:
         for index,p in enumerate(doc):
             if len(results)>=200 or time.monotonic()-started>8:complete=False;break
-            text=p.get_text('text',sort=True)
+            from pulse_core.pdf_utils import ordered_page_text
+            text=ordered_page_text(p)[0]
             if not text.strip():scanned+=1;continue
             matches=p.search_for(query)
             if not matches:continue
@@ -233,11 +234,12 @@ def page_text(identity,number):
     fitz=engine()
     with PDF_ENGINE_LOCK, fitz.open(path_for(identity)) as doc:
         if not 1<=number<=doc.page_count: raise ClientError(400,'This page does not exist.')
-        p=doc[number-1];words=p.get_text('words',sort=True);source='Local PDF';warning=''
+        from pulse_core.pdf_utils import local_ocr,reading_order_words
+        # Reading order keeps a selection inside one column and lets its quote be verified.
+        p=doc[number-1];words=reading_order_words(p);source='Local PDF';warning=''
         if len(words)<4:
             try:
-                from pulse_core.pdf_utils import local_ocr
-                words=p.get_text('words',sort=True,textpage=local_ocr(p));source='Local PDF (OCR)'
+                words=reading_order_words(p,local_ocr(p));source='Local PDF (OCR)'
             except Exception: warning='No selectable text on this page. OCR language data may be unavailable.'
         return {'words':words,'text':' '.join(word[4] for word in words),'source':source,'warning':warning}
 

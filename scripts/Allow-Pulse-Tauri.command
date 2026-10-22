@@ -4,7 +4,7 @@
 set -euo pipefail
 
 expected_id='com.pulse.desktop'
-expected_version='2.1.5'  # Set to the packaged version by scripts/package-desktop.sh.
+expected_version='2.1.6'  # Set to the packaged version by scripts/package-desktop.sh.
 check_only=false
 confirmed=false
 app_path=''
