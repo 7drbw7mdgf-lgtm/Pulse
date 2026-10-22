@@ -5,8 +5,8 @@ const context=vm.createContext({Map,Set,URL,URLSearchParams,TextDecoder,Uint8Arr
  window:{},state:{papers:[],discoverySelectedKeys:new Set(),discoveryExpandedAbstracts:new Set(),discoverySearchErrors:new Map()},
  els:{discoveryModal:{hidden:false,querySelectorAll:()=>[]},discoveryPaperList:{innerHTML:'',querySelectorAll:()=>[]}},stopwords:new Set(),
  uid:()=>require('crypto').randomUUID(),recommendationAlreadyOnMap:()=>false,recommendationKey:()=> 'fixture',selectedPapersForRecommendation:()=>[],showToast(){}});
-for(const part of ['05','06','07','08','11','13','17','02'])vm.runInContext(fs.readFileSync(`pulse-frontend/js/part_${part}.js`,'utf8'),context);
-const definitions=fs.readFileSync('pulse-frontend/js/part_01.js','utf8');vm.runInContext(definitions.slice(definitions.indexOf('    function discoveryPaperKey')),context);
+for(const part of ['backend-settings-ai','citation-parsing','paper-import','paper-metadata','paper-relatedness','metadata-resolution','map-view','selection-and-linkages','recommendations','discovery-modal','discovery-results','discovery-render','discovery-compare'])vm.runInContext(fs.readFileSync(`pulse-frontend/js/${part}.js`,'utf8'),context);
+const definitions=fs.readFileSync('pulse-frontend/js/app-core.js','utf8');vm.runInContext(definitions.slice(definitions.indexOf('    function discoveryPaperKey')),context);
 context.recommendationKey=()=> 'fixture';context.selectedPapersForRecommendation=()=>[];
 const item={title:'Accessible research diagrams',doi:'10.1234/diagram',authors:['Ada Brooks'],source:'Europe PMC',metadataSource:'Europe PMC',
  sourceList:['Europe PMC','CORE'],sourceIdentifiers:{'Europe PMC':'MED/123',CORE:'456'},pmcid:'PMC123',coreId:'456',europePmcId:'MED/123',
@@ -24,7 +24,7 @@ assert.equal(imported.authorRole,'last');assert.equal(imported.authorTrajectoryL
 assert.deepEqual([...imported.citationContexts],['We adapted the accessible diagram encoding from Brooks (2024) for our benchmark.']);
 assert.deepEqual([...imported.citationIntents],['Methodology','Result']);
 assert.equal(imported.isInfluentialCitation,true);
-const workspaceSource=fs.readFileSync('pulse-frontend/js/part_19.js','utf8');vm.runInContext(workspaceSource.slice(workspaceSource.indexOf('    const libraryBibliographyCache'),workspaceSource.indexOf('    async function exportMap')),context);
+const workspaceSource=fs.readFileSync('pulse-frontend/js/workspace-storage.js','utf8');vm.runInContext(workspaceSource.slice(workspaceSource.indexOf('    const libraryBibliographyCache'),workspaceSource.indexOf('    async function exportMap')),context);
 Object.assign(context.state,{papers:[imported],areas:[],links:[],clusters:[],keywords:new Map(),graphStyle:{},view:{},discoverySearchSources:{europePmc:true,core:false,semanticScholar:true},discoveryLimit:500});
 imported.syncId='cd'.repeat(16);
 const workspace=JSON.parse(JSON.stringify(context.serializeMap())),restored=context.normalizeImportedPaper(workspace.papers[0],'Restored workspace');

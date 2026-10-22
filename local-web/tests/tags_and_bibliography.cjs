@@ -7,9 +7,9 @@ const slice = (source, start, end) => source.slice(source.indexOf(start), source
 const state = { keywords: new Map(), papers: [] };
 const context = { state, cleanField: value => String(value || '').trim(), paperUserTags: paper => paper.userTags || [] };
 vm.createContext(context);
-vm.runInContext(slice(read('part_07.js'), '    function mergedKeywords(paper) {', '    function extractCitationText'), context);
-vm.runInContext(slice(read('part_03.js'), '    function tagMatchesFilter(tag, filter) {', '    function paperMatchesFilters'), context);
-vm.runInContext(slice(read('part_14.js'), '    function shortAuthorList(', '    function renderPapers()'), context);
+vm.runInContext(slice(read('paper-import.js'), '    function mergedKeywords(paper) {', '    function extractCitationText'), context);
+vm.runInContext(slice(read('tags-and-keywords.js'), '    function tagMatchesFilter(tag, filter) {', '    function paperMatchesFilters'), context);
+vm.runInContext(slice(read('library-list.js'), '    function shortAuthorList(', '    function renderPapers()'), context);
 
 // Curated keywords win; automatic terms are never shown alongside them.
 const curated = { id: 'a', paperKeywords: ['outer membrane vesicles', 'Campylobacter jejuni'], gemmaKeywords: ['virulence factors', 'Outer membrane vesicles'] };

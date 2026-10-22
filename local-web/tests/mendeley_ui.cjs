@@ -1,5 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
-const source=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/part_23.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/paper-metrics-records.js'),'utf8');
 const selected=source.slice(source.indexOf('function managerSelectedPapers()'),source.indexOf('async function refreshManagers()'));
 const elements=new Map();function element(){return {value:'selected',textContent:'',hidden:false,disabled:false,classList:{toggle(){}}};}
 const managerUi={status:{mendeley:{configured:true,sharedRegistration:true,connected:false},zotero:{connected:false}},busy:false,connecting:false};

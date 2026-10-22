@@ -164,6 +164,31 @@ class ScreeningPersistence(unittest.TestCase):
         prisma=json.loads(self.call('export',format='prisma')['content']);self.assertIsNone(prisma['studiesIncluded'])
         self.assertEqual(prisma['reportsExcluded'],1)
 
+    def test_prisma_svg_blind_json_and_reconciliation(self):
+        self.call('decision', papers=[PAPER], stage='title-abstract', decision='include')
+        self.call('decision', papers=[OTHER], stage='title-abstract', decision='exclude')
+        svg_exp = self.call('export', format='prisma-svg')
+        self.assertEqual(svg_exp['mime'], 'image/svg+xml')
+        self.assertIn('<svg', svg_exp['content'])
+        self.assertIn('PRISMA 2020', svg_exp['content'])
+
+        blind = self.call('export', format='blind-json')
+        self.assertEqual(blind['mime'], 'application/json')
+        blind_data = json.loads(blind['content'])
+        self.assertEqual(blind_data['records']['doi:10.1234/one']['stages'], {})
+
+        r2_data = {
+            'records': {
+                'doi:10.1234/one': {'stages': {'title-abstract': {'decision': 'include'}}},
+                'doi:10.1234/two': {'stages': {'title-abstract': {'decision': 'include'}}},
+            }
+        }
+        reconciled = screening.handle({'action': 'reconcile', 'project': self.project, 'reviewer2': r2_data}, self.temp.name)
+        self.assertEqual(reconciled['concordant'], 1)
+        self.assertEqual(reconciled['discrepant'], 1)
+        self.assertEqual(len(reconciled['discrepancies']), 1)
+        self.assertIn('kappa', reconciled)
+
 
 class CacheMaintenance(unittest.TestCase):
     def test_expiry_byte_and_row_limits_prefer_recent_metadata(self):

@@ -31,7 +31,19 @@ def clean_extracted_text(value):
 
 
 def page_blocks(page,textpage=None):
-    """Text blocks with their lines, bounding boxes and dominant type size."""
+    """Text blocks with their lines, bounding boxes and dominant type size; ruled tables become one block of rows."""
+    from pulse_core.pdf_tables import table_blocks
+    blocks=_text_blocks(page,textpage)
+    try:tables=table_blocks(page,textpage)
+    except Exception:tables=[]
+    if not tables:return blocks
+    def within(block,table):
+        x0,y0,x1,y1=block['box'];cx,cy=(x0+x1)/2,(y0+y1)/2;tx0,ty0,tx1,ty1=table['box']
+        return tx0-2<=cx<=tx1+2 and ty0<=cy<=ty1
+    return [block for block in blocks if not any(within(block,table) for table in tables)]+tables
+
+
+def _text_blocks(page,textpage=None):
     import pymupdf as fitz
     flags=fitz.TEXTFLAGS_DICT&~fitz.TEXT_PRESERVE_IMAGES
     data=page.get_text('dict',textpage=textpage,flags=flags) if textpage is not None else page.get_text('dict',flags=flags)

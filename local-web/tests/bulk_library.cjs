@@ -1,5 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
-const source=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/part_24.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/library-bulk-actions.js'),'utf8');
 const main=source.slice(0,source.indexOf("document.getElementById('libraryBulkDeselect').addEventListener"));
 const elements=new Map();const handlers={};
 const input={checked:false,indeterminate:false,addEventListener(name,fn){handlers[name]=fn;}};
@@ -18,7 +18,7 @@ assert.equal(state.papers[0].paperKeywords.join(';'),'old;new');assert.equal(sta
 for(const format of ['ris','csv','json'])await context.exportLibrarySelection(format);
 assert(!downloads[0][1].includes('Paper B'));assert(!downloads[1][1].includes('Paper B'));
 const payload=JSON.parse(downloads[2][1]);assert.deepEqual(payload.papers.map(p=>p.id),['a','c']);assert.equal(payload.links.length,1);assert.equal(payload.selectedId,null);
-const managerSource=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/part_23.js'),'utf8');
+const managerSource=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/paper-metrics-records.js'),'utf8');
 vm.runInContext(managerSource.slice(managerSource.indexOf('function managerSelectedPapers()'),managerSource.indexOf('function updateManagers()')),context);
 elements.set('managerScope',{value:'bulk'});assert.equal(context.managerSelectedPapers().map(p=>p.id).join(','),'a,c');
 console.log('PASS: visible-only select all, hidden selection count, selected-only tagging, exports, and transfer scope.');

@@ -48,3 +48,23 @@
 #map.has-paper-path .edge.is-path-link[data-type=cocitation] { stroke:#287cbd !important; stroke-dasharray:9 3 2 3; }
 #map.has-paper-path .edge.is-path-link[data-type=mixed] { stroke:#b85f2a !important; stroke-dasharray:7 3 2 3; }
 .library-fullscreen .pulse-col-library { width:100%; }
+
+/* Bridge paper highlighting */
+#map .node.is-bridge-node .node-main-circle { stroke:#d97706 !important; stroke-width:5px !important; filter:drop-shadow(0 0 6px rgba(217,119,6,.6)); }
+.bridge-papers-section { margin-top:20px; padding-top:16px; border-top:1px solid var(--line); }
+.bridge-papers-section h3 { margin:0 0 6px 0; font-size:14px; font-weight:600; }
+.bridge-paper-list { list-style:none; padding:0; margin:8px 0; display:flex; flex-direction:column; gap:6px; }
+.bridge-paper-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 10px; border-radius:6px; background:var(--surface-2); border:1px solid var(--line); font-size:12px; }
+.bridge-paper-item .bridge-score { font-size:11px; color:#d97706; font-weight:600; white-space:nowrap; }
+.bridge-paper-item button { padding:3px 8px; font-size:11px; cursor:pointer; }
+
+/* Chronological Field Progression Heatmap Slider */
+.map-timeline-control { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:25; display:flex; align-items:center; gap:8px; padding:6px 14px; background:var(--surface); border:1px solid var(--line); border-radius:999px; box-shadow:0 3px 12px rgba(0,0,0,.08); font:12px var(--font-ui); color:var(--ink); pointer-events:auto; }
+.map-timeline-control[hidden] { display:none !important; }
+.map-timeline-control .timeline-btn { border:1px solid var(--line); border-radius:999px; background:var(--surface-2); padding:3px 9px; cursor:pointer; font-weight:600; color:var(--ink); font-size:11px; }
+.map-timeline-control .timeline-btn:hover { border-color:var(--accent); color:var(--accent); }
+.map-timeline-control input[type=range] { width:160px; accent-color:var(--accent); cursor:pointer; }
+.map-timeline-year { font-weight:700; min-width:38px; color:var(--accent); font-variant-numeric:tabular-nums; }
+#map.timeline-filtered .node.is-timeline-dimmed { opacity:.1 !important; pointer-events:none; }
+#map.timeline-filtered .edge.is-timeline-dimmed { opacity:.03 !important; }
+

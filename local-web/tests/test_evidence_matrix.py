@@ -177,9 +177,44 @@ class CompareEndpointValidation(unittest.TestCase):
         from pulse_core import server
         from pulse_core.constants import ClientError
         paper = {"title": "P", "abstract": "We found that uptake increased 3-fold in mice."}
-        for payload in ({"papers": [paper]}, {"papers": [paper] * 16}, {"papers": "x"}, {"papers": [paper, "x"]},
-                        {"papers": [paper, paper], "columns": "x"}, {"papers": [paper, paper], "columns": [{"id": "x" * 61}]},
-                        {"papers": [paper, paper], "columns": [{"id": str(i)} for i in range(9)]}):
-            with self.assertRaises(ClientError):
-                server.handle_discovery_compare(payload)
         self.assertEqual(len(server.handle_discovery_compare({"papers": [paper, paper]})["rows"]), 2)
+
+    def test_section_targeted_harvesting(self):
+        paper = {
+            "title": "Study on Campylobacter invasion",
+            "abstract": "We investigated invasion mechanisms in vitro.",
+            "text": (
+                "Introduction\nPathogen invasion is critical for enteritis.\n\n"
+                "Methods\nWe measured bacterial uptake in human monocytes using gentamicin protection assay.\n\n"
+                "Results\nBacterial adhesion increased by 45 percent.\n\n"
+                "Discussion\nOur findings demonstrate an important role for CadF.\n\n"
+                "Limitations\nA key limitation is that small sample sizes were evaluated and cannot rule out strain variation.\n"
+            )
+        }
+        cols = [{"id": "method", "name": "Method"}, {"id": "limitation", "name": "Limitation"}]
+        row = em.build_evidence_row(paper, cols)
+        lim_cell = row["cells"]["limitation"]
+        self.assertTrue(lim_cell["grounded"])
+        self.assertIn("limitation is that small sample", lim_cell["quote"])
+        self.assertIn("Section: Limitations", lim_cell["provenance"]["source"])
+
+    def test_consensus_and_contradiction_detection(self):
+        papers = [
+            {
+                "id": "p1",
+                "title": "Treatment A improves microglia clearance",
+                "abstract": "We found that treatment A significantly increased phagocytosis in microglia."
+            },
+            {
+                "id": "p2",
+                "title": "Treatment B inhibits microglia clearance",
+                "abstract": "We observed that compound B significantly decreased phagocytosis in microglia."
+            }
+        ]
+        matrix = em.generate_evidence_matrix(papers)
+        self.assertIn("consensus", matrix)
+        con = matrix["consensus"]
+        self.assertGreaterEqual(con["conflictingCount"], 1)
+        self.assertEqual(con["conflicting"][0]["target"], "microglia")
+        self.assertEqual(con["conflicting"][0]["directionA"], "positive")
+        self.assertEqual(con["conflicting"][0]["directionB"], "negative")

@@ -1,5 +1,5 @@
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
-const source = fs.readFileSync(require('path').join(__dirname,'../pulse-frontend/js/part_13.js'), 'utf8');
+const source = fs.readFileSync(require('path').join(__dirname,'../pulse-frontend/js/selection-and-linkages.js'), 'utf8');
 const selection = source.slice(source.indexOf('    function inspectPaper('), source.indexOf('    function metadataSummary('));
 function fixture() {
   const calls = [], state = { papers: [{id:'one'}, {id:'two'}], selectedId:'one', selectedLinkId:'one__two', detailsAbstractExpanded:true, inspectorVisible:false, libraryFullscreen:true };
@@ -25,7 +25,7 @@ const missing=fixture();missing.context.inspectPaper('missing');assert.equal(mis
 const keepAgent=fixture();keepAgent.context.inspectPaper('two',{closeAgent:false});assert.equal(keepAgent.els.aiPanel.hidden,false);
 console.log('PASS: paper selection replaces linkage details, reopens the inspector, exits full screen, resets scroll, updates the agent context, and ignores missing records.');
 
-const graphSource=fs.readFileSync(require('path').join(__dirname,'../pulse-frontend/js/part_20.js'),'utf8');
+const graphSource=fs.readFileSync(require('path').join(__dirname,'../pulse-frontend/js/workspace-actions.js'),'utf8');
 const graphHandler=graphSource.slice(graphSource.indexOf('    function handleGraphBackgroundClick'),graphSource.indexOf("    els.map?.addEventListener('click', handleGraphBackgroundClick)"));
 const hides=[];const graphContext={state:{selectedId:'one',selectedLinkId:'link'},setInspectorVisible:(...args)=>hides.push(args),render(){},renderDetails(){}};
 vm.createContext(graphContext);vm.runInContext(graphHandler,graphContext);

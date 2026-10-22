@@ -113,9 +113,13 @@ def library_store():
     from pulse_core.library_store import LibraryStore
     return LibraryStore(_core.LIBRARY_PATH, _load_legacy_library, _library_checkpoint)
 
-def load_library():
+def load_library(include_content=True):
     with LIBRARY_WRITE_LOCK:
-        return library_store().read()
+        return library_store().read(include_content=include_content)
+
+def get_paper_content(paper_id):
+    with LIBRARY_WRITE_LOCK:
+        return library_store().get_paper_content(paper_id)
 
 def save_library(payload):
     with LIBRARY_WRITE_LOCK:

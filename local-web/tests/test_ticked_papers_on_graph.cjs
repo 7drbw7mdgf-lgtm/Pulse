@@ -5,10 +5,10 @@ const path = require('path');
 
 // Load relevant frontend scripts
 const mapTabsSource = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/map-tabs.js'), 'utf8');
-const part09Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/part_09.js'), 'utf8');
-const part10Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/part_10.js'), 'utf8');
-const part14Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/part_14.js'), 'utf8');
-const part18Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/part_18.js'), 'utf8');
+const part09Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/graph-layout.js'), 'utf8');
+const part10Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/map-render.js'), 'utf8');
+const part14Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/library-list.js'), 'utf8');
+const part18Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/discovery-pipeline.js'), 'utf8');
 
 function createElement(tag = 'div') {
   const classes = new Set();
@@ -192,7 +192,7 @@ function setupTestEnvironment() {
   vm.runInContext(part09Source, context);
   vm.runInContext(part10Source, context);
   vm.runInContext(part14Source, context);
-  // Extract updateMetrics from part_18
+  // Extract updateMetrics from discovery-pipeline.js
   const updateMetricsCode = part18Source.slice(part18Source.indexOf('function updateMetrics()'), part18Source.indexOf('els.paperCount.textContent = `${state.papers.length} loaded`;'));
   vm.runInContext(`
     ${updateMetricsCode}

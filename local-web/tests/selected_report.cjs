@@ -1,5 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
-const source=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/part_22.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/paper-agent.js'),'utf8');
 function element(){return {hidden:false,disabled:false,value:'',textContent:'',classList:{toggle(){},remove(){}},addEventListener(){},append(){},setAttribute(){},replaceChildren(){}};}
 const ui=new Map(),requests=[],pending=[];
 const papers=[{id:'one',title:'First paper',abstract:'First abstract'},{id:'two',title:'Selected paper',text:'Only this source'}];

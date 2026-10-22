@@ -24,3 +24,9 @@ benchmarks/data/
 # Windows installers and temporary packaging outputs
 outputs/
 *.exe
+
+# Project-local development and release tooling (scripts/setup-dev.sh)
+.venv/
+.dev-profile/
+.build/
+.claude/

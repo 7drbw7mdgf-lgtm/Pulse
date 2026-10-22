@@ -34,5 +34,5 @@ const {spawn}=require('node:child_process');const {chromium}=require('playwright
   assert.equal(await page.locator('#discoveryResearchQuestion').inputValue(),expectedQuestion);
   assert.equal(await page.evaluate(()=>state.discoveryLoading),false,'Opening a question prefills it; searches require a user action');
   assert.deepEqual(errors,[]);console.log('PASS: source-backed notice links, preserved publication metadata, dark theme, 40-case review, explicit reviewed labels/export and topic-prefill without automatic searches.');
- }finally{await browser?.close();backend.kill('SIGTERM');fs.rmSync(profile,{recursive:true,force:true});}
+ }finally{await browser?.close();if(backend.exitCode===null){const stopped=new Promise(resolve=>backend.once('exit',resolve));backend.kill('SIGTERM');await stopped;}fs.rmSync(profile,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exit(1);});

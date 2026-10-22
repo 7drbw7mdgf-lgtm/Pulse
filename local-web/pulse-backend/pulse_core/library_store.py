@@ -15,6 +15,13 @@ PROTECTED = {'papers', '_storageRevision', '_saveSession', '_saveRevision', '_sa
 def encode(value):
     return json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
 
+HEAVY_FIELDS = {'fullText', 'text', 'ocrText', 'extractedPassages', 'passages', 'content_blob', 'rawPayload'}
+
+def _split_paper(paper):
+    content = {k: paper[k] for k in HEAVY_FIELDS if k in paper and paper[k]}
+    meta = {k: v for k, v in paper.items() if k not in HEAVY_FIELDS}
+    return meta, content
+
 class LibraryStore:
     def __init__(self, legacy_path, legacy_loader, checkpoint):
         self.legacy_path = Path(legacy_path)
@@ -34,6 +41,7 @@ class LibraryStore:
         db.executescript('''
             CREATE TABLE IF NOT EXISTS workspace (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS papers (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS papers_content (paper_id TEXT PRIMARY KEY REFERENCES papers(id) ON DELETE CASCADE, content TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS paper_tags (paper_id TEXT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
                 tag TEXT NOT NULL, PRIMARY KEY(paper_id, tag));
             CREATE INDEX IF NOT EXISTS paper_tags_tag ON paper_tags(tag, paper_id);
@@ -73,16 +81,39 @@ class LibraryStore:
     def _workspace(db):
         return {key:json.loads(value) for key,value in db.execute('SELECT key,value FROM workspace')}
 
-    def read(self):
+    def read(self, include_content=True):
         db = self.connect()
         try:
             db.execute('BEGIN')
             data = self._workspace(db)
             by_id = {identity:json.loads(raw) for identity,raw in db.execute('SELECT id,data FROM papers')}
+            if include_content:
+                for pid, c_raw in db.execute('SELECT paper_id,content FROM papers_content'):
+                    if pid in by_id:
+                        by_id[pid].update(json.loads(c_raw))
+            else:
+                for pid, c_raw in db.execute('SELECT paper_id, content FROM papers_content'):
+                    if pid in by_id:
+                        c = json.loads(c_raw)
+                        if 'fullText' in c or 'text' in c: by_id[pid]['hasFullText'] = True
+                        if 'ocrText' in c: by_id[pid]['hasOcr'] = True
             order = data.pop('_paperOrder', list(by_id))
             data['papers'] = [by_id[identity] for identity in order if identity in by_id]
             db.execute('COMMIT')
             return data
+        finally: db.close()
+
+    def get_paper_content(self, paper_id):
+        db = self.connect()
+        try:
+            row = db.execute('SELECT content FROM papers_content WHERE paper_id=?', (paper_id,)).fetchone()
+            if row:
+                return json.loads(row[0])
+            paper_row = db.execute('SELECT data FROM papers WHERE id=?', (paper_id,)).fetchone()
+            if paper_row:
+                p = json.loads(paper_row[0])
+                return {k: p[k] for k in HEAVY_FIELDS if k in p}
+            return {}
         finally: db.close()
 
     @staticmethod
@@ -99,10 +130,23 @@ class LibraryStore:
                 ' '.join(tags), str(paper.get('abstract') or ''), str(paper.get('notes') or '')), tags
 
     def _upsert(self, db, paper):
-        identity = paper['id']; raw = encode(paper)
+        identity = paper['id']
+        meta, content = _split_paper(paper)
+        meta_raw = encode(meta)
         old = db.execute('SELECT data FROM papers WHERE id=?',(identity,)).fetchone()
-        if old and old[0] == raw: return 0
-        db.execute('INSERT INTO papers VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data', (identity,raw))
+        paper_changed = not old or old[0] != meta_raw
+        if paper_changed:
+            db.execute('INSERT INTO papers VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data', (identity,meta_raw))
+        content_changed = False
+        if content:
+            old_c = db.execute('SELECT content FROM papers_content WHERE paper_id=?', (identity,)).fetchone()
+            c_raw = encode(content)
+            if not old_c or old_c[0] != c_raw:
+                db.execute('INSERT INTO papers_content VALUES (?,?) ON CONFLICT(paper_id) DO UPDATE SET content=excluded.content', (identity, c_raw))
+                content_changed = True
+        else:
+            db.execute('DELETE FROM papers_content WHERE paper_id=?', (identity,))
+        if not paper_changed and not content_changed: return 0
         index, tags = self._index_values(paper)
         if not old or self._index_values(json.loads(old[0])) != (index,tags):
             db.execute('DELETE FROM library_search WHERE paper_id=?',(identity,))
@@ -123,6 +167,7 @@ class LibraryStore:
         removed = existing - set(order)
         for identity in removed:
             db.execute('DELETE FROM library_search WHERE paper_id=?',(identity,))
+            db.execute('DELETE FROM papers_content WHERE paper_id=?',(identity,))
             db.execute('DELETE FROM papers WHERE id=?',(identity,))
         changed = sum(self._upsert(db,paper) for paper in papers)
         data = {k:v for k,v in payload.items() if k not in {'papers','allowEmpty','_saveMode','_baseStorageRevision'}}
@@ -161,7 +206,9 @@ class LibraryStore:
         if not order and existing and not changes.get('allowEmpty') and not changes.get('reset'):
             raise ClientError(409,'An empty autosave cannot replace a saved library. Reload your papers or use Clear papers.')
         for identity in removed:
-            db.execute('DELETE FROM library_search WHERE paper_id=?',(identity,));db.execute('DELETE FROM papers WHERE id=?',(identity,))
+            db.execute('DELETE FROM library_search WHERE paper_id=?',(identity,))
+            db.execute('DELETE FROM papers_content WHERE paper_id=?',(identity,))
+            db.execute('DELETE FROM papers WHERE id=?',(identity,))
         changed=sum(self._upsert(db,paper) for paper in updates)
         for key in missing: db.execute('DELETE FROM workspace WHERE key=?',(key,))
         data={k:v for k,v in changes.items() if k!='allowEmpty'}
@@ -185,6 +232,9 @@ class LibraryStore:
                 snapshot=self._workspace(db)
                 order=snapshot.pop('_paperOrder',[])
                 by_id={i:json.loads(raw) for i,raw in db.execute('SELECT id,data FROM papers')}
+                for pid, c_raw in db.execute('SELECT paper_id,content FROM papers_content'):
+                    if pid in by_id:
+                        by_id[pid].update(json.loads(c_raw))
                 snapshot['papers']=[by_id[i] for i in order]
                 self.checkpoint(snapshot,'initial' if not has_checkpoint else 'checkpoint')
                 db.execute("INSERT OR REPLACE INTO store_meta VALUES ('checkpoint','1')")

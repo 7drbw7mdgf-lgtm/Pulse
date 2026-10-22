@@ -15,9 +15,9 @@ const context = {state, Map, Set, URL, els:{discoveryModal:{hidden:false, queryS
   safeHref:v=>/^https?:\/\//.test(v) ? v : '', recommendationAlreadyOnMap:()=>false,
   recommendationKey:()=> 'fixture', selectedPapersForRecommendation:()=>[], normalizeDoi:v=>String(v || '').replace(/^https?:\/\/doi.org\//,''), showToast(){}};
 vm.createContext(context);
-const definitions = fs.readFileSync(path.join(frontend,'part_01.js'),'utf8');
+const definitions = fs.readFileSync(path.join(frontend,'app-core.js'),'utf8');
 vm.runInContext(definitions.slice(definitions.indexOf('    function discoveryPaperKey')), context);
-vm.runInContext(fs.readFileSync(path.join(frontend,'part_02.js'),'utf8'), context);
+vm.runInContext(['discovery-modal.js','discovery-results.js','discovery-render.js','discovery-compare.js'].map(name=>fs.readFileSync(path.join(frontend,name),'utf8')).join('\n'), context);
 const papers = [{title:'Indexing study A', doi:'10.1234/first', score:90, year:'2020'},
                 {title:'Indexing study B', doi:'10.1234/second', score:80, year:'2025'}];
 const key = item=>context.discoveryPaperKey(item);

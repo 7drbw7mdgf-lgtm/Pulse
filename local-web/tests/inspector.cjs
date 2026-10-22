@@ -1,7 +1,7 @@
 // Paper inspector 1.7: compact metadata, citation text, library links, personal fields and saving.
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
 const helpers = fs.readFileSync('pulse-frontend/js/inspector.js', 'utf8');
-const normalizeSource = fs.readFileSync('pulse-frontend/js/part_08.js', 'utf8').split('    function normalizeImportedPaper(paper, source) {')[1].split('    function normalizeOpenAlexId')[0];
+const normalizeSource = fs.readFileSync('pulse-frontend/js/paper-metadata.js', 'utf8').split('    function normalizeImportedPaper(paper, source) {')[1].split('    function normalizeOpenAlexId')[0];
 
 function context(papers = [], links = []) {
   const stored = {};

@@ -41,5 +41,5 @@ const {spawn}=require('node:child_process'),{chromium}=require('playwright');
   assert(saved.papers.some(p=>p.id==='update-check'),'Restart first persists library changes to the real backend');
   assert.deepEqual(errors,[]);
   console.log('PASS: real update settings, background download, safe release notes, preferences, durable save before restart and failure recovery.');
- } finally {await browser?.close();backend.kill();fs.rmSync(profile,{recursive:true,force:true});}
+ } finally {await browser?.close();if(backend.exitCode===null){const stopped=new Promise(resolve=>backend.once('exit',resolve));backend.kill();await stopped;}fs.rmSync(profile,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

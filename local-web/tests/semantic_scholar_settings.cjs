@@ -4,11 +4,11 @@ const html=fs.readFileSync(path.join(base,'index.html'),'utf8');
 assert(/<input[^>]*id="semanticScholarKeyInput"[^>]*type="password"[^>]*autocomplete="off"/.test(html));
 assert(html.includes('id="clearSemanticScholarKeyButton"'));
 assert(html.includes('https://www.semanticscholar.org/product/api#api-key-form'));
-const statusSource=fs.readFileSync(path.join(base,'js/part_04.js'),'utf8');
+const statusSource=fs.readFileSync(path.join(base,'js/filters-and-backend.js'),'utf8');
 const status=statusSource.slice(statusSource.indexOf('    function renderBackendStatus('),statusSource.indexOf('    function populateOllamaModels('));
-const saveSource=fs.readFileSync(path.join(base,'js/part_05.js'),'utf8');
+const saveSource=fs.readFileSync(path.join(base,'js/backend-settings-ai.js'),'utf8');
 const save=saveSource.slice(saveSource.indexOf('    async function saveBackendSettings('),saveSource.indexOf('    async function testBackend('));
-const events=fs.readFileSync(path.join(base,'js/part_21.js'),'utf8').split('\n').filter(line=>line.includes("els.clearSemanticScholarKeyButton?.addEventListener('click'")).join('\n');
+const events=fs.readFileSync(path.join(base,'js/app-bindings.js'),'utf8').split('\n').filter(line=>line.includes("els.clearSemanticScholarKeyButton?.addEventListener('click'")).join('\n');
 const elements=new Map(),calls=[],toasts=[];
 function element(id){if(!elements.has(id))elements.set(id,{value:'',placeholder:'',textContent:'',disabled:false,checked:true,
   classList:{add(){},remove(){}},handlers:{},addEventListener(name,fn){this.handlers[name]=fn;}});return elements.get(id);}

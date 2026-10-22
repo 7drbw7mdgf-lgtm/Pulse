@@ -4,24 +4,21 @@ The current Tauri desktop app stages `local-web/pulse-frontend` and `local-web/p
 
 ## Run and test
 
-Requires Python 3.10+, Node.js and the local workspace PDF dependency:
+Requires Python 3.10+ and Node.js. One command sets up everything inside the checkout (ignored by Git): a `.venv` with the backend's dependencies, Playwright and its Chromium build for the browser suites.
 
 ```sh
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install -r local-web/requirements.txt
-npm ci
-npm start
-npm run test:workspace
+npm run setup
+npm test
+npm run dev
 ```
 
-For separate data, set `PULSE_CONFIG_DIR` to an isolated directory before starting. Omitting it uses `~/Library/Application Support/pulse` on macOS, `%LOCALAPPDATA%\Pulse` on Windows, or `$XDG_DATA_HOME/pulse` (default `~/.local/share/pulse`) on Linux. Open the server's printed URL. The current tests use synthetic papers and mocked services; no real library is needed.
+npm scripts use `.venv` automatically. `npm run dev` starts Pulse with its own development library in `.dev-profile`, so it never touches the library the installed app uses, on port 8790 (or `PULSE_PORT`/`PORT`). `npm start` runs against your real library (`~/Library/Application Support/pulse` on macOS, `%LOCALAPPDATA%\Pulse` on Windows, `$XDG_DATA_HOME/pulse` on Linux); avoid it while the desktop app is open. Set `PULSE_CONFIG_DIR` to choose another profile. Claude Code's preview pane starts `npm run dev` through `.claude/launch.json`.
 
-`npm test` runs the current workspace regression suite. Shared sign-in tests run separately in GitHub Actions. `tests/native_mac.py` is an optional native Mac smoke check.
+`npm test` runs the regression suite with synthetic papers and mocked services. Shared sign-in tests run separately in GitHub Actions. `tests/native_mac.py` is an optional native Mac smoke check.
 
 ## Current source layout
 
-- `local-web/pulse-frontend`: UI, graph, library table, bulk selection, inspector, reports and manager controls.
+- `local-web/pulse-frontend`: UI, graph, library table, bulk selection, inspector, reports and manager controls. Scripts in `js/` are plain browser scripts sharing one global scope, loaded in the order listed in `index.html`; each is named for its contents and kept to at most 500 lines (`tests/frontend_modules.cjs` enforces this). For example: `app-core` (start-up, icons, toasts, panels), `app-bindings` (event wiring), `discovery-modal`/`-results`/`-render`/`-compare`/`-pipeline` (discovery), `discovery-feedback`/`discovery-review` (relevance feedback), `paper-import`, `paper-metadata`, `metadata-resolution`, `paper-relatedness`, `citation-parsing`, `graph-layout`, `map-render`/`map-view`/`map-events`, `library-list`/`library-bulk-actions`, `inspector-details`, `linkage-details`, `recommendations`, `workspace-storage`/`library-save`, `paper-agent`, `paper-metrics-records`, and `pdf-reader`/`pdf-editor-ui`.
 - `local-web/pulse-backend/pulse_core`: persistence and recovery, metadata extraction/matching, metrics and relation lists, discovery, AI reports, manager connections and OAuth.
 - `local-web/pulse-backend/pulse_mcp.py`: newline-delimited JSON-RPC MCP bridge over stdio.
 - `desktop/src-tauri`: Mac/Windows launcher, served workspace window, native downloads and external URL opening.
@@ -30,17 +27,14 @@ For MCP, configure your compatible client's command as a Python 3.10+ interprete
 
 ## Build the Mac app
 
-Requires macOS, Xcode command-line tools, Rust and Node.js:
+Requires Apple Silicon macOS, Xcode command-line tools and Rust. Prepare the release tooling once, then build into a fresh folder outside the checkout:
 
 ```sh
-python3 -m venv /tmp/pulse-pdf-deps
-/tmp/pulse-pdf-deps/bin/python3 -m pip install -r local-web/requirements.txt
-bash scripts/package-desktop.sh /tmp/pulse-2.0.1-release /tmp/pulse-pdf-deps/lib/python3.12/site-packages
+npm run setup:build
+npm run build:mac -- ../pulse-VERSION-release
 ```
 
-Adjust the dependency path to the Python version used. The optional second argument is a directory of PDF dependencies built for the target Mac; it is not a previous app bundle. Omit it to rely on separately installed dependencies. The script stages source, builds Tauri, verifies the app signature, creates a DMG and writes its SHA-256 checksum. Stage outputs and build files are ignored; no user library or settings are packaged.
-
-The launcher finds Python 3.10+ in Homebrew, `/usr/local/bin` or the system location. A Python interpreter and Ollama/model weights are not bundled. Exports use native downloads; backend logs go to the app cache. First-launch guidance is in [the installation guide](MACOS-INSTALL.md).
+`setup:build` adds the Tauri CLI, a checksum-verified macOS 11+ CPython 3.11 from python-build-standalone with the freezing dependencies, and the offline search ranker (built once from the pinned public model) under `.build/`. `build:mac` signs the update archive with the key kept in Git metadata (see [App updates](APP-UPDATES.md)) and produces the update archive, its signature and the DMG. The Windows installer is built and tested by GitHub Actions, then signed locally as described in App updates.
 
 ## Build the Windows app
 

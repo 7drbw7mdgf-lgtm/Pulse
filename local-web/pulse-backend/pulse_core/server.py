@@ -197,7 +197,28 @@ class PulseHandler(SimpleHTTPRequestHandler):
             self.write_json(200, public_settings(settings))
             return
         if path == "/api/library":
-            self.write_json(200, load_library())
+            metadata_only = parsed.query and ('metadata_only=1' in parsed.query or 'metadata_only=true' in parsed.query)
+            self.write_json(200, load_library(include_content=not metadata_only))
+            return
+        if path.startswith("/api/library/content/"):
+            paper_id = path.rsplit("/", 1)[-1]
+            from pulse_core.storage import get_paper_content
+            self.write_json(200, get_paper_content(paper_id))
+            return
+        if path == "/api/workspace/backup":
+            try:
+                from pulse_core.workspace_archive import export_workspace_archive
+                archive_path = export_workspace_archive()
+                data = archive_path.read_bytes()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/x-pulse-workspace')
+                self.send_header('Content-Disposition', f'attachment; filename="{archive_path.name}"')
+                self.send_header('Content-Length', str(len(data)))
+                self.send_header('Cache-Control', 'no-store')
+                self.end_headers()
+                self.wfile.write(data)
+            except Exception as error:
+                self.write_json(500, {'error': str(error)})
             return
         if path == "/api/library/search":
             try:
@@ -257,7 +278,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/settings",
             "/api/library",
             "/api/library/change", "/api/library/recovery/restore",
-            "/api/library/merge", "/api/reader/attach", "/api/reader/page", "/api/reader/info", "/api/reader/outline", "/api/reader/passage", "/api/reader/preview", "/api/reader/keep", "/api/reader/search", "/api/reader/export",
+            "/api/library/merge", "/api/workspace/inspect", "/api/workspace/restore", "/api/reader/attach", "/api/reader/page", "/api/reader/info", "/api/reader/outline", "/api/reader/passage", "/api/reader/preview", "/api/reader/keep", "/api/reader/search", "/api/reader/export",
             "/api/test",
             "/api/metadata/doi",
             "/api/metadata/resolve", "/api/metadata/citation", "/api/metadata/citation/verify",
@@ -311,6 +332,8 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/library": save_library,
                 "/api/library/change": change_library,
                 "/api/library/merge": merge_library_records,
+                "/api/workspace/inspect": lambda p: __import__('pulse_core.workspace_archive', fromlist=['inspect_workspace_archive']).inspect_workspace_archive(p.get("archivePath")),
+                "/api/workspace/restore": lambda p: __import__('pulse_core.workspace_archive', fromlist=['restore_workspace_archive']).restore_workspace_archive(p.get("archivePath"), mode=p.get("mode", "replace")),
                 "/api/reader/attach": pdf_reader.attach,
                 "/api/reader/page": pdf_reader.page,
                 "/api/reader/info": pdf_reader.info,

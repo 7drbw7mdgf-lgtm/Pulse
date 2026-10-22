@@ -138,4 +138,41 @@ class PDFLayoutTests(unittest.TestCase):
             passage=pdf_reader.passage({'id':stored['id'],'page':1,'quote':'responses differ between bacterial lineages'})
             self.assertEqual(passage['page'],1)
 
+    def test_ruled_tables_are_read_row_by_row_with_wrapped_cells_joined(self):
+        import pymupdf as fitz
+        def build(doc):
+            page=doc.new_page(width=595,height=780)
+            page.insert_text((45,60),'Table 1 | Bacterial factors.',fontsize=8)
+            for y in (72,100,190):page.draw_line((45,y),(550,y),width=.5)
+            for x,label in [(45,'Factor'),(140,'Proposed'),(270,'Methods'),(430,'Reference')]:page.insert_text((x,84),label,fontsize=7.5)
+            for x,label in [(140,'function')]:page.insert_text((x,94),label,fontsize=7.5)
+            rows=[('AspA, AspB',['Aspartate ammonia','lyase'],['Infection in vitro'],['Novik et al. (2010)']),
+                  ('CadF',['Adhesin to','fibronectin'],['Infection in vitro','and in chickens'],['Konkel et al. (1997)']),
+                  ('KpsE,',['Capsule proteins,','invasion'],['Infection in vitro'],['Bacon et al. (2001)'])]
+            y=112
+            for factor,*columns in rows:
+                page.insert_text((45,y),factor,fontsize=7.5)
+                if factor=='KpsE,':page.insert_text((45,y+11),'KpsM, KpsT',fontsize=7.5)
+                for x,cell in zip((140,270,430),columns):
+                    for offset,line in enumerate(cell):page.insert_text((x,y+offset*11),line,fontsize=7.5)
+                y+=26
+            page.insert_text((45,205),'Abbreviations: GPA, gentamicin protection assay.',fontsize=7)
+            words_in(page,45,240,245,'Body text after the table continues in the left column with ordinary prose about the factors listed above.',9.5)
+            words_in(page,303,240,245,'The right column continues the discussion with further ordinary prose about invasion.',9.5)
+        lines=self.extract(build)['text'].splitlines()
+        self.assertIn('Factor | Proposed function | Methods | Reference',lines)
+        self.assertIn('AspA, AspB | Aspartate ammonia lyase | Infection in vitro | Novik et al. (2010)',lines)
+        self.assertIn('CadF | Adhesin to fibronectin | Infection in vitro and in chickens | Konkel et al. (1997)',lines)
+        self.assertIn('KpsE, KpsM, KpsT | Capsule proteins, invasion | Infection in vitro | Bacon et al. (2001)',lines)
+        self.assertLess(lines.index('Table 1 | Bacterial factors.'),lines.index('Factor | Proposed function | Methods | Reference'))
+        self.assertFalse(any(' | ' in line for line in lines if 'prose' in line),'Body text is never read as a table')
+
+    def test_rules_around_ordinary_text_are_not_tables(self):
+        def build(doc):
+            page=doc.new_page(width=595,height=780)
+            page.draw_line((45,100),(550,100),width=.5);page.draw_line((45,200),(550,200),width=.5)
+            words_in(page,45,115,500,'A boxed summary paragraph between two rules reads as normal prose, with ordinary word spacing throughout every line of it.',9.5)
+        text=self.extract(build)['text']
+        self.assertNotIn(' | ',text);self.assertIn('A boxed summary paragraph',text)
+
 if __name__=='__main__':unittest.main()

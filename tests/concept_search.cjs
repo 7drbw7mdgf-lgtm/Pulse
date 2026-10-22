@@ -100,5 +100,5 @@ const {chromium}=require('playwright');
       await page.screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOT_DIR,'concept-toolbar.png')});}
     assert.deepEqual(errors,[]);
     console.log('PASS: seed-free concept HTTP route, input/Enter search, keyword intent, original-topic repeat/refine, fallback notice, real-result import and responsive toolbar.');
-  }finally{await browser?.close();backend.kill('SIGTERM');fs.rmSync(profile,{recursive:true,force:true});}
+  }finally{await browser?.close();if(backend.exitCode===null){const stopped=new Promise(resolve=>backend.once('exit',resolve));backend.kill('SIGTERM');await stopped;}fs.rmSync(profile,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exit(1);});

@@ -66,7 +66,7 @@ _NO_SPLIT_AFTER = ["e.g.", "i.e.", " al.", "var.", " sp.", "spp.", "bsp.", " cf.
 _SENTENCE_SPLIT = re.compile("".join(f"(?<!{re.escape(x)})" for x in _NO_SPLIT_AFTER) + r"(?<=[.!?])\s+(?=[A-Z0-9(\[])")
 _SYSTEM_NOUNS = (r"patients|participants|volunteers|adults|children|infants|women|men|workers|students|households|cohorts?|"
                  r"mice|mouse|rats?|zebrafish|primates?|macaques|pigs|dogs|cattle|chickens|"
-                 r"cells?|cell lines?|monocytes|macrophages|neurons|organoids|tissues?|biopsies|isolates|strains|cultures|"
+                 r"cells?|cell lines?|monocytes|macrophages|microglia|neurons|organoids|tissues?|biopsies|isolates|strains|cultures|"
                  r"soils?|sediments?|plants|seedlings|leaves|roots")
 _BINOMIAL_GENUS = r"[A-Z][a-z]*(?:coccus|bacter|bacillus|bacterium|monas|myces|ella|ia|ium|us|um|a|es|is|opsis|phila)"
 _BINOMIAL_EPITHET = r"[a-z]{3,}(?:us|um|a|ae|i|is|ii|e|ensis|ica|oides|er|ans|ens)"
@@ -95,6 +95,95 @@ _SYSTEM_STOPWORDS = {"the", "a", "an", "of", "in", "from", "and", "or", "with", 
                      "we", "were", "was", "at", "regarding", "about", "concerning", "among", "amongst", "between", "within", "into", "two", "three", "several", "many", "each", "most", "some",
                      "against", "allows", "allow", "using", "used", "including", "such", "as", "like", "than", "via", "per", "data", "is", "are", "be", "been", "that", "which", "whose"}
 
+_SECTION_PATTERNS = [
+    ('limitations', re.compile(r'(?:^|\n\n)(?:\d+[\.\s]+)?(?:limitations?|caveats?|weaknesses?|constraints?)\b', re.I)),
+    ('methods', re.compile(r'(?:^|\n\n)(?:\d+[\.\s]+)?(?:methods?|methodology|experimental\s+(?:procedures?|section|design)|materials?\s+(?:and|&)\s+methods?)\b', re.I)),
+    ('discussion', re.compile(r'(?:^|\n\n)(?:\d+[\.\s]+)?(?:discussion|conclusions?|closing\s+remarks)\b', re.I)),
+    ('results', re.compile(r'(?:^|\n\n)(?:\d+[\.\s]+)?(?:results?|observations?)\b', re.I)),
+]
+
+def extract_text_sections(text):
+    """Splits paper text into recognized section blocks based on explicit headings."""
+    if not text or len(text) < 150:
+        return {}
+    matches = []
+    for sec_name, pat in _SECTION_PATTERNS:
+        for m in pat.finditer(text):
+            matches.append((m.start(), sec_name))
+    if not matches:
+        return {}
+    matches.sort(key=lambda x: x[0])
+    sections = {}
+    for i, (start, name) in enumerate(matches):
+        end = matches[i + 1][0] if i + 1 < len(matches) else len(text)
+        block = text[start:end].strip()
+        if len(block) >= 30 and name not in sections:
+            sections[name] = block
+    return sections
+
+_DIRECTION_POSITIVE = re.compile(r'\b(?:increas(?:e|ed|ing|es)?|elevat(?:e|ed|ing|es)?|upregulat(?:e|ed|ing|es)?|promot(?:e|ed|ing|es)?|enhanc(?:e|ed|ing|es)?|improv(?:e|ed|ing|es)?|activat(?:e|ed|ing|es)?|induc(?:e|ed|ing|es)?|positiv(?:e|ely)?|stimulat(?:e|ed|ing|es)?|benefit(?:s|ed|ial)?|effective|outperform(?:s|ed)?)\b', re.I)
+_DIRECTION_NEGATIVE = re.compile(r'\b(?:decreas(?:e|ed|ing|es)?|reduc(?:e|ed|ing|es)?|downregulat(?:e|ed|ing|es)?|inhibit(?:s|ed|ing)?|suppress(?:es|ed|ing)?|impair(?:s|ed|ing)?|block(?:s|ed|ing)?|negativ(?:e|ely)?|diminish(?:es|ed)?|loss\s+of|prevent(?:s|ed|ing)?|ineffective|worse|declined?)\b', re.I)
+
+def detect_finding_direction(text):
+    s = str(text or '')
+    pos = bool(_DIRECTION_POSITIVE.search(s))
+    neg = bool(_DIRECTION_NEGATIVE.search(s))
+    if pos and not neg: return 'positive'
+    if neg and not pos: return 'negative'
+    return 'neutral'
+
+def analyze_matrix_consensus(rows):
+    """Identifies concordant, conflicting and orthogonal findings across compared papers."""
+    by_target = collections.defaultdict(list)
+    for i, r in enumerate(rows):
+        cells = r.get('cells') or {}
+        system_val = (cells.get('system') or {}).get('value', '').lower()
+        if not system_val or 'not stated' in system_val:
+            system_val = (r.get('title', '') + ' ' + (r.get('abstract', '') or '')).lower()
+        finding_quote = (cells.get('finding') or {}).get('quote', '') or (cells.get('finding') or {}).get('value', '')
+        direction = detect_finding_direction(finding_quote)
+        r['findingDirection'] = direction
+        m = re.search(r"\b(" + _SYSTEM_NOUNS + r")\b", system_val, re.I)
+        if m:
+            target = m.group(1).lower()
+        else:
+            words = [w for w in re.findall(r'\b[a-z]{3,}\b', system_val) if w not in _SYSTEM_STOPWORDS and w not in _ENGLISH_WORDS and w not in {'not', 'stated', 'abstract', 'paper', 'treatment', 'compound', 'drug', 'effect', 'study'}]
+            target = words[0] if words else 'general'
+        by_target[target].append((i, r, direction, finding_quote))
+
+    concordant_pairs = []
+    conflicting_pairs = []
+    for target, group in by_target.items():
+        if len(group) >= 2 and target != 'general':
+            for a_idx in range(len(group)):
+                for b_idx in range(a_idx + 1, len(group)):
+                    _, r1, dir1, _ = group[a_idx]
+                    _, r2, dir2, _ = group[b_idx]
+                    pair_info = {
+                        'target': target,
+                        'paperA': r1.get('title'),
+                        'paperB': r2.get('title'),
+                        'paperA_id': r1.get('paperId'),
+                        'paperB_id': r2.get('paperId'),
+                        'directionA': dir1,
+                        'directionB': dir2,
+                    }
+                    if dir1 in ('positive', 'negative') and dir2 in ('positive', 'negative'):
+                        if dir1 == dir2:
+                            pair_info['status'] = 'concordant'
+                            pair_info['summary'] = f"Concordant: both show {dir1} effect on {target}."
+                            concordant_pairs.append(pair_info)
+                        else:
+                            pair_info['status'] = 'conflicting'
+                            pair_info['summary'] = f"Conflicting: {r1.get('title')[:35]} reports {dir1} while {r2.get('title')[:35]} reports {dir2} on {target}."
+                            conflicting_pairs.append(pair_info)
+
+    return {
+        'concordant': concordant_pairs,
+        'conflicting': conflicting_pairs,
+        'concordantCount': len(concordant_pairs),
+        'conflictingCount': len(conflicting_pairs),
+    }
 
 def _sentences(source_text):
     return [x.strip() for x in _SENTENCE_SPLIT.split(normalize_whitespace(source_text)) if len(x.strip()) >= 15]
@@ -199,7 +288,7 @@ def extract_paper_cell(column_def, paper, settings=None, cancel_event=None):
             except Exception:
                 continue
         blocks.append(block)
-    has_full_text = bool(blocks) or len(full_text) > max(1000, len(abstract) + 500)
+    has_full_text = bool(blocks) or len(full_text) > max(1000, len(abstract) + 500) or bool(extract_text_sections(full_text))
     source_text = (full_text or '\n\n'.join(p.get('text','') for p in blocks)) if has_full_text else abstract
     source_type = "paper" if has_full_text else "abstract"
 
@@ -220,6 +309,21 @@ def extract_paper_cell(column_def, paper, settings=None, cancel_event=None):
                 cell['passage'] = context_excerpt(block['text'],cell['quote'])
                 return cell
         return {'value':'Not stated in the paper','quote':'','grounded':False}
+    sections = extract_text_sections(source_text)
+    if sections:
+        sec_candidates = []
+        if col_id == "limitation":
+            sec_candidates = [s for s in ('limitations', 'discussion') if s in sections]
+        elif col_id == "method":
+            sec_candidates = [s for s in ('methods', 'results') if s in sections]
+        elif col_id == "system":
+            sec_candidates = [s for s in ('methods', 'results') if s in sections]
+        for sec in sec_candidates:
+            raw = heuristic_extract_column(col_id, sections[sec], source_type="paper", title=str(paper.get("title") or ""))
+            cell = verify_grounded_cell(raw.get("value"), raw.get("quote"), source_text, source_type="paper")
+            if cell['grounded']:
+                cell.update(provenance={'source': f'Section: {sec.title()}', 'section': sec}, passage=context_excerpt(source_text, cell['quote']))
+                return cell
     raw = heuristic_extract_column(col_id, source_text, source_type=source_type, title=str(paper.get("title") or ""))
     cell = verify_grounded_cell(raw.get("value"), raw.get("quote"), source_text, source_type=source_type)
     if cell['grounded']: cell.update(provenance={'source':'Abstract' if source_type=='abstract' else 'Local imported text'},passage=context_excerpt(source_text,cell['quote']))
@@ -310,10 +414,12 @@ def generate_evidence_matrix(papers, columns=None, settings=None, max_workers=2,
     # Preserve input ordering of papers
     paper_order = {str(p.get("id") or p.get("doi") or p.get("title")): idx for idx, p in enumerate(selected)}
     rows.sort(key=lambda r: paper_order.get(r["paperId"], 999))
+    consensus = analyze_matrix_consensus(rows)
 
     return {
         "columns": columns,
         "rows": rows,
+        "consensus": consensus,
         "provider": provider_name,
         "generatedAt": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -361,11 +467,20 @@ def export_matrix_markdown(matrix):
             val = clean(cell.get("value") or "")
             row_vals.append(val)
         lines.append("| " + " | ".join(row_vals) + " |")
-    lines.extend(['','Supporting quotations and provenance (automatically extracted; check context):',''])
+    lines.extend(['', 'Supporting quotations and provenance (automatically extracted; check context):', ''])
     for r in matrix.get('rows') or []:
         for c in cols:
-            cell=(r.get('cells') or {}).get(c.get('id') or c.get('name'),{})
+            cell = (r.get('cells') or {}).get(c.get('id') or c.get('name'), {})
             if cell.get('quote'):
-                lines.extend([clean(r.get('title'))+' · '+clean(c.get('name') or c.get('id')),
-                    '> '+clean(cell['quote']),clean(json.dumps(cell.get('provenance') or {},ensure_ascii=False)),''])
+                lines.extend([clean(r.get('title')) + ' · ' + clean(c.get('name') or c.get('id')),
+                    '> ' + clean(cell['quote']), clean(json.dumps(cell.get('provenance') or {}, ensure_ascii=False)), ''])
+    if matrix.get('consensus'):
+        con = matrix['consensus']
+        lines.extend(['', '### Consensus & Contradiction Summary', ''])
+        for item in con.get('concordant', []):
+            lines.append(f"- **Concordant**: {item['paperA']} and {item['paperB']} ({item['summary']})")
+        for item in con.get('conflicting', []):
+            lines.append(f"- **Conflicting**: {item['paperA']} vs {item['paperB']} ({item['summary']})")
+        if not con.get('concordant') and not con.get('conflicting'):
+            lines.append("- No direct conflicting or concordant pairs detected across identified targets.")
     return "\n".join(lines) + "\n"
