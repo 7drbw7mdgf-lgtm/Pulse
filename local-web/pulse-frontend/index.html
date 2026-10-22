@@ -140,6 +140,7 @@
 <!-- SVG GRAPH CANVAS VIEWPORT -->
 <div class="map-viewport" aria-label="Map canvas — drop paper files here">
 <button id="inspectorReopen" class="inspector-reopen inspector-panel-button" type="button" aria-label="Show paper details" title="Show paper details" aria-controls="details" aria-expanded="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M11 9l-3 3 3 3"></path></svg></button>
+<div class="map-totals-pill" role="group" aria-label="Map totals"><span><strong id="metricPapers">0</strong> papers</span><span aria-hidden="true">·</span><span><strong id="metricLinks">0</strong> links</span></div>
 <div id="mapDropOverlay" class="map-drop-overlay" hidden><div><strong>Drop papers onto your map</strong><span>PDF, BibTeX, RIS, JSON and text files</span></div></div> <svg id="map" class="map" role="img" aria-label="A linkage map of related papers"></svg>
 <div id="mapSelectionBar" class="map-selection-bar" role="toolbar" aria-label="Selected papers" hidden><span id="mapSelectionCount" class="map-selection-count">0 selected</span><button id="mapSelectionBridge" class="map-selection-primary" type="button" title="Search for what the selected papers share and find papers connecting them">Find bridges</button><button id="mapSelectionClear" type="button">Clear</button></div>
 <div id="tableView" class="table-view" hidden></div>
@@ -184,7 +185,6 @@
 </div>
 </div>
 </div>
-<div class="map-totals-pill" role="group" aria-label="Map totals"><span><strong id="metricPapers">0</strong> papers</span><span aria-hidden="true">·</span><span><strong id="metricLinks">0</strong> links</span></div>
 </div>
 <!-- HIDDEN / ACCESSIBLE TITLES & FILTERS -->
 <h1 id="canvasMainTitle" style="display:none">Relatedness graph</h1> <p id="statusText" style="display:none">Add papers to begin.</p>
@@ -665,6 +665,6 @@
 <script src="js/library-tools.js?v=1"></script>
 <link rel="stylesheet" href="css/pdf-reader.css?v=preview-1">
 <script src="js/pdf-reader.js?v=preview-1"></script>
-<link rel="stylesheet" href="css/map-toolbar.css?v=external-totals-4">
+<link rel="stylesheet" href="css/map-toolbar.css?v=two-rows-top-totals-5">
 <script src="js/map-toolbar.js?v=1"></script>
 <script src="js/part_21.js?v=2.1.4-rail-cleanup"></script> <script src="js/part_22.js?v=2.1.4"></script> </body> </html>

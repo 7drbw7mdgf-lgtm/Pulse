@@ -92,15 +92,17 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     await page.setViewportSize({width:1457,height:1031});
     await page.evaluate(()=>els.app.style.setProperty('--library-width','220px'));
     await page.waitForFunction(()=>Math.abs(document.getElementById('colLibrary').getBoundingClientRect().width-220)<1);
-    const controls=['#canvasLayoutSelect','#canvasLinksSelect','#threshold','#mapModePan','#mapModeSelect','#mapClearAll','#mapToolsMenu > summary'];
+    const controls=['#mapModePan','#mapModeSelect','#mapClearAll','#mapToolsMenu > summary'];
     const centers=[];
     for(const selector of controls){const box=await page.locator(selector).boundingBox();centers.push(box.y+box.height/2);}
-    assert(Math.max(...centers)-Math.min(...centers)<=4,'All map controls share one row at the annotated canvas width');
+    assert(Math.max(...centers)-Math.min(...centers)<=4,'Pointer and action controls share the second row');
+    const fields=await page.locator('.dock-row-top').boundingBox(), actions=await page.locator('.dock-row-bottom').boundingBox();
+    assert(actions.y>=fields.y+fields.height+6,'Map controls stay in two distinct rows');
     assert((await page.locator('#canvasLayoutSelect').boundingBox()).width<=64,'Layout field is compact');
     assert((await page.locator('#canvasLinksSelect').boundingBox()).width<=74,'Links field is compact');
-    const compactDock=await page.locator('.canvas-dock-modern').boundingBox(), compactTotals=await page.locator('.map-totals-pill').boundingBox();
-    if(process.env.PULSE_UI_SCREENSHOTS){fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});await page.locator('.map-controls-footer').screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'map-toolbar-external-totals.png')});}
-    assert(compactTotals.x>=compactDock.x+compactDock.width+6,'Map totals have their own pill beside the toolbar: '+JSON.stringify({compactDock,compactTotals}));
+    const compactMap=await page.locator('.map-viewport').boundingBox(), compactTotals=await page.locator('.map-totals-pill').boundingBox();
+    assert(Math.abs(compactTotals.y-compactMap.y-12)<=1 && Math.abs(compactMap.x+compactMap.width-compactTotals.x-compactTotals.width-12)<=1,'Map totals sit at the top right of the map');
+    if(process.env.PULSE_UI_SCREENSHOTS){fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});await page.locator('.map-controls-footer').screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'map-controls-two-rows.png')});}
     await page.click('#inspectorToggle');
     for (const size of [{width:1440,height:1031},{width:976,height:1031},{width:800,height:720}]) {
       await page.setViewportSize(size);
@@ -108,8 +110,10 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
       const footer = await page.locator('.map-controls-footer').boundingBox();
       const map = await page.locator('#map').boundingBox();
       assert(map.y + map.height <= dock.y + 1, 'Controls stay outside the graph viewport');
-      assert(footer.y + footer.height <= size.height, 'The toolbar and totals pill stay on screen');
-      assert.equal(await page.locator('.map-controls-footer').evaluate(el => el.scrollWidth <= el.clientWidth + 1), true, 'Toolbar and totals fit '+size.width+'px');
+      assert(footer.y + footer.height <= size.height, 'The toolbar stays on screen');
+      assert.equal(await page.locator('.map-controls-footer').evaluate(el => el.scrollWidth <= el.clientWidth + 1), true, 'Toolbar fits '+size.width+'px');
+      const totals=await page.locator('.map-totals-pill').boundingBox(), reopen=await page.locator('#inspectorReopen').boundingBox();
+      assert(totals.x+totals.width<=reopen.x-6,'Map totals leave room for the inspector button at '+size.width+'px');
       assert.equal(await page.locator('.canvas-dock-modern').evaluate(el => el.scrollWidth <= el.clientWidth + 1), true, 'Toolbar fits '+size.width+'px');
       await trigger.click();
       await page.waitForFunction(() => document.getElementById('mapToolsPopup').getBoundingClientRect().top >= document.querySelector('.pulse-col-canvas').getBoundingClientRect().top);
