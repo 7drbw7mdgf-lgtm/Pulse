@@ -1,4 +1,4 @@
-importScripts('graph-engine.js?v=2.1.4');
+importScripts('graph-engine.js?v=2.1.5');
 const engine = PulseGraph.createEngine();
 self.onmessage = ({data}) => {
   try {
