@@ -1,6 +1,6 @@
 /* Pulse Release Highlights Splash Screen: appears once per new version. */
 const PulseWhatsNew = (() => {
-  const CURRENT_VERSION = '2.1.7';
+  const CURRENT_VERSION = '2.1.8';
   const STORAGE_KEY = 'pulse_last_seen_release';
 
   function createDialog() {
@@ -14,11 +14,18 @@ const PulseWhatsNew = (() => {
           <div class="whats-new-header-title">
             <span class="whats-new-badge">v${CURRENT_VERSION}</span>
             <h2>What's New in Pulse</h2>
-            <p class="subtle">Analytical graph topology, systematic screening, and large library scaling.</p>
+            <p class="subtle">A topic map for Trends, graph topology, systematic screening, and large library scaling.</p>
           </div>
           <button type="button" data-close-tool aria-label="Close">×</button>
         </header>
         <div class="whats-new-feature-grid">
+          <div class="whats-new-card">
+            <div class="whats-new-icon">🫧</div>
+            <div class="whats-new-content">
+              <h3>Trends Topic Map</h3>
+              <p>Trends groups every paper by topic as bubbles with papers in orbit. The map, the year chart and one Groups → Concepts → Papers list share one selection, and share changes are coloured only when clear at 95%.</p>
+            </div>
+          </div>
           <div class="whats-new-card">
             <div class="whats-new-icon">🌐</div>
             <div class="whats-new-content">
@@ -51,14 +58,14 @@ const PulseWhatsNew = (() => {
             <div class="whats-new-icon">🔬</div>
             <div class="whats-new-content">
               <h3>Section-Targeted Evidence & Consensus</h3>
-              <p>Multi-column PDF layout parsing extracts methods and limitations with >80% fill rates and groups findings to flag concordant vs. conflicting results.</p>
+              <p>Multi-column PDF layout parsing extracts methods and limitations from their own sections and groups findings to flag concordant vs. conflicting results.</p>
             </div>
           </div>
           <div class="whats-new-card">
             <div class="whats-new-icon">🚀</div>
             <div class="whats-new-content">
               <h3>Two-Tier Lazy Hydration & Backups</h3>
-              <p>Metadata-first SQLite loading cuts startup heap by ~85% on 10,000+ papers, paired with single-file portable <code>.pulse-workspace</code> archive backups.</p>
+              <p>Metadata-first SQLite loading keeps large libraries light at startup, paired with single-file portable <code>.pulse-workspace</code> archive backups.</p>
             </div>
           </div>
         </div>
