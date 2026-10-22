@@ -2,7 +2,7 @@
 const PulsePDFEditor=(()=>{
   const el=id=>document.getElementById(id),ctx=()=>PulsePDF.context();
   const palette={yellow:'#ffe66b',green:'#92e5aa',blue:'#3f8cf2',pink:'#f7a3d2',red:'#d92e2e',black:'#202027'};
-  let tool='select',workspace='read',identity='',history=[],future=[],placement=null,drawing=null,exporting=false;
+  let tool='select',workspace='read',sidebarOpen=false,identity='',history=[],future=[],placement=null,drawing=null,exporting=false;
   let thumbsKey='',thumbObserver=null,thumbQueue=[],thumbBusy=0,thumbRevision=0,thumbLimit=100,searchController=null,searchResults=[],searchIndex=-1;
   const thumbnailCache=new Map();
   function editable(){const c=ctx();return c.open&&c.attachmentId&&!c.preview&&!!c.paper;}
@@ -17,12 +17,16 @@ const PulsePDFEditor=(()=>{
   function transformRect(rect,angle){const points=[transform({x:rect.x,y:rect.y},angle),transform({x:rect.x+rect.width,y:rect.y+rect.height},angle)];return{x:Math.min(points[0].x,points[1].x),y:Math.min(points[0].y,points[1].y),width:Math.abs(points[1].x-points[0].x),height:Math.abs(points[1].y-points[0].y)};}
   const viewRect=rect=>transformRect(rect,ctx().rotation),canonicalRect=rect=>transformRect(rect,(360-ctx().rotation)%360);
   function status(text){el('pdfReaderStatus').textContent=text;}
+  function setSidebarOpen(value){sidebarOpen=!!value&&!!editable();el('pdfAnnotationSidebar').hidden=!sidebarOpen;
+    const toggle=el('pdfSidebarToggle');toggle.disabled=!editable();toggle.setAttribute('aria-expanded',String(sidebarOpen));toggle.title=(sidebarOpen?'Hide':'Show')+' properties and comments';
+  }
   function mode(value){workspace=value;el('pdfReaderDialog').dataset.workspace=value;document.querySelectorAll('[data-pdf-workspace]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.pdfWorkspace===value)));
     document.querySelectorAll('[data-pdf-tools]').forEach(group=>group.hidden=group.dataset.pdfTools!==value);
-    el('pdfAnnotationSidebar').hidden=!editable()||value==='read'||value==='pages';
+    setSidebarOpen(value==='comment'||value==='edit');
     if(value==='read'||value==='pages')setTool('select');
   }
   function setTool(value){tool=editable()?value:'select';el('pdfPageSurface').dataset.tool=tool;placement=null;
+    if(tool!=='select')setSidebarOpen(true);
     if(['text','ink','rectangle'].includes(tool)&&el('pdfHighlightColor').value==='yellow')el('pdfHighlightColor').value=tool==='text'?'black':'blue';
     document.querySelectorAll('[data-pdf-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.pdfTool===tool)));
     el('pdfPlacementTools').hidden=!['text','note'].includes(tool);el('pdfTextTools').hidden=tool!=='text';
@@ -31,7 +35,8 @@ const PulsePDFEditor=(()=>{
     if(['highlight','underline','strikeout'].includes(tool)&&ctx().selection)PulsePDF.save();
   }
   function onState(){const c=ctx(),key=[c.paperId,c.attachmentId,c.preview].join(':');
-    if(key!==identity){identity=key;history=[];future=[];placement=null;drawing=null;thumbsKey='';thumbLimit=100;thumbRevision++;thumbQueue=[];searchResults=[];searchIndex=-1;el('pdfSearchResults').replaceChildren();searchController?.abort();setTool('select');mode(c.preview||!c.attachmentId?'read':'comment');}
+    if(key!==identity){identity=key;history=[];future=[];placement=null;drawing=null;thumbsKey='';thumbLimit=100;thumbRevision++;thumbQueue=[];searchResults=[];searchIndex=-1;el('pdfSearchResults').replaceChildren();searchController?.abort();setTool('select');mode('read');}
+    setSidebarOpen(sidebarOpen);
     if(!c.file){const href=safeHref(c.paper?.url||(c.paper?.doi?'https://doi.org/'+c.paper.doi:''));el('pdfSourceLink').href=href||'#';el('pdfSourceLink').hidden=!href;el('pdfSourceLink').textContent='Open source page';}
     el('pdfExportEdited').disabled=!editable()||exporting;el('pdfSearchText').disabled=!c.attachmentId;el('pdfRunSearch').disabled=!c.attachmentId;
     document.querySelectorAll('[data-pdf-edit]').forEach(b=>b.disabled=!editable());
@@ -130,6 +135,7 @@ const PulsePDFEditor=(()=>{
     const count=document.createElement('span');count.id='pdfCommentCount';count.className='pdf-comment-count';sidebar.querySelector('h3').append(count);
     el('pdfUndoAnnotation').textContent='Undo';el('pdfUndoAnnotation').title='Undo PDF edit (Cmd/Ctrl+Z)';el('pdfUndoAnnotation').onclick=()=>restore(history,future);
     const redo=document.createElement('button');redo.id='pdfRedo';redo.type='button';redo.textContent='Redo';redo.disabled=true;redo.onclick=()=>restore(future,history);el('pdfUndoAnnotation').after(redo);
+    const sidebarToggle=document.createElement('button');sidebarToggle.id='pdfSidebarToggle';sidebarToggle.type='button';sidebarToggle.textContent='Properties & comments';sidebarToggle.setAttribute('aria-controls','pdfAnnotationSidebar');sidebarToggle.setAttribute('aria-expanded','false');sidebarToggle.onclick=()=>{if(sidebarOpen)setTool('select');setSidebarOpen(!sidebarOpen);};dialog.querySelector('.pdf-toolbar').append(sidebarToggle);
     dialog.append(el('pdfReaderStatus'));el('pdfReaderStatus').classList.add('pdf-status-bar');
     const surface=el('pdfPageSurface');surface.addEventListener('pointerdown',pointerDown);surface.addEventListener('pointermove',pointerMove);surface.addEventListener('pointerup',pointerUp);surface.addEventListener('pointercancel',()=>{drawing=null;paintDraft();});
     document.addEventListener('pulse:pdf-state',onState);document.addEventListener('pulse:pdf-page',()=>{onState();thumbnails();paintDraft();renderAnnotations();});
