@@ -155,6 +155,7 @@
 <p class="empty-hint">Drop paper files here, use <strong>⌘/Ctrl+I</strong> to import, or search for papers above.</p> </div> </div>
 </div>
 <!-- Graph controls have their own space below the map. -->
+<div class="map-controls-footer">
 <div class="canvas-dock-modern" role="toolbar" aria-label="Map controls">
 <div class="dock-row dock-row-top">
 <label class="dock-dropdown-label"><span>Layout</span><select id="canvasLayoutSelect" aria-label="Graph layout"><option value="network">Force</option><option value="clusters">Clusters</option><option value="radial">Radial</option></select></label>
@@ -163,7 +164,6 @@
 </div>
 <div class="dock-row dock-row-bottom">
 <div class="dock-mode-toggle" role="group" aria-label="Map pointer mode"><button id="mapModePan" class="dock-icon-btn is-active" type="button" aria-pressed="true" title="Pan the map (hold Shift to drag a selection box)"><span data-feather="move"></span><span>Pan</span></button><button id="mapModeSelect" class="dock-icon-btn" type="button" aria-label="Box select" aria-pressed="false" title="Drag a box to select papers (⇧-click adds or removes one)"><span data-feather="box-select"></span><span>Select</span></button></div>
-<div class="dock-metrics-pill-group" aria-label="Map totals"><span class="metric-pill"><strong id="metricPapers">0</strong> papers</span><span aria-hidden="true">·</span><span class="metric-pill"><strong id="metricLinks">0</strong> links</span></div>
 <div class="dock-tools-group">
 <button id="mapClearAll" class="dock-icon-btn dock-clear-btn" type="button" aria-label="Clear map" title="Clear map (untick all papers)"><span data-feather="x-circle"></span><span class="dock-btn-label">Clear</span></button>
 <details id="mapToolsMenu" class="dock-tools-menu">
@@ -183,6 +183,8 @@
 </details>
 </div>
 </div>
+</div>
+<div class="map-totals-pill" role="group" aria-label="Map totals"><span><strong id="metricPapers">0</strong> papers</span><span aria-hidden="true">·</span><span><strong id="metricLinks">0</strong> links</span></div>
 </div>
 <!-- HIDDEN / ACCESSIBLE TITLES & FILTERS -->
 <h1 id="canvasMainTitle" style="display:none">Relatedness graph</h1> <p id="statusText" style="display:none">Add papers to begin.</p>
@@ -663,6 +665,6 @@
 <script src="js/library-tools.js?v=1"></script>
 <link rel="stylesheet" href="css/pdf-reader.css?v=preview-1">
 <script src="js/pdf-reader.js?v=preview-1"></script>
-<link rel="stylesheet" href="css/map-toolbar.css?v=narrow-fields-3">
+<link rel="stylesheet" href="css/map-toolbar.css?v=external-totals-4">
 <script src="js/map-toolbar.js?v=1"></script>
 <script src="js/part_21.js?v=2.1.4-rail-cleanup"></script> <script src="js/part_22.js?v=2.1.4"></script> </body> </html>

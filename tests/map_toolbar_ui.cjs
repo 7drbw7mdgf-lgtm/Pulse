@@ -29,6 +29,8 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     await page.route('**/api/metadata/**', route => route.fulfill({json:{ok:true,matched:false,metadata:{}}}));
     await page.goto(url);
     await page.waitForFunction(() => state.autosaveReady && document.querySelectorAll('#map .node').length === 2);
+    assert.equal(await page.locator('.canvas-dock-modern #metricPapers').count(),0,'Map totals sit outside the controls');
+    assert.equal(await page.locator('.map-totals-pill #metricPapers').innerText(),'2');
     const chooserReady = page.waitForEvent('filechooser');
     await page.keyboard.press('Control+i');
     assert.equal((await chooserReady).isMultiple(),true,'Import shortcut still opens the file chooser without rail buttons');
@@ -74,9 +76,11 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     assert.equal(await page.locator('#mapModePan').getAttribute('aria-pressed'), 'true');
     await page.click('#mapClearAll');
     assert.equal(await page.locator('#map .node').count(), 0);
+    assert.equal(await page.locator('.map-totals-pill #metricPapers').innerText(),'0','Separate totals update when the map is cleared');
     assert.equal(await page.locator('#mapClearAll .dock-btn-label').innerText(), 'Undo');
     await page.click('#mapClearAll');
     await page.waitForFunction(() => document.querySelectorAll('#map .node').length === 2);
+    assert.equal(await page.locator('.map-totals-pill #metricPapers').innerText(),'2','Separate totals update after undo');
     assert.equal(await page.locator('#mapClearAll .dock-btn-label').innerText(), 'Clear');
     await page.selectOption('#canvasLayoutSelect', 'radial');
     assert.equal(await page.evaluate(() => state.mode), 'radial');
@@ -87,20 +91,25 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     assert.equal(await page.locator('#thresholdValue').innerText(), '1%');
     await page.setViewportSize({width:1457,height:1031});
     await page.evaluate(()=>els.app.style.setProperty('--library-width','220px'));
+    await page.waitForFunction(()=>Math.abs(document.getElementById('colLibrary').getBoundingClientRect().width-220)<1);
     const controls=['#canvasLayoutSelect','#canvasLinksSelect','#threshold','#mapModePan','#mapModeSelect','#mapClearAll','#mapToolsMenu > summary'];
     const centers=[];
     for(const selector of controls){const box=await page.locator(selector).boundingBox();centers.push(box.y+box.height/2);}
     assert(Math.max(...centers)-Math.min(...centers)<=4,'All map controls share one row at the annotated canvas width');
     assert((await page.locator('#canvasLayoutSelect').boundingBox()).width<=64,'Layout field is compact');
     assert((await page.locator('#canvasLinksSelect').boundingBox()).width<=74,'Links field is compact');
-    if(process.env.PULSE_UI_SCREENSHOTS){fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});await page.locator('.canvas-dock-modern').screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'map-toolbar-single-row.png')});}
+    const compactDock=await page.locator('.canvas-dock-modern').boundingBox(), compactTotals=await page.locator('.map-totals-pill').boundingBox();
+    if(process.env.PULSE_UI_SCREENSHOTS){fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});await page.locator('.map-controls-footer').screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'map-toolbar-external-totals.png')});}
+    assert(compactTotals.x>=compactDock.x+compactDock.width+6,'Map totals have their own pill beside the toolbar: '+JSON.stringify({compactDock,compactTotals}));
     await page.click('#inspectorToggle');
     for (const size of [{width:1440,height:1031},{width:976,height:1031},{width:800,height:720}]) {
       await page.setViewportSize(size);
       const dock = await page.locator('.canvas-dock-modern').boundingBox();
+      const footer = await page.locator('.map-controls-footer').boundingBox();
       const map = await page.locator('#map').boundingBox();
       assert(map.y + map.height <= dock.y + 1, 'Controls stay outside the graph viewport');
-      assert(dock.y + dock.height <= size.height, 'The complete toolbar stays on screen');
+      assert(footer.y + footer.height <= size.height, 'The toolbar and totals pill stay on screen');
+      assert.equal(await page.locator('.map-controls-footer').evaluate(el => el.scrollWidth <= el.clientWidth + 1), true, 'Toolbar and totals fit '+size.width+'px');
       assert.equal(await page.locator('.canvas-dock-modern').evaluate(el => el.scrollWidth <= el.clientWidth + 1), true, 'Toolbar fits '+size.width+'px');
       await trigger.click();
       await page.waitForFunction(() => document.getElementById('mapToolsPopup').getBoundingClientRect().top >= document.querySelector('.pulse-col-canvas').getBoundingClientRect().top);
