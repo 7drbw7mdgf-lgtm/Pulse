@@ -248,7 +248,8 @@
         </g>`;
       }).join('');
 
-      els.map.innerHTML = `<g>${areaMarkup}</g><g>${linkMarkup}</g><g>${nodeMarkup}</g>${linkLimitMarkup}`;
+      const clusterHullsMarkup = typeof renderClusterHulls === 'function' ? renderClusterHulls(visiblePapers, state.clusters) : '';
+      els.map.innerHTML = `<g class="cluster-hulls-layer">${clusterHullsMarkup}</g><g>${areaMarkup}</g><g>${linkMarkup}</g><g>${nodeMarkup}</g>${linkLimitMarkup}`;
       bindAreaEvents();
       bindEdgeEvents();
       bindNodeEvents();

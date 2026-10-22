@@ -144,7 +144,7 @@ const PulseMapTools = (() => {
     document.getElementById('viewPaperPath').onclick=()=>{root.closest('dialog').close();fit(path.nodes);};
   }
 
-  /* Chronological Field Progression Heatmap */
+  /* Chronological Field Progression Heatmap & Citation Cascade Animation */
   let timelineTimer = null;
   function applyTimelineYear(year) {
     const isFiltered = year !== null;
@@ -155,13 +155,17 @@ const PulseMapTools = (() => {
     els.map.querySelectorAll('.node').forEach(el => {
       const y = paperYears.get(el.dataset.id) || 0;
       el.classList.toggle('is-timeline-dimmed', isFiltered && y > 0 && y > year);
+      el.classList.toggle('is-cascade-head', isFiltered && y === year);
     });
     els.map.querySelectorAll('.edge, .edge-hit').forEach(el => {
       const linkKey = el.dataset.link;
       const parts = linkKey ? linkKey.split('__') : [];
       const y1 = paperYears.get(parts[0]) || 0;
       const y2 = paperYears.get(parts[1]) || 0;
-      el.classList.toggle('is-timeline-dimmed', isFiltered && ((y1 > 0 && y1 > year) || (y2 > 0 && y2 > year)));
+      const isDimmed = isFiltered && ((y1 > 0 && y1 > year) || (y2 > 0 && y2 > year));
+      el.classList.toggle('is-timeline-dimmed', isDimmed);
+      const isCascade = isFiltered && !isDimmed && (y1 === year || y2 === year) && (y1 !== y2);
+      el.classList.toggle('citation-cascade-active', isCascade);
     });
   }
   function toggleTimelineSlider() {

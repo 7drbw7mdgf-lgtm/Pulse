@@ -87,6 +87,41 @@
           ${columns.map(c => `<th>${escapeHtml(c.name || c.id)}</th>`).join('')}
         </tr>`;
       }
+      // Render Consensus & Contradiction banner if detected across targets
+      let consensusEl = document.getElementById('compareConsensusBanner');
+      if (!consensusEl && thead) {
+        consensusEl = document.createElement('div');
+        consensusEl.id = 'compareConsensusBanner';
+        consensusEl.className = 'compare-consensus-banner';
+        document.querySelector('.compare-table-container')?.before(consensusEl);
+      }
+      if (consensusEl) {
+        const con = matrix.consensus;
+        if (con && (con.concordant?.length || con.conflicting?.length)) {
+          consensusEl.hidden = false;
+          consensusEl.style.cssText = 'margin:10px 0; padding:10px 14px; background:var(--surface-2); border-radius:8px; border:1px solid var(--line); font-size:12px;';
+          consensusEl.innerHTML = `
+            <div style="font-weight:700; margin-bottom:6px; color:var(--ink);">Target Findings Synthesis:</div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              ${(con.concordant || []).map(item => `
+                <div style="color:#16a34a; display:flex; align-items:center; gap:6px;">
+                  <span style="font-weight:600; padding:1px 6px; background:rgba(22,163,74,0.12); border-radius:4px;">✓ Concordant</span>
+                  <span>${escapeHtml(item.summary)}</span>
+                </div>
+              `).join('')}
+              ${(con.conflicting || []).map(item => `
+                <div style="color:#dc2626; display:flex; align-items:center; gap:6px;">
+                  <span style="font-weight:600; padding:1px 6px; background:rgba(220,38,38,0.12); border-radius:4px;">⚡ Conflicting</span>
+                  <span>${escapeHtml(item.summary)}</span>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        } else {
+          consensusEl.hidden = true;
+          consensusEl.innerHTML = '';
+        }
+      }
       if (tbody) {
         tbody.innerHTML = (matrix.rows || []).map((r,rowIndex) => {
           const cells = columns.map(c => {
