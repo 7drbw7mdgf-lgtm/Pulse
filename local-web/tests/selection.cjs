@@ -29,6 +29,6 @@ const graphSource=fs.readFileSync(require('path').join(__dirname,'../pulse-front
 const graphHandler=graphSource.slice(graphSource.indexOf('    function handleGraphBackgroundClick'),graphSource.indexOf("    els.map?.addEventListener('click', handleGraphBackgroundClick)"));
 const hides=[];const graphContext={state:{selectedId:'one',selectedLinkId:'link'},setInspectorVisible:(...args)=>hides.push(args),render(){},renderDetails(){}};
 vm.createContext(graphContext);vm.runInContext(graphHandler,graphContext);
-graphContext.handleGraphBackgroundClick({target:{closest:()=>null}});assert.equal(hides.length,1);assert.equal(hides[0][0],false);assert.equal(hides[0][1],false);assert.equal(graphContext.state.selectedId,null);
+graphContext.handleGraphBackgroundClick({target:{closest:()=>null}});assert.equal(hides.length,1);assert.equal(hides[0][0],false);assert.equal(graphContext.state.selectedId,null);
 graphContext.state.selectedId='one';graphContext.handleGraphBackgroundClick({target:{closest:()=>({})}});assert.equal(hides.length,1);assert.equal(graphContext.state.selectedId,'one');
-console.log('PASS: empty graph clicks hide the inspector without changing the saved preference; node, edge and area clicks remain interactive.');
+console.log('PASS: empty graph clicks hide the inspector; node, edge and area clicks remain interactive.');

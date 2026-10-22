@@ -21,6 +21,9 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
   page.on('pageerror',error=>errors.push(error.message));
   await page.route('**/*',route=>new URL(route.request().url()).origin===url?route.continue():route.abort());
   await page.goto(url);await page.waitForFunction(()=>state.autosaveReady&&document.querySelectorAll('#map .node').length===3);
+  assert.equal(await page.locator('#details').isVisible(),false,'Map details start closed');
+  await page.click('#focusMapButton');await page.click('#focusMapButton');assert.equal(await page.locator('#details').isVisible(),false,'Focus mode preserves a closed details panel');
+  await page.click('#inspectorReopen');
   await page.click('#focusMapButton');assert.equal(await page.locator('#colLibrary').isVisible(),false);assert.equal(await page.locator('#details').isVisible(),false);
   await page.click('#focusMapButton');assert.equal(await page.locator('#colLibrary').isVisible(),true);assert.equal(await page.locator('#details').isVisible(),true);
   const library=await page.locator('#colLibrary').boundingBox(),handle=await page.locator('.workspace-resizer[data-panel=library]').boundingBox();

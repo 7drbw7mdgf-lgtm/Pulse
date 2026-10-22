@@ -347,16 +347,13 @@
     }
     document.getElementById('railAddClose').addEventListener('click', () => setRailAddOpen(false, true));
 
-    function setInspectorVisible(visible, persist = true) {
+    function setInspectorVisible(visible) {
       state.inspectorVisible = visible;
       inspectorToggle.setAttribute('aria-expanded', String(visible));
       inspectorReopen.setAttribute('aria-expanded', String(visible));
       inspectorReopen.hidden = visible;
       els.app.classList.toggle('inspector-hidden', !visible);
       els.details.hidden = !visible;
-      if (persist) {
-        try { localStorage.setItem('pulse.inspectorVisible', String(visible)); } catch (_) {}
-      }
       requestAnimationFrame(() => render());
     }
     inspectorToggle.addEventListener('click', () => {
@@ -367,9 +364,8 @@
       setInspectorVisible(true);
       inspectorToggle.focus();
     });
-    let savedInspectorVisible = true;
-    try { savedInspectorVisible = localStorage.getItem('pulse.inspectorVisible') !== 'false'; } catch (_) {}
-    setInspectorVisible(savedInspectorVisible, false);
+    // Open details on request during this session; every launch starts with them closed.
+    setInspectorVisible(false);
 
     document.addEventListener('click', event => {
       if (!event.target.closest('.discovery-dropdown-wrap, [data-action="open-discovery-options"]')) setDiscoveryOptionsOpen(false);

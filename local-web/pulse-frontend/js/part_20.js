@@ -283,7 +283,7 @@
       if (event.target.closest?.('.node, .edge, .edge-hit, .area-region')) return;
       state.selectedId = null;
       state.selectedLinkId = null;
-      setInspectorVisible(false, false);
+      setInspectorVisible(false);
       render();
       renderDetails();
     }

@@ -30,6 +30,17 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     await page.route('**/api/metadata/**', route => route.fulfill({json:{ok:true,matched:false,metadata:{}}}));
     await page.goto(url);
     await page.waitForFunction(() => state.autosaveReady && document.querySelectorAll('#map .node').length === 2);
+    assert.equal(await page.locator('#details').isVisible(),false,'Map details start closed');
+    assert.equal(await page.locator('#inspectorReopen').isVisible(),true);
+    assert.equal(await page.locator('#inspectorReopen').getAttribute('aria-expanded'),'false');
+    if(process.env.PULSE_UI_SCREENSHOTS){fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'map-details-closed.png')});}
+    // Older installs may still have the old open preference: launch defaults override it.
+    await page.evaluate(()=>localStorage.setItem('pulse.inspectorVisible','true'));await page.reload();
+    await page.waitForFunction(() => state.autosaveReady && document.querySelectorAll('#map .node').length === 2);
+    assert.equal(await page.locator('#details').isVisible(),false,'Reload keeps details closed despite the legacy saved preference');
+    await page.click('#inspectorReopen');assert.equal(await page.locator('#details').isVisible(),true,'Details can be opened explicitly');
+    await page.click('#inspectorToggle');
+    await page.locator('#map .node[data-id="a"]').click();assert.equal(await page.locator('#details').isVisible(),true,'Selecting a paper opens its details');
     assert.equal(await page.locator('.canvas-dock-modern #metricPapers').count(),0,'Map totals sit outside the controls');
     assert.equal(await page.locator('.map-totals-pill #metricPapers').innerText(),'2');
     assert.equal(await page.locator('#app > .pulse-nav-rail').count(),0,'The vertical sidebar is removed');

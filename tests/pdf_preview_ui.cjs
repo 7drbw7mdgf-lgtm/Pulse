@@ -32,7 +32,7 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
    return route.fulfill({json:file});
   });
   await page.goto(url);await page.waitForFunction(()=>state.autosaveReady&&state.papers.length===3);
-  await page.evaluate(()=>{state.selectedId='open';renderDetails();});
+  await page.evaluate(()=>inspectPaper('open'));
   for(const width of [260,300,380]){
    await page.evaluate(width=>els.app.style.setProperty('--inspector-width',width+'px'),width);
    for(const tab of ['overview','connections','notes']){

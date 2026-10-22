@@ -11,7 +11,7 @@ const {spawn}=require('node:child_process');const {chromium}=require('playwright
    publicationNotices:[{type:'retraction',doi:'10.1234/notice',relation:'updated-by',date:'2026-02-04',source:'Crossref'}],publicationRelations:[{type:'has-preprint',doi:'10.1234/preprint'}]}}}));
   await page.route('**/api/papers/metrics',route=>route.fulfill({json:{ok:true,available:false}}));
   await page.goto(url);await page.waitForFunction(()=>state.autosaveReady);
-  await page.evaluate(()=>{state.papers=[normalizeImportedPaper({id:'status-fixture',title:'Synthetic paper with a publication update',doi:'10.1234/original',doiVerified:true,authors:['Ada Brooks'],year:'2026'},'Fixture')];state.selectedId=state.papers[0].id;render();});
+  await page.evaluate(()=>{state.papers=[normalizeImportedPaper({id:'status-fixture',title:'Synthetic paper with a publication update',doi:'10.1234/original',doiVerified:true,authors:['Ada Brooks'],year:'2026'},'Fixture')];inspectPaper(state.papers[0].id);render();});
   await page.waitForFunction(()=>state.papers[0].isRetracted===true);
   assert.match(await page.locator('#detailsContent .publication-notices').innerText(),/Retracted/);
   assert.equal(await page.locator('#detailsContent .publication-notices a').count(),2);

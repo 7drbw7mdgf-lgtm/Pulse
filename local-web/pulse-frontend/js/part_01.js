@@ -84,7 +84,7 @@ const state = {
       activeKeywordPaperId: null,
       detailsAbstractExpanded: false,
       libraryOpen: true,
-      inspectorVisible: true,
+      inspectorVisible: false,
       librarySortKey: 'year',
       librarySortAsc: false
     };

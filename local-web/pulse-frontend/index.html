@@ -2,7 +2,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai https://europepmc.org https://icite.od.nih.gov; frame-ancestors 'none'; object-src 'none';">
 <title>Pulse v2.1.4 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=2.1.4-rail-cleanup">
 <link rel="icon" type="image/png" href="favicon.png?v=2.0.2"> <link rel="stylesheet" href="css/search-workflow.css?v=2.1.4-layout3"><link rel="stylesheet" href="css/discovery-options.css?v=1">
-</head> <body> <div class="pulse-app-root" id="app">
+</head> <body> <div class="pulse-app-root inspector-hidden" id="app">
 
 <input id="importInput" type="file" multiple accept=".txt,.md,.csv,.bib,.ris,.pdf,.json,.xml,.enw" hidden>
 <div id="railAddPopover" class="rail-add-popover" role="dialog" aria-labelledby="railAddTitle" hidden>
@@ -130,7 +130,7 @@
 </div>
 <!-- SVG GRAPH CANVAS VIEWPORT -->
 <div class="map-viewport" aria-label="Map canvas — drop paper files here">
-<button id="inspectorReopen" class="inspector-reopen inspector-panel-button" type="button" aria-label="Show paper details" title="Show paper details" aria-controls="details" aria-expanded="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M11 9l-3 3 3 3"></path></svg></button>
+<button id="inspectorReopen" class="inspector-reopen inspector-panel-button" type="button" aria-label="Show paper details" title="Show paper details" aria-controls="details" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M11 9l-3 3 3 3"></path></svg></button>
 <div class="map-totals-pill" role="group" aria-label="Map totals"><span><strong id="metricPapers">0</strong> papers</span><span aria-hidden="true">·</span><span><strong id="metricLinks">0</strong> links</span></div>
 <div id="mapDropOverlay" class="map-drop-overlay" hidden><div><strong>Drop papers onto your map</strong><span>PDF, BibTeX, RIS, JSON and text files</span></div></div> <svg id="map" class="map" role="img" aria-label="A linkage map of related papers"></svg>
 <div id="mapSelectionBar" class="map-selection-bar" role="toolbar" aria-label="Selected papers" hidden><span id="mapSelectionCount" class="map-selection-count">0 selected</span><button id="mapSelectionBridge" class="map-selection-primary" type="button" title="Search for what the selected papers share and find papers connecting them">Find bridges</button><button id="mapSelectionClear" type="button">Clear</button></div>
@@ -150,8 +150,8 @@
 <h1 id="canvasMainTitle" style="display:none">Relatedness graph</h1> <p id="statusText" style="display:none">Add papers to begin.</p>
 <div id="canvasFilterBar" hidden><div id="canvasFilterTags"></div><button id="canvasClearFilterButton">Clear</button></div> </section>
 <!-- COLUMN 3: RIGHT INSPECTOR (PAPER DETAILS) -->
-<aside id="details" class="pulse-col-inspector" aria-label="Paper details">
-<div class="inspector-panel-header"><div class="inspector-nav"><button id="inspectorPrev" class="inspector-panel-button" type="button" aria-label="Previous paper in library" title="Previous paper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button><span id="inspectorPosition" class="inspector-position" aria-live="polite">Paper details</span><button id="inspectorNext" class="inspector-panel-button" type="button" aria-label="Next paper in library" title="Next paper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button></div><button id="inspectorToggle" class="inspector-panel-button" type="button" aria-label="Hide paper details" title="Hide paper details" aria-controls="details" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M8 9l3 3-3 3"></path></svg></button></div>
+<aside id="details" class="pulse-col-inspector" aria-label="Paper details" hidden>
+<div class="inspector-panel-header"><div class="inspector-nav"><button id="inspectorPrev" class="inspector-panel-button" type="button" aria-label="Previous paper in library" title="Previous paper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button><span id="inspectorPosition" class="inspector-position" aria-live="polite">Paper details</span><button id="inspectorNext" class="inspector-panel-button" type="button" aria-label="Next paper in library" title="Next paper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button></div><button id="inspectorToggle" class="inspector-panel-button" type="button" aria-label="Hide paper details" title="Hide paper details" aria-controls="details" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M8 9l3 3-3 3"></path></svg></button></div>
 <div id="detailsContent" class="inspector-content"><!-- Rendered dynamically by renderDetails() --></div>
 </aside>
 <!-- Controls float within the map; navigation stays available in other views. -->
@@ -614,7 +614,7 @@
 <div id="crashNotice" class="crash-notice" role="status" hidden><span id="crashNoticeText">Pulse recorded a problem.</span><button id="crashNoticeView" type="button">View report</button><button id="crashNoticeDismiss" type="button" aria-label="Dismiss">Dismiss</button></div>
 <div id="pulseUpdateBanner" class="pulse-update-banner" role="status" hidden><span id="pulseUpdateBannerText"></span><button id="pulseUpdateBannerDetails" class="mac-btn" type="button">Details</button><button id="pulseUpdateBannerRestart" class="mac-btn primary" type="button">Restart &amp; update</button></div>
 <div id="pulseUpdateRestartOverlay" class="pulse-update-overlay" role="alert" hidden><div><h2>Updating Pulse</h2><p>Saving your library and installing the update. Pulse will reopen when it is ready.</p></div></div>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=2.1.4-rail-cleanup"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=2.1.4-inspector-default"></script>
 <script src="js/map-tabs.js?v=2.1.4"></script>
 <script src="js/paper-links.js?v=2.1.4"></script>
 <script src="js/part_02.js?v=2.1.4"></script>
@@ -647,7 +647,7 @@
 <script src="js/discovery-review.js?v=2.1.4"></script>
 <script src="js/part_19.js?v=2.1.4"></script>
 <script src="js/citation-lookup.js?v=2.1.4"></script>
-<script src="js/part_20.js?v=2.1.4-rail-cleanup"></script>
+<script src="js/part_20.js?v=2.1.4-inspector-default"></script>
 <script src="js/timeline.js?v=2.1.4"></script>
 <script src="js/trends.js?v=2.1.4"></script>
 <script src="js/connection-diagnostics.js?v=2.1.4"></script>
@@ -671,4 +671,4 @@
 <script src="js/pdf-editor-ui.js?v=editor-2"></script>
 <link rel="stylesheet" href="css/map-toolbar.css?v=inside-map-7">
 <script src="js/map-toolbar.js?v=inside-map-3"></script>
-<script src="js/part_21.js?v=2.1.4-rail-cleanup"></script> <script src="js/part_22.js?v=2.1.4"></script> </body> </html>
+<script src="js/part_21.js?v=2.1.4-inspector-default"></script> <script src="js/part_22.js?v=2.1.4"></script> </body> </html>
