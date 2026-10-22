@@ -1,6 +1,6 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai https://europepmc.org https://icite.od.nih.gov; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v2.1.4 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=2.1.4-pdf-preview">
+<title>Pulse v2.1.4 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=2.1.4-rail-cleanup">
 <link rel="icon" type="image/png" href="favicon.png?v=2.0.2"> <link rel="stylesheet" href="css/search-workflow.css?v=2.1.4-layout3"><link rel="stylesheet" href="css/discovery-options.css?v=1">
 </head> <body> <div class="pulse-app-root" id="app">
 <!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
@@ -12,20 +12,12 @@
 <button class="rail-item" data-rail="timeline" type="button" title="Papers in chronological order"> <span data-feather="clock"></span> <span>Timeline</span> </button>
 <button class="rail-item" data-rail="settings" id="railSettingsBtn" type="button" title="Settings & backend"> <span data-feather="settings"></span> <span>Settings</span> </button>
 </nav>
-<footer class="rail-actions" aria-label="Paper actions">
-<button id="railAddButton" class="rail-add-button" type="button" aria-expanded="false" aria-controls="railAddPopover">+ Add paper</button>
+</aside>
+<input id="importInput" type="file" multiple accept=".txt,.md,.csv,.bib,.ris,.pdf,.json,.xml,.enw" hidden>
 <div id="railAddPopover" class="rail-add-popover" role="dialog" aria-labelledby="railAddTitle" hidden>
 <div class="popover-heading"><strong id="railAddTitle">Add a paper</strong><button id="railAddClose" type="button" aria-label="Close add paper">×</button></div> <div class="header-search-wrap"> <span data-feather="search" class="header-search-icon"></span>
 <input id="quickSearchInput" type="text" placeholder="Add papers (title, DOI, PMID, citation or paste text)..." autocomplete="off" aria-label="Paper title, DOI, PMID, author–year citation or text">
-<button id="quickAddBtn" class="pill-btn primary" type="button">+ Add</button> </div><p class="add-paper-help">Enter a title, DOI or PMID, or paste paper text.</p></div> <div class="header-right-tools">
-<button id="importButton" class="header-tool-btn" type="button" title="Import papers or maps (⌘I)"> <span data-feather="download"></span>
-<span>Import</span> </button> <button id="exportButton" class="header-tool-btn" type="button" title="Export JSON map (⌘S)" disabled>
-<span data-feather="upload"></span> <span>Export</span> </button>
-<input id="importInput" type="file" multiple accept=".txt,.md,.csv,.bib,.ris,.pdf,.json,.xml,.enw" hidden>
-<button id="settingsButton" class="hbtn icon-only" type="button" title="Settings" aria-label="Open settings" aria-expanded="false" style="display:none">
-<span data-feather="settings"></span> </button>
-</div>
- </footer> </aside>
+<button id="quickAddBtn" class="pill-btn primary" type="button">+ Add</button> </div><p class="add-paper-help">Enter a title, DOI or PMID, or paste paper text.</p></div>
 <!-- 2. MAIN VIEWPORT AREA -->
 <div class="pulse-main-viewport">
 <!-- TOP HEADER BAR -->
@@ -160,7 +152,7 @@
 <circle cx="24" cy="52" r="9"></circle> <circle cx="60" cy="22" r="11"></circle> <circle cx="96" cy="46" r="8"></circle> </svg> </div>
 <h2>Your map starts with the first paper</h2>
 <p>Each node is a scientific paper. Connections grow stronger when publications share methods, citations, or concepts.</p>
-<p class="empty-hint">Drop paper files directly here, or use <strong>Add paper</strong> and <strong>Import</strong> in the left sidebar.</p> </div> </div>
+<p class="empty-hint">Drop paper files here, use <strong>⌘/Ctrl+I</strong> to import, or search for papers above.</p> </div> </div>
 </div>
 <!-- Graph controls have their own space below the map. -->
 <div class="canvas-dock-modern" role="toolbar" aria-label="Map controls">
@@ -618,7 +610,7 @@
 <div id="crashNotice" class="crash-notice" role="status" hidden><span id="crashNoticeText">Pulse recorded a problem.</span><button id="crashNoticeView" type="button">View report</button><button id="crashNoticeDismiss" type="button" aria-label="Dismiss">Dismiss</button></div>
 <div id="pulseUpdateBanner" class="pulse-update-banner" role="status" hidden><span id="pulseUpdateBannerText"></span><button id="pulseUpdateBannerDetails" class="mac-btn" type="button">Details</button><button id="pulseUpdateBannerRestart" class="mac-btn primary" type="button">Restart &amp; update</button></div>
 <div id="pulseUpdateRestartOverlay" class="pulse-update-overlay" role="alert" hidden><div><h2>Updating Pulse</h2><p>Saving your library and installing the update. Pulse will reopen when it is ready.</p></div></div>
-<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=2.1.4-options2"></script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div> <script src="js/part_01.js?v=2.1.4-rail-cleanup"></script>
 <script src="js/map-tabs.js?v=2.1.4"></script>
 <script src="js/paper-links.js?v=2.1.4"></script>
 <script src="js/part_02.js?v=2.1.4"></script>
@@ -647,11 +639,11 @@
 <script src="js/publication-status.js?v=2.1.4"></script>
 <script src="js/inspector.js?v=2.1.4"></script> <script src="js/part_16.js?v=2.1.4-pdf-preview"></script>
 <script src="js/part_17.js?v=2.1.4"></script>
-<script src="js/part_18.js?v=2.1.4"></script>
+<script src="js/part_18.js?v=2.1.4-rail-cleanup"></script>
 <script src="js/discovery-review.js?v=2.1.4"></script>
 <script src="js/part_19.js?v=2.1.4"></script>
 <script src="js/citation-lookup.js?v=2.1.4"></script>
-<script src="js/part_20.js?v=2.1.4"></script>
+<script src="js/part_20.js?v=2.1.4-rail-cleanup"></script>
 <script src="js/timeline.js?v=2.1.4"></script>
 <script src="js/trends.js?v=2.1.4"></script>
 <script src="js/connection-diagnostics.js?v=2.1.4"></script>
@@ -671,6 +663,6 @@
 <script src="js/library-tools.js?v=1"></script>
 <link rel="stylesheet" href="css/pdf-reader.css?v=preview-1">
 <script src="js/pdf-reader.js?v=preview-1"></script>
-<link rel="stylesheet" href="css/map-toolbar.css?v=single-row-2">
+<link rel="stylesheet" href="css/map-toolbar.css?v=narrow-fields-3">
 <script src="js/map-toolbar.js?v=1"></script>
-<script src="js/part_21.js?v=2.1.4"></script> <script src="js/part_22.js?v=2.1.4"></script> </body> </html>
+<script src="js/part_21.js?v=2.1.4-rail-cleanup"></script> <script src="js/part_22.js?v=2.1.4"></script> </body> </html>

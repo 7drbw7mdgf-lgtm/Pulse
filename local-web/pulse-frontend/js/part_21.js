@@ -111,10 +111,10 @@
     replaceFeatherIcons();
 
     // Pulse App Header button bindings
-    els.headerImportBtn?.addEventListener('click', () => els.importButton?.click());
-    els.headerExportBtn?.addEventListener('click', () => els.exportButton?.click());
+    els.headerImportBtn?.addEventListener('click', () => els.importInput?.click());
+    els.headerExportBtn?.addEventListener('click', exportMap);
     els.headerSummaryBtn?.addEventListener('click', () => els.summaryExportButton?.click());
-    els.headerSettingsBtn?.addEventListener('click', () => els.settingsButton?.click());
+    els.headerSettingsBtn?.addEventListener('click', () => setSettingsOpen(true));
     initFrankTheme();
 
     // Unified Quick Search Bar (+ Add button)
@@ -275,10 +275,10 @@
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
         if (e.key === 'i' || e.key === 'o') {
           e.preventDefault();
-          els.importButton?.click();
+          els.importInput?.click();
         } else if (e.key === 's') {
           e.preventDefault();
-          els.exportButton?.click();
+          if (state.papers.length) exportMap();
         } else if (e.key === 'e') {
           e.preventDefault();
           els.summaryExportButton?.click();
@@ -326,11 +326,11 @@
       });
     }
 
-    // Compact discovery controls and navigation-rail paper actions.
+    // Compact discovery controls and paper entry from empty-library views.
     const discoveryOptionsButton = document.getElementById('discoveryOptionsButton');
     const discoveryOptionsPopup = document.getElementById('discoveryOptionsPopup');
-    const railAddButton = document.getElementById('railAddButton');
     const railAddPopover = document.getElementById('railAddPopover');
+    let paperAddReturnFocus = null;
     const inspectorToggle = document.getElementById('inspectorToggle');
     const inspectorReopen = document.getElementById('inspectorReopen');
 
@@ -338,14 +338,13 @@
     if (typeof initMapTabs === 'function') initMapTabs();
 
     function setRailAddOpen(open, returnFocus = false) {
+      if (open && railAddPopover.hidden) paperAddReturnFocus = document.activeElement;
       railAddPopover.hidden = !open;
-      railAddButton.setAttribute('aria-expanded', String(open));
       if (open) {
         setDiscoveryOptionsOpen(false);
         els.quickSearchInput.focus();
-      } else if (returnFocus) railAddButton.focus();
+      } else if (returnFocus && paperAddReturnFocus?.isConnected) paperAddReturnFocus.focus();
     }
-    railAddButton.addEventListener('click', () => setRailAddOpen(railAddPopover.hidden));
     document.getElementById('railAddClose').addEventListener('click', () => setRailAddOpen(false, true));
 
     function setInspectorVisible(visible, persist = true) {
@@ -374,7 +373,7 @@
 
     document.addEventListener('click', event => {
       if (!event.target.closest('.discovery-dropdown-wrap, [data-action="open-discovery-options"]')) setDiscoveryOptionsOpen(false);
-      if (!event.target.closest('.rail-actions')) setRailAddOpen(false);
+      if (!event.target.closest('#railAddPopover, [data-timeline-add], [data-trends-add]')) setRailAddOpen(false);
     });
     document.addEventListener('keydown', event => {
       if (event.key !== 'Escape') return;

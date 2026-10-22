@@ -244,7 +244,7 @@
     });
 
     els.sampleButton?.addEventListener('click', loadSample);
-    els.importButton.addEventListener('click', () => els.importInput.click());
+    els.importButton?.addEventListener('click', () => els.importInput.click());
     els.importInput.addEventListener('change', event => {
       handleFiles(event.target.files);
       event.target.value = '';

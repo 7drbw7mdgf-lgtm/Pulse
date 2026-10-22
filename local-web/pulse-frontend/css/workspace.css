@@ -1,15 +1,6 @@
-/* Compact local workspace: rail actions, discovery popup, and canvas import. */
-.rail-actions { position: relative; margin-top: auto; padding: 14px 12px; border-top: 1px solid rgba(255,255,255,.1); display: flex; flex-direction: column; gap: 10px; }
-.rail-add-button { border: 1px solid #6366f1; background: #4f46e5; color: white; font: inherit; font-size: 13px; font-weight: 600; border-radius: 9px; padding: 10px 12px; cursor: pointer; }
-.rail-add-button:hover { background: #4338ca; }
-.rail-actions .header-right-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: stretch; }
-.rail-actions .header-tool-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 5px; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.12); color: #dbe2ee; border-radius: 8px; font-size: 11px; }
-.rail-actions .header-tool-btn:disabled { opacity: .4; }
-.rail-actions .header-tool-btn:not(:disabled):hover { background: rgba(255,255,255,.11); }
-.rail-actions .header-tool-btn svg { width: 13px; height: 13px; }
-.rail-actions .header-v-divider { display: none; }
+/* Compact local workspace: paper entry, discovery popup, and canvas import. */
 .rail-utility-row { display: flex; align-items: center; gap: 6px; }
-.rail-add-popover { position: absolute; left: calc(100% + 12px); bottom: 14px; width: 410px; max-width: calc(100vw - 230px); padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); box-shadow: 0 16px 48px rgba(15,23,42,.2); z-index: 70; user-select: text; }
+.rail-add-popover { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); box-sizing: border-box; width: 446px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow-y: auto; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); box-shadow: 0 16px 48px rgba(15,23,42,.2); z-index: 70; user-select: text; }
 .rail-add-popover[hidden], .discovery-options-popup[hidden], .map-drop-overlay[hidden] { display: none !important; }
 .popover-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; color: var(--ink); font-size: 14px; }
 .popover-heading button { border: 0; border-radius: 6px; background: transparent; color: var(--muted); width: 28px; height: 28px; font-size: 22px; cursor: pointer; }
@@ -67,10 +58,6 @@ button:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
   .discovery-heading > span { display: none; }
   .discovery-options-popup { left: auto; right: -70px; }
 }
-@media (max-height: 690px) {
-  .rail-actions { padding: 10px 12px; gap: 7px; }
-}
-
 .inspector-resolution-note { margin-bottom: 10px; }
 .resolved-doi { display: flex; align-items: baseline; gap: 7px; font-size: 11px; }
 .resolved-doi > span { flex-shrink: 0; font-size: 9px; font-weight: 600; color: var(--muted); }

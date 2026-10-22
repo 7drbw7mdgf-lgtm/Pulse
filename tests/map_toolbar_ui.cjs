@@ -26,8 +26,17 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     const page = await browser.newPage({viewport:{width:1440,height:1031}}), errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.route('**/*', route => new URL(route.request().url()).origin === url ? route.continue() : route.abort());
+    await page.route('**/api/metadata/**', route => route.fulfill({json:{ok:true,matched:false,metadata:{}}}));
     await page.goto(url);
     await page.waitForFunction(() => state.autosaveReady && document.querySelectorAll('#map .node').length === 2);
+    const chooserReady = page.waitForEvent('filechooser');
+    await page.keyboard.press('Control+i');
+    assert.equal((await chooserReady).isMultiple(),true,'Import shortcut still opens the file chooser without rail buttons');
+    const exportReady = page.waitForEvent('download');
+    await page.keyboard.press('Control+s');
+    const exported = await exportReady;
+    assert.equal(exported.suggestedFilename(),'paper-linkage-map.json');
+    assert.equal(JSON.parse(fs.readFileSync(await exported.path(),'utf8')).papers.length,2,'Export shortcut still saves the library');
     const menu = page.locator('#mapToolsMenu'), trigger = page.locator('#mapToolsMenu > summary');
     assert.equal(await page.locator('#graphButton').isVisible(), false);
     await trigger.press('Enter');
@@ -82,8 +91,8 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     const centers=[];
     for(const selector of controls){const box=await page.locator(selector).boundingBox();centers.push(box.y+box.height/2);}
     assert(Math.max(...centers)-Math.min(...centers)<=4,'All map controls share one row at the annotated canvas width');
-    assert((await page.locator('#canvasLayoutSelect').boundingBox()).width<=75,'Layout field is compact');
-    assert((await page.locator('#canvasLinksSelect').boundingBox()).width<=100,'Links field is compact');
+    assert((await page.locator('#canvasLayoutSelect').boundingBox()).width<=64,'Layout field is compact');
+    assert((await page.locator('#canvasLinksSelect').boundingBox()).width<=74,'Links field is compact');
     if(process.env.PULSE_UI_SCREENSHOTS){fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});await page.locator('.canvas-dock-modern').screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'map-toolbar-single-row.png')});}
     await page.click('#inspectorToggle');
     for (const size of [{width:1440,height:1031},{width:976,height:1031},{width:800,height:720}]) {

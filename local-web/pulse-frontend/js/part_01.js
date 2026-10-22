@@ -423,7 +423,7 @@ const state = {
         highlightRail('settings');
       }
       els.settingsPanel.hidden = !open;
-      els.settingsButton.setAttribute('aria-expanded', String(open));
+      els.settingsButton?.setAttribute('aria-expanded', String(open));
       if (open) state.settingsLoadPromise=loadBackendSettings();
       else if (wasOpen && activeRail() === 'settings') highlightRail(state.settingsPreviousRail || workspaceRail());
       if(open&&!wasOpen&&typeof PulseSettings!=='undefined')PulseSettings.opened();

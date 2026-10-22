@@ -388,7 +388,7 @@
         const emptyTitle = els.emptyState.querySelector('h2');
         const emptyHint = els.emptyState.querySelector('.empty-hint');
         if (emptyTitle) emptyTitle.textContent = 'Your map starts with the first paper';
-        if (emptyHint) emptyHint.innerHTML = 'Drop paper files directly here, or use <strong>Add paper</strong> and <strong>Import</strong> in the left sidebar.';
+        if (emptyHint) emptyHint.innerHTML = 'Drop paper files here, use <strong>⌘/Ctrl+I</strong> to import, or search for papers above.';
       }
       els.paperCount.textContent = `${state.papers.length} loaded`;
       els.metricPapers.textContent = activePapers.length;
