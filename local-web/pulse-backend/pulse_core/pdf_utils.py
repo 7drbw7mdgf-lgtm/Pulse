@@ -2,8 +2,12 @@ import re
 import time
 import math
 import os
+import threading
 from pathlib import Path
 from pulse_core.security import decode_pdf_streams
+
+# MuPDF operations must not overlap across the HTTP server's request threads.
+PDF_ENGINE_LOCK=threading.RLock()
 
 def readable_text_score(text):
     if not text:
@@ -92,7 +96,7 @@ def extract_document(raw, name):
     except ImportError:
         text = clean_extracted_text('\n'.join(decode_pdf_streams(raw)))
         return {'text': text, 'metadata': {}, 'doiText': text, 'extractionSource': 'PDF stream fallback'}
-    with fitz.open(stream=raw, filetype='pdf') as doc:
+    with PDF_ENGINE_LOCK, fitz.open(stream=raw, filetype='pdf') as doc:
         if doc.needs_pass:
             raise ValueError('This PDF is password protected. Import an unlocked copy.')
         metadata = {}

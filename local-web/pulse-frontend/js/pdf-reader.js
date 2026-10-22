@@ -5,6 +5,11 @@ const PulsePDF = (() => {
   const cache=new Map(),colors={yellow:'#ffe66b',green:'#92e5aa',blue:'#8bc9ff',pink:'#f7a3d2'};
   const paper=()=>state.papers.find(p=>p.id===paperId),root=()=>document.getElementById('pdfReaderDialog');
   const get=id=>document.getElementById(id);
+  const file=()=>previewFile||(paper()?.pdfAttachments||[]).find(row=>row.id===attachmentId);
+  const order=()=>file()?.editor?.pageOrder||Array.from({length:file()?.pages||pageData?.pages||1},(_,i)=>i+1);
+  const sourcePage=()=>order()[pageNumber-1]||1;
+  const rotation=()=>Number(file()?.editor?.rotations?.[sourcePage()]||0);
+  function notify(name){document.dispatchEvent(new CustomEvent('pulse:pdf-'+name));}
   async function request(endpoint,payload,signal) {
     await backendReady;
     const response=await fetch(backendUrl('/api/reader/'+endpoint),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify(payload),signal});
@@ -30,11 +35,13 @@ const PulsePDF = (() => {
     const href=safeHref(file?.url||'');get('pdfSourceLink').hidden=!href;get('pdfSourceLink').href=href||'#';
     get('pdfSourceLink').textContent=file?.source?'Source: '+file.source:'PDF source';
     updateSelection();
+    notify('state');
   }
   async function open(id,page=1,pdfId=null) {
     lookupController?.abort();const generation=++openRevision;previewFile=null;
     paperId=id;const p=paper();if(!p)return showToast('This paper is no longer in the library.');
-    attachmentId=pdfId||(p.pdfAttachments||[])[0]?.id||null;pageNumber=Number(page)||1;selection=null;pageData=null;revision++;
+    attachmentId=pdfId||(p.pdfAttachments||[])[0]?.id||null;pageNumber=1;pageData=null;
+    pageNumber=Math.max(1,order().indexOf(Number(page)||1)+1);selection=null;revision++;
     get('pdfReaderTitle').textContent=p.title;
     get('pdfPageNumber').value=1;get('pdfPageTotal').textContent='';get('pdfFindOpen').disabled=false;
     displayMode();
@@ -96,32 +103,36 @@ const PulsePDF = (() => {
     get('pdfPrevPage').disabled=true;get('pdfNextPage').disabled=true;
     if(!attachmentId){renderAnnotations();return false;}
     try {
-      const key=attachmentId+':'+pageNumber;
-      const data=cache.get(key)||await request('page',{id:attachmentId,page:pageNumber,scale:1.4});
+      const key=attachmentId+':'+sourcePage()+':'+rotation();
+      const data=cache.get(key)||await request('page',{id:attachmentId,page:sourcePage(),rotation:rotation(),scale:1.4});
       if(token!==revision)return;
       cache.set(key,data);while(cache.size>3)cache.delete(cache.keys().next().value);
-      pageData=data;pageNumber=data.page;get('pdfPageNumber').value=pageNumber;get('pdfPageNumber').max=data.pages;
-      get('pdfPageTotal').textContent='/ '+data.pages;get('pdfPrevPage').disabled=pageNumber<=1;get('pdfNextPage').disabled=pageNumber>=data.pages;
+      pageData=data;if(file())file().pages=data.pages;get('pdfPageNumber').value=pageNumber;get('pdfPageNumber').max=order().length;
+      get('pdfPageTotal').textContent='/ '+order().length;get('pdfPrevPage').disabled=pageNumber<=1;get('pdfNextPage').disabled=pageNumber>=order().length;
       get('pdfReaderStatus').textContent=data.warning||(previewFile?`${previewFile.source} · ${data.pages} pages`:`${data.source} · select text to highlight or quote it`);
-      drawPage();renderAnnotations();
+      drawPage();get('pdfViewport').scrollTop=0;renderAnnotations();
       return true;
     }catch(error){if(token===revision)get('pdfReaderStatus').textContent=error.message;return false;}
   }
   function drawPage() {
     if(!pageData)return;
     const surface=get('pdfPageSurface'),viewport=get('pdfViewport'),choice=get('pdfZoom').value;
-    const scale=choice==='fit'?Math.max(.25,Math.min(2,(viewport.clientWidth-40)/pageData.width)):Number(choice);
+    const padding=getComputedStyle(viewport),available=viewport.clientWidth-parseFloat(padding.paddingLeft)-parseFloat(padding.paddingRight)-4;
+    const scale=choice==='fit'?Math.max(.1,Math.min(2,available/pageData.width)):Number(choice);
     surface.style.width=pageData.width*scale+'px';surface.style.height=pageData.height*scale+'px';surface.replaceChildren();
-    const img=document.createElement('img');img.src=pageData.image;img.alt=`PDF page ${pageNumber}`;img.draggable=false;surface.append(img);
+    const img=document.createElement('img');img.src=pageData.image;img.alt=`PDF page ${pageNumber}`;img.draggable=false;
+    img.onerror=()=>{get('pdfReaderStatus').textContent='The page image could not be displayed. Try reopening the PDF.';};surface.append(img);
     const highlights=document.createElement('div');highlights.className='pdf-highlights';
-    for(const annotation of paper()?.pdfAnnotations||[]){if(annotation.pdfId!==attachmentId||annotation.page!==pageNumber)continue;
-      for(const rect of annotation.rects||[]){const mark=document.createElement('span');mark.style.cssText=`left:${rect.x*100}%;top:${rect.y*100}%;width:${rect.width*100}%;height:${rect.height*100}%;background:${colors[annotation.color]||colors.yellow}`;mark.title=annotation.memo||annotation.quote;highlights.append(mark);}}
+    for(const annotation of paper()?.pdfAnnotations||[]){if(annotation.pdfId!==attachmentId||annotation.page!==sourcePage())continue;
+      if(annotation.kind&&!['highlight','underline','strikeout'].includes(annotation.kind))continue;
+      for(const original of annotation.rects||[]){const rect=typeof PulsePDFEditor!=='undefined'?PulsePDFEditor.viewRect(original):original;
+        const mark=document.createElement('span');mark.className=annotation.kind||'highlight';mark.style.cssText=`left:${rect.x*100}%;top:${rect.y*100}%;width:${rect.width*100}%;height:${rect.height*100}%;--mark-color:${colors[annotation.color]||annotation.color||colors.yellow}`;mark.title=annotation.memo||annotation.quote;highlights.append(mark);}}
     surface.append(highlights);
     const text=document.createElement('div');text.className='pdf-text-layer';
     for(const word of pageData.words){const span=document.createElement('span'),[x0,y0,x1,y1]=word.box;
       const origin=word.origin||[x0,y0],width=word.width||x1-x0,height=word.height||y1-y0;
       span.textContent=word.text+' ';span.style.cssText=`left:${origin[0]/pageData.width*100}%;top:${origin[1]/pageData.height*100}%;width:${width/pageData.width*100}%;height:${height/pageData.height*100}%;font-size:${height*scale*.8}px;transform-origin:0 0;transform:rotate(${Number(word.rotation)||0}deg)`;text.append(span);}
-    surface.append(text);viewport.scrollTop=0;
+    surface.append(text);notify('page');
   }
   function captureSelection() {
     const selected=window.getSelection(),surface=get('pdfPageSurface');
@@ -129,7 +140,8 @@ const PulsePDF = (() => {
     const quote=selected.toString().replace(/\s+/g,' ').trim();if(!quote)return;
     const box=surface.getBoundingClientRect();
     const rects=[...selected.getRangeAt(0).getClientRects()].filter(rect=>rect.width>0&&rect.height>0).slice(0,1000).map(rect=>({x:Math.max(0,(rect.x-box.x)/box.width),y:Math.max(0,(rect.y-box.y)/box.height),width:Math.min(1,rect.width/box.width),height:Math.min(1,rect.height/box.height)}));
-    selection={quote,page:pageNumber,pdfId:attachmentId,rects};updateSelection();
+    selection={quote,page:sourcePage(),pdfId:attachmentId,rects:typeof PulsePDFEditor!=='undefined'?rects.map(rect=>PulsePDFEditor.canonicalRect(rect)):rects};updateSelection();
+    if(typeof PulsePDFEditor!=='undefined')PulsePDFEditor.selectionChanged();
   }
   function updateSelection() {
     get('pdfSelectedQuote').textContent=selection?selection.quote.slice(0,400):'Select text on the page.';
@@ -143,8 +155,10 @@ const PulsePDF = (() => {
       const passage=await request('passage',{id:selected.pdfId,page:selected.page,quote:selected.quote,section});
       const p=state.papers.find(row=>row.id===targetId);if(!p)return;
       p.pdfAnnotations ||= [];p.pdfQuotes ||= [];
-      let annotation=p.pdfAnnotations.find(row=>row.pdfId===selected.pdfId&&row.page===selected.page&&row.quote===selected.quote);
-      if(!annotation){annotation={id:uid(),...selected,color,memo,createdAt:new Date().toISOString()};p.pdfAnnotations.push(annotation);}else if(memo)annotation.memo=memo;
+      if(typeof PulsePDFEditor!=='undefined')PulsePDFEditor.checkpoint();
+      const markupKind=selected.kind||(typeof PulsePDFEditor!=='undefined'?PulsePDFEditor.markupKind():'highlight');
+      let annotation=p.pdfAnnotations.find(row=>row.pdfId===selected.pdfId&&row.page===selected.page&&row.quote===selected.quote&&(row.kind||'highlight')===markupKind);
+      if(!annotation){annotation={id:uid(),...selected,kind:markupKind,color,memo,createdAt:new Date().toISOString()};p.pdfAnnotations.push(annotation);}else if(memo)annotation.memo=memo;
       if(kind==='notes'&&!p.pdfQuotes.some(row=>row.annotationId===annotation.id&&row.kind==='notes')){
         p.notes=(p.notes?p.notes+'\n\n':'')+`[PDF p. ${selected.page}] “${selected.quote}”`+(memo?'\n'+memo:'');
         p.pdfQuotes.push({annotationId:annotation.id,pdfId:selected.pdfId,page:selected.page,quote:selected.quote,kind:'notes'});
@@ -160,6 +174,7 @@ const PulsePDF = (() => {
     }catch(error){get('pdfReaderStatus').textContent=error.message;}
   }
   function renderAnnotations() {
+    if(typeof PulsePDFEditor!=='undefined')return PulsePDFEditor.renderAnnotations();
     const list=get('pdfAnnotations'),rows=(paper()?.pdfAnnotations||[]).filter(row=>row.pdfId===attachmentId);
     list.innerHTML=rows.map(row=>`<article><button type="button" data-annotation-page="${Number(row.page)}">Page ${Number(row.page)}</button><blockquote>${escapeHtml(row.quote)}</blockquote><label>Memo<textarea data-annotation-memo="${escapeHtml(row.id)}" rows="2">${escapeHtml(row.memo||'')}</textarea></label><div><button type="button" data-annotation-notes="${escapeHtml(row.id)}">To notes</button><button type="button" data-annotation-matrix="${escapeHtml(row.id)}">To matrix</button><button type="button" data-annotation-remove="${escapeHtml(row.id)}">Remove highlight</button></div></article>`).join('')||'<p>No highlights in this PDF yet.</p>';
     list.querySelectorAll('[data-annotation-page]').forEach(button=>button.onclick=()=>{pageNumber=Number(button.dataset.annotationPage);loadPage();});
@@ -178,11 +193,15 @@ const PulsePDF = (() => {
     get('pdfFindOpen').onclick=findOpenPDF;get('pdfDownloadCopy').onclick=downloadCopy;
     get('pdfAttachInput').onchange=event=>attach(event.target.files[0]);get('pdfAttachmentSelect').onchange=()=>{lookupController?.abort();openRevision++;get('pdfFindOpen').disabled=false;attachmentId=get('pdfAttachmentSelect').value;if(previewFile?.id!==attachmentId)previewFile=null;pageNumber=1;displayMode();loadPage();};
     get('pdfPrevPage').onclick=()=>{pageNumber--;loadPage();};get('pdfNextPage').onclick=()=>{pageNumber++;loadPage();};
-    get('pdfPageNumber').onchange=()=>{pageNumber=Math.max(1,Math.min(pageData?.pages||1,Number(get('pdfPageNumber').value)||1));loadPage();};get('pdfZoom').onchange=drawPage;
+    get('pdfPageNumber').onchange=()=>{pageNumber=Math.max(1,Math.min(order().length,Number(get('pdfPageNumber').value)||1));loadPage();};get('pdfZoom').onchange=drawPage;
     get('pdfPageSurface').addEventListener('mouseup',captureSelection);get('pdfPageSurface').addEventListener('keyup',captureSelection);
     get('pdfSaveHighlight').onclick=()=>save();get('pdfQuoteNotes').onclick=()=>save('notes');get('pdfQuoteMatrix').onclick=()=>save('matrix');
     get('pdfUndoAnnotation').onclick=()=>{const p=state.papers.find(row=>row.id===undo?.paperId);if(p){p.pdfAnnotations.splice(undo.index,0,undo.annotation);undo=null;get('pdfUndoAnnotation').disabled=true;scheduleAutosave();drawPage();renderAnnotations();}};
     document.addEventListener('click',event=>{const button=event.target.closest('[data-open-pdf-page],[data-read-pdf]');if(button)open(button.dataset.pdfPaper||state.selectedId,Number(button.dataset.openPdfPage)||1,button.dataset.pdfId);});
   });
-  return {open,store,linksMarkup};
+  return {open,store,linksMarkup,request,loadPage,drawPage,renderAnnotations,save,
+    context:()=>({paper:paper(),paperId,attachmentId,pageNumber,sourcePage:sourcePage(),pageData,selection,preview:!!previewFile,file:file(),order:order(),rotation:rotation(),open:!!root()?.open}),
+    navigate:number=>{pageNumber=Math.max(1,Math.min(order().length,number));selection=null;return loadPage();},
+    chooseAnnotation:row=>{selection={...row};updateSelection();},
+    updateMode:displayMode};
 })();

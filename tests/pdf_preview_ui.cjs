@@ -47,7 +47,9 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
   await page.evaluate(()=>{setInspectorTab('overview');renderDetails();els.detailsContent.scrollTop=200;});
   assert(await page.evaluate(()=>els.detailsContent.scrollTop)>0,'Details scroll vertically');
   await page.click('[data-read-pdf]');await page.waitForFunction(()=>document.querySelectorAll('.pdf-text-layer span').length>3);
+  await page.waitForFunction(()=>{const img=document.querySelector('.pdf-page>img');return img?.complete&&img.naturalWidth>300;});
   assert.equal(await page.locator('#pdfReadMode').innerText(),'Preview');assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),false);
+  assert.equal(await page.locator('#pdfExportEdited').isDisabled(),true,'Web previews cannot be edited or exported as edited copies');
   assert.equal(await page.evaluate(()=>state.papers.find(p=>p.id==='open').pdfAttachments.length),0);
   assert.equal(fs.existsSync(path.join(profile,'pdfs')),false,'Preview must not retain an attachment');
   const denied=await page.evaluate(async id=>{const response=await fetch(backendUrl('/api/reader/passage'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({id,page:1,quote:'This open paper contains a verified passage.'})});return response.status;},identity);
@@ -62,6 +64,36 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
   await page.evaluate(()=>{const layer=document.querySelector('.pdf-text-layer'),range=document.createRange();range.selectNodeContents(layer);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);document.getElementById('pdfPageSurface').dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));});
   await page.fill('#pdfAnnotationMemo',long);await page.click('#pdfSaveHighlight');await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.length===1);
   const sidebar=await page.locator('#pdfAnnotationSidebar').evaluate(el=>[el.scrollWidth,el.clientWidth]);assert(sidebar[0]<=sidebar[1]+1,'Reader sidebar wraps long text');
+  await page.fill('#pdfSearchText','small sample size');await page.click('#pdfRunSearch');
+  await page.waitForFunction(()=>document.querySelectorAll('[data-pdf-match]').length===1&&document.querySelector('.pdf-search-match'));
+  await page.locator('[data-pdf-workspace="edit"]').click();await page.locator('[data-pdf-tool="text"]').click();
+  await page.locator('#pdfPageSurface').click({position:{x:100,y:200}});await page.fill('#pdfTextValue','Reader edit test');await page.click('#pdfPlaceMark');
+  await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.some(a=>a.kind==='text'));
+  await page.locator('[data-pdf-tool="rectangle"]').click();
+  let surface=await page.locator('#pdfPageSurface').boundingBox();
+  await page.mouse.move(surface.x+90,surface.y+240);await page.mouse.down();await page.mouse.move(surface.x+250,surface.y+290,{steps:4});await page.mouse.up();
+  await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.some(a=>a.kind==='rectangle'));
+  await page.locator('[data-pdf-tool="ink"]').click();surface=await page.locator('#pdfPageSurface').boundingBox();
+  await page.mouse.move(surface.x+100,surface.y+330);await page.mouse.down();await page.mouse.move(surface.x+170,surface.y+350,{steps:5});await page.mouse.move(surface.x+220,surface.y+325,{steps:5});await page.mouse.up();
+  await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.some(a=>a.kind==='ink'));
+  await page.locator('[data-pdf-workspace="comment"]').click();await page.locator('[data-pdf-tool="note"]').click();
+  await page.locator('#pdfPageSurface').click({position:{x:290,y:220}});await page.fill('#pdfAnnotationMemo','Check statistical method');await page.click('#pdfPlaceMark');
+  await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.some(a=>a.kind==='note'));
+  await page.click('#pdfUndoAnnotation');await page.waitForFunction(()=>!state.papers.find(p=>p.id==='open').pdfAnnotations.some(a=>a.kind==='note'));
+  await page.click('#pdfRedo');await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.some(a=>a.kind==='note'));
+  await page.locator('[data-pdf-workspace="pages"]').click();await page.locator('[data-pdf-page-edit="rotate-right"]').click();
+  await page.waitForFunction(()=>PulsePDF.context().pageData?.rotation===90);
+  await page.locator('[data-pdf-page-edit="earlier"]').click();await page.waitForFunction(()=>PulsePDF.context().sourcePage===2&&PulsePDF.context().pageNumber===1);
+  await page.fill('#pdfPageNumber','2');await page.locator('#pdfPageNumber').press('Tab');await page.waitForFunction(()=>PulsePDF.context().sourcePage===1&&PulsePDF.context().pageData?.page===1);
+  await page.locator('[data-pdf-page-edit="remove"]').click();await page.waitForFunction(()=>PulsePDF.context().order.length===1&&PulsePDF.context().pageData?.page===2);
+  const editedDownload=page.waitForEvent('download');await page.click('#pdfExportEdited');const edited=await editedDownload;
+  const verify=spawnSync(python,['-c',"import pymupdf,sys;d=pymupdf.open(sys.argv[1]);assert len(d)==1;assert d[0].rotation==90;p=d[0];a=list(p.annots());assert len(a)>=5;assert any('Reader edit test' in x.info.get('content','') for x in a)",await edited.path()]);
+  assert.equal(verify.status,0,String(verify.stderr));assert.deepEqual(fs.readFileSync(path.join(profile,'pdfs',identity+'.pdf')),bytes,'PDF export preserves the source bytes');
+  if(process.env.PULSE_UI_SCREENSHOTS){
+   fs.copyFileSync(await edited.path(),path.join(process.env.PULSE_UI_SCREENSHOTS,'edited-copy.pdf'));
+   const render=spawnSync(python,['-c',"import pymupdf,sys;d=pymupdf.open(sys.argv[1]);d[0].get_pixmap(matrix=pymupdf.Matrix(1,1)).save(sys.argv[2])",await edited.path(),path.join(process.env.PULSE_UI_SCREENSHOTS,'edited-copy.png')]);assert.equal(render.status,0,String(render.stderr));
+   await page.locator('[data-pdf-workspace="comment"]').click();await page.screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'pdf-editor-workspace.png')});
+  }
   await page.click('#pdfReaderClose');await page.evaluate(()=>saveLibrary());await page.reload();await page.waitForFunction(()=>state.autosaveReady);
   const before=lookups;await page.evaluate(()=>PulsePDF.open('open',2));await page.waitForFunction(()=>document.querySelectorAll('.pdf-text-layer span').length>3);
   assert.equal(lookups,before,'Saved copy reopens locally');assert.equal(await page.locator('.pdf-highlights span').count()>0,true);

@@ -56,7 +56,7 @@ from pulse_core.passages import retrieve_passages, import_s2orc
 from pulse_core.research_evidence import verify_citation
 from pulse_core.appearance import load_theme, save_appearance
 from pulse_core.library_merge import merge as merge_library_records
-from pulse_core import pdf_reader
+from pulse_core import pdf_reader, pdf_editor
 from pulse_core.screening import handle as screening_action
 from pulse_core.cache_maintenance import handle as cache_action
 from pulse_core.ranking_experiments import status as ranking_status
@@ -257,7 +257,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/settings",
             "/api/library",
             "/api/library/change", "/api/library/recovery/restore",
-            "/api/library/merge", "/api/reader/attach", "/api/reader/page", "/api/reader/passage", "/api/reader/preview", "/api/reader/keep",
+            "/api/library/merge", "/api/reader/attach", "/api/reader/page", "/api/reader/passage", "/api/reader/preview", "/api/reader/keep", "/api/reader/search", "/api/reader/export",
             "/api/test",
             "/api/metadata/doi",
             "/api/metadata/resolve", "/api/metadata/citation", "/api/metadata/citation/verify",
@@ -316,6 +316,8 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/reader/passage": pdf_reader.passage,
                 "/api/reader/preview": pdf_reader.preview,
                 "/api/reader/keep": pdf_reader.keep,
+                "/api/reader/search": pdf_reader.search,
+                "/api/reader/export": pdf_editor.export,
                 "/api/library/recovery/restore": restore_recovery,
                 "/api/metadata/doi": lookup_doi_metadata,
                 "/api/metadata/resolve": resolve_metadata,

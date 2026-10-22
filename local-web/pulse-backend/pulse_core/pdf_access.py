@@ -10,6 +10,7 @@ import ssl
 import time
 import urllib.parse
 import unicodedata
+import xml.etree.ElementTree as ET
 
 from pulse_core.constants import APP_VERSION, ClientError
 from pulse_core.doi_utils import normalize_doi
@@ -68,13 +69,13 @@ def fetch_public(url, deadline, max_bytes):
         try:
             connection.request('GET', urllib.parse.urlunsplit(('', '', parsed.path, parsed.query, '')),
                                headers={'User-Agent': f'Pulse/{APP_VERSION} (open-access PDF reader)',
-                                        'Accept': 'application/pdf,text/html,application/json;q=0.8', 'Accept-Encoding': 'identity'})
+                                        'Accept': 'application/pdf,application/json,application/xml,text/xml,text/html;q=0.8', 'Accept-Encoding': 'identity'})
             response = connection.getresponse()
             if response.status in (301, 302, 303, 307, 308):
                 url = urllib.parse.urljoin(url, response.getheader('Location') or '')
                 continue
             if response.status != 200:
-                raise ValueError('This source did not provide a freely accessible PDF.')
+                raise ValueError(f'This source returned HTTP {response.status}.')
             length = response.getheader('Content-Length')
             if length and int(length) > max_bytes:
                 raise ValueError('The PDF exceeds the download limit.')
@@ -206,8 +207,42 @@ def europe_pmc_links(paper):
             found.extend(supplied_links(row))
             identity = str(row.get('pmcid') or '')
             if re.fullmatch(r'PMC\d+', identity):
+                # The public website can require a browser challenge. NCBI's
+                # licensed article dataset supplies the actual PDF anonymously.
+                try: found = pmc_cloud_links(dict(paper, pmcid=identity)) + found
+                except (OSError, ValueError, http.client.HTTPException): pass
                 found.insert(0, {'url': 'https://europepmc.org/articles/'+identity+'?pdf=render', 'source': 'Europe PMC', 'format': 'pdf'})
     return found
+
+
+def pmc_cloud_links(paper):
+    """Read versioned NCBI cloud metadata; never guess a publisher PDF path."""
+    identity=str(paper.get('pmcid') or '').upper()
+    if not re.fullmatch(r'PMC\d+',identity): return []
+    base='https://pmc-oa-opendata.s3.amazonaws.com/'
+    deadline=time.monotonic()+8
+    query=urllib.parse.urlencode({'list-type':'2','prefix':'metadata/'+identity+'.','max-keys':'10'})
+    raw,_,_=fetch_public(base+'?'+query,deadline,128*1024)
+    try: document=ET.fromstring(raw)
+    except ET.ParseError: return []
+    keys=[node.text for node in document.iter() if node.tag.rsplit('}',1)[-1]=='Key'
+          and re.fullmatch(r'metadata/'+identity+r'\.\d+\.json',node.text or '')]
+    found=[]
+    for key in keys[:4]:
+        raw,_,_=fetch_public(base+key,deadline,128*1024)
+        data=json.loads(raw)
+        if not isinstance(data,dict):continue
+        if str(data.get('pmcid')).upper()!=identity: continue
+        if paper.get('doi') and normalize_doi(data.get('doi')).casefold()!=normalize_doi(paper['doi']).casefold(): continue
+        target=urllib.parse.urlsplit(str(data.get('pdf_url') or ''))
+        if target.scheme=='s3' and target.netloc=='pmc-oa-opendata':
+            url=base+target.path.lstrip('/')+('?' + target.query if target.query else '')
+        elif target.scheme=='https' and target.hostname=='pmc-oa-opendata.s3.amazonaws.com': url=target.geturl()
+        else: continue
+        if not re.fullmatch('/'+identity+r'\.\d+/[^/]+\.pdf',urllib.parse.urlsplit(url).path): continue
+        found.append({'url':public_url(url),'format':'pdf','source':'NCBI PMC',
+                      'manuscript':str(data.get('is_manuscript')).lower()=='yes'})
+    return sorted(found,key=lambda row:row['manuscript'])
 
 
 def unpaywall_links(paper):
@@ -228,7 +263,7 @@ def unpaywall_links(paper):
 def find_pdf(paper):
     deadline = time.monotonic()+30
     futures = [LOOKUPS.submit(provider, paper) for provider in (openalex_links, europe_pmc_links, unpaywall_links)]
-    seen, attempts = set(), 0
+    seen, cloud_seen, failures, attempts = set(), set(), [], 0
     def try_links(rows):
         nonlocal attempts
         for row in rows:
@@ -239,25 +274,37 @@ def find_pdf(paper):
                 continue
             seen.add(url)
             try:
+                pmcid=re.search(r'(?:/articles/|/pmc/articles/)(?:PMC)?(\d{5,})',url,re.I)
+                if pmcid and pmcid[1] not in cloud_seen:
+                    cloud_seen.add(pmcid[1])
+                    try:
+                        result=try_links(pmc_cloud_links(dict(paper,pmcid='PMC'+pmcid[1])))
+                        if result:return result
+                    except (OSError,ValueError,http.client.HTTPException):pass
                 # Old index records sometimes still use HTTP. Upgrade them;
                 # actual requests and subsequent redirects must stay HTTPS.
                 if url.startswith('http://'): url='https://'+url[7:]
                 url = public_url(url)
                 attempts += 1
                 raw, address = pdf_bytes(url, deadline)
-                from pulse_core.pdf_reader import engine
+                from pulse_core.pdf_reader import engine, PDF_ENGINE_LOCK
                 try:
-                    with engine().open(stream=raw,filetype='pdf') as document:
+                    with PDF_ENGINE_LOCK, engine().open(stream=raw,filetype='pdf') as document:
                         if document.needs_pass or not 0<document.page_count<=10000:
                             raise ValueError('This PDF cannot be previewed.')
                 except Exception as error:
                     raise ValueError('The source did not supply a readable PDF.') from error
                 return raw, address, str(row.get('source') or 'Open full text')[:100]
-            except (OSError, ValueError, http.client.HTTPException):
+            except (OSError, ValueError, http.client.HTTPException) as error:
+                failures.append(str(error))
                 continue
         return None
     try:
-        result = try_links(supplied_links(paper))
+        initial=supplied_links(paper)
+        if re.fullmatch(r'PMC\d+',str(paper.get('pmcid') or '').upper()):
+            try: initial=pmc_cloud_links(paper)+initial
+            except (OSError,ValueError,http.client.HTTPException):pass
+        result = try_links(initial)
         if result:
             return result
         for future in as_completed(futures, timeout=max(.1, deadline-time.monotonic())):
@@ -272,4 +319,6 @@ def find_pdf(paper):
     finally:
         for future in futures:
             future.cancel()
-    raise ClientError(404, 'No accessible open PDF was found. Try again, open the publisher page, or attach a PDF you have access to.')
+    blocked=any('HTTP 403' in message or 'HTTP 429' in message for message in failures)
+    detail=' Some sources blocked automated access; this does not necessarily mean the paper is paywalled.' if blocked else ''
+    raise ClientError(404, 'No accessible open PDF was found.'+detail+' Retry, open the source page, or attach a PDF you have access to.')
