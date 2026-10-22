@@ -108,8 +108,10 @@ def keep(payload):
 def page(payload):
     fitz=engine();path=path_for(payload.get('id'))
     thumbnail=payload.get('thumbnail') is True
+    # Zoom changes only need a sharper image; the client keeps the page's text and links.
+    with_text=not thumbnail and payload.get('text') is not False
     try:
-        number=int(payload.get('page',1));scale=max(.15 if thumbnail else .6,min(2,float(payload.get('scale',1.25))))
+        number=int(payload.get('page',1));scale=max(.15 if thumbnail else .6,min(2 if thumbnail else 4,float(payload.get('scale',1.25))))
         rotation=int(payload.get('rotation',0))
     except (ValueError,TypeError): raise ClientError(400,'Choose a valid page and zoom.')
     if rotation not in (0,90,180,270):raise ClientError(400,'Choose a quarter-turn rotation.')
@@ -119,14 +121,92 @@ def page(payload):
         p.set_rotation((p.rotation+rotation)%360)
         if p.rect.width*p.rect.height*scale*scale>12_000_000: scale=(12_000_000/(p.rect.width*p.rect.height))**.5
         pix=p.get_pixmap(matrix=fitz.Matrix(scale,scale),alpha=False)
-        text_data={'words':[],'text':'','source':'Local PDF','warning':''} if thumbnail else page_text(payload['id'],number)
+        result={'page':number,'pages':doc.page_count,'width':p.rect.width,'height':p.rect.height,'scale':scale,
+                'image':'data:image/png;base64,'+base64.b64encode(pix.tobytes('png')).decode('ascii'),'rotation':rotation}
+        if not with_text:
+            return result|({'words':[],'text':'','source':'Local PDF','warning':''} if thumbnail else {})
+        text_data=page_text(payload['id'],number)
         words=text_data['words']
-        return {'page':number,'pages':doc.page_count,'width':p.rect.width,'height':p.rect.height,
-                'image':'data:image/png;base64,'+base64.b64encode(pix.tobytes('png')).decode('ascii'),
-                'words':[{'box':list(fitz.Rect(word[:4])*p.rotation_matrix),'origin':list(fitz.Point(word[0],word[1])*p.rotation_matrix),
+        return result|{'words':[{'box':list(fitz.Rect(word[:4])*p.rotation_matrix),'origin':list(fitz.Point(word[0],word[1])*p.rotation_matrix),
                           'width':word[2]-word[0],'height':word[3]-word[1],'rotation':p.rotation,
                           'text':word[4],'block':word[5],'line':word[6]} for word in words[:20000]],
-                'text':text_data['text'],'source':text_data['source'],'warning':text_data['warning'],'rotation':rotation}
+                'links':page_links(doc,p),'text':text_data['text'],'source':text_data['source'],'warning':text_data['warning']}
+
+def target_y(doc,number,to):
+    """Vertical position of a link or bookmark destination as a fraction of its page."""
+    if not to: return 0
+    target=doc[number-1];height=target.rect.height if target.rotation%180==0 else target.rect.width
+    return max(0,min(1,float(to.y)/height)) if height else 0
+
+def page_links(doc,p):
+    links=[]
+    for link in p.get_links()[:500]:
+        r=link['from']*p.rotation_matrix
+        box={'x':r.x0/p.rect.width,'y':r.y0/p.rect.height,'width':r.width/p.rect.width,'height':r.height/p.rect.height}
+        if link.get('kind') in (1,4) and isinstance(link.get('page'),int) and 0<=link['page']<doc.page_count:
+            links.append(box|{'page':link['page']+1,'targetY':target_y(doc,link['page']+1,link.get('to'))})
+        elif link.get('kind')==2:
+            uri=str(link.get('uri') or '').strip()
+            if uri.lower().startswith('doi:'): uri='https://doi.org/'+uri[4:].strip()
+            # Only web links leave the reader; file, script and launch actions are ignored.
+            if re.match(r'https?://[^\s]+$',uri,re.I) and len(uri)<=2048: links.append(box|{'url':uri})
+    return links
+
+def info(payload):
+    identity=payload.get('id');path_for(identity)
+    return document_info(identity)
+
+@lru_cache(maxsize=16)
+def document_info(identity):
+    fitz=engine()
+    with PDF_ENGINE_LOCK, fitz.open(path_for(identity)) as doc:
+        return {'pages':doc.page_count,'sizes':[[round(p.rect.width,2),round(p.rect.height,2)] for p in doc]}
+
+def outline(payload):
+    identity=payload.get('id');path_for(identity)
+    return document_outline(identity)
+
+SECTION_HEADING=re.compile(r'(?:\d+(?:\.\d+)*\.?\s+|[IVX]+\.\s+)?(?:abstract|summary|introduction|background|methods?|materials and methods|methodology|study design|results|results and discussion|findings|discussion|conclusions?|limitations|acknowledge?ments?|references|bibliography|supplementary (?:material|information)|appendix|funding|data availability|author contributions|conflicts? of interest|competing interests)\s*:?',re.I)
+
+@lru_cache(maxsize=16)
+def document_outline(identity):
+    fitz=engine()
+    with PDF_ENGINE_LOCK, fitz.open(path_for(identity)) as doc:
+        rows=[]
+        for level,title,number,*rest in doc.get_toc(simple=False)[:500]:
+            title=' '.join(str(title).split())[:200]
+            if not title or not 1<=number<=doc.page_count: continue
+            dest=rest[0] if rest and isinstance(rest[0],dict) else {}
+            rows.append({'level':max(1,min(6,int(level))),'title':title,'page':number,'y':target_y(doc,number,dest.get('to'))})
+        if rows: return {'outline':rows,'source':'bookmarks'}
+        rows=heading_outline(doc)
+        return {'outline':rows,'source':'headings' if rows else ''}
+
+def heading_outline(doc):
+    """Section headings for PDFs without bookmarks, from type size, weight and common section names."""
+    started=time.monotonic();lines=[];sizes={}
+    for index,p in enumerate(doc):
+        if index>=40 or time.monotonic()-started>2: break
+        for block in p.get_text('dict',flags=0)['blocks']:
+            for line in block.get('lines',[]):
+                spans=[span for span in line['spans'] if span['text'].strip()]
+                if not spans: continue
+                for span in spans: sizes[round(span['size'],1)]=sizes.get(round(span['size'],1),0)+len(span['text'])
+                text=' '.join(''.join(span['text'] for span in spans).split())
+                bold=all(span['flags']&16 or 'bold' in span['font'].lower() for span in spans)
+                lines.append((index+1,line['bbox'][1]/p.rect.height,text,max(span['size'] for span in spans),bold))
+    if not sizes: return []
+    body=max(sizes,key=sizes.get);rows=[];seen=set()
+    for number,y,text,size,bold in lines:
+        if not 3<=len(text)<=80 or text.casefold() in seen: continue
+        prominent=bold or size>=body*1.12 or (text.isupper() and size>=body)
+        named=SECTION_HEADING.fullmatch(text) and (prominent or text.isupper())
+        numbered=re.match(r'(?:\d+(?:\.\d+){0,2}\.?)\s+[A-Z][^.]{2,}$',text) and prominent and size>=body
+        if not (named or numbered): continue
+        seen.add(text.casefold())
+        rows.append({'level':2 if re.match(r'\d+\.\d+',text) else 1,'title':text,'page':number,'y':max(0,min(1,y))})
+        if len(rows)>=100: break
+    return rows
 
 def search(payload):
     fitz=engine();path=path_for(payload.get('id'))

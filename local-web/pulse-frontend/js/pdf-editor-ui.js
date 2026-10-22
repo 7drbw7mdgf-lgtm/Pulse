@@ -12,10 +12,10 @@ const PulsePDFEditor=(()=>{
   function changed(reload=false,page=ctx().pageNumber){scheduleAutosave();renderDetails();renderAnnotations();syncHistory();if(reload)PulsePDF.navigate(Math.min(page,ctx().order.length));else PulsePDF.drawPage();}
   function restore(from,to){if(!editable()||!from.length)return;to.push(snapshot());const previous=from.pop(),c=ctx();c.paper.pdfAnnotations=[...(c.paper.pdfAnnotations||[]).filter(r=>r.pdfId!==c.attachmentId),...previous.annotations];if(previous.editor)c.file.editor=previous.editor;else delete c.file.editor;placement=null;changed(true);}
   function transform(p,angle){return angle===90?{x:1-p.y,y:p.x}:angle===180?{x:1-p.x,y:1-p.y}:angle===270?{x:p.y,y:1-p.x}:{...p};}
-  function viewPoint(point){return transform(point,ctx().rotation);}
-  function canonicalPoint(point){return transform(point,(360-ctx().rotation)%360);}
+  function viewPoint(point,angle=ctx().rotation){return transform(point,angle);}
+  function canonicalPoint(point,angle=ctx().rotation){return transform(point,(360-angle)%360);}
   function transformRect(rect,angle){const points=[transform({x:rect.x,y:rect.y},angle),transform({x:rect.x+rect.width,y:rect.y+rect.height},angle)];return{x:Math.min(points[0].x,points[1].x),y:Math.min(points[0].y,points[1].y),width:Math.abs(points[1].x-points[0].x),height:Math.abs(points[1].y-points[0].y)};}
-  const viewRect=rect=>transformRect(rect,ctx().rotation),canonicalRect=rect=>transformRect(rect,(360-ctx().rotation)%360);
+  const viewRect=(rect,angle=ctx().rotation)=>transformRect(rect,angle),canonicalRect=(rect,angle=ctx().rotation)=>transformRect(rect,(360-angle)%360);
   function status(text){el('pdfReaderStatus').textContent=text;}
   function setSidebarOpen(value){sidebarOpen=!!value&&!!editable();el('pdfAnnotationSidebar').hidden=!sidebarOpen;
     const toggle=el('pdfSidebarToggle');toggle.disabled=!editable();toggle.setAttribute('aria-expanded',String(sidebarOpen));toggle.title=(sidebarOpen?'Hide':'Show')+' properties and comments';
@@ -25,7 +25,7 @@ const PulsePDFEditor=(()=>{
     setSidebarOpen(value==='comment'||value==='edit');
     if(value==='read'||value==='pages')setTool('select');
   }
-  function setTool(value){tool=editable()?value:'select';el('pdfPageSurface').dataset.tool=tool;placement=null;
+  function setTool(value){tool=editable()?value:'select';el('pdfPageStack').dataset.tool=tool;placement=null;
     if(tool!=='select')setSidebarOpen(true);
     if(['text','ink','rectangle'].includes(tool)&&el('pdfHighlightColor').value==='yellow')el('pdfHighlightColor').value=tool==='text'?'black':'blue';
     document.querySelectorAll('[data-pdf-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.pdfTool===tool)));
@@ -35,7 +35,7 @@ const PulsePDFEditor=(()=>{
     if(['highlight','underline','strikeout'].includes(tool)&&ctx().selection)PulsePDF.save();
   }
   function onState(){const c=ctx(),key=[c.paperId,c.attachmentId,c.preview].join(':');
-    if(key!==identity){identity=key;history=[];future=[];placement=null;drawing=null;thumbsKey='';thumbLimit=100;thumbRevision++;thumbQueue=[];searchResults=[];searchIndex=-1;el('pdfSearchResults').replaceChildren();searchController?.abort();setTool('select');mode('read');}
+    if(key!==identity){identity=key;history=[];future=[];placement=null;drawing=null;thumbsKey='';thumbLimit=100;thumbRevision++;thumbQueue=[];searchResults=[];searchIndex=-1;el('pdfSearchResults').replaceChildren();searchController?.abort();renderOutline();setTool('select');mode('read');}
     setSidebarOpen(sidebarOpen);
     if(!c.file){const href=safeHref(c.paper?.url||(c.paper?.doi?'https://doi.org/'+c.paper.doi:''));el('pdfSourceLink').href=href||'#';el('pdfSourceLink').hidden=!href;el('pdfSourceLink').textContent='Open source page';}
     el('pdfExportEdited').disabled=!editable()||exporting;el('pdfSearchText').disabled=!c.attachmentId;el('pdfRunSearch').disabled=!c.attachmentId;
@@ -53,36 +53,37 @@ const PulsePDFEditor=(()=>{
     thumbsKey='';changed(true,destination);status('Page change saved in Pulse. Export edited PDF to create the updated file.');
   }
   function addMark(mark){if(!editable())return;checkpoint();const c=ctx();c.paper.pdfAnnotations ||= [];c.paper.pdfAnnotations.push({id:uid(),pdfId:c.attachmentId,page:c.sourcePage,color:el('pdfHighlightColor').value,createdAt:new Date().toISOString(),...mark});placement=null;changed();status('Edit saved in Pulse. Export edited PDF to include it in a PDF file.');}
-  function pagePoint(event){const box=el('pdfPageSurface').getBoundingClientRect();return{x:Math.max(0,Math.min(1,(event.clientX-box.x)/box.width)),y:Math.max(0,Math.min(1,(event.clientY-box.y)/box.height))};}
-  function pointerDown(event){if(!editable()||!ctx().pageData||!['ink','rectangle','text','note'].includes(tool)||event.button!==0)return;
-    event.preventDefault();window.getSelection()?.removeAllRanges();const p=pagePoint(event);
-    if(tool==='text'||tool==='note'){placement=canonicalPoint(p);el(tool==='text'?'pdfTextValue':'pdfAnnotationMemo').focus();status('Placement selected. Enter '+(tool==='text'?'text':'a memo')+' in the sidebar.');return;}
-    drawing={start:p,points:[p],tool};el('pdfPageSurface').setPointerCapture(event.pointerId);
+  function pagePoint(event,surface){const box=surface.getBoundingClientRect();return{x:Math.max(0,Math.min(1,(event.clientX-box.x)/box.width)),y:Math.max(0,Math.min(1,(event.clientY-box.y)/box.height))};}
+  function pointerDown(event){const page=PulsePDF.pageFor(event.target);if(!editable()||!page?.data||!['ink','rectangle','text','note'].includes(tool)||event.button!==0)return;
+    event.preventDefault();window.getSelection()?.removeAllRanges();PulsePDF.focusPage(page.index+1);const p=pagePoint(event,page.el);
+    if(tool==='text'||tool==='note'){placement={page:page.source,point:canonicalPoint(p,page.rotation)};el(tool==='text'?'pdfTextValue':'pdfAnnotationMemo').focus();status('Placement selected. Enter '+(tool==='text'?'text':'a memo')+' in the sidebar.');return;}
+    drawing={page,start:p,points:[p],tool};page.el.setPointerCapture(event.pointerId);
   }
-  function pointerMove(event){if(!drawing)return;const p=pagePoint(event);drawing.points.push(p);if(drawing.points.length>2000)drawing.points.splice(1,1);paintDraft();}
-  function pointerUp(event){if(!drawing)return;const draft=drawing;draft.points.push(pagePoint(event));drawing=null;
-    if(draft.tool==='ink'&&draft.points.length>1)addMark({kind:'ink',points:draft.points.map(canonicalPoint),strokeWidth:Number(el('pdfStrokeWidth').value)});
-    else{const a=draft.start,b=draft.points.at(-1),rect=canonicalRect({x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),width:Math.abs(a.x-b.x),height:Math.abs(a.y-b.y)});if(rect.width>.002&&rect.height>.002)addMark({kind:'rectangle',rect,strokeWidth:Number(el('pdfStrokeWidth').value)});else paintDraft();}
+  function pointerMove(event){if(!drawing)return;const p=pagePoint(event,drawing.page.el);drawing.points.push(p);if(drawing.points.length>2000)drawing.points.splice(1,1);paintPage(drawing.page);}
+  function pointerUp(event){if(!drawing)return;const draft=drawing,{page}=draft;draft.points.push(pagePoint(event,page.el));drawing=null;
+    if(draft.tool==='ink'&&draft.points.length>1)addMark({kind:'ink',page:page.source,points:draft.points.map(p=>canonicalPoint(p,page.rotation)),strokeWidth:Number(el('pdfStrokeWidth').value)});
+    else{const a=draft.start,b=draft.points.at(-1),rect=canonicalRect({x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),width:Math.abs(a.x-b.x),height:Math.abs(a.y-b.y)},page.rotation);if(rect.width>.002&&rect.height>.002)addMark({kind:'rectangle',page:page.source,rect,strokeWidth:Number(el('pdfStrokeWidth').value)});else paintPage(page);}
   }
-  function placeMark(){if(!editable()||!placement)return status('Click the page to choose a position first.');
-    if(tool==='note'){const memo=el('pdfAnnotationMemo').value.trim();if(!memo)return status('Write a memo before adding a comment.');addMark({kind:'note',point:placement,memo});el('pdfAnnotationMemo').value='';}
-    else{const text=el('pdfTextValue').value.trim();if(!text)return status('Enter text to add to the page.');const x=Math.min(.9,placement.x),y=Math.min(.94,placement.y);addMark({kind:'text',text,rect:{x,y,width:Math.min(.4,1-x),height:Math.min(.12,1-y)},fontSize:Number(el('pdfTextSize').value)});el('pdfTextValue').value='';}
+  function placeMark(){if(!editable()||!placement)return status('Click the page to choose a position first.');const {page,point}=placement;
+    if(tool==='note'){const memo=el('pdfAnnotationMemo').value.trim();if(!memo)return status('Write a memo before adding a comment.');addMark({kind:'note',page,point,memo});el('pdfAnnotationMemo').value='';}
+    else{const text=el('pdfTextValue').value.trim();if(!text)return status('Enter text to add to the page.');const x=Math.min(.9,point.x),y=Math.min(.94,point.y);addMark({kind:'text',page,text,rect:{x,y,width:Math.min(.4,1-x),height:Math.min(.12,1-y)},fontSize:Number(el('pdfTextSize').value)});el('pdfTextValue').value='';}
   }
-  function paintDraft(){const c=ctx(),surface=el('pdfPageSurface');if(!c.pageData)return;
+  /* Draws one rendered page's markup, the stroke in progress and the active search match. */
+  function paintPage(page){const c=ctx(),surface=page.el,data=page.data,angle=page.rotation;if(!data||!surface.querySelector(':scope>img'))return;
     surface.querySelector('.pdf-editor-layer')?.remove();const layer=document.createElement('div');layer.className='pdf-editor-layer';
-    for(const mark of c.paper?.pdfAnnotations||[]){if(mark.pdfId!==c.attachmentId||mark.page!==c.sourcePage)continue;
+    for(const mark of c.paper?.pdfAnnotations||[]){if(mark.pdfId!==c.attachmentId||mark.page!==page.source)continue;
       const color=palette[mark.color]||palette.blue;
-      if(mark.kind==='ink'){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 1000 1000');svg.setAttribute('preserveAspectRatio','none');const line=document.createElementNS(svg.namespaceURI,'polyline');line.setAttribute('points',mark.points.map(viewPoint).map(p=>`${p.x*1000},${p.y*1000}`).join(' '));line.setAttribute('fill','none');line.setAttribute('stroke',color);line.setAttribute('stroke-width',String((mark.strokeWidth||2)*1000/c.pageData.width));svg.append(line);layer.append(svg);}
-      else if(mark.kind==='note'){const point=viewPoint(mark.point),note=document.createElement('span');note.className='pdf-note-pin';note.style.left=point.x*100+'%';note.style.top=point.y*100+'%';note.textContent='●';note.title=mark.memo;layer.append(note);}
-      else if(mark.rect){const rect=viewRect(mark.rect),box=document.createElement('span');box.className='pdf-edit-'+mark.kind;box.style.cssText=`left:${rect.x*100}%;top:${rect.y*100}%;width:${rect.width*100}%;height:${rect.height*100}%;color:${color};--edit-stroke:${mark.strokeWidth||2}px`;
-        if(mark.kind==='text'){const inner=document.createElement('span'),angle=c.rotation,w=rect.width*surface.clientWidth,h=rect.height*surface.clientHeight;inner.textContent=mark.text;inner.style.width=(angle%180?h:w)+'px';inner.style.height=(angle%180?w:h)+'px';inner.style.transform=angle===90?`translateX(${w}px) rotate(90deg)`:angle===180?`translate(${w}px,${h}px) rotate(180deg)`:angle===270?`translateY(${h}px) rotate(270deg)`:'none';box.append(inner);box.style.fontSize=(mark.fontSize||12)*surface.clientWidth/c.pageData.width+'px';}layer.append(box);}
+      if(mark.kind==='ink'){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 1000 1000');svg.setAttribute('preserveAspectRatio','none');const line=document.createElementNS(svg.namespaceURI,'polyline');line.setAttribute('points',mark.points.map(p=>viewPoint(p,angle)).map(p=>`${p.x*1000},${p.y*1000}`).join(' '));line.setAttribute('fill','none');line.setAttribute('stroke',color);line.setAttribute('stroke-width',String((mark.strokeWidth||2)*1000/data.width));svg.append(line);layer.append(svg);}
+      else if(mark.kind==='note'){const point=viewPoint(mark.point,angle),note=document.createElement('span');note.className='pdf-note-pin';note.style.left=point.x*100+'%';note.style.top=point.y*100+'%';note.textContent='●';note.title=mark.memo;layer.append(note);}
+      else if(mark.rect){const rect=viewRect(mark.rect,angle),box=document.createElement('span');box.className='pdf-edit-'+mark.kind;box.style.cssText=`left:${rect.x*100}%;top:${rect.y*100}%;width:${rect.width*100}%;height:${rect.height*100}%;color:${color};--edit-stroke:${mark.strokeWidth||2}px`;
+        if(mark.kind==='text'){const inner=document.createElement('span'),w=rect.width*surface.clientWidth,h=rect.height*surface.clientHeight;inner.textContent=mark.text;inner.style.width=(angle%180?h:w)+'px';inner.style.height=(angle%180?w:h)+'px';inner.style.transform=angle===90?`translateX(${w}px) rotate(90deg)`:angle===180?`translate(${w}px,${h}px) rotate(180deg)`:angle===270?`translateY(${h}px) rotate(270deg)`:'none';box.append(inner);box.style.fontSize=(mark.fontSize||12)*surface.clientWidth/data.width+'px';}layer.append(box);}
     }
-    if(drawing){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 1000 1000');svg.setAttribute('preserveAspectRatio','none');const shape=document.createElementNS(svg.namespaceURI,drawing.tool==='ink'?'polyline':'rect');
+    if(drawing?.page===page){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 1000 1000');svg.setAttribute('preserveAspectRatio','none');const shape=document.createElementNS(svg.namespaceURI,drawing.tool==='ink'?'polyline':'rect');
       if(drawing.tool==='ink')shape.setAttribute('points',drawing.points.map(p=>`${p.x*1000},${p.y*1000}`).join(' '));
       else{const a=drawing.start,b=drawing.points.at(-1);for(const [key,value] of Object.entries({x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),width:Math.abs(a.x-b.x),height:Math.abs(a.y-b.y)}))shape.setAttribute(key,String(value*1000));}
       shape.setAttribute('fill','none');shape.setAttribute('stroke',palette[el('pdfHighlightColor').value]||palette.blue);shape.setAttribute('stroke-width','3');svg.append(shape);layer.append(svg);}
-    if(searchIndex>=0&&searchResults[searchIndex]?.page===c.sourcePage){const rect=viewRect(searchResults[searchIndex].rect),match=document.createElement('span');match.className='pdf-search-match';match.style.cssText=`left:${rect.x*100}%;top:${rect.y*100}%;width:${rect.width*100}%;height:${rect.height*100}%`;layer.append(match);}
-    surface.append(layer);surface.dataset.tool=tool;
+    if(searchIndex>=0&&searchResults[searchIndex]?.page===page.source){const rect=viewRect(searchResults[searchIndex].rect,angle),match=document.createElement('span');match.className='pdf-search-match';match.style.cssText=`left:${rect.x*100}%;top:${rect.y*100}%;width:${rect.width*100}%;height:${rect.height*100}%`;layer.append(match);}
+    const text=surface.querySelector('.pdf-text-layer');if(text)text.before(layer);else surface.append(layer);
   }
   function renderAnnotations(){const c=ctx(),rows=(c.paper?.pdfAnnotations||[]).filter(row=>row.pdfId===c.attachmentId),list=el('pdfAnnotations');if(!list)return;
     list.innerHTML=rows.map(row=>`<article><div class="pdf-comment-heading"><button type="button" data-annotation-page="${Number(row.page)}">Page ${Number(row.page)}</button><span>${escapeHtml(({ink:'Pen drawing',rectangle:'Rectangle',text:'Text box',note:'Comment',underline:'Underline',strikeout:'Strikethrough'})[row.kind]||'Highlight')}</span></div><blockquote>${escapeHtml(row.quote||row.text||row.memo||'Page markup')}</blockquote><label>Memo<textarea data-annotation-memo="${escapeHtml(row.id)}" rows="2">${escapeHtml(row.memo||'')}</textarea></label><div>${row.quote?`<button type="button" data-annotation-notes="${escapeHtml(row.id)}">To notes</button><button type="button" data-annotation-matrix="${escapeHtml(row.id)}">To matrix</button>`:''}<button type="button" data-annotation-remove="${escapeHtml(row.id)}">Remove</button></div></article>`).join('')||'<p class="pdf-no-comments">Your highlights and comments will appear here.</p>';
@@ -105,6 +106,22 @@ const PulsePDFEditor=(()=>{
       if(c.order.length>thumbLimit){const more=document.createElement('button');more.type='button';more.textContent='Load more pages';more.onclick=()=>{thumbLimit+=100;thumbnails();};list.append(more);}}
     el('pdfThumbnails').querySelectorAll('button').forEach(b=>b.setAttribute('aria-current',String(Number(b.dataset.pdfPage)===c.pageNumber)));
   }
+  /* Contents from the PDF's bookmarks, or from its section headings when it has none. */
+  function renderOutline(){const c=ctx(),data=c.outline,list=el('pdfOutline');if(!list)return;
+    if(!data){list.innerHTML=c.attachmentId?'<p class="pdf-outline-note">Reading contents…</p>':'';return;}
+    if(!data.outline.length){list.innerHTML='<p class="pdf-outline-note">This PDF has no bookmarks or recognisable section headings.</p>';return;}
+    list.innerHTML=(data.source==='headings'?'<p class="pdf-outline-note">Built from the section headings in this PDF.</p>':'')+data.outline.map((row,i)=>`<button type="button" data-pdf-outline="${i}" style="--outline-level:${Math.min(row.level,4)-1}"><span>${escapeHtml(row.title)}</span><small>${Number(row.page)}</small></button>`).join('');
+    for(const b of list.querySelectorAll('[data-pdf-outline]'))b.onclick=()=>{const row=data.outline[Number(b.dataset.pdfOutline)],position=ctx().order.indexOf(row.page);if(position>=0)PulsePDF.navigate(position+1,row.y||0);else status('This section is on a page excluded from the edited copy. Undo the page removal to view it.');};
+    markSection();
+  }
+  function markSection(){const c=ctx(),rows=c.outline?.outline||[];let current=-1;
+    rows.forEach((row,i)=>{const position=c.order.indexOf(row.page)+1;if(position>0&&position<=c.pageNumber&&(current<0||position>=c.order.indexOf(rows[current].page)+1))current=i;});
+    el('pdfOutline')?.querySelectorAll('[data-pdf-outline]').forEach(b=>b.setAttribute('aria-current',String(Number(b.dataset.pdfOutline)===current)));
+  }
+  function showPane(name){const contents=name==='contents';el('pdfOutline').hidden=!contents;el('pdfThumbnails').hidden=contents;
+    document.querySelectorAll('[data-pdf-pane]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.pdfPane===name)));
+    try{localStorage.setItem('pulse-pdf-pane',name);}catch{}
+  }
   async function search(){if(!ctx().attachmentId)return;const query=el('pdfSearchText').value.trim();if(!query)return;
     searchController?.abort();searchController=new AbortController();const id=ctx().attachmentId;el('pdfSearchResults').textContent='Searching document…';
     try{const data=await PulsePDF.request('search',{id,query},searchController.signal);if(ctx().attachmentId!==id)return;searchResults=data.matches.filter(row=>ctx().order.includes(row.page));searchIndex=-1;
@@ -112,7 +129,9 @@ const PulsePDFEditor=(()=>{
       el('pdfSearchResults').querySelectorAll('[data-pdf-match]').forEach(b=>b.onclick=()=>showMatch(Number(b.dataset.pdfMatch)));if(searchResults.length)showMatch(0);
     }catch(error){if(error.name!=='AbortError')el('pdfSearchResults').textContent=error.message;}
   }
-  function showMatch(index){if(!searchResults.length)return;searchIndex=(index+searchResults.length)%searchResults.length;PulsePDF.navigate(ctx().order.indexOf(searchResults[searchIndex].page)+1);}
+  function showMatch(index){if(!searchResults.length)return;searchIndex=(index+searchResults.length)%searchResults.length;const match=searchResults[searchIndex];
+    PulsePDF.navigate(ctx().order.indexOf(match.page)+1,match.rect.y);
+    el('pdfSearchResults').querySelectorAll('[data-pdf-match]').forEach(b=>b.setAttribute('aria-current',String(Number(b.dataset.pdfMatch)===searchIndex)));}
   async function exportPDF(){if(!editable()||exporting)return;const c=ctx(),target=c.paperId,name=(c.file.name||'Paper.pdf').replace(/\.pdf$/i,'')+' - edited.pdf';exporting=true;onState();status('Creating edited PDF…');
     try{const result=await PulsePDF.request('export',{id:c.attachmentId,name,pageOrder:c.order,rotations:c.file.editor?.rotations||{},annotations:(c.paper.pdfAnnotations||[]).filter(r=>r.pdfId===c.attachmentId)});
       const p=state.papers.find(row=>row.id===target);if(p&&!p.pdfAttachments.some(row=>row.id===result.id)){p.pdfAttachments.push(result);scheduleAutosave();await saveLibrary();}
@@ -126,7 +145,8 @@ const PulsePDFEditor=(()=>{
     const tabs=document.createElement('div');tabs.className='pdf-workspace-tabs';tabs.role='tablist';tabs.setAttribute('aria-label','PDF workspace');tabs.innerHTML=['Read','Comment','Edit','Pages'].map(name=>`<button type="button" role="tab" data-pdf-workspace="${name.toLowerCase()}" aria-selected="false">${name}</button>`).join('');dialog.insertBefore(tabs,dialog.querySelector('.pdf-toolbar'));tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>mode(b.dataset.pdfWorkspace));
     const tools=document.createElement('div');tools.className='pdf-context-tools';tools.innerHTML='<div data-pdf-tools="comment" hidden><button type="button" data-pdf-tool="select">Select</button><button type="button" data-pdf-tool="highlight" data-pdf-edit>Highlight</button><button type="button" data-pdf-tool="underline" data-pdf-edit>Underline</button><button type="button" data-pdf-tool="strikeout" data-pdf-edit>Strikethrough</button><button type="button" data-pdf-tool="note" data-pdf-edit>Comment</button></div><div data-pdf-tools="edit" hidden><button type="button" data-pdf-tool="select">Select</button><button type="button" data-pdf-tool="text" data-pdf-edit>Add text</button><button type="button" data-pdf-tool="ink" data-pdf-edit>Pen</button><button type="button" data-pdf-tool="rectangle" data-pdf-edit>Rectangle</button><span>Additions and markup; original paragraphs are preserved.</span></div><div data-pdf-tools="pages" hidden><button type="button" data-pdf-page-edit="rotate-left" data-pdf-edit>Rotate left</button><button type="button" data-pdf-page-edit="rotate-right" data-pdf-edit>Rotate right</button><button type="button" data-pdf-page-edit="earlier" data-pdf-edit>Move earlier</button><button type="button" data-pdf-page-edit="later" data-pdf-edit>Move later</button><button type="button" data-pdf-page-edit="remove" data-pdf-edit>Remove page</button></div>';dialog.insertBefore(tools,dialog.querySelector('.pdf-reader-body'));
     tools.querySelectorAll('[data-pdf-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.pdfTool));tools.querySelectorAll('[data-pdf-page-edit]').forEach(b=>b.onclick=()=>pageEdit(b.dataset.pdfPageEdit));
-    const pane=document.createElement('aside');pane.id='pdfPagesPane';pane.className='pdf-pages-pane';pane.setAttribute('aria-label','PDF pages and search');pane.innerHTML='<div class="pdf-pane-heading">Pages &amp; search</div><div class="pdf-search-field"><input id="pdfSearchText" type="search" maxlength="200" placeholder="Find in document…" aria-label="Find in PDF"><button id="pdfRunSearch" type="button" aria-label="Search PDF">Find</button></div><div class="pdf-search-nav"><button id="pdfSearchPrevious" type="button" aria-label="Previous PDF match">Previous</button><button id="pdfSearchNext" type="button" aria-label="Next PDF match">Next</button></div><div id="pdfSearchResults" class="pdf-search-results"></div><div id="pdfThumbnails"></div>';dialog.querySelector('.pdf-reader-body').prepend(pane);
+    const pane=document.createElement('aside');pane.id='pdfPagesPane';pane.className='pdf-pages-pane';pane.setAttribute('aria-label','PDF pages and search');pane.innerHTML='<div class="pdf-pane-heading">Pages &amp; search</div><div class="pdf-search-field"><input id="pdfSearchText" type="search" maxlength="200" placeholder="Find in document…" aria-label="Find in PDF"><button id="pdfRunSearch" type="button" aria-label="Search PDF">Find</button></div><div class="pdf-search-nav"><button id="pdfSearchPrevious" type="button" aria-label="Previous PDF match">Previous</button><button id="pdfSearchNext" type="button" aria-label="Next PDF match">Next</button></div><div id="pdfSearchResults" class="pdf-search-results"></div><div class="pdf-pane-tabs" role="tablist" aria-label="Document navigation"><button type="button" role="tab" data-pdf-pane="pages" aria-controls="pdfThumbnails">Pages</button><button type="button" role="tab" data-pdf-pane="contents" aria-controls="pdfOutline">Contents</button></div><nav id="pdfOutline" class="pdf-outline" aria-label="PDF contents" hidden></nav><div id="pdfThumbnails"></div>';dialog.querySelector('.pdf-reader-body').prepend(pane);
+    pane.querySelectorAll('[data-pdf-pane]').forEach(b=>b.onclick=()=>showPane(b.dataset.pdfPane));let paneName='pages';try{paneName=localStorage.getItem('pulse-pdf-pane')==='contents'?'contents':'pages';}catch{}showPane(paneName);
     const empty=document.createElement('div');empty.id='pdfEmptyView';empty.className='pdf-empty-view';empty.innerHTML='<span aria-hidden="true">PDF</span><h3>Open a PDF in Pulse</h3><p>Use Find open PDF to retrieve an accessible copy, or attach a PDF from your computer.</p>';el('pdfViewport').prepend(empty);
     el('pdfRunSearch').onclick=search;el('pdfSearchText').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();search();}};el('pdfSearchPrevious').onclick=()=>showMatch(searchIndex-1);el('pdfSearchNext').onclick=()=>showMatch(searchIndex+1);
     const sidebar=el('pdfAnnotationSidebar');sidebar.querySelector('h3').textContent='Properties & comments';
@@ -137,16 +157,16 @@ const PulsePDFEditor=(()=>{
     const redo=document.createElement('button');redo.id='pdfRedo';redo.type='button';redo.textContent='Redo';redo.disabled=true;redo.onclick=()=>restore(future,history);el('pdfUndoAnnotation').after(redo);
     const sidebarToggle=document.createElement('button');sidebarToggle.id='pdfSidebarToggle';sidebarToggle.type='button';sidebarToggle.textContent='Properties & comments';sidebarToggle.setAttribute('aria-controls','pdfAnnotationSidebar');sidebarToggle.setAttribute('aria-expanded','false');sidebarToggle.onclick=()=>{if(sidebarOpen)setTool('select');setSidebarOpen(!sidebarOpen);};dialog.querySelector('.pdf-toolbar').append(sidebarToggle);
     dialog.append(el('pdfReaderStatus'));el('pdfReaderStatus').classList.add('pdf-status-bar');
-    const surface=el('pdfPageSurface');surface.addEventListener('pointerdown',pointerDown);surface.addEventListener('pointermove',pointerMove);surface.addEventListener('pointerup',pointerUp);surface.addEventListener('pointercancel',()=>{drawing=null;paintDraft();});
-    document.addEventListener('pulse:pdf-state',onState);document.addEventListener('pulse:pdf-page',()=>{onState();thumbnails();paintDraft();renderAnnotations();});
+    const stack=el('pdfPageStack');stack.addEventListener('pointerdown',pointerDown);stack.addEventListener('pointermove',pointerMove);stack.addEventListener('pointerup',pointerUp);stack.addEventListener('pointercancel',()=>{const page=drawing?.page;drawing=null;if(page)paintPage(page);});
+    document.addEventListener('pulse:pdf-state',onState);document.addEventListener('pulse:pdf-page',()=>{onState();thumbnails();renderAnnotations();markSection();});document.addEventListener('pulse:pdf-outline',renderOutline);
     dialog.addEventListener('close',()=>{searchController?.abort();thumbObserver?.disconnect();thumbRevision++;thumbQueue=[];identity='';});
     dialog.addEventListener('keydown',event=>{const input=event.target.matches('input,textarea,select,[contenteditable=true]');if(event.metaKey||event.ctrlKey){const key=event.key.toLowerCase();
       if(key==='f'){event.preventDefault();event.stopPropagation();el('pdfSearchText').focus();}
       else if(key==='s'){event.preventDefault();event.stopPropagation();if(editable())exportPDF();else el('pdfDownloadCopy').click();}
       else if(!input&&(key==='z'||key==='y')){event.preventDefault();event.stopPropagation();if(key==='y'||event.shiftKey)restore(future,history);else restore(history,future);}}
     });
-    let width=0,frame=0;new ResizeObserver(entries=>{const next=Math.round(entries[0].contentRect.width);if(next===width)return;width=next;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{if(ctx().open)PulsePDF.drawPage();});}).observe(el('pdfViewport'));
+    let size='',frame=0;new ResizeObserver(entries=>{const box=entries[0].contentRect,next=Math.round(box.width)+'x'+Math.round(box.height);if(next===size)return;size=next;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{if(ctx().open)PulsePDF.drawPage();});}).observe(el('pdfViewport'));
     mode('read');
   });
-  return{checkpoint,viewRect,canonicalRect,renderAnnotations,markupKind:()=>['underline','strikeout'].includes(tool)?tool:'highlight',selectionChanged:()=>{if(editable()&&['highlight','underline','strikeout'].includes(tool))PulsePDF.save();}};
+  return{checkpoint,viewRect,canonicalRect,renderAnnotations,paintPage,markupKind:()=>['underline','strikeout'].includes(tool)?tool:'highlight',selectionChanged:()=>{if(editable()&&['highlight','underline','strikeout'].includes(tool))PulsePDF.save();}};
 })();

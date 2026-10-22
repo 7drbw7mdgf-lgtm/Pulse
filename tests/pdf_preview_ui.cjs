@@ -56,7 +56,7 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
   const denied=await page.evaluate(async id=>{const response=await fetch(backendUrl('/api/reader/passage'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({id,page:1,quote:'This open paper contains a verified passage.'})});return response.status;},identity);
   assert.equal(denied,409,'Backend also enforces read-only preview');
   assert.equal((await fetch(url+'/api/reader/file/'+identity)).status,403,'PDF downloads require the app session');
-  await page.click('#pdfNextPage');await page.waitForFunction(()=>document.querySelector('.pdf-text-layer')?.textContent.includes('limitation'));
+  await page.click('#pdfNextPage');await page.waitForFunction(()=>document.querySelector('#pdfPageSurface .pdf-text-layer')?.textContent.includes('limitation'));
   if(process.env.PULSE_UI_SCREENSHOTS){fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'open-pdf-preview.png')});}
   const download=page.waitForEvent('download');await page.click('#pdfDownloadCopy');const saved=await download;
   assert.equal(saved.suggestedFilename(),'Open paper.pdf');assert.equal(fs.readFileSync(await saved.path()).subarray(0,5).toString(),'%PDF-');
@@ -70,7 +70,7 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
   await page.click('#pdfNextPage');await page.waitForFunction(()=>PulsePDF.context().pageData?.page===2);
   await page.click('#pdfSidebarToggle');assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),false);
   await page.locator('[data-pdf-workspace="comment"]').click();assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),true,'Comment workspace opens its properties');
-  await page.evaluate(()=>{const layer=document.querySelector('.pdf-text-layer'),range=document.createRange();range.selectNodeContents(layer);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);document.getElementById('pdfPageSurface').dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));});
+  await page.evaluate(()=>{const layer=document.querySelector('#pdfPageSurface .pdf-text-layer'),range=document.createRange();range.selectNodeContents(layer);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);document.getElementById('pdfPageSurface').dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));});
   await page.fill('#pdfAnnotationMemo',long);await page.click('#pdfSaveHighlight');await page.waitForFunction(()=>state.papers.find(p=>p.id==='open').pdfAnnotations.length===1);
   const sidebar=await page.locator('#pdfAnnotationSidebar').evaluate(el=>[el.scrollWidth,el.clientWidth]);assert(sidebar[0]<=sidebar[1]+1,'Reader sidebar wraps long text');
   await page.fill('#pdfSearchText','small sample size');await page.click('#pdfRunSearch');
