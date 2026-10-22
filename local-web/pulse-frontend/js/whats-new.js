@@ -9,11 +9,12 @@ const PulseWhatsNew = (() => {
       dialog = document.createElement('dialog');
       dialog.id = 'whatsNewSplashDialog';
       dialog.className = 'pulse-tool-dialog whats-new-dialog';
+      dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','whatsNewTitle');
       dialog.innerHTML = `
         <header>
           <div class="whats-new-header-title">
             <span class="whats-new-badge">v${CURRENT_VERSION}</span>
-            <h2>What's New in Pulse</h2>
+            <h2 id="whatsNewTitle">What's New in Pulse</h2>
             <p class="subtle">A topic map for Trends, graph topology, systematic screening, and large library scaling.</p>
           </div>
           <button type="button" data-close-tool aria-label="Close">×</button>
@@ -77,8 +78,12 @@ const PulseWhatsNew = (() => {
       dialog.querySelectorAll('[data-close-tool], #whatsNewDismissBtn').forEach(btn => {
         btn.onclick = () => {
           dialog.close();
-          try { localStorage.setItem(STORAGE_KEY, CURRENT_VERSION); } catch (_) {}
         };
+      });
+      dialog.addEventListener('close',()=>{
+        state.lastSeenRelease=CURRENT_VERSION;
+        try { localStorage.setItem(STORAGE_KEY,CURRENT_VERSION); } catch (_) {}
+        if(state.autosaveReady)saveLibrary();
       });
     }
     return dialog;
@@ -95,8 +100,9 @@ const PulseWhatsNew = (() => {
 
   function show(force = false) {
     if (!force && isAutomatedTest()) return;
-    let lastSeen = null;
-    try { lastSeen = localStorage.getItem(STORAGE_KEY); } catch (_) {}
+    if(!force&&!state.autosaveReady)return;
+    let lastSeen = state.lastSeenRelease || null;
+    try { lastSeen ||= localStorage.getItem(STORAGE_KEY); } catch (_) {}
     if (force || lastSeen !== CURRENT_VERSION) {
       const dialog = createDialog();
       if (!dialog.open) dialog.showModal();
@@ -105,9 +111,7 @@ const PulseWhatsNew = (() => {
 
   document.addEventListener('DOMContentLoaded', () => {
     // Check and show splash screen on update launch for real user sessions
-    if (!isAutomatedTest()) {
-      setTimeout(() => show(false), 800);
-    }
+    if(state.autosaveReady)show(false);
 
     // Provide re-open button from settings if available
     const settingsPanel = document.querySelector('.settings-card') || document.getElementById('settingsPanel');
@@ -122,6 +126,7 @@ const PulseWhatsNew = (() => {
       settingsPanel.querySelector('.settings-footer, footer, div:last-child')?.append(btn);
     }
   });
+  document.addEventListener('pulse:library-ready',()=>show(false));
 
   return { show, version: CURRENT_VERSION };
 })();

@@ -93,6 +93,7 @@
         mode: state.mode,
         paperView: state.paperView,
         librarySortKey: state.librarySortKey, librarySortAsc: Boolean(state.librarySortAsc),
+        lastSeenRelease: state.lastSeenRelease || '',
         filterTags: state.filterTags || [],
         filterMode: state.filterMode || 'all',
         recommendationSteerKeywords: state.recommendationSteerKeywords,
@@ -217,6 +218,7 @@
       if (['title','group','authors','year','addedAt','journal','citations'].includes(data.librarySortKey)) state.librarySortKey=data.librarySortKey;
       if (typeof data.librarySortAsc==='boolean') state.librarySortAsc=data.librarySortAsc;
       state.mapCameraCheck=true;
+      if(typeof data.lastSeenRelease==='string'&&/^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(data.lastSeenRelease))state.lastSeenRelease=data.lastSeenRelease;
       state.filterTags = Array.isArray(data.filterTags) ? data.filterTags : [];
       state.filterMode = data.filterMode || 'all';
       state.recommendationSteerKeywords = parseSteerKeywords(listText(data.recommendationSteerKeywords));

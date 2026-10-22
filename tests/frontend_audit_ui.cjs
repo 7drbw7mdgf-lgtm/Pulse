@@ -67,7 +67,19 @@ const {spawn}=require('node:child_process'),{chromium}=require('playwright');
    const size=await page.locator('#whatsNewSplashDialog').evaluate(el=>[el.scrollWidth,el.clientWidth]);assert(size[0]<=size[1]+1,'Release dialog fits '+width);
    await screenshot('whats-new-'+width);await page.click('#whatsNewDismissBtn');
   }
+  await page.evaluate(()=>saveLibrary());await page.close();
+  async function freshDesktopSession(){
+   const next=await browser.newPage({viewport:{width:1280,height:900}});next.on('pageerror',e=>errors.push(e.message));
+   await next.addInitScript(()=>Object.defineProperty(navigator,'webdriver',{get:()=>false}));
+   await next.route('**/*',route=>new URL(route.request().url()).origin===url?route.continue():route.abort());
+   await next.goto(url);await next.waitForFunction(()=>state.autosaveReady);return next;
+  }
+  let restarted=await freshDesktopSession();assert.equal(await restarted.locator('#whatsNewSplashDialog[open]').count(),0,'A fresh desktop session respects the saved dismissal');
+  await restarted.evaluate(()=>{state.lastSeenRelease='0.0.0';return saveLibrary();});await restarted.close();
+  restarted=await freshDesktopSession();await restarted.getByRole('dialog',{name:"What's New in Pulse",exact:true}).waitFor({state:'visible'});
+  await restarted.keyboard.press('Escape');await restarted.waitForFunction(()=>state.lastSeenRelease==='2.1.8');await restarted.evaluate(()=>saveLibrary());await restarted.close();
+  restarted=await freshDesktopSession();assert.equal(await restarted.locator('#whatsNewSplashDialog[open]').count(),0,'Escape dismissal survives a fresh desktop session');await restarted.close();
   assert.deepEqual(errors,[]);
-  console.log('PASS: off-screen camera recovery, active-map fit and zoom retention, unclipped map controls, timeline/SVG actions, sortable persisted Date added, unknown legacy dates, duplicate imports, Trends/Timeline themes and responsive release dialog.');
+  console.log('PASS: off-screen camera recovery, active-map fit and zoom retention, unclipped map controls, timeline/SVG actions, sortable persisted Date added, unknown legacy dates, duplicate imports, Trends/Timeline themes, responsive release dialog and durable dismissal including Escape across fresh desktop sessions.');
  }finally{await browser?.close();const stopped=new Promise(resolve=>backend.once('exit',resolve));backend.kill();await stopped;fs.rmSync(profile,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

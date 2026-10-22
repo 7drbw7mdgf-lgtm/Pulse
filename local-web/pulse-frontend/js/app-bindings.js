@@ -300,6 +300,7 @@
     render();
     restoreLibrary().then(restored => {
       state.autosaveReady = restored;
+      document.dispatchEvent(new CustomEvent('pulse:library-ready'));
       const conceptPrefill=new URLSearchParams(location.search).get('concept');
       if(conceptPrefill){state.discoveryResearchQuestion=conceptPrefill.slice(0,1000);syncDiscoveryControls();}
       render();
