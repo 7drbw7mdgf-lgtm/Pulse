@@ -4,7 +4,7 @@
   if (!menu || !summary) return;
 
   function sizeMenu() {
-    const canvas = menu.closest('.pulse-col-canvas');
+    const canvas = menu.closest('.pulse-main-viewport')?.querySelector('.pulse-workspace-cols');
     const dock = menu.closest('.canvas-dock-modern');
     if (!canvas || !dock) return;
     const available = Math.max(0, dock.getBoundingClientRect().top - canvas.getBoundingClientRect().top - 16);
@@ -23,7 +23,7 @@
   if (typeof ResizeObserver === 'function') {
     const observer = new ResizeObserver(sizeMenu);
     observer.observe(menu.closest('.canvas-dock-modern'));
-    observer.observe(menu.closest('.pulse-col-canvas'));
+    observer.observe(menu.closest('.pulse-main-viewport'));
   }
   sizeMenu();
   document.addEventListener('pointerdown', event => {

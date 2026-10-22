@@ -3,16 +3,7 @@
 <title>Pulse v2.1.4 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=2.1.4-rail-cleanup">
 <link rel="icon" type="image/png" href="favicon.png?v=2.0.2"> <link rel="stylesheet" href="css/search-workflow.css?v=2.1.4-layout3"><link rel="stylesheet" href="css/discovery-options.css?v=1">
 </head> <body> <div class="pulse-app-root" id="app">
-<!-- 1. LEFT VERTICAL NAVIGATION RAIL (Dark Indigo Theme) -->
-<aside class="pulse-nav-rail" aria-label="Workspace navigation"> <nav class="rail-menu">
-<button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
-<button class="rail-item" data-rail="library" id="railLibraryBtn" type="button" title="Toggle Library Panel"> <span data-feather="book-open"></span> <span>Library</span> </button>
-<button class="rail-item" data-rail="bibliography" id="railBibliographyBtn" type="button" title="Bibliography: the whole library as a sortable table"> <span data-feather="list"></span> <span>Bibliography</span> </button>
-<button class="rail-item" data-rail="trends" type="button" title="Literature trends & clusters"> <span data-feather="trending-up"></span> <span>Trends</span> </button>
-<button class="rail-item" data-rail="timeline" type="button" title="Papers in chronological order"> <span data-feather="clock"></span> <span>Timeline</span> </button>
-<button class="rail-item" data-rail="settings" id="railSettingsBtn" type="button" title="Settings & backend"> <span data-feather="settings"></span> <span>Settings</span> </button>
-</nav>
-</aside>
+
 <input id="importInput" type="file" multiple accept=".txt,.md,.csv,.bib,.ris,.pdf,.json,.xml,.enw" hidden>
 <div id="railAddPopover" class="rail-add-popover" role="dialog" aria-labelledby="railAddTitle" hidden>
 <div class="popover-heading"><strong id="railAddTitle">Add a paper</strong><button id="railAddClose" type="button" aria-label="Close add paper">×</button></div> <div class="header-search-wrap"> <span data-feather="search" class="header-search-icon"></span>
@@ -155,9 +146,18 @@
 <p>Each node is a scientific paper. Connections grow stronger when publications share methods, citations, or concepts.</p>
 <p class="empty-hint">Drop paper files here, use <strong>⌘/Ctrl+I</strong> to import, or search for papers above.</p> </div> </div>
 </div>
-<!-- Graph controls have their own space below the map. -->
+<!-- HIDDEN / ACCESSIBLE TITLES & FILTERS -->
+<h1 id="canvasMainTitle" style="display:none">Relatedness graph</h1> <p id="statusText" style="display:none">Add papers to begin.</p>
+<div id="canvasFilterBar" hidden><div id="canvasFilterTags"></div><button id="canvasClearFilterButton">Clear</button></div> </section>
+<!-- COLUMN 3: RIGHT INSPECTOR (PAPER DETAILS) -->
+<aside id="details" class="pulse-col-inspector" aria-label="Paper details">
+<div class="inspector-panel-header"><div class="inspector-nav"><button id="inspectorPrev" class="inspector-panel-button" type="button" aria-label="Previous paper in library" title="Previous paper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button><span id="inspectorPosition" class="inspector-position" aria-live="polite">Paper details</span><button id="inspectorNext" class="inspector-panel-button" type="button" aria-label="Next paper in library" title="Next paper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button></div><button id="inspectorToggle" class="inspector-panel-button" type="button" aria-label="Hide paper details" title="Hide paper details" aria-controls="details" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M8 9l3 3-3 3"></path></svg></button></div>
+<div id="detailsContent" class="inspector-content"><!-- Rendered dynamically by renderDetails() --></div>
+</aside> </div>
+<!-- Map controls and workspace navigation stay available below every view. -->
 <div class="map-controls-footer">
-<div class="canvas-dock-modern" role="toolbar" aria-label="Map controls">
+<div class="canvas-dock-modern" role="group" aria-label="Map and workspace controls">
+<div class="dock-map-controls" role="toolbar" aria-label="Map controls">
 <div class="dock-row dock-row-top">
 <label class="dock-dropdown-label"><span>Layout</span><select id="canvasLayoutSelect" aria-label="Graph layout"><option value="network">Force</option><option value="clusters">Clusters</option><option value="radial">Radial</option></select></label>
 <label class="dock-dropdown-label dock-link-control"><span>Links</span><select id="canvasLinksSelect" aria-label="Link types"><option value="all">All</option><option value="similarity">Similarity</option><option value="citation">Citations</option><option value="bibliographic">Bibliographic</option><option value="cocitation">Co-citation</option></select></label>
@@ -185,15 +185,17 @@
 </div>
 </div>
 </div>
+<nav class="pulse-nav-rail" aria-label="Workspace navigation"><div class="rail-menu">
+<button class="rail-item" data-rail="library" id="railLibraryBtn" type="button" title="Toggle Library Panel"> <span data-feather="book-open"></span> <span>Library</span> </button>
+<button class="rail-item active" data-rail="network" type="button" title="Network visualization"> <span data-feather="share-2"></span> <span>Network</span> </button>
+<button class="rail-item" data-rail="bibliography" id="railBibliographyBtn" type="button" title="Bibliography: the whole library as a sortable table"> <span data-feather="list"></span> <span>Bibliography</span> </button>
+<button class="rail-item" data-rail="trends" type="button" title="Literature trends & clusters"> <span data-feather="trending-up"></span> <span>Trends</span> </button>
+<button class="rail-item" data-rail="timeline" type="button" title="Papers in chronological order"> <span data-feather="clock"></span> <span>Timeline</span> </button>
+<button class="rail-item" data-rail="settings" id="railSettingsBtn" type="button" title="Settings & backend"> <span data-feather="settings"></span> <span>Settings</span> </button>
+</div></nav>
 </div>
-<!-- HIDDEN / ACCESSIBLE TITLES & FILTERS -->
-<h1 id="canvasMainTitle" style="display:none">Relatedness graph</h1> <p id="statusText" style="display:none">Add papers to begin.</p>
-<div id="canvasFilterBar" hidden><div id="canvasFilterTags"></div><button id="canvasClearFilterButton">Clear</button></div> </section>
-<!-- COLUMN 3: RIGHT INSPECTOR (PAPER DETAILS) -->
-<aside id="details" class="pulse-col-inspector" aria-label="Paper details">
-<div class="inspector-panel-header"><div class="inspector-nav"><button id="inspectorPrev" class="inspector-panel-button" type="button" aria-label="Previous paper in library" title="Previous paper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button><span id="inspectorPosition" class="inspector-position" aria-live="polite">Paper details</span><button id="inspectorNext" class="inspector-panel-button" type="button" aria-label="Next paper in library" title="Next paper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button></div><button id="inspectorToggle" class="inspector-panel-button" type="button" aria-label="Hide paper details" title="Hide paper details" aria-controls="details" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16M8 9l3 3-3 3"></path></svg></button></div>
-<div id="detailsContent" class="inspector-content"><!-- Rendered dynamically by renderDetails() --></div>
-</aside> </div> </div> </div>
+</div>
+</div> </div>
 <!-- FLOATING PANELS (Style, Areas, Linkages, AI Analyst) -->
 <aside id="graphPanel" class="graph-panel card floating-overlay-card" hidden> <div class="card-head"> <div> <h2>Graph style</h2>
 <p class="subtle">Tune layout spacing and node visuals.</p> </div>
@@ -665,6 +667,6 @@
 <script src="js/library-tools.js?v=1"></script>
 <link rel="stylesheet" href="css/pdf-reader.css?v=preview-1">
 <script src="js/pdf-reader.js?v=preview-1"></script>
-<link rel="stylesheet" href="css/map-toolbar.css?v=two-rows-top-totals-5">
-<script src="js/map-toolbar.js?v=1"></script>
+<link rel="stylesheet" href="css/map-toolbar.css?v=bottom-navigation-6">
+<script src="js/map-toolbar.js?v=bottom-navigation-2"></script>
 <script src="js/part_21.js?v=2.1.4-rail-cleanup"></script> <script src="js/part_22.js?v=2.1.4"></script> </body> </html>

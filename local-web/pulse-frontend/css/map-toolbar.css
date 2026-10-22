@@ -1,8 +1,8 @@
-/* Keep the toolbar below the map, with secondary controls in an upward disclosure. */
+/* Keep map controls and workspace navigation below every view. */
 .map-controls-footer {
   align-self:center;
   flex:none;
-  width:420px;
+  width:660px;
   max-width:calc(100% - 24px);
   margin:8px 12px 12px;
 }
@@ -28,7 +28,7 @@
 .inspector-hidden .map-totals-pill { right:52px; }
 .map-viewport:has(#timelineView:not([hidden]), #trendsView:not([hidden])) .map-totals-pill { display:none; }
 .map-totals-pill strong { color:var(--ink-2); font-weight:600; font-variant-numeric:tabular-nums; }
-.canvas-dock-modern,
+.map-controls-footer .canvas-dock-modern,
 :root[data-theme="dark"] .canvas-dock-modern {
   position:relative;
   inset:auto;
@@ -50,8 +50,16 @@
   backdrop-filter:none;
   font-family:var(--font-ui);
 }
-.canvas-dock-modern .dock-row { justify-content:flex-start; gap:8px; }
-.canvas-dock-modern .dock-row-top { padding:0 0 8px; border-bottom:1px solid var(--line); }
+.dock-map-controls { display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px; }
+.canvas-dock-modern .dock-row { display:contents; }
+.map-controls-footer .canvas-dock-modern .pulse-nav-rail { display:block; width:100%; height:auto; padding:8px 0 0; border:0; border-top:1px solid var(--line); background:transparent; color:var(--ink); z-index:auto; }
+.canvas-dock-modern .rail-menu { flex-direction:row; flex-wrap:wrap; gap:4px; padding:0; }
+.canvas-dock-modern .rail-item { flex:1 0 auto; justify-content:center; gap:6px; width:auto; min-height:32px; padding:6px 8px; border-radius:6px; color:var(--ink-2); font:500 11px var(--font-ui); }
+.canvas-dock-modern .rail-item svg { width:14px; height:14px; flex:none; }
+.canvas-dock-modern .rail-item:hover { color:var(--accent); background:var(--accent-soft); }
+.canvas-dock-modern .rail-item.active { color:var(--accent-ink); background:var(--accent); box-shadow:none; }
+:is(.trends-active,.timeline-active,.library-fullscreen) .dock-map-controls { display:none; }
+:is(.trends-active,.timeline-active,.library-fullscreen) .canvas-dock-modern .pulse-nav-rail { padding-top:0; border-top:0; }
 .canvas-dock-modern .dock-dropdown-label { display:flex; flex-direction:column; align-items:stretch; flex:0 1 64px; min-width:58px; gap:3px; color:var(--muted); font-size:10px; font-weight:500; }
 .canvas-dock-modern .dock-link-control { flex-basis:74px; min-width:64px; }
 .canvas-dock-modern .dock-dropdown-label select {

@@ -31,6 +31,28 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     await page.waitForFunction(() => state.autosaveReady && document.querySelectorAll('#map .node').length === 2);
     assert.equal(await page.locator('.canvas-dock-modern #metricPapers').count(),0,'Map totals sit outside the controls');
     assert.equal(await page.locator('.map-totals-pill #metricPapers').innerText(),'2');
+    assert.equal(await page.locator('#app > .pulse-nav-rail').count(),0,'The vertical sidebar is removed');
+    const navigation=page.locator('.map-controls-footer nav[aria-label="Workspace navigation"]');
+    assert.equal(await navigation.locator('[data-rail]').first().getAttribute('data-rail'),'library','Library comes first in the bottom navigation');
+    assert((await page.locator('#colLibrary').boundingBox()).x<=1,'The paper list occupies the left edge of the window');
+    await page.click('#railLibraryBtn');
+    await page.waitForFunction(()=>document.getElementById('colLibrary').classList.contains('is-swiped-hidden'));
+    await page.click('#railLibraryBtn');
+    await page.waitForFunction(()=>!document.getElementById('colLibrary').classList.contains('is-swiped-hidden'));
+    for(const [rail,view] of [['trends','#trendsView'],['timeline','#timelineView']]){
+      await navigation.locator(`[data-rail="${rail}"]`).click();
+      assert.equal(await page.locator(view).isVisible(),true);
+      assert.equal(await navigation.locator(`[data-rail="${rail}"]`).getAttribute('aria-current'),'page');
+    }
+    await page.click('#railBibliographyBtn');
+    assert.equal(await page.locator('#app').evaluate(el=>el.classList.contains('library-fullscreen')),true);
+    assert.equal(await navigation.isVisible(),true,'Bottom navigation remains usable in full-width Bibliography');
+    await navigation.locator('[data-rail="network"]').click();
+    assert.equal(await page.locator('.pulse-col-canvas').isVisible(),true);
+    await page.click('#railSettingsBtn');
+    assert.equal(await page.locator('#settingsPanel').isVisible(),true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#settingsPanel').isVisible(),false);
     const chooserReady = page.waitForEvent('filechooser');
     await page.keyboard.press('Control+i');
     assert.equal((await chooserReady).isMultiple(),true,'Import shortcut still opens the file chooser without rail buttons');
@@ -92,17 +114,23 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     await page.setViewportSize({width:1457,height:1031});
     await page.evaluate(()=>els.app.style.setProperty('--library-width','220px'));
     await page.waitForFunction(()=>Math.abs(document.getElementById('colLibrary').getBoundingClientRect().width-220)<1);
-    const controls=['#mapModePan','#mapModeSelect','#mapClearAll','#mapToolsMenu > summary'];
+    const controls=['#canvasLayoutSelect','#canvasLinksSelect','#threshold','#mapModePan','#mapModeSelect','#mapClearAll','#mapToolsMenu > summary'];
     const centers=[];
     for(const selector of controls){const box=await page.locator(selector).boundingBox();centers.push(box.y+box.height/2);}
-    assert(Math.max(...centers)-Math.min(...centers)<=4,'Pointer and action controls share the second row');
-    const fields=await page.locator('.dock-row-top').boundingBox(), actions=await page.locator('.dock-row-bottom').boundingBox();
-    assert(actions.y>=fields.y+fields.height+6,'Map controls stay in two distinct rows');
+    assert(Math.max(...centers)-Math.min(...centers)<=4,'Map controls share the first row');
+    const fields=await page.locator('.dock-map-controls').boundingBox(), actions=await navigation.boundingBox();
+    assert(actions.y>=fields.y+fields.height+6,'Workspace navigation occupies the second row');
     assert((await page.locator('#canvasLayoutSelect').boundingBox()).width<=64,'Layout field is compact');
     assert((await page.locator('#canvasLinksSelect').boundingBox()).width<=74,'Links field is compact');
     const compactMap=await page.locator('.map-viewport').boundingBox(), compactTotals=await page.locator('.map-totals-pill').boundingBox();
     assert(Math.abs(compactTotals.y-compactMap.y-12)<=1 && Math.abs(compactMap.x+compactMap.width-compactTotals.x-compactTotals.width-12)<=1,'Map totals sit at the top right of the map');
-    if(process.env.PULSE_UI_SCREENSHOTS){fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});await page.locator('.map-controls-footer').screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'map-controls-two-rows.png')});}
+    if(process.env.PULSE_UI_SCREENSHOTS){
+      fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});
+      await page.locator('#networkSearchInput').focus();
+      await page.waitForFunction(()=>Number(getComputedStyle(document.getElementById('toast')).opacity)<.01);
+      await page.locator('.map-controls-footer').screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'bottom-navigation-controls.png')});
+      await page.screenshot({path:path.join(process.env.PULSE_UI_SCREENSHOTS,'bottom-navigation-workspace.png')});
+    }
     await page.click('#inspectorToggle');
     for (const size of [{width:1440,height:1031},{width:976,height:1031},{width:800,height:720}]) {
       await page.setViewportSize(size);
@@ -116,14 +144,14 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
       assert(totals.x+totals.width<=reopen.x-6,'Map totals leave room for the inspector button at '+size.width+'px');
       assert.equal(await page.locator('.canvas-dock-modern').evaluate(el => el.scrollWidth <= el.clientWidth + 1), true, 'Toolbar fits '+size.width+'px');
       await trigger.click();
-      await page.waitForFunction(() => document.getElementById('mapToolsPopup').getBoundingClientRect().top >= document.querySelector('.pulse-col-canvas').getBoundingClientRect().top);
+      await page.waitForFunction(() => document.getElementById('mapToolsPopup').getBoundingClientRect().top >= document.querySelector('.pulse-workspace-cols').getBoundingClientRect().top);
       const popup = await page.locator('#mapToolsPopup').boundingBox();
-      const canvas = await page.locator('.pulse-col-canvas').boundingBox();
+      const canvas = await page.locator('.pulse-main-viewport').boundingBox();
       assert(popup.y >= canvas.y && popup.x >= canvas.x && popup.x + popup.width <= canvas.x + canvas.width + 1, 'Tools fit within the canvas: '+JSON.stringify({size,popup,canvas}));
       await page.keyboard.press('Escape');
     }
     assert.deepEqual(errors, []);
-    console.log('PASS: map tools keyboard/outside dismissal, focus, labels, panels, spacing, pointer modes, clear/undo, layout, links, threshold and responsive toolbar bounds.');
+    console.log('PASS: bottom navigation with Library first, all workspace views, full-width Bibliography, Settings, map tools, pointer modes, clear/undo, compact fields, top-right totals and responsive bounds.');
   } finally {
     await browser?.close();
     const stopped = new Promise(resolve => backend.once('exit', resolve)); backend.kill(); await stopped;
