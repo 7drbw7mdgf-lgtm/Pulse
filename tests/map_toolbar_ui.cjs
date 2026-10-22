@@ -23,8 +23,9 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
       backend.once('exit', code => { clearTimeout(timer); reject(Error('Backend exited '+code)); });
     });
     browser = await chromium.launch({headless:true});
-    const page = await browser.newPage({viewport:{width:1440,height:1031}}), errors = [];
+    const page = await browser.newPage({viewport:{width:1440,height:1031}}), errors = [], reportedErrors=[];
     page.on('pageerror', error => errors.push(error.message));
+    page.on('request',request=>{if(request.url().endsWith('/api/crash-reports/record'))reportedErrors.push(request.postDataJSON());});
     await page.route('**/*', route => new URL(route.request().url()).origin === url ? route.continue() : route.abort());
     await page.route('**/api/metadata/**', route => route.fulfill({json:{ok:true,matched:false,metadata:{}}}));
     await page.goto(url);
@@ -124,6 +125,12 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     assert((await page.locator('#canvasLinksSelect').boundingBox()).width<=74,'Links field is compact');
     const compactMap=await page.locator('.map-viewport').boundingBox(), compactTotals=await page.locator('.map-totals-pill').boundingBox();
     assert(Math.abs(compactTotals.y-compactMap.y-12)<=1 && Math.abs(compactMap.x+compactMap.width-compactTotals.x-compactTotals.width-12)<=1,'Map totals sit at the top right of the map');
+    await page.setViewportSize({width:1261,height:1031});
+    await page.waitForFunction(()=>{
+      const map=document.querySelector('.map-viewport').getBoundingClientRect(),dock=document.querySelector('.canvas-dock-modern').getBoundingClientRect();
+      return dock.left>=map.left && dock.right<=map.right && dock.bottom<=map.bottom && dock.top>map.top;
+    });
+    assert.equal(await page.locator('.pulse-workspace-cols > .map-controls-footer').count(),1,'Controls use the map overlay without a separate bottom strip');
     if(process.env.PULSE_UI_SCREENSHOTS){
       fs.mkdirSync(process.env.PULSE_UI_SCREENSHOTS,{recursive:true});
       await page.locator('#networkSearchInput').focus();
@@ -137,7 +144,12 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
       const dock = await page.locator('.canvas-dock-modern').boundingBox();
       const footer = await page.locator('.map-controls-footer').boundingBox();
       const map = await page.locator('#map').boundingBox();
-      assert(map.y + map.height <= dock.y + 1, 'Controls stay outside the graph viewport');
+      await page.waitForFunction(()=>{
+        const map=document.querySelector('.map-viewport').getBoundingClientRect(),dock=document.querySelector('.canvas-dock-modern').getBoundingClientRect();
+        return dock.left>=map.left && dock.right<=map.right && dock.bottom<=map.bottom && dock.top>map.top;
+      });
+      const overlay=await page.locator('.canvas-dock-modern').boundingBox();
+      assert(overlay.y>=map.y && overlay.y+overlay.height<=map.y+map.height,'Controls float inside the map');
       assert(footer.y + footer.height <= size.height, 'The toolbar stays on screen');
       assert.equal(await page.locator('.map-controls-footer').evaluate(el => el.scrollWidth <= el.clientWidth + 1), true, 'Toolbar fits '+size.width+'px');
       const totals=await page.locator('.map-totals-pill').boundingBox(), reopen=await page.locator('#inspectorReopen').boundingBox();
@@ -146,11 +158,12 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
       await trigger.click();
       await page.waitForFunction(() => document.getElementById('mapToolsPopup').getBoundingClientRect().top >= document.querySelector('.pulse-workspace-cols').getBoundingClientRect().top);
       const popup = await page.locator('#mapToolsPopup').boundingBox();
-      const canvas = await page.locator('.pulse-main-viewport').boundingBox();
+      const canvas = await page.locator('.map-viewport').boundingBox();
       assert(popup.y >= canvas.y && popup.x >= canvas.x && popup.x + popup.width <= canvas.x + canvas.width + 1, 'Tools fit within the canvas: '+JSON.stringify({size,popup,canvas}));
       await page.keyboard.press('Escape');
     }
     assert.deepEqual(errors, []);
+    assert.deepEqual(reportedErrors,[],'No browser resize warnings or unhandled errors are recorded');
     console.log('PASS: bottom navigation with Library first, all workspace views, full-width Bibliography, Settings, map tools, pointer modes, clear/undo, compact fields, top-right totals and responsive bounds.');
   } finally {
     await browser?.close();

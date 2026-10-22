@@ -1,10 +1,15 @@
-/* Keep map controls and workspace navigation below every view. */
+/* Float controls inside the map without taking height from the side panels. */
 .map-controls-footer {
-  align-self:center;
-  flex:none;
-  width:660px;
-  max-width:calc(100% - 24px);
-  margin:8px 12px 12px;
+  position:absolute;
+  bottom:12px;
+  left:var(--map-dock-left,0px);
+  width:var(--map-dock-width,100%);
+  box-sizing:border-box;
+  padding:0 12px;
+  display:flex;
+  justify-content:center;
+  pointer-events:none;
+  z-index:20;
 }
 .map-totals-pill {
   position:absolute;
@@ -36,7 +41,7 @@
   display:flex;
   flex-direction:column;
   flex:none;
-  width:100%;
+  width:660px;
   max-width:100%;
   min-width:0;
   margin:0;
@@ -49,7 +54,9 @@
   box-shadow:0 2px 8px rgba(0,0,0,.05);
   backdrop-filter:none;
   font-family:var(--font-ui);
+  pointer-events:auto;
 }
+:is(.trends-active,.timeline-active) :is(.trends-view,.timeline-view), .library-fullscreen .pulse-paper-list { padding-bottom:calc(var(--map-dock-height,64px) + 24px); }
 .dock-map-controls { display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px; }
 .canvas-dock-modern .dock-row { display:contents; }
 .map-controls-footer .canvas-dock-modern .pulse-nav-rail { display:block; width:100%; height:auto; padding:8px 0 0; border:0; border-top:1px solid var(--line); background:transparent; color:var(--ink); z-index:auto; }

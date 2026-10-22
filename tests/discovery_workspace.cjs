@@ -133,9 +133,11 @@ const {chromium} = require('playwright');
     assert.equal(await page.locator('#clearButton').isVisible(),false);
     for (const size of [{width:1547,height:1031},{width:1024,height:720}]) {
       await page.setViewportSize(size);
-      const map = await page.locator('#map').boundingBox(), dock = await page.locator('.canvas-dock-modern').boundingBox();
-      assert(map.y+map.height <= dock.y+1, 'Graph controls must never overlap the SVG, even after panning');
-      assert.equal(await page.locator('.map-viewport .canvas-dock-modern').count(),0);
+      await page.waitForFunction(()=>{
+        const map=document.querySelector('.map-viewport').getBoundingClientRect(),dock=document.querySelector('.canvas-dock-modern').getBoundingClientRect();
+        return dock.left>=map.left && dock.right<=map.right && dock.top>=map.top && dock.bottom<=map.bottom;
+      });
+      assert.equal(await page.locator('.pulse-main-viewport > .map-controls-footer').count(),0,'Map controls no longer reserve a separate strip below the workspace');
     }
     await page.setViewportSize({width:1547,height:1031});
     await page.evaluate(() => {

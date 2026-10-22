@@ -1,13 +1,22 @@
 (() => {
   const menu = document.getElementById('mapToolsMenu');
   const summary = menu?.querySelector('summary');
-  if (!menu || !summary) return;
+  const workspace = menu?.closest('.pulse-workspace-cols');
+  const footer = menu?.closest('.map-controls-footer');
+  const dock = menu?.closest('.canvas-dock-modern');
+  const mapViewport = workspace?.querySelector('.map-viewport');
+  if (!menu || !summary || !workspace || !footer || !dock || !mapViewport) return;
 
   function sizeMenu() {
-    const canvas = menu.closest('.pulse-main-viewport')?.querySelector('.pulse-workspace-cols');
-    const dock = menu.closest('.canvas-dock-modern');
-    if (!canvas || !dock) return;
-    const available = Math.max(0, dock.getBoundingClientRect().top - canvas.getBoundingClientRect().top - 16);
+    const workspaceBox = workspace.getBoundingClientRect();
+    const mapBox = mapViewport.getBoundingClientRect();
+    // Full-width Bibliography hides the map; keep its navigation available.
+    const bounds = mapBox.width > 0 ? mapBox : workspaceBox;
+    footer.style.setProperty('--map-dock-left', `${bounds.left - workspaceBox.left}px`);
+    footer.style.setProperty('--map-dock-width', `${bounds.width}px`);
+    const dockBox = dock.getBoundingClientRect();
+    workspace.style.setProperty('--map-dock-height', `${Math.ceil(dockBox.height)}px`);
+    const available = Math.max(0, dockBox.top - bounds.top - 16);
     menu.style.setProperty('--map-tools-height', `${available}px`);
   }
 
@@ -17,13 +26,25 @@
     if (returnFocus) summary.focus({ preventScroll: true });
   }
 
+  let layoutFrame = 0;
+  function scheduleLayout() {
+    if (layoutFrame) return;
+    // Apply geometry after ResizeObserver delivery so resizing the dock cannot
+    // trigger another notification in the same delivery cycle.
+    layoutFrame = requestAnimationFrame(() => {
+      layoutFrame = 0;
+      sizeMenu();
+    });
+  }
+
   // Native details supplies keyboard opening and the expanded state.
-  menu.addEventListener('toggle', sizeMenu);
-  window.addEventListener('resize', sizeMenu);
+  menu.addEventListener('toggle', scheduleLayout);
+  window.addEventListener('resize', scheduleLayout);
   if (typeof ResizeObserver === 'function') {
-    const observer = new ResizeObserver(sizeMenu);
-    observer.observe(menu.closest('.canvas-dock-modern'));
-    observer.observe(menu.closest('.pulse-main-viewport'));
+    const observer = new ResizeObserver(scheduleLayout);
+    observer.observe(dock);
+    observer.observe(workspace);
+    observer.observe(mapViewport);
   }
   sizeMenu();
   document.addEventListener('pointerdown', event => {
