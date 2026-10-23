@@ -1,4 +1,4 @@
-/* Automatic organic boundary envelopes and thematic badges around research clusters. */
+/* Automatic organic boundary envelopes around research clusters. */
 function renderClusterHulls(papers, clusters) {
   if (!Array.isArray(clusters) || clusters.length < 2 || !Array.isArray(papers) || papers.length < 3) return '';
   const paperMap = new Map(papers.map(p => [p.id, p]));
@@ -50,23 +50,6 @@ function renderClusterHulls(papers, clusters) {
     return d;
   }
 
-  function clusterThemeTitle(clusterPapers, idx) {
-    const termCounts = new Map();
-    for (const p of clusterPapers) {
-      const terms = typeof displayKeywords === 'function' ? displayKeywords(p) : (p.keywords || []);
-      for (const t of terms) {
-        if (!t || t.length < 3) continue;
-        const norm = t.toLowerCase();
-        termCounts.set(norm, (termCounts.get(norm) || 0) + 1);
-      }
-    }
-    const sorted = [...termCounts.entries()].sort((a, b) => b[1] - a[1]);
-    if (sorted.length) {
-      return sorted[0][0].replace(/\b\w/g, c => c.toUpperCase());
-    }
-    return `Subfield ${idx + 1}`;
-  }
-
   return clusters.map((clusterIds, idx) => {
     const clusterPapers = clusterIds.map(id => paperMap.get(id)).filter(p => p && Number.isFinite(p.x) && Number.isFinite(p.y));
     if (clusterPapers.length < 2) return '';
@@ -77,19 +60,9 @@ function renderClusterHulls(papers, clusters) {
     const pathData = smoothPath(expanded);
     if (!pathData) return '';
 
-    const title = clusterThemeTitle(clusterPapers, idx);
-    const theme = title.length>42?title.slice(0,39)+'…':title;
-    const minX = Math.min(...expanded.map(p => p.x));
-    const minY = Math.min(...expanded.map(p => p.y));
-    const labelW = Math.max(90, theme.length * 7.5 + 24);
-
     return `
       <g class="cluster-boundary" data-cluster-index="${idx}">
         <path class="cluster-hull-path" d="${pathData}" fill="${color}" stroke="${color}" />
-        <g class="cluster-hull-badge" transform="translate(${(minX + 8).toFixed(1)}, ${(minY - 24).toFixed(1)})">
-          <rect x="0" y="0" width="${labelW.toFixed(1)}" height="20" rx="10" stroke="${color}" />
-          <text x="10" y="14">${escapeHtml(theme)}</text>
-        </g>
       </g>
     `;
   }).join('');

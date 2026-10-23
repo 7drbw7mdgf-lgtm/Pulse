@@ -19,17 +19,14 @@ const {spawn}=require('node:child_process'),{chromium}=require('playwright');
   const ready=(count=3)=>page.waitForFunction(count=>state.autosaveReady&&document.querySelectorAll('#map .node').length===count&&!state.graphAnalysisPending&&!state.graphLayoutPending&&!isRecenteringAnimation,count);
   const bounds=()=>page.evaluate(()=>{
    const map=els.map.getBoundingClientRect(),dock=document.querySelector('.canvas-dock-modern').getBoundingClientRect();
-   return [...els.map.querySelectorAll('.node,.cluster-hull-badge')].map(node=>{const r=node.getBoundingClientRect();return {name:node.dataset.id||'topic badge',left:r.left-map.left,top:r.top-map.top,right:map.right-r.right,bottom:Math.min(map.bottom,dock.top)-r.bottom};});
+   return [...els.map.querySelectorAll('.node')].map(node=>{const r=node.getBoundingClientRect();return {name:node.dataset.id,left:r.left-map.left,top:r.top-map.top,right:map.right-r.right,bottom:Math.min(map.bottom,dock.top)-r.bottom};});
   });
   const assertFits=async()=>{for(const item of await bounds())for(const side of ['left','right','top','bottom'])assert(item[side]>=10,`${item.name} clipped at ${side}: ${JSON.stringify(item)}`);};
   await ready();await assertFits();
   assert.equal(await page.evaluate(()=>state.graphPerformance.workerJobs>0),true,'Exercises the background analysis used by real libraries');
-  const envelope=await page.locator('.cluster-boundary').filter({has:page.locator('.cluster-hull-badge',{hasText:'Reactive Oxygen Species'})}).evaluate(el=>{
-   const hull=el.querySelector('path').getBBox(),badge=el.querySelector('.cluster-hull-badge').getBoundingClientRect();
-   const overlaps=[...document.querySelectorAll('#map .node-main-circle')].some(circle=>{const r=circle.getBoundingClientRect();return r.left<badge.right&&r.right>badge.left&&r.top<badge.bottom&&r.bottom>badge.top;});
-   return {height:hull.height,overlaps};
-  });
-  assert(envelope.height>60,'A two-paper collinear group has a filled envelope');assert.equal(envelope.overlaps,false,'Topic badge clears all paper nodes');
+  const group=await page.evaluate(()=>state.clusters.findIndex(ids=>ids.includes('paper-0')&&ids.includes('paper-1')));
+  const envelopeHeight=await page.locator(`.cluster-boundary[data-cluster-index="${group}"] path`).evaluate(el=>el.getBBox().height);
+  assert(envelopeHeight>60,'A two-paper collinear group has a filled envelope');
   await page.locator('#map .node[data-id="paper-0"]').dblclick();await ready();await assertFits();
   await page.locator('#map').click({position:{x:300,y:30}});await page.waitForFunction(()=>!state.centerId&&!isRecenteringAnimation);await assertFits();
   await page.evaluate(()=>zoomCanvasAt(500,400,.88));const camera=await page.evaluate(()=>({...state.view}));await page.evaluate(()=>render());
@@ -44,6 +41,6 @@ const {spawn}=require('node:child_process'),{chromium}=require('playwright');
   await page.evaluate(()=>saveLibrary());await page.reload();await ready();await assertFits();
   await page.click('[data-action="switch-map-tab"][data-map-id="map-2"]');await ready(141);await assertFits();
   assert.equal(await page.evaluate(()=>state.papers.length),144,'Map repair preserves the full library');assert.deepEqual(errors,[]);
-  console.log('PASS: partially clipped saved camera with background analysis; labels and badges clear the floating toolbar; two-paper envelopes have area; focus/clear, styling, resize, reload and a 141-paper worker layout remain visible; manual zoom survives redraw.');
+  console.log('PASS: partially clipped saved camera with background analysis; paper labels clear the floating toolbar; two-paper envelopes have area; focus/clear, styling, resize, reload and a 141-paper worker layout remain visible; manual zoom survives redraw.');
  }finally{await browser?.close();const stopped=new Promise(resolve=>backend.once('exit',resolve));backend.kill();await stopped;fs.rmSync(profile,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});
