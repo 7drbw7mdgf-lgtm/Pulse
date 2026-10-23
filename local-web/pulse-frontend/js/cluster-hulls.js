@@ -25,21 +25,10 @@ function renderClusterHulls(papers, clusters) {
   }
 
   function expandHull(hull, padding = 42) {
-    if (!hull.length) return [];
-    if (hull.length === 1) {
-      const p = hull[0];
-      return [
-        { x: p.x - padding, y: p.y - padding }, { x: p.x + padding, y: p.y - padding },
-        { x: p.x + padding, y: p.y + padding }, { x: p.x - padding, y: p.y + padding }
-      ];
-    }
-    const cx = hull.reduce((sum, p) => sum + p.x, 0) / hull.length;
-    const cy = hull.reduce((sum, p) => sum + p.y, 0) / hull.length;
-    return hull.map(p => {
-      const dx = p.x - cx, dy = p.y - cy;
-      const dist = Math.hypot(dx, dy) || 1;
-      return { x: p.x + (dx / dist) * padding, y: p.y + (dy / dist) * padding };
-    });
+    // A padded envelope needs area even when two papers (or an entire group) lie on a line.
+    return convexHull(hull.flatMap(p=>Array.from({length:12},(_,i)=>({
+      x:p.x+Math.cos(i*Math.PI/6)*padding,y:p.y+Math.sin(i*Math.PI/6)*padding
+    }))));
   }
 
   function smoothPath(pts) {
@@ -48,7 +37,8 @@ function renderClusterHulls(papers, clusters) {
       const [a, b] = pts;
       return `M ${a.x.toFixed(1)} ${a.y.toFixed(1)} L ${b.x.toFixed(1)} ${b.y.toFixed(1)} Z`;
     }
-    let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+    const last=pts[pts.length-1];
+    let d = `M ${((last.x+pts[0].x)/2).toFixed(1)} ${((last.y+pts[0].y)/2).toFixed(1)}`;
     for (let i = 0; i < pts.length; i++) {
       const curr = pts[i];
       const next = pts[(i + 1) % pts.length];
@@ -83,11 +73,12 @@ function renderClusterHulls(papers, clusters) {
     const color = paletteList[idx % paletteList.length];
     const points = clusterPapers.map(p => ({ x: p.x, y: p.y }));
     const hull = convexHull(points);
-    const expanded = expandHull(hull, 38);
+    const expanded = expandHull(hull, Math.max(38,(typeof state!=='undefined'?state.graphStyle?.nodeSize||22:22)+18));
     const pathData = smoothPath(expanded);
     if (!pathData) return '';
 
-    const theme = clusterThemeTitle(clusterPapers, idx);
+    const title = clusterThemeTitle(clusterPapers, idx);
+    const theme = title.length>42?title.slice(0,39)+'…':title;
     const minX = Math.min(...expanded.map(p => p.x));
     const minY = Math.min(...expanded.map(p => p.y));
     const labelW = Math.max(90, theme.length * 7.5 + 24);
@@ -95,7 +86,7 @@ function renderClusterHulls(papers, clusters) {
     return `
       <g class="cluster-boundary" data-cluster-index="${idx}">
         <path class="cluster-hull-path" d="${pathData}" fill="${color}" stroke="${color}" />
-        <g class="cluster-hull-badge" transform="translate(${(minX + 8).toFixed(1)}, ${(minY - 10).toFixed(1)})">
+        <g class="cluster-hull-badge" transform="translate(${(minX + 8).toFixed(1)}, ${(minY - 24).toFixed(1)})">
           <rect x="0" y="0" width="${labelW.toFixed(1)}" height="20" rx="10" stroke="${color}" />
           <text x="10" y="14">${escapeHtml(theme)}</text>
         </g>

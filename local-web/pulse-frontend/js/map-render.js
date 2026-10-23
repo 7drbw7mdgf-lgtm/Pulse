@@ -52,7 +52,15 @@
       window.paperGroupInfo = paperGroupInfo;
     }
 
-    let graphDrawingKey = '', graphDrawingLinks = null, graphInitialCameraCheck = true, graphViewportSize = '';
+    let graphDrawingKey = '', graphDrawingLinks = null, graphInitialCameraCheck = true, graphViewportSize = '', graphCameraScene = '';
+    function settleGraphCamera() {
+      if(!(graphInitialCameraCheck||state.mapCameraCheck||state.mapNeedsFit)||state.graphAnalysisPending||state.graphLayoutPending||isRecenteringAnimation)return;
+      const rect=els.map.getBoundingClientRect(),bottom=rect.bottom-bottomDockSpace(),nodes=[...els.map.querySelectorAll('.node')];
+      if(rect.width<=64||rect.height<=64)return;
+      const fullyVisible=nodes.every(node=>{const r=node.getBoundingClientRect();return r.left>=rect.left+12&&r.right<=rect.right-12&&r.top>=rect.top+12&&r.bottom<=bottom-12;});
+      if(nodes.length&&(state.mapNeedsFit||!fullyVisible))fitCanvasToMap();
+      graphInitialCameraCheck=false;state.mapCameraCheck=false;state.mapNeedsFit=false;
+    }
     function updateGraphSelectionClasses() {
       const linked = selectedLinkEndpoints();
       els.map.querySelectorAll('.node').forEach(node => {
@@ -108,32 +116,28 @@
         return;
       }
       const rect = els.map.getBoundingClientRect();
-      const hasRealDimensions = rect.width > 64 && rect.height > 64;
-      const viewportSize = `${Math.round(rect.width)}:${Math.round(rect.height)}`;
-      if (hasRealDimensions && graphViewportSize && viewportSize !== graphViewportSize) state.mapNeedsFit = true;
-      if (hasRealDimensions) graphViewportSize = viewportSize;
+      const hasRealDimensions=rect.width>64&&rect.height>64;
+      const viewportSize=`${Math.round(rect.width)}:${Math.round(rect.height)}:${bottomDockSpace()}`;
+      if(hasRealDimensions&&graphViewportSize && viewportSize!==graphViewportSize)state.mapNeedsFit=true;
+      if(hasRealDimensions)graphViewportSize=viewportSize;
       const width = Math.max(rect.width, 640);
       const height = Math.max(rect.height, 520);
       const safeHeight = Math.max(360, height - bottomDockSpace());
-      updateViewSize(width, height);
+      const cameraScene=JSON.stringify([state.activeMapId,state.mode,state.centerId,state.graphStyle.spacing||1,state.graphStyle.nodeSize,state.graphStyle.labelMode,activeMapPapers().map(p=>p.id)]);
+      if(graphCameraScene&&cameraScene!==graphCameraScene)state.mapNeedsFit=true;
+      graphCameraScene=cameraScene;
+      if(hasRealDimensions)updateViewSize(width, height);
       els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
       els.map.classList.toggle('no-grid', !state.graphStyle.showGrid);
       layout(width, safeHeight);
       applyAreaContainment();
-      if ((graphInitialCameraCheck || state.mapCameraCheck || state.mapNeedsFit) && !state.graphAnalysisPending && !state.graphLayoutPending) {
-        if (hasRealDimensions) {
-          const papers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers, v = state.view;
-          const visible = papers.some(p => p.x >= v.x && p.x <= v.x + v.width && p.y >= v.y && p.y <= v.y + v.height);
-          if (state.mapNeedsFit || (papers.length && !visible)) fitCanvasToMap();
-          graphInitialCameraCheck = false; state.mapCameraCheck = false; state.mapNeedsFit = false;
-        }
-      }
       if (!state.graphAnalysisPending && !state.graphLayoutPending && !isRecenteringAnimation && typeof rememberGraphLayout === 'function') rememberGraphLayout(width,safeHeight);
       const activeDrawingPapers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
       const drawingKey = JSON.stringify([width,safeHeight,state.mode,state.centerId,state.activeMapId,state.graphAnalysisRevision || 0,
         state.graphStyle,state.areas,state.selectedAreaId,state.selectedLinkId,bouncingNodeId,state.filterTags,state.filterMode,
         activeDrawingPapers.map(paper => [paper.id,paper.x,paper.y,paper.color,paper.areaId,paper.gemmaKeywords,paper.userTags])]);
       if (drawingKey === graphDrawingKey && graphDrawingLinks === state.links) {
+        settleGraphCamera();
         updateGraphSelectionClasses();
         renderWorkspacePanels();
         return;
@@ -261,7 +265,8 @@
       }).join('');
 
       const clusterHullsMarkup = typeof renderClusterHulls === 'function' ? renderClusterHulls(visiblePapers, state.clusters) : '';
-      els.map.innerHTML = `<g class="cluster-hulls-layer">${clusterHullsMarkup}</g><g>${areaMarkup}</g><g>${linkMarkup}</g><g>${nodeMarkup}</g>${linkLimitMarkup}`;
+      els.map.innerHTML = `<g class="cluster-hulls-layer">${clusterHullsMarkup}</g><g>${areaMarkup}</g><g>${linkMarkup}</g><g class="map-nodes-layer">${nodeMarkup}</g>${linkLimitMarkup}`;
+      settleGraphCamera();
       bindAreaEvents();
       bindEdgeEvents();
       bindNodeEvents();

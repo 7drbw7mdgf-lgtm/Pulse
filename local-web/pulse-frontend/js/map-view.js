@@ -42,15 +42,14 @@
 
     let mapViewportWidth = 0, mapViewportHeight = 0;
     function updateViewSize(width, height) {
-      if (width > 64 && height > 64) {
-        if (mapViewportWidth > 64 && mapViewportHeight > 64) {
-          const cx = state.view.x + state.view.width / 2, cy = state.view.y + state.view.height / 2;
-          state.view.width *= width / mapViewportWidth;
-          state.view.height *= height / mapViewportHeight;
-          state.view.x = cx - state.view.width / 2; state.view.y = cy - state.view.height / 2;
-        }
-        mapViewportWidth = width; mapViewportHeight = height;
+      if(width<=64||height<=64)return;
+      if (mapViewportWidth && mapViewportHeight) {
+        const cx=state.view.x+state.view.width/2,cy=state.view.y+state.view.height/2;
+        state.view.width *= width/mapViewportWidth;
+        state.view.height *= height/mapViewportHeight;
+        state.view.x=cx-state.view.width/2;state.view.y=cy-state.view.height/2;
       }
+      mapViewportWidth=width;mapViewportHeight=height;
     }
 
     function panCanvas(direction) {
@@ -69,23 +68,30 @@
     }
 
     function fitCanvasToMap() {
-      const papers = (typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+      const papers=(typeof activeMapPapers==='function'?activeMapPapers():state.papers).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
       if (!papers.length) {
         state.view.x = 0;
         state.view.y = 0;
       } else {
-        const rect = els.map.getBoundingClientRect();
-        const pixelWidth = Math.max(rect.width > 64 ? rect.width : (mapViewportWidth || 640), 180);
-        const pixelHeight = Math.max(rect.height > 64 ? rect.height : (mapViewportHeight || 520), 160);
-        const usableHeight = Math.max(100, pixelHeight - (typeof bottomDockSpace === 'function' ? bottomDockSpace() : 0));
-        const xs = papers.map(p => p.x), ys = papers.map(p => p.y), padding = Math.max(72, (state.graphStyle?.nodeSize || 22) + 40);
-        const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys), ratio = pixelWidth / usableHeight;
-        let width = Math.max(180, maxX - minX + padding * 2), height = Math.max(160, maxY - minY + padding * 2);
-        if (width / height < ratio) width = height * ratio; else height = width / ratio;
-        Object.assign(state.view, { x: (minX + maxX - width) / 2, y: (minY + maxY - height) / 2, width, height: height * pixelHeight / usableHeight });
+        const rect=els.map.getBoundingClientRect();
+        const pixelWidth=Math.max(rect.width>64?rect.width:(mapViewportWidth||640),180);
+        const pixelHeight=Math.max(rect.height>64?rect.height:(mapViewportHeight||520),160);
+        const usableHeight=Math.max(100,pixelHeight-(typeof bottomDockSpace==='function'?bottomDockSpace():0));
+        const xs=papers.map(p=>p.x),ys=papers.map(p=>p.y),radius=state.graphStyle?.nodeSize||22;
+        let minX=Math.min(...xs)-radius-64,maxX=Math.max(...xs)+radius+64,minY=Math.min(...ys)-radius-24,maxY=Math.max(...ys)+radius+48;
+        const nodes=els.map.querySelector('.map-nodes-layer');
+        const drawnIds=new Set(nodes?[...nodes.children].map(n=>n.dataset.id):[]);
+        if(nodes && drawnIds.size===papers.length && papers.every(p=>drawnIds.has(p.id))){
+          const bounds=[nodes,els.map.querySelector('.cluster-hulls-layer')].filter(Boolean).map(layer=>layer.getBBox()).filter(b=>b.width>0&&b.height>0);
+          if(bounds.length){minX=Math.min(...bounds.map(b=>b.x));maxX=Math.max(...bounds.map(b=>b.x+b.width));minY=Math.min(...bounds.map(b=>b.y));maxY=Math.max(...bounds.map(b=>b.y+b.height));}
+        }
+        const padding=24,ratio=pixelWidth/usableHeight;
+        let width=Math.max(pixelWidth/1.25,maxX-minX+padding*2),height=Math.max(usableHeight/1.25,maxY-minY+padding*2);
+        if(width/height<ratio)width=height*ratio;else height=width/ratio;
+        Object.assign(state.view,{x:(minX+maxX-width)/2,y:(minY+maxY-height)/2,width,height:height*pixelHeight/usableHeight});
       }
-      els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
-      if (typeof scheduleAutosave === 'function') scheduleAutosave();
+      els.map.setAttribute('viewBox',`${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
+      if(typeof scheduleAutosave==='function')scheduleAutosave();
     }
 
     function linkId(link) {
