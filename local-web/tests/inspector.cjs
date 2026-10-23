@@ -1,7 +1,7 @@
 // Paper inspector 1.7: compact metadata, citation text, library links, personal fields and saving.
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
 const helpers = fs.readFileSync('pulse-frontend/js/inspector.js', 'utf8');
-const normalizeSource = fs.readFileSync('pulse-frontend/js/paper-metadata.js', 'utf8').split('    function normalizeImportedPaper(paper, source, { existing = false } = {}) {')[1].split('    function normalizeOpenAlexId')[0];
+const normalizeSource = fs.readFileSync('pulse-frontend/js/part_08.js', 'utf8').split('    function normalizeImportedPaper(paper, source) {')[1].split('    function normalizeOpenAlexId')[0];
 
 function context(papers = [], links = []) {
   const stored = {};
@@ -117,7 +117,7 @@ const tiku = { id: 'tiku', title: 'Host immunity and cellular responses to bacte
     uid: () => 'generated', paperAuthors: paper => paper.authors || [], normalizeDoi: value => value, findPrimaryDoi: () => '',
     safeHref: value => value, cleanAbstract: value => value, dedupeList: values => [...new Set(values)], normalizeOpenAlexId: value => value
   });
-  vm.runInContext('function normalizeImportedPaper(paper, source, { existing = false } = {}) {' + normalizeSource, ctx);
+  vm.runInContext('function normalizeImportedPaper(paper, source) {' + normalizeSource, ctx);
   const restored = ctx.normalizeImportedPaper({ title: 'Saved paper', readingStatus: 'read', relevance: 'relevant', notes: 'Check figure 3.', userTags: ['methods', ' review '] }, 'test');
   assert.equal(restored.readingStatus, 'read');
   assert.equal(restored.relevance, 'relevant');
@@ -135,10 +135,5 @@ const tiku = { id: 'tiku', title: 'Host immunity and cellular responses to bacte
   const synced = ctx.normalizeImportedPaper({ title: 'Synced', syncId: 'ab'.repeat(16) }, 'test');
   assert.equal(synced.syncId, 'ab'.repeat(16));
   assert.equal(ctx.normalizeImportedPaper({ title: 'Bad id', syncId: '../x' }, 'test').syncId, '');
-  const now=Date.now(),fresh=ctx.normalizeImportedPaper({title:'New import'},'test');
-  assert(Date.parse(fresh.addedAt)>=now&&Date.parse(fresh.addedAt)<=Date.now());
-  assert.equal(ctx.normalizeImportedPaper({title:'Legacy record'},'Autosaved library',{existing:true}).addedAt,'');
-  assert.equal(ctx.normalizeImportedPaper({title:'Invalid date',addedAt:'not a date'},'Autosaved library',{existing:true}).addedAt,'');
-  assert.equal(ctx.normalizeImportedPaper({title:'Saved',addedAt:'2026-10-01T14:00:00+02:00'},'test',{existing:true}).addedAt,'2026-10-01T12:00:00.000Z');
   console.log('PASS: reading status, relevance, notes and tags survive saving and restoring, and invalid values are cleaned.');
 }

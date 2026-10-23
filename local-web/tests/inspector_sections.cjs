@@ -1,5 +1,5 @@
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert');
-const source=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/inspector-details.js'),'utf8').split('    function renderDetails()')[0];
+const source=fs.readFileSync(path.join(__dirname,'../pulse-frontend/js/part_16.js'),'utf8').split('    function renderDetails()')[0];
 function section(key){const toggle={attributes:{},setAttribute(name,value){this.attributes[name]=value;},addEventListener(type,fn){this[type]=fn;}};
  const body={hidden:false},classes=new Set(),run={addEventListener(type,fn){this[type]=fn;}};
  return {dataset:{inspectorSection:key},body,toggle,run,classList:{toggle(name,value){if(value)classes.add(name);else classes.delete(name);},contains:name=>classes.has(name)},querySelector(selector){return selector==='.inspector-section-body'?body:selector==='.inspector-section-toggle'?toggle:selector==='.discovery-run-btn'&&key==='discovery'?run:null;}};}

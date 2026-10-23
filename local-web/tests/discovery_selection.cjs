@@ -9,10 +9,10 @@ const context = {state, els, document:{getElementById:()=>null}, stopwords:new S
   recommendationAlreadyOnMap:item=>state.papers.some(paper=>paper.title===item.title),
   paperFromRecommendation:item=>({...item, id:item.title}), render(){}, showToast(){}};
 vm.createContext(context);
-const definitions = fs.readFileSync(path.join(frontend,'app-core.js'),'utf8');
+const definitions = fs.readFileSync(path.join(frontend,'part_01.js'),'utf8');
 vm.runInContext(definitions.slice(definitions.indexOf('    function discoveryPaperKey')), context);
-vm.runInContext(['discovery-modal.js','discovery-results.js','discovery-render.js','discovery-compare.js'].map(name=>fs.readFileSync(path.join(frontend,name),'utf8')).join('\n'), context);
-const additions = fs.readFileSync(path.join(frontend,'tags-and-keywords.js'),'utf8');
+vm.runInContext(fs.readFileSync(path.join(frontend,'part_02.js'),'utf8'), context);
+const additions = fs.readFileSync(path.join(frontend,'part_03.js'),'utf8');
 vm.runInContext(additions.slice(0, additions.indexOf('    function openKeywordModal')), context);
 const results = Array.from({length:50}, (_,i)=>({title:`Research fixture ${i+1}`, year:'2024', authors:['Example Author'], score:50-i}));
 const key = item=>context.discoveryPaperKey(item);

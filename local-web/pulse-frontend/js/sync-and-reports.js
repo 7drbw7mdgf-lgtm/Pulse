@@ -134,7 +134,6 @@
   }
   window.addEventListener('error', event => {
     if (!event.error && event.target !== window) return;  // a failed image or script load, not a code error
-    if (event.error?.name === 'SyntaxError' && !event.filename) return;  // ignore interactive console evaluations
     captureError(event.error?.name || 'Error', event.message, event.error?.stack || `at ${event.filename}:${event.lineno}:${event.colno}`, 'window.onerror');
   });
   window.addEventListener('unhandledrejection', event => {

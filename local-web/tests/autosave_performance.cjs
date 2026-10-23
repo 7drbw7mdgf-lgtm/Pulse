@@ -1,11 +1,10 @@
 const fs = require('fs'), path = require('path'), vm = require('vm'), assert = require('assert');
 const frontend = path.join(__dirname, '../pulse-frontend/js');
-const source = fs.readFileSync(path.join(frontend, 'library-save.js'), 'utf8');
-const storage = fs.readFileSync(path.join(frontend, 'workspace-storage.js'), 'utf8');
+const source = fs.readFileSync(path.join(frontend, 'part_19.js'), 'utf8');
 const saves = source.slice(source.indexOf('    function scheduleAutosave()'), source.indexOf('    async function promptClearLibrary()'));
-const mutations = fs.readFileSync(path.join(frontend, 'library-bulk-actions.js'), 'utf8');
+const mutations = fs.readFileSync(path.join(frontend, 'part_24.js'), 'utf8');
 const mutationSource = mutations.slice(mutations.indexOf('async function libraryMutationRequest('), mutations.indexOf('function applyRecoveredWorkspace('));
-const clearSource = fs.readFileSync(path.join(frontend, 'workspace-actions.js'), 'utf8').split('    async function addPaperFromInput')[0];
+const clearSource = fs.readFileSync(path.join(frontend, 'part_20.js'), 'utf8').split('    async function addPaperFromInput')[0];
 
 function deferred() {
   let resolve, reject;
@@ -66,8 +65,8 @@ function productionSerialization(f) {
   f.context.mergedKeywords = paper => paper.paperKeywords || [];
   f.context.displayKeywords = paper => paper.paperKeywords || [];
   f.context.extractBibliographyText = () => '';
-  const begin=storage.indexOf('    const libraryBibliographyCache');
-  vm.runInContext(storage.slice(begin,storage.indexOf('    async function exportMap()',begin)),f.context);
+  const begin=source.indexOf('    const libraryBibliographyCache');
+  vm.runInContext(source.slice(begin,source.indexOf('    async function exportMap()',begin)),f.context);
 }
 function acknowledgeDelta(f,index,letter='a') {
   f.complete(index,true,{ok:true,deltaSupported:true,storageRevision:letter.repeat(32)});

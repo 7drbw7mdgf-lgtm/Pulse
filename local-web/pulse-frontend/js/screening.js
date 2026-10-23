@@ -107,57 +107,6 @@ const PulseScreening = (() => {
     try{await queue;const result=await send({action:'export',project:current(),format});downloadRecordFile(result.filename,result.content,result.mime);}
     catch(error){showToast(error.message);}
   }
-  async function viewPrismaFlow(){
-    if(!current())return showToast('Open a screening project first.');
-    try{
-      await queue;
-      const result=await send({action:'export',project:current(),format:'prisma-svg'});
-      const dialog=document.createElement('dialog');dialog.className='pulse-tool-dialog prisma-flow-dialog';
-      dialog.innerHTML=`<header><h2>PRISMA 2020 Flow Diagram</h2><button type="button" data-close-tool aria-label="Close PRISMA Flow">×</button></header><div class="prisma-preview-container" style="text-align:center;overflow:auto;max-height:72vh;padding:12px;background:#fff;border-radius:8px;border:1px solid var(--line);">${result.content}</div><p style="margin-top:12px;display:flex;justify-content:flex-end;gap:8px;"><button class="mac-btn" type="button" data-download-prisma>Download SVG</button><button class="mac-btn primary" type="button" data-close-tool>Done</button></p>`;
-      document.body.append(dialog);
-      dialog.querySelectorAll('[data-close-tool]').forEach(btn=>btn.onclick=()=>{dialog.close();dialog.remove();});
-      dialog.querySelector('[data-download-prisma]').onclick=()=>downloadRecordFile(result.filename,result.content,result.mime);
-      dialog.showModal();
-    }catch(error){showToast(error.message);}
-  }
-  async function reconcileReviewer2(){
-    if(!current())return showToast('Open a screening project first.');
-    const fileInput=document.createElement('input');fileInput.type='file';fileInput.accept='.json,application/json';
-    fileInput.onchange=async()=>{
-      const file=fileInput.files[0];if(!file)return;
-      try{
-        const text=await file.text();const r2=JSON.parse(text);
-        const res=await send({action:'reconcile',project:current(),reviewer2:r2});
-        const dialog=document.createElement('dialog');dialog.className='pulse-tool-dialog reconcile-dialog';
-        const kappaInterp=res.kappa>=0.8?'Almost perfect agreement':res.kappa>=0.6?'Substantial agreement':res.kappa>=0.4?'Moderate agreement':'Fair / Slight agreement';
-        dialog.innerHTML=`<header><h2>Dual-Reviewer Blind Reconciliation</h2><button type="button" data-close-tool aria-label="Close reconciliation">×</button></header><div class="reconcile-stats" style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px;padding:12px;background:var(--surface-2);border-radius:8px;"><div><strong>Cohen's Kappa (&kappa;):</strong> <span style="font-size:16px;color:var(--accent);font-weight:700;">${res.kappa}</span> (${kappaInterp})</div><div><strong>Concordant:</strong> ${res.concordant}</div><div><strong>Discrepant:</strong> <span style="color:${res.discrepant?'#dc2626':'inherit'};font-weight:600;">${res.discrepant}</span></div><div><strong>Total Evaluated:</strong> ${res.totalEvaluated}</div></div>${res.discrepancies?.length?`<h3>Discrepancies to Reconcile (${res.discrepancies.length})</h3><div class="discrepancy-list" style="max-height:48vh;overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid var(--line);text-align:left;"><th style="padding:6px;">Paper</th><th style="padding:6px;">Reviewer 1</th><th style="padding:6px;">Reviewer 2</th></tr></thead><tbody>${res.discrepancies.map(d=>`<tr style="border-bottom:1px solid var(--line);"><td style="padding:6px;">${escapeHtml(d.title||d.recordId)}</td><td style="padding:6px;"><strong style="color:${d.reviewer1==='include'?'#16a34a':'#dc2626'}">${escapeHtml(d.reviewer1)}</strong>${d.reason1?`<small style="display:block;color:var(--muted);">${escapeHtml(d.reason1)}</small>`:''}</td><td style="padding:6px;"><strong style="color:${d.reviewer2==='include'?'#16a34a':'#dc2626'}">${escapeHtml(d.reviewer2)}</strong>${d.reason2?`<small style="display:block;color:var(--muted);">${escapeHtml(d.reason2)}</small>`:''}</td></tr>`).join('')}</tbody></table></div>`:'<p style="color:#16a34a;font-weight:600;">✓ No discrepancies found! All overlapping decisions are in 100% agreement.</p>'}<p style="margin-top:16px;text-align:right;"><button class="mac-btn primary" type="button" data-close-tool>Close</button></p>`;
-        document.body.append(dialog);
-        dialog.querySelectorAll('[data-close-tool]').forEach(btn=>btn.onclick=()=>{dialog.close();dialog.remove();});
-        dialog.showModal();
-      }catch(err){showToast(err.message||'Failed to parse Reviewer 2 project JSON.');}
-    };
-    fileInput.click();
-  }
-  function prioritizeScreeningQueue(){
-    if(!Array.isArray(state.discoveryResults)||state.discoveryResults.length<2)return showToast('No candidate papers to sort.');
-    const feedback=[];
-    for(const r of state.discoveryResults){
-      const rec=row(r);const dec=rec?.stages?.[stage]?.decision;
-      if(dec==='include')feedback.push({grade:2,paper:r});
-      else if(dec==='exclude')feedback.push({grade:0,paper:r});
-    }
-    if(!feedback.length&&(!state.discoveryJudgements||!state.discoveryJudgements.length)){
-      showToast('Record at least one include (R) or exclude (N) to train the active-learning model.');
-      return;
-    }
-    const allFeedback=[...feedback,...(state.discoveryJudgements||[]).map(j=>({grade:j.grade,paper:j.paper}))];
-    if(typeof rerankDiscoveryPoolWithFeedback==='function'){
-      const {records,movedUp}=rerankDiscoveryPoolWithFeedback(state.discoveryResults,allFeedback);
-      state.discoveryResults=records;
-      if(typeof renderDiscoveryModal==='function')renderDiscoveryModal({preservePosition:true});
-      showToast(`Active learning: queue prioritized (${movedUp} unjudged candidate${movedUp===1?'':'s'} surfaced).`);
-    }
-  }
   function render(){
     const tools=document.getElementById('screeningControls');if(!tools)return;
     tools.hidden=!active;
@@ -171,16 +120,13 @@ const PulseScreening = (() => {
   document.addEventListener('DOMContentLoaded',()=>{
     const anchor=document.getElementById('discoverySourceNotice');if(!anchor)return;
     const tools=document.createElement('div');tools.className='research-tools screening-toolbar';
-    tools.innerHTML='<button id="screeningToggle" class="dv-btn" type="button" aria-pressed="false">Screening project</button><div id="screeningControls" class="research-tools" hidden><select id="screeningProject" aria-label="Screening project"></select><select id="screeningStage" aria-label="Screening stage"><option value="title-abstract">Title / abstract screening</option><option value="full-text">Full-text eligibility</option></select><button id="screeningMemo" class="dv-btn" type="button">Memo (M)</button><button id="screeningTags" class="dv-btn" type="button">Tags (T)</button><button id="screeningUndo" class="dv-btn" type="button">Undo</button><button id="screeningPrisma" class="dv-btn" type="button" title="Interactive PRISMA 2020 Flowchart">PRISMA Flow</button><button id="screeningReconcile" class="dv-btn" type="button" title="Dual-reviewer blind reconciliation">Reconcile (R2)</button><button id="screeningActiveLearn" class="dv-btn" type="button" title="Prioritize screening queue via active-learning Rocchio model">Active Queue</button><select id="screeningExportFormat" aria-label="Screening export format"><option value="csv">Decisions CSV</option><option value="ris">Tagged RIS</option><option value="prisma">PRISMA working data</option><option value="prisma-svg">PRISMA 2020 Flowchart (SVG)</option><option value="blind-json">Blind project for Reviewer 2 (JSON)</option><option value="json">Project and audit history</option></select><button id="screeningExport" class="dv-btn" type="button">Export review</button><span id="screeningStatus" role="status"></span><small>R/N record screening decisions while enabled. Identification totals and included study counts need review.</small><span id="screeningRecord"></span></div>';
+    tools.innerHTML='<button id="screeningToggle" class="dv-btn" type="button" aria-pressed="false">Screening project</button><div id="screeningControls" class="research-tools" hidden><select id="screeningProject" aria-label="Screening project"></select><select id="screeningStage" aria-label="Screening stage"><option value="title-abstract">Title / abstract screening</option><option value="full-text">Full-text eligibility</option></select><button id="screeningMemo" class="dv-btn" type="button">Memo (M)</button><button id="screeningTags" class="dv-btn" type="button">Tags (T)</button><button id="screeningUndo" class="dv-btn" type="button">Undo</button><select id="screeningExportFormat" aria-label="Screening export format"><option value="csv">Decisions CSV</option><option value="ris">Tagged RIS</option><option value="prisma">PRISMA working data</option><option value="json">Project and audit history</option></select><button id="screeningExport" class="dv-btn" type="button">Export review</button><span id="screeningStatus" role="status"></span><small>R/N record screening decisions while enabled. Identification totals and included study counts need review.</small><span id="screeningRecord"></span></div>';
     anchor.after(tools);
     document.getElementById('screeningToggle').onclick=()=>{if(active){active=false;render();}else open();};
     document.getElementById('screeningProject').onchange=event=>open(event.target.value);
     document.getElementById('screeningStage').onchange=event=>{stage=event.target.value;render();};
     document.getElementById('screeningMemo').onclick=()=>annotate('memo');document.getElementById('screeningTags').onclick=()=>annotate('tags');
     document.getElementById('screeningUndo').onclick=undo;document.getElementById('screeningExport').onclick=exportProject;
-    document.getElementById('screeningPrisma').onclick=viewPrismaFlow;
-    document.getElementById('screeningReconcile').onclick=reconcileReviewer2;
-    document.getElementById('screeningActiveLearn').onclick=prioritizeScreeningQueue;
     render();
   });
   document.addEventListener('keydown',event=>{

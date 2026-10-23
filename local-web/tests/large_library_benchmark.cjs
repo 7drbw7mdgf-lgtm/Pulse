@@ -64,9 +64,6 @@ const {chromium} = require('playwright');
           data.trendsModelReused=model===trendsUi.model;
           data.trendsPaperCards=document.querySelectorAll('[data-trends-paper]').length;
           data.trendsTotal=trendsUi.model.total;
-          // Topic groups are computed once per analysis; time a cold computation.
-          trendsGroupCache.key='';const groupTick=performance.now();const groups=trendsGroupData(trendsUi.model);
-          data.trendsGroupsMs=performance.now()-groupTick;data.trendsGroupedPapers=groups?groups.groups.reduce((sum,group)=>sum+group.papers.length,0):0;
           setTrendsVisible(false);
         }
         return data;
@@ -80,7 +77,6 @@ const {chromium} = require('playwright');
         assert(metrics.trendsModelReused,'Trends reopening reuses its model');
         assert.equal(metrics.trendsTotal,count);
         assert(metrics.trendsPaperCards<=24);
-        assert.equal(metrics.trendsGroupedPapers,count,'Every paper is in a topic group');
       }
       results.push(metrics);
     }

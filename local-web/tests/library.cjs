@@ -1,6 +1,6 @@
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
-const clearSource = fs.readFileSync('pulse-frontend/js/workspace-actions.js','utf8').split('    async function addPaperFromInput')[0];
-const promptSource = fs.readFileSync('pulse-frontend/js/library-save.js','utf8').split('    async function promptClearLibrary()')[1].split('    function confirmClearPapers')[0];
+const clearSource = fs.readFileSync('pulse-frontend/js/part_20.js','utf8').split('    async function addPaperFromInput')[0];
+const promptSource = fs.readFileSync('pulse-frontend/js/part_19.js','utf8').split('    async function promptClearLibrary()')[1].split('    function confirmClearPapers')[0];
 function fixture(response = {ok:true, json:async()=>({ok:true})}, confirm = true) {
  const paper={id:'test',title:'Synthetic test paper'}, calls=[];
  const state={papers:[paper],links:[{source:'test'}],areas:[{id:'area'}],clusters:[],vectors:new Map([['test',1]]),keywords:new Map([['test',['tag']]]),autosaveReady:true,filterTags:['tag']};

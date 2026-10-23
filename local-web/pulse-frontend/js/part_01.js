@@ -345,9 +345,9 @@ const state = {
     }
 
     function bottomDockSpace() {
-      const map=els.map?.getBoundingClientRect(),dock=document.querySelector('.canvas-dock-modern')?.getBoundingClientRect();
-      if(!map?.height||!dock?.height||dock.right<=map.left||dock.left>=map.right||dock.top>=map.bottom||dock.bottom<=map.top)return 0;
-      return Math.ceil(map.bottom-Math.max(map.top,dock.top)+16);
+      // The toolbar is outside the SVG viewport, so its height is already
+      // excluded from the map's measured dimensions.
+      return 0;
     }
 
     function showToast(message) {

@@ -1,14 +1,6 @@
 // Keyed, measured Library rows. Scroll work uses this model without sorting or
 // generating markup for the rest of the saved library.
 const libraryRowsUi = {root:null, mode:'', rows:new Map(), heights:new Map(), spacers:[], model:null, frame:null, measureFrame:null, observer:null};
-const libraryAddedDateFormat = new Intl.DateTimeFormat(undefined,{day:'numeric',month:'short',year:'numeric'});
-
-function libraryAddedDateMarkup(paper) {
-  const timestamp=Date.parse(paper.addedAt||'');
-  if(!Number.isFinite(timestamp))return '<span title="Date added is unavailable for this older record">—</span>';
-  const date=new Date(timestamp);
-  return `<time datetime="${date.toISOString()}" title="${escapeHtml(date.toLocaleString())}">${escapeHtml(libraryAddedDateFormat.format(date))}</time>`;
-}
 
 function libraryRowIndex(prefix, offset) {
   let low=0, high=Math.max(0,prefix.length-2);
@@ -43,7 +35,7 @@ function librarySpacer(ui,number,height) {
   if(!spacer) {
     spacer=document.createElement(ui.mode==='table'?'tr':'div');
     spacer.setAttribute('aria-hidden','true'); spacer.setAttribute('role','presentation'); spacer.dataset.librarySpacer='true';
-    if(ui.mode==='table') { const cell=document.createElement('td'); cell.colSpan=11+(state.maps?.length>1?1:0); cell.style.cssText='padding:0;border:0;line-height:0'; spacer.appendChild(cell); }
+    if(ui.mode==='table') { const cell=document.createElement('td'); cell.colSpan=10+(state.maps?.length>1?1:0); cell.style.cssText='padding:0;border:0;line-height:0'; spacer.appendChild(cell); }
     else spacer.style.cssText='flex:0 0 auto;padding:0;margin:0;border:0';
     ui.spacers[number]=spacer;
   }
@@ -392,13 +384,12 @@ function bindLibraryRowEvents(root) {
           <td class="library-title-cell"><span class="paper-swatch" style="background:${escapeHtml(group.color)}; display:inline-block; vertical-align:middle; margin-right:6px;" title="${escapeHtml(group.name ? group.name + ' (' + group.color + ')' : group.color)}"></span><button type="button" data-action="focus" class="library-title-button">${escapeHtml(paper.title || 'Untitled paper')}</button></td>
           <td class="library-group-cell">${group.name ? `<span class="library-group-pill" style="color:${escapeHtml(group.color)}; border:1px solid ${escapeHtml(group.color)}55; background:${escapeHtml(group.color)}18;" title="Group: ${escapeHtml(group.name)}"><span class="paper-swatch" style="background:${escapeHtml(group.color)}; width:6px; height:6px; display:inline-block; vertical-align:middle; margin-right:4px;"></span>${escapeHtml(group.name)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
           <td class="library-authors-cell" title="${escapeHtml(paperAuthors(paper).join(', '))}">${escapeHtml(shortAuthorList(paperAuthors(paper)) || '—')}</td><td class="library-year-cell">${escapeHtml(paper.year || '—')}</td>
-          <td class="library-addedAt-cell">${libraryAddedDateMarkup(paper)}</td>
           <td class="library-journal-cell">${escapeHtml(paper.journal || '—')}</td><td class="library-citations-cell" title="${escapeHtml(count !== null ? 'Verified from ' + paper.citationMetrics.source : 'Citation count not checked')}">${count !== null ? count.toLocaleString() : '—'}</td>
           <td class="library-doi-cell">${paper.doi ? `<a href="${escapeHtml((typeof paperOpenUrl === 'function' ? paperOpenUrl(paper) : '') || safePaperUrl('https://doi.org/' + paper.doi))}" target="_blank" rel="noreferrer">${escapeHtml(paper.doi)}</a>` : '—'}</td><td class="library-tags-cell"><div class="library-table-tags">${paperMetaChips(paper)}</div></td></tr>`;
 
       };
       const renderLibraryTable = papers => {
-        const columns = [['title', 'Paper'], ['group', 'Group'], ['authors', 'Authors'], ['year', 'Year'], ['addedAt', 'Date added'], ['journal', 'Journal'], ['citations', 'Citations']];
+        const columns = [['title', 'Paper'], ['group', 'Group'], ['authors', 'Authors'], ['year', 'Year'], ['journal', 'Journal'], ['citations', 'Citations']];
         const headers = columns.map(([key, label]) => `<th scope="col" class="library-col-${key}" aria-sort="${state.librarySortKey === key ? (state.librarySortAsc ? 'ascending' : 'descending') : 'none'}"><button type="button" data-table-sort="${key}">${label}${state.librarySortKey === key ? (state.librarySortAsc ? ' ↑' : ' ↓') : ''}</button></th>`).join('');
         const showMapCol = Boolean(state.maps && state.maps.length > 1);
         return `<table class="library-table"><caption class="sr-only">Papers in your library. Select a paper to open its inspector.</caption><thead><tr><th scope="col" class="library-select-column"><input id="librarySelectVisible" type="checkbox" aria-label="Select all visible papers"></th><th scope="col" class="library-map-column">On map</th>${showMapCol ? '<th scope="col" class="library-maptab-column">Map</th>' : ''}${headers}<th scope="col" class="library-col-doi">DOI</th><th scope="col" class="library-col-tags">Tags</th></tr></thead><tbody>${papers.map(renderLibraryTableRow).join('')}</tbody></table>`;

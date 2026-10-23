@@ -16,9 +16,9 @@ const context={state,els,localStorage:{getItem:key=>store[key],setItem:(key,valu
  setTimelineVisible(value){els.timelineView.hidden=!value;},
  trendsVisible(){return !els.trendsView.hidden;},setTrendsVisible(value){els.trendsView.hidden=!value;}};
 vm.createContext(context);
-vm.runInContext(functions(read('app-core.js'),'highlightRail','    function discoveryPaperKey'),context);
-vm.runInContext(functions(read('app-bindings.js'),'toggleLibraryWithSwipe','    function openTrendsPaperInGraph'),context);
-vm.runInContext(functions(read('filters-and-backend.js'),'initFrankTheme','    function updateSaveStatePill'),context);
+vm.runInContext(functions(read('part_01.js'),'highlightRail','    function discoveryPaperKey'),context);
+vm.runInContext(functions(read('part_21.js'),'toggleLibraryWithSwipe','    function openTrendsPaperInGraph'),context);
+vm.runInContext(functions(read('part_04.js'),'initFrankTheme','    function updateSaveStatePill'),context);
 context.highlightRail('timeline');els.timelineView.hidden=false;
 context.setSettingsOpen(true);assert.equal(context.activeRail(),'settings');
 context.setSettingsOpen(true);context.setSettingsOpen(false);assert.equal(context.activeRail(),'timeline');

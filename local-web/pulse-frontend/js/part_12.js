@@ -299,8 +299,9 @@
               nodeEl.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
             }
           });
-          rememberGraphLayout(width,safeHeight);
-          render();
+          renderEdgesOnly();
+          renderSelection();
+          renderDetails();
         }
       }
 

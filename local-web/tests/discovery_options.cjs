@@ -11,8 +11,8 @@ const state={discoveryBranches:{citationGraph:true,citationNetwork:true,semantic
 let seeds=[{id:'one',title:'Synthetic retrieval paper'}],requests=[],opened=[],saved=0;
 const context={setTimeout:fn=>{fn();},encodeURIComponent,state,Object,String,Number,Boolean,document:{activeElement:null,getElementById:id=>ids[id],querySelectorAll:()=>[summary]},setRailAddOpen(){},renderDetails(){},render(){},scheduleAutosave(){saved++;},showToast(){},cleanField:value=>String(value||'').trim(),selectedPapersForRecommendation:()=>seeds,citationPaperPayload:p=>p,backendUrl:p=>p,apiHeaders:x=>x,compactTitle:x=>x,openDiscoveryModal:(...args)=>opened.push(args),fetch:async(url,options)=>{requests.push(JSON.parse(options.body));return{ok:true,json:async()=>({recommendations:[{title:'Related fixture'}]})};}};
 vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(frontend,'discovery-controls.js'),'utf8'),context);
-const helpers=fs.readFileSync(path.join(frontend,'selection-and-linkages.js'),'utf8');vm.runInContext(helpers.slice(0,helpers.indexOf('    function setRecommendationSteerOpen')),context);
-const pipeline=fs.readFileSync(path.join(frontend,'discovery-pipeline.js'),'utf8');vm.runInContext(pipeline.slice(pipeline.indexOf('    async function runDiscoveryPipeline'),pipeline.indexOf('    function addSeminalPaperToMap')),context);
+const helpers=fs.readFileSync(path.join(frontend,'part_13.js'),'utf8');vm.runInContext(helpers.slice(0,helpers.indexOf('    function setRecommendationSteerOpen')),context);
+const pipeline=fs.readFileSync(path.join(frontend,'part_18.js'),'utf8');vm.runInContext(pipeline.slice(pipeline.indexOf('    async function runDiscoveryPipeline'),pipeline.indexOf('    function addSeminalPaperToMap')),context);
 context.initDiscoveryControls();assert.equal(summary.textContent,'All methods · 2-hop');
 assert(context.discoveryConfigurationKey().startsWith('citation-bonus-v1::'),'Old ranking caches must be bypassed');
 assert.equal(ids.discoveryResultLimit.value,'200','New workspaces default to 200 results');

@@ -3,11 +3,11 @@ const vm = require('vm');
 const assert = require('assert');
 const path = require('path');
 
-const part01Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/app-core.js'), 'utf8');
-const part10Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/map-render.js'), 'utf8');
-const part14Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/library-list.js'), 'utf8');
+const part01Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/part_01.js'), 'utf8');
+const part10Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/part_10.js'), 'utf8');
+const part14Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/part_14.js'), 'utf8');
 const inspectorSource = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/inspector.js'), 'utf8');
-const part24Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/library-bulk-actions.js'), 'utf8');
+const part24Source = fs.readFileSync(path.join(__dirname, '../pulse-frontend/js/part_24.js'), 'utf8');
 
 function createElement(tag = 'div') {
   const classes = new Set();

@@ -8,7 +8,7 @@ const version = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.j
 const source = name => fs.readFileSync(path.join(frontend,name),'utf8');
 const json = value => JSON.parse(JSON.stringify(value));
 const baseline = fs.readFileSync(path.join(__dirname,'fixtures/graph-baseline.js'),'utf8');
-const scoringSource = source('js/paper-relatedness.js').split('    function tokenize(')[1].split('    const metadataResolutionCache')[0];
+const scoringSource = source('js/part_08.js').split('    function tokenize(')[1].split('    const metadataResolutionCache')[0];
 const scoring = 'function tokenize(' + scoringSource;
 const words = new Set(['the','and','with']);
 const fixture = count => Array.from({length:count},(_,index) => ({
@@ -57,7 +57,7 @@ function runtimeContext(papers,{worker=true,broken=false}={}) {
   });
   if (worker) context.Worker = FakeWorker;
   vm.runInContext(scoring,context);
-  vm.runInContext(source('js/graph-layout.js'),context);
+  vm.runInContext(source('js/part_09.js'),context);
   vm.runInContext(source('js/graph-runtime.js'),context);
   context.workers=workers;context.timers=timers;
   return context;
@@ -181,9 +181,9 @@ async function main() {
   assert.equal(messages[0].id,7);assert(messages[0].result.links.length);
   workerVm.self.onmessage({data:{id:8,action:'unknown',payload:{}}});assert(messages[1].error);
   const html=source('index.html');
-  assert(html.indexOf('src="graph-engine.js')<html.indexOf('src="js/paper-relatedness.js'));
-  assert(html.indexOf('src="js/graph-layout.js')<html.indexOf('src="js/graph-runtime.js'));
-  assert(html.indexOf('src="js/graph-runtime.js')<html.indexOf('src="js/map-render.js'));
+  assert(html.indexOf('src="graph-engine.js')<html.indexOf('src="js/part_08.js'));
+  assert(html.indexOf('src="js/part_09.js')<html.indexOf('src="js/graph-runtime.js'));
+  assert(html.indexOf('src="js/graph-runtime.js')<html.indexOf('src="js/part_10.js'));
   console.log(`PASS: ${parityCases} desktop scoring cases, exact cached layout, worker coalescing/stale rejection, active maps, pinning, hidden views and fallback`);
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
