@@ -108,9 +108,10 @@
         return;
       }
       const rect = els.map.getBoundingClientRect();
-      const viewportSize=`${Math.round(rect.width)}:${Math.round(rect.height)}`;
-      if(graphViewportSize && viewportSize!==graphViewportSize)state.mapNeedsFit=true;
-      graphViewportSize=viewportSize;
+      const hasRealDimensions = rect.width > 64 && rect.height > 64;
+      const viewportSize = `${Math.round(rect.width)}:${Math.round(rect.height)}`;
+      if (hasRealDimensions && graphViewportSize && viewportSize !== graphViewportSize) state.mapNeedsFit = true;
+      if (hasRealDimensions) graphViewportSize = viewportSize;
       const width = Math.max(rect.width, 640);
       const height = Math.max(rect.height, 520);
       const safeHeight = Math.max(360, height - bottomDockSpace());
@@ -120,10 +121,12 @@
       layout(width, safeHeight);
       applyAreaContainment();
       if ((graphInitialCameraCheck || state.mapCameraCheck || state.mapNeedsFit) && !state.graphAnalysisPending && !state.graphLayoutPending) {
-        const papers=typeof activeMapPapers==='function'?activeMapPapers():state.papers,v=state.view;
-        const visible=papers.some(p=>p.x>=v.x&&p.x<=v.x+v.width&&p.y>=v.y&&p.y<=v.y+v.height);
-        if (state.mapNeedsFit || (papers.length && !visible)) fitCanvasToMap();
-        graphInitialCameraCheck=false;state.mapCameraCheck=false;state.mapNeedsFit=false;
+        if (hasRealDimensions) {
+          const papers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers, v = state.view;
+          const visible = papers.some(p => p.x >= v.x && p.x <= v.x + v.width && p.y >= v.y && p.y <= v.y + v.height);
+          if (state.mapNeedsFit || (papers.length && !visible)) fitCanvasToMap();
+          graphInitialCameraCheck = false; state.mapCameraCheck = false; state.mapNeedsFit = false;
+        }
       }
       if (!state.graphAnalysisPending && !state.graphLayoutPending && !isRecenteringAnimation && typeof rememberGraphLayout === 'function') rememberGraphLayout(width,safeHeight);
       const activeDrawingPapers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
