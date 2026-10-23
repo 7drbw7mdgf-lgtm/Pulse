@@ -77,7 +77,7 @@ const {spawn}=require('node:child_process'),{chromium}=require('playwright');
   let restarted=await freshDesktopSession();assert.equal(await restarted.locator('#whatsNewSplashDialog[open]').count(),0,'A fresh desktop session respects the saved dismissal');
   await restarted.evaluate(()=>{state.lastSeenRelease='0.0.0';return saveLibrary();});await restarted.close();
   restarted=await freshDesktopSession();await restarted.getByRole('dialog',{name:"What's New in Pulse",exact:true}).waitFor({state:'visible'});
-  await restarted.keyboard.press('Escape');await restarted.waitForFunction(()=>state.lastSeenRelease==='2.1.8');await restarted.evaluate(()=>saveLibrary());await restarted.close();
+  await restarted.keyboard.press('Escape');await restarted.waitForFunction(()=>state.lastSeenRelease==='2.1.9');await restarted.evaluate(()=>saveLibrary());await restarted.close();
   restarted=await freshDesktopSession();assert.equal(await restarted.locator('#whatsNewSplashDialog[open]').count(),0,'Escape dismissal survives a fresh desktop session');await restarted.close();
   assert.deepEqual(errors,[]);
   console.log('PASS: off-screen camera recovery, active-map fit and zoom retention, unclipped map controls, timeline/SVG actions, sortable persisted Date added, unknown legacy dates, duplicate imports, Trends/Timeline themes, responsive release dialog and durable dismissal including Escape across fresh desktop sessions.');

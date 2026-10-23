@@ -8,7 +8,7 @@ const {spawn}=require('node:child_process'),{chromium}=require('playwright');
   paperKeywords:i<2?['reactive oxygen species']:['galaxies'],x:[52,348,687][i%3],y:415,
   selected:i<3,mapIds:[i<3?'map-1':'map-2'],metadataMatch:{matched:true},metadataCheckedAt:new Date().toISOString()}));
  fs.writeFileSync(path.join(profile,'library.json'),JSON.stringify({papers,maps:[{id:'map-1',name:'Sparse map'},{id:'map-2',name:'Other papers'}],activeMapId:'map-1',
-  threshold:.75,view:{x:90,y:151,width:779,height:624},lastSeenRelease:'2.1.8'}));
+  threshold:.75,view:{x:90,y:151,width:779,height:624},lastSeenRelease:'2.1.9'}));
  const backend=spawn(process.env.PULSE_TEST_PYTHON||'python3',['-B','local-web/pulse-backend/pulse_backend.py'],{cwd:root,env:{...process.env,PULSE_CONFIG_DIR:profile,PULSE_PORT:'0',PULSE_DISABLE_BUNDLED_OLLAMA:'1'}});
  let browser;
  try{

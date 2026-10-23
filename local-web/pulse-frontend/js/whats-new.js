@@ -1,6 +1,6 @@
 /* Pulse Release Highlights Splash Screen: appears once per new version. */
 const PulseWhatsNew = (() => {
-  const CURRENT_VERSION = '2.1.8';
+  const CURRENT_VERSION = '2.1.9';
   const STORAGE_KEY = 'pulse_last_seen_release';
 
   function createDialog() {
@@ -15,58 +15,51 @@ const PulseWhatsNew = (() => {
           <div class="whats-new-header-title">
             <span class="whats-new-badge">v${CURRENT_VERSION}</span>
             <h2 id="whatsNewTitle">What's New in Pulse</h2>
-            <p class="subtle">A topic map for Trends, graph topology, systematic screening, and large library scaling.</p>
+            <p class="subtle">Network map visibility, clean subfield envelopes, Library Date added, and UI polish.</p>
           </div>
           <button type="button" data-close-tool aria-label="Close">×</button>
         </header>
         <div class="whats-new-feature-grid">
           <div class="whats-new-card">
-            <div class="whats-new-icon">🫧</div>
+            <div class="whats-new-icon">🗺️</div>
             <div class="whats-new-content">
-              <h3>Trends Topic Map</h3>
-              <p>Trends groups every paper by topic as bubbles with papers in orbit. The map, the year chart and one Groups → Concepts → Papers list share one selection, and share changes are coloured only when clear at 95%.</p>
+              <h3>Map Visibility & Camera Fitting</h3>
+              <p>Network papers, rendered labels, and topic hulls reliably fit above floating controls, with instant recovery from partially clipped or zero-dimension camera states.</p>
             </div>
           </div>
           <div class="whats-new-card">
             <div class="whats-new-icon">🌐</div>
             <div class="whats-new-content">
-              <h3>Subfield Boundary Envelopes</h3>
-              <p>Automatic organic boundary hulls demarcate research clusters with auto-labeled thematic topics derived from high-centrality papers.</p>
+              <h3>Refined Subfield Envelopes</h3>
+              <p>Automatic organic boundary envelopes demarcate research clusters cleanly without cluttering floating badges, padding collinear clusters seamlessly.</p>
             </div>
           </div>
           <div class="whats-new-card">
-            <div class="whats-new-icon">⚡</div>
+            <div class="whats-new-icon">📅</div>
             <div class="whats-new-content">
-              <h3>Citation Cascade Animation</h3>
-              <p>The timeline player visualizes streaming citation influence propagating outward from seminal seed papers to translational breakthroughs.</p>
+              <h3>Library Date Added Column</h3>
+              <p>Sortable and persisted ISO timestamps for imported papers, surviving reloads and duplicate imports with remembered sorting preferences.</p>
             </div>
           </div>
           <div class="whats-new-card">
-            <div class="whats-new-icon">🌉</div>
+            <div class="whats-new-icon">🫧</div>
             <div class="whats-new-content">
-              <h3>Bridge Papers & Bottlenecks</h3>
-              <p>Brandes' betweenness centrality isolates the seminal connector papers bridging two distinct disciplines with one-click map halo highlighting.</p>
+              <h3>Trends Topic Map</h3>
+              <p>Trends groups every paper by topic as bubbles with papers in orbit. The map, year chart and Groups → Concepts list share unified selections.</p>
             </div>
           </div>
           <div class="whats-new-card">
             <div class="whats-new-icon">📋</div>
             <div class="whats-new-content">
-              <h3>PRISMA 2020 & Blind Reconciliation</h3>
-              <p>Interactive PRISMA 2020 SVG flow diagrams, dual-reviewer blind mode with Cohen's &kappa; agreement metrics, and Rocchio active-learning candidate ranking.</p>
+              <h3>PRISMA 2020 & Screening</h3>
+              <p>Interactive PRISMA 2020 SVG flow diagrams, dual-reviewer blind mode with Cohen's &kappa; agreement metrics, and active-learning candidate ranking.</p>
             </div>
           </div>
           <div class="whats-new-card">
             <div class="whats-new-icon">🔬</div>
             <div class="whats-new-content">
-              <h3>Section-Targeted Evidence & Consensus</h3>
-              <p>Multi-column PDF layout parsing extracts methods and limitations from their own sections and groups findings to flag concordant vs. conflicting results.</p>
-            </div>
-          </div>
-          <div class="whats-new-card">
-            <div class="whats-new-icon">🚀</div>
-            <div class="whats-new-content">
-              <h3>Two-Tier Lazy Hydration & Backups</h3>
-              <p>Metadata-first SQLite loading keeps large libraries light at startup, paired with single-file portable <code>.pulse-workspace</code> archive backups.</p>
+              <h3>Evidence Consensus & Backups</h3>
+              <p>Targeted PDF evidence extraction flags concordant vs. conflicting findings, paired with two-tier SQLite hydration and single-file backups.</p>
             </div>
           </div>
         </div>
