@@ -72,11 +72,10 @@
 </div></div>
 <label class="discovery-question" for="discoveryResearchQuestion"><span class="sr-only">Concept, key phrases or research question</span><input id="discoveryResearchQuestion" type="search" maxlength="1000" placeholder="Keywords, phrases or #tags — e.g. biofilm, vesicles, #immunity" autocomplete="off" title="Separate keyword phrases with commas. Use All or Any matching, or enter a natural-language research question." enterkeyhint="search"></label>
 <button id="unifiedSearchButton" class="ribbon-discover-button" type="button">Search papers</button>
-<label class="ribbon-result-limit" for="discoveryResultLimit"><span>Results</span><select id="discoveryResultLimit" aria-label="Discovery result limit"><option value="50">Up to 50</option><option value="100">Up to 100</option><option value="200" selected>Up to 200</option><option value="500">Up to 500</option><option value="1000">Up to 1,000</option><option value="2000">Up to 2,000</option></select></label>
-<button id="ribbonDiscoverButton" class="ribbon-discover-button secondary" type="button" title="Discover papers related to your selected paper">Discover related</button>
-<button id="discoveryViewResults" class="ribbon-review-button" type="button" hidden>Review results</button>
-</div>
+<details id="searchOptionsMenu" class="search-options-menu">
+<summary id="searchOptionsSummary" aria-label="Search options" aria-controls="searchBuilder"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--surface)"/><circle cx="15" cy="17" r="3" fill="var(--surface)"/></svg><span id="searchOptionsState">Online · All</span><span class="search-options-chevron" aria-hidden="true">⌄</span></summary>
 <div id="searchBuilder" class="search-builder-bar">
+<div class="search-options-heading"><strong>Search options</strong><button id="searchOptionsClose" type="button" aria-label="Close search options">×</button></div>
 <div class="search-builder-controls">
 <label class="search-builder-field" for="searchScopeSelect"><span>Search in</span><select id="searchScopeSelect"><option value="online">Online papers</option><option value="library">My library</option></select></label>
 <label class="search-builder-field" for="searchMatchSelect"><span>Match</span><select id="searchMatchSelect"><option value="all">All terms</option><option value="any">Any term</option></select></label>
@@ -87,6 +86,11 @@
 <details id="savedSearchesMenu"><summary>Saved searches<span id="savedSearchCount"></span></summary><div class="search-builder-panel"><label for="savedSearchName">Search name</label><input id="savedSearchName" type="text" maxlength="80" placeholder="Optional name"><button id="saveCurrentSearch" type="button">Save current search</button><p>Watchlists find matches you have not seen before. Click Check new to run a check; nothing runs automatically.</p><div id="savedSearchList"></div></div></details>
 </div>
 <span id="searchSelectedTags" aria-label="Selected tags"></span>
+</div>
+</details>
+<label class="ribbon-result-limit" for="discoveryResultLimit"><span>Results</span><select id="discoveryResultLimit" aria-label="Discovery result limit"><option value="50">Up to 50</option><option value="100">Up to 100</option><option value="200" selected>Up to 200</option><option value="500">Up to 500</option><option value="1000">Up to 1,000</option><option value="2000">Up to 2,000</option></select></label>
+<button id="ribbonDiscoverButton" class="ribbon-discover-button secondary" type="button" title="Discover papers related to your selected paper">Discover related</button>
+<button id="discoveryViewResults" class="ribbon-review-button" type="button" hidden>Review results</button>
 </div>
 <div id="discoveryRunProgress" class="discovery-run-progress" role="status" aria-live="polite" hidden><progress id="discoveryProgressBar" max="100" value="0" aria-label="Discovery progress"></progress><span id="discoveryProgressText">Searching…</span><button id="discoveryCancelSearch" type="button">Cancel</button></div>
 </div>
@@ -631,12 +635,12 @@
 <script src="js/part_11.js?v=2.1.10-fit"></script>
 <script src="js/part_12.js?v=2.1.6-link-details"></script>
 <script src="js/part_13.js?v=2.1.6"></script>
-<script src="js/part_14.js?v=2.1.6"></script>
+<script src="js/part_14.js?v=2.1.11-compact1"></script>
 <script src="js/map-interactions.js?v=2.1.6"></script>
 <script src="js/part_15.js?v=2.1.6"></script>
 <script src="js/part_23.js?v=2.1.6"></script>
 <script src="js/mendeley-sync.js?v=2.1.6"></script>
-<script src="js/part_24.js?v=2.1.6"></script>
+<script src="js/part_24.js?v=2.1.11-compact1"></script>
 <script src="js/library-sync.js?v=2.1.6"></script>
 <script src="js/sync-and-reports.js?v=2.1.6"></script>
 <script src="js/discovery-controls.js?v=2.1.6-options2"></script>
@@ -655,7 +659,7 @@
 <script src="js/trends-view.js?v=2.1.8"></script>
 <script src="js/trends-page.js?v=2.1.8"></script>
 <script src="js/connection-diagnostics.js?v=2.1.6"></script>
-<script src="js/search-workflow.js?v=2.1.6"></script>
+<script src="js/search-workflow.js?v=2.1.11-compact1"></script>
 <link rel="stylesheet" href="css/research-tools.css?v=1">
 <link rel="stylesheet" href="css/settings-options.css?v=1">
 <script src="js/research-evidence.js?v=1"></script>
@@ -675,4 +679,6 @@
 <script src="js/pdf-editor-ui.js?v=viewer-9"></script>
 <link rel="stylesheet" href="css/map-toolbar.css?v=inside-map-7">
 <script src="js/map-toolbar.js?v=inside-map-3"></script>
+<link rel="stylesheet" href="css/compact-workspace.css?v=1">
+<script src="js/compact-workspace.js?v=1"></script>
 <script src="js/part_21.js?v=2.1.10"></script> <script src="js/part_22.js?v=2.1.6"></script> </body> </html>

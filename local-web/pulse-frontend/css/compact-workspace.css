@@ -1,0 +1,45 @@
+/* Search options live in one pill alongside the query. */
+.search-options-menu { position:relative; flex:none; min-width:0; }
+.search-options-menu>summary { display:flex; align-items:center; gap:7px; height:36px; box-sizing:border-box; padding:0 12px; list-style:none; white-space:nowrap; border:1px solid var(--line); border-radius:20px; background:var(--surface); color:var(--ink-2); font-size:12px; cursor:pointer; }
+.search-options-menu>summary::-webkit-details-marker { display:none; }
+.search-options-menu[open]>summary { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+.search-options-menu>summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.search-options-chevron { color:var(--muted); }
+.search-options-menu #searchBuilder { position:absolute; top:calc(100% + 9px); right:0; z-index:100; display:flex; flex-direction:column; align-items:stretch; flex-wrap:nowrap; gap:14px; width:350px; max-width:calc(100vw - 32px); max-height:calc(100dvh - 145px); overflow:auto; box-sizing:border-box; padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--surface); color:var(--ink); box-shadow:0 12px 36px #0002; }
+.search-options-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:14px; }
+.search-options-heading #searchOptionsClose { display:grid; place-items:center; width:26px; height:26px; min-height:26px; padding:0; border:0; background:transparent; color:var(--muted); font-size:20px; cursor:pointer; }
+.search-options-menu .search-builder-controls { display:grid; grid-template-columns:1fr; gap:10px; }
+.search-options-menu .search-builder-field { display:grid; grid-template-columns:85px minmax(0,1fr); white-space:normal; }
+.search-options-menu .search-builder-field select { width:100%; min-width:0; }
+.search-options-menu .search-builder-actions { display:flex; align-items:start; gap:8px; margin:0; }
+.search-options-menu .search-builder-actions>details { flex:1 1 120px; min-width:0; }
+.search-options-menu .search-builder-actions>details[open] { flex-basis:100%; }
+.search-options-menu .search-builder-panel { position:static; width:100%; max-width:none; margin-top:8px; box-shadow:none; padding:10px; }
+.search-options-menu #searchSelectedTags { white-space:normal; overflow-wrap:anywhere; }
+.search-options-menu #searchSelectedTags:empty { display:none; }
+
+/* The sidebar keeps its vertical layout; the full library uses two compact rows. */
+.library-compact-toolbar { flex:none; min-width:0; }
+.col-header-left { min-width:0; flex-wrap:wrap; }
+#researchFilterStatus { max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:var(--accent); }
+#researchFilterStatus:empty { display:none; }
+.library-fullscreen .col-library-header { padding:14px 20px 10px; gap:8px 16px; flex:none; }
+.library-fullscreen .col-header-left h3 { font-size:19px; letter-spacing:-.3px; }
+.library-fullscreen .col-header-actions { width:auto; gap:6px; margin-left:auto; }
+.library-fullscreen .library-compact-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:7px; padding:0 20px 12px; border-bottom:1px solid var(--line); }
+.library-fullscreen .library-compact-toolbar :is(.research-library-tools,.library-organise-tools) { display:contents; }
+.library-fullscreen .library-compact-toolbar :is(button,select) { min-height:30px; box-sizing:border-box; margin:0; font-size:11px; white-space:nowrap; }
+.library-fullscreen #activeSmartCollection { width:150px; max-width:100%; }
+.library-fullscreen .library-search-filter { flex:1 1 200px; min-width:180px; margin:0; height:32px; box-sizing:border-box; }
+.library-fullscreen .library-search-filter input { min-width:0; width:0; }
+.library-fullscreen #clearResearchFilter { order:2; }
+.library-fullscreen .pulse-paper-list.is-table { padding-top:0; }
+.library-bulk-bar[hidden] { display:none; }
+@media(max-width:800px) {
+  .discovery-search-row { position:relative; }
+  .search-options-menu { position:static; }
+  .search-options-menu #searchBuilder { right:0; max-height:calc(100dvh - 225px); }
+  .library-fullscreen .col-library-header { padding:12px 12px 8px; }
+  .library-fullscreen .library-compact-toolbar { padding:0 12px 10px; }
+  .library-fullscreen .library-search-filter { flex-basis:100%; order:3; }
+}

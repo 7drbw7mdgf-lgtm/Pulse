@@ -47,6 +47,7 @@ function libraryMeasureRows(ui) {
   ui.measureFrame=null;
   if(ui!==libraryRowsUi || !ui.model || !ui.root.clientHeight) return;
   const model=ui.model, offset=Math.max(0,ui.root.scrollTop-model.offset);
+  const headerOffset=Math.min(ui.root.scrollTop,model.offset);
   const anchor=libraryRowIndex(model.prefix,offset), fraction=offset-model.prefix[anchor];
   let changed=false;
   for(const node of ui.container.children) {
@@ -59,7 +60,7 @@ function libraryMeasureRows(ui) {
     libraryRowPrefix(ui);
     // Preserve the paper at the viewport edge while estimates become measured
     // sizes. Only rows before that anchor can change its native scroll offset.
-    const next=model.prefix[anchor]+fraction+model.offset;
+    const next=model.prefix[anchor]+fraction+headerOffset;
     if(Math.abs(next-ui.root.scrollTop)>.5) ui.root.scrollTop=next;
     renderLibraryWindow(ui,false);
   }
@@ -131,6 +132,7 @@ function renderLibraryRows(papers,options) {
   const reset=ui.root!==root || ui.structure!==structure;
   const prior=ui.model;
   const priorOffset=prior?Math.max(0,root.scrollTop-prior.offset):0;
+  const priorHeaderOffset=prior?Math.min(root.scrollTop,prior.offset):0;
   let anchorIndex=prior?libraryRowIndex(prior.prefix,priorOffset):0;
   const focused=document.activeElement?.closest?.('[data-paper]');
   const focusedIndex=focused&&prior?prior.byId.get(focused.dataset.paper):undefined;
@@ -160,7 +162,7 @@ function renderLibraryRows(papers,options) {
   if(prior && prior.controls!==controls) root.scrollTop=0;
   else if(prior && anchorId && ui.model.byId.has(anchorId)) {
     const nextIndex=ui.model.byId.get(anchorId);
-    if(nextIndex!==anchorIndex || prior.width!==width) root.scrollTop=Math.max(0,ui.model.prefix[nextIndex]+anchorDelta+ui.model.offset);
+    if(nextIndex!==anchorIndex || prior.width!==width) root.scrollTop=Math.max(0,ui.model.prefix[nextIndex]+anchorDelta+Math.min(priorHeaderOffset,ui.model.offset));
   }
   renderLibraryWindow(ui);
   if(options.mode==='table') root.querySelector('table')?.setAttribute('aria-rowcount',String(papers.length+1));

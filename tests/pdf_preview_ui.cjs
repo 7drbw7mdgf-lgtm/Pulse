@@ -44,8 +44,11 @@ const {spawn,spawnSync}=require('node:child_process'),{chromium}=require('playwr
     assert(actions[2].top>actions[0].top,'Discover related belongs on the second action row');
    }
   }
+  // Constrain the viewport so the fixture overflows even when the ribbon is compact.
+  await page.setViewportSize({width:1280,height:650});
   await page.evaluate(()=>{setInspectorTab('overview');renderDetails();els.detailsContent.scrollTop=200;});
   assert(await page.evaluate(()=>els.detailsContent.scrollTop)>0,'Details scroll vertically');
+  await page.setViewportSize({width:1280,height:900});
   await page.click('[data-read-pdf]');await page.waitForFunction(()=>document.querySelectorAll('.pdf-text-layer span').length>3);
   await page.waitForFunction(()=>{const img=document.querySelector('.pdf-page>img');return img?.complete&&img.naturalWidth>300;});
   assert.equal(await page.locator('#pdfReadMode').innerText(),'Preview');assert.equal(await page.locator('#pdfAnnotationSidebar').isVisible(),false);

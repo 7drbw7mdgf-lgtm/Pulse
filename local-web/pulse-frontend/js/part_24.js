@@ -8,7 +8,7 @@ function renderLibraryBulkActions(visiblePapers = state.papers.filter(paper=>pap
   const count = libraryBulkPapers().length;
   const shown = visiblePapers.filter(paper => state.librarySelectedIds.has(paper.id)).length;
   const bar = document.getElementById('libraryBulkBar');
-  bar.hidden = !state.libraryFullscreen;
+  bar.hidden = !state.libraryFullscreen || !count;
   document.getElementById('libraryBulkCount').textContent = `${count} selected${count > shown ? ` · ${count - shown} outside this filter` : ''}`;
   for (const id of ['libraryBulkDeselect','libraryBulkExport','libraryBulkTag','libraryBulkColorBtn','libraryBulkTransfer','libraryBulkRemove']) {
     const el = document.getElementById(id);
