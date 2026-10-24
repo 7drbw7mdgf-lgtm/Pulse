@@ -1,6 +1,6 @@
 {
   "name": "pulse-tauri",
-  "version": "2.1.9-a",
+  "version": "2.1.10",
   "description": "Pulse desktop application powered by Tauri",
   "type": "module",
   "scripts": {
