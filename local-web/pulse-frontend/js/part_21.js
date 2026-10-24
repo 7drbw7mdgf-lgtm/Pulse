@@ -141,6 +141,7 @@
     els.blowUpGraphButton?.addEventListener('click', () => blowUpMap(1.35));
     els.compressGraphButton?.addEventListener('click', () => compressMap(0.75));
     els.fitCanvasButton?.addEventListener('click', () => fitCanvasToMap());
+    document.getElementById('dockFitButton')?.addEventListener('click', () => fitCanvasToMap());
     els.addPaperDropBtn?.addEventListener('click', () => els.fileInput?.click());
 
     // Subbar dropdown controls & mode tabs
@@ -292,6 +293,9 @@
         } else if (e.key === '-' || e.key === '_') {
           e.preventDefault();
           compressMap(0.75);
+        } else if (e.key === '0') {
+          e.preventDefault();
+          fitCanvasToMap();
         }
       }
     });

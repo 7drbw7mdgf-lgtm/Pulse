@@ -108,14 +108,21 @@
         return;
       }
       const rect = els.map.getBoundingClientRect();
+      const hasRealDimensions = rect.width > 64 && rect.height > 64;
       const width = Math.max(rect.width, 640);
       const height = Math.max(rect.height, 520);
       const safeHeight = Math.max(360, height - bottomDockSpace());
       updateViewSize(width, height);
       els.map.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.width} ${state.view.height}`);
+      els.map.setAttribute('shape-rendering', 'geometricPrecision');
+      els.map.setAttribute('text-rendering', 'geometricPrecision');
       els.map.classList.toggle('no-grid', !state.graphStyle.showGrid);
       layout(width, safeHeight);
       applyAreaContainment();
+      if (hasRealDimensions && state.mapNeedsFit && !state.graphAnalysisPending && !state.graphLayoutPending) {
+        fitCanvasToMap();
+        state.mapNeedsFit = false;
+      }
       if (!state.graphAnalysisPending && !state.graphLayoutPending && !isRecenteringAnimation && typeof rememberGraphLayout === 'function') rememberGraphLayout(width,safeHeight);
       const activeDrawingPapers = typeof activeMapPapers === 'function' ? activeMapPapers() : state.papers;
       const drawingKey = JSON.stringify([width,safeHeight,state.mode,state.centerId,state.activeMapId,state.graphAnalysisRevision || 0,

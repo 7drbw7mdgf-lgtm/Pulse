@@ -161,6 +161,13 @@
   cursor: grab;
   touch-action: none;
   font-family: var(--font-ui);
+  shape-rendering: geometricPrecision;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.map * {
+  shape-rendering: geometricPrecision;
 }
 .map.no-grid { background-image: none; }
 .map.is-panning { cursor: grabbing; }
@@ -169,6 +176,7 @@
   stroke: var(--edge);
   stroke-linecap: round;
   cursor: pointer;
+  shape-rendering: geometricPrecision;
   transition: opacity 0.18s, stroke-width 0.18s;
 }
 .edge:hover { opacity: 0.95 !important; }
@@ -178,7 +186,7 @@
 .edge[data-type="mixed"] { stroke: var(--edge-mixed); }
 .edge.is-selected { stroke: var(--accent); }
 
-.area-region rect { fill-opacity: 0.08; stroke-width: 1.5; stroke-dasharray: 6 5; cursor: move; }
+.area-region rect { fill-opacity: 0.08; stroke-width: 1.5; stroke-dasharray: 6 5; cursor: move; shape-rendering: geometricPrecision; }
 .area-region.is-selected rect { fill-opacity: 0.14; stroke-width: 2.5; stroke-dasharray: none; }
 .area-region text {
   fill: var(--ink-2);
@@ -190,6 +198,8 @@
   stroke-width: 4px;
   stroke-linejoin: round;
   pointer-events: none;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
 }
 .area-region .area-resize-handle {
   fill: var(--surface);
@@ -198,20 +208,21 @@
   stroke-width: 2;
   stroke-dasharray: none;
   cursor: nwse-resize;
+  shape-rendering: geometricPrecision;
 }
 
 .node circle {
   stroke: var(--node-ring);
   stroke-width: 2.5;
   cursor: grab;
-  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.16));
-  transition: stroke 0.15s, stroke-width 0.15s, filter 0.15s;
+  shape-rendering: geometricPrecision;
+  transition: stroke 0.15s, stroke-width 0.15s;
 }
-.node:hover circle { filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.22)); }
+.node:hover circle { stroke-width: 3.2; }
 .node.is-linked circle { stroke: var(--accent); stroke-width: 3; }
 .node.is-selected circle { stroke: var(--accent); stroke-width: 3.5; }
 .node.is-centered circle { stroke: var(--accent); stroke-width: 4.5; }
-.node.is-dragging circle { cursor: grabbing; stroke: var(--accent); filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.25)); }
+.node.is-dragging circle { cursor: grabbing; stroke: var(--accent); stroke-width: 3.5; }
 
 /* Centered node bouncing effect */
 @keyframes nodeBounceScale {

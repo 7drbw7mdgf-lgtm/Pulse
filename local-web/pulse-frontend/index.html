@@ -1,6 +1,6 @@
 <!doctype html> <html lang="en" data-theme="light"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://generativelanguage.googleapis.com https://api.crossref.org https://api.openalex.org https://api.semanticscholar.org https://app.dimensions.ai https://europepmc.org https://icite.od.nih.gov; frame-ancestors 'none'; object-src 'none';">
-<title>Pulse v2.1.10 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=2.1.6-rail-cleanup">
+<title>Pulse v2.1.11 — Literature Discovery &amp; Synthesis</title> <link rel="stylesheet" href="style.css?v=2.1.11">
 <link rel="icon" type="image/png" href="favicon.png?v=2.0.2"> <link rel="stylesheet" href="css/search-workflow.css?v=2.1.6-layout3"><link rel="stylesheet" href="css/discovery-options.css?v=1">
 </head> <body> <div class="pulse-app-root inspector-hidden" id="app">
 
@@ -172,7 +172,7 @@
 <div id="mapToolsPopup" class="dock-tools-popup" role="group" aria-label="Map tools">
 <div class="dock-tools-heading">Map tools</div>
 <label class="dock-dropdown-label dock-label-setting"><span>Node labels</span><select id="labelModeInput" aria-label="Label display"><option value="short">Auto</option><option value="full">Full</option><option value="keywords">Keywords</option><option value="none">Hide</option></select></label>
-<div class="dock-spacing-tools" role="group" aria-label="Map spacing"><button id="blowUpButton" type="button" title="Increase spacing between papers (⌘+)"><span data-feather="maximize-2"></span><span>Spread out</span></button><button id="compressButton" type="button" title="Decrease spacing between papers (⌘-)"><span data-feather="minimize-2"></span><span>Bring closer</span></button></div>
+<div class="dock-spacing-tools" role="group" aria-label="Map spacing"><button id="blowUpButton" type="button" title="Increase spacing between papers (⌘+)"><span data-feather="maximize-2"></span><span>Spread out</span></button><button id="compressButton" type="button" title="Decrease spacing between papers (⌘-)"><span data-feather="minimize-2"></span><span>Bring closer</span></button><button id="dockFitButton" type="button" title="Fit view to show all papers (⌘0)"><span data-feather="crosshair"></span><span>Fit view</span></button></div>
 <div class="dock-panel-tools">
 <button id="graphButton" type="button" aria-controls="graphPanel" aria-expanded="false"><span data-feather="sliders"></span><span>Graph style</span><span class="dock-tool-arrow" aria-hidden="true">›</span></button>
 <button id="areaButton" type="button" aria-controls="areaPanel" aria-expanded="false"><span data-feather="square"></span><span>Map areas</span><span class="dock-tool-arrow" aria-hidden="true">›</span></button>
@@ -627,8 +627,8 @@
 <script src="js/part_08.js?v=2.1.6"></script>
 <script src="js/part_09.js?v=2.1.6"></script>
 <script src="js/graph-runtime.js?v=2.1.6"></script>
-<script src="js/part_10.js?v=2.1.6-network-search"></script>
-<script src="js/part_11.js?v=2.1.6"></script>
+<script src="js/part_10.js?v=2.1.10-sharp"></script>
+<script src="js/part_11.js?v=2.1.10-fit"></script>
 <script src="js/part_12.js?v=2.1.6-link-details"></script>
 <script src="js/part_13.js?v=2.1.6"></script>
 <script src="js/part_14.js?v=2.1.6"></script>
@@ -649,7 +649,11 @@
 <script src="js/citation-lookup.js?v=2.1.6"></script>
 <script src="js/part_20.js?v=2.1.6-inspector-default"></script>
 <script src="js/timeline.js?v=2.1.6"></script>
-<script src="js/trends.js?v=2.1.6"></script>
+<script src="js/trends.js?v=2.1.8"></script>
+<script src="js/trends-groups.js?v=2.1.8"></script>
+<script src="js/trends-map.js?v=2.1.8"></script>
+<script src="js/trends-view.js?v=2.1.8"></script>
+<script src="js/trends-page.js?v=2.1.8"></script>
 <script src="js/connection-diagnostics.js?v=2.1.6"></script>
 <script src="js/search-workflow.js?v=2.1.6"></script>
 <link rel="stylesheet" href="css/research-tools.css?v=1">
@@ -666,9 +670,9 @@
 <link rel="stylesheet" href="css/library-tools.css?v=1">
 <script src="js/library-tools.js?v=1"></script>
 <link rel="stylesheet" href="css/pdf-reader.css?v=viewer-2">
-<link rel="stylesheet" href="css/pdf-editor.css?v=viewer-8">
-<script src="js/pdf-reader.js?v=viewer-8"></script>
-<script src="js/pdf-editor-ui.js?v=viewer-7"></script>
+<link rel="stylesheet" href="css/pdf-editor.css?v=viewer-9">
+<script src="js/pdf-reader.js?v=viewer-9"></script>
+<script src="js/pdf-editor-ui.js?v=viewer-9"></script>
 <link rel="stylesheet" href="css/map-toolbar.css?v=inside-map-7">
 <script src="js/map-toolbar.js?v=inside-map-3"></script>
-<script src="js/part_21.js?v=2.1.6-inspector-default"></script> <script src="js/part_22.js?v=2.1.6"></script> </body> </html>
+<script src="js/part_21.js?v=2.1.10"></script> <script src="js/part_22.js?v=2.1.6"></script> </body> </html>

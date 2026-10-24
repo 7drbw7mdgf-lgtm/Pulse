@@ -334,10 +334,13 @@ const PulsePDF = (() => {
   }
   async function save(kind='highlight') {
     if(!selection||!paper()||previewFile)return;
-    const selected={...selection},targetId=paperId,color=get('pdfHighlightColor').value,memo=get('pdfAnnotationMemo').value,section=get('pdfEvidenceColumn').selectedOptions[0].textContent;
-    get('pdfReaderStatus').textContent='Verifying selected passage…';
+    const selected={...selection},targetId=paperId,color=get('pdfHighlightColor').value,memo=get('pdfAnnotationMemo').value,section=get('pdfEvidenceColumn')?.selectedOptions?.[0]?.textContent||'Article text';
     try {
-      const passage=await request('passage',{id:selected.pdfId,page:selected.page,quote:selected.quote,section});
+      let passage = null;
+      if (kind === 'matrix') {
+        get('pdfReaderStatus').textContent='Verifying selected passage…';
+        passage = await request('passage',{id:selected.pdfId,page:selected.page,quote:selected.quote,section});
+      }
       const p=state.papers.find(row=>row.id===targetId);if(!p)return;
       p.pdfAnnotations ||= [];p.pdfQuotes ||= [];
       if(typeof PulsePDFEditor!=='undefined')PulsePDFEditor.checkpoint();
@@ -354,8 +357,10 @@ const PulsePDF = (() => {
         p.evidencePassages.push({...passage,annotationId:annotation.id,paperId:targetId,evidenceColumn:column});
         if(!p.pdfQuotes.some(row=>row.annotationId===annotation.id&&row.kind==='matrix'&&row.column===column))p.pdfQuotes.push({annotationId:annotation.id,pdfId:selected.pdfId,page:selected.page,quote:selected.quote,kind:'matrix',column});
       }
-      scheduleAutosave();renderDetails();renderAnnotations();drawPage();selection=null;updateSelection();get('pdfAnnotationMemo').value='';
-      get('pdfReaderStatus').textContent=kind==='matrix'?'Quote added to the Evidence Matrix source passages. It will appear in this column when you compare this paper.':kind==='notes'?'Quote added to Notes with a page link.':'Highlight saved on this computer.';
+      scheduleAutosave();renderDetails();renderAnnotations();drawPage();
+      window.getSelection()?.removeAllRanges();
+      selection=null;updateSelection();get('pdfAnnotationMemo').value='';
+      get('pdfReaderStatus').textContent=kind==='matrix'?'Quote added to the Evidence Matrix source passages. It will appear in this column when you compare this paper.':kind==='notes'?'Quote added to Notes with a page link.':markupKind==='underline'?'Underline saved on this computer.':'Highlight saved on this computer.';
     }catch(error){get('pdfReaderStatus').textContent=error.message;}
   }
   function renderAnnotations() {

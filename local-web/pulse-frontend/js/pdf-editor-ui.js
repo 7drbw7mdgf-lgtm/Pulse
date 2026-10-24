@@ -76,14 +76,103 @@ const PulsePDFEditor=(()=>{
     else{const a=draft.start,b=draft.points.at(-1),rect=canonicalRect({x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),width:Math.abs(a.x-b.x),height:Math.abs(a.y-b.y)},page.rotation);if(rect.width>.002&&rect.height>.002)addMark({kind:'rectangle',page:page.source,rect,strokeWidth});else paintPage(page);}
   }
   /* A comment popup or a text box typed straight onto the page at the clicked point. */
+  let activePinDrag = null;
+  function onPinPointerDown(event) {
+    if (event.button !== 0 || !editable()) return;
+    const pin = event.currentTarget, markId = pin.dataset.markId;
+    const mark = ctx().paper?.pdfAnnotations?.find(r => r.id === markId);
+    const page = PulsePDF.pageFor(pin);
+    if (!mark || !page) return;
+    event.stopPropagation();
+    pin.setPointerCapture(event.pointerId);
+    activePinDrag = { pin, mark, page, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, hasDragged: false };
+  }
+  function onPinPointerMove(event) {
+    if (!activePinDrag || activePinDrag.pointerId !== event.pointerId) return;
+    const { pin, page, startX, startY } = activePinDrag;
+    const dx = event.clientX - startX, dy = event.clientY - startY;
+    if (!activePinDrag.hasDragged && Math.hypot(dx, dy) > 3) {
+      activePinDrag.hasDragged = true;
+      pin.classList.add('is-dragging');
+    }
+    if (!activePinDrag.hasDragged) return;
+    event.preventDefault();
+    const p = pagePoint(event, page.el);
+    pin.style.left = (p.x * 100) + '%';
+    pin.style.top = (p.y * 100) + '%';
+    if (inline && inline.mark === activePinDrag.mark) {
+      inline.point = p;
+      inline.box.style.left = (p.x * 100) + '%';
+      inline.box.style.top = (p.y * 100) + '%';
+      inline.box.classList.toggle('is-left', p.x > .6);
+      inline.box.classList.toggle('is-above', p.y > .72);
+    }
+  }
+  function onPinPointerUp(event) {
+    if (!activePinDrag || activePinDrag.pointerId !== event.pointerId) return;
+    const { pin, mark, page, hasDragged } = activePinDrag;
+    try { pin.releasePointerCapture(event.pointerId); } catch {}
+    pin.classList.remove('is-dragging');
+    activePinDrag = null;
+    if (hasDragged) {
+      pin.__justDragged = true;
+      setTimeout(() => { delete pin.__justDragged; }, 120);
+      const p = pagePoint(event, page.el);
+      checkpoint();
+      mark.point = canonicalPoint(p, page.rotation);
+      changed();
+      status('Comment moved.');
+    }
+  }
+
   function openInline(kind,page,point,options={}){closeInline(true);
     const box=document.createElement('div');box.className='pdf-inline pdf-inline-'+(kind==='text'?'text':'note');box.style.left=point.x*100+'%';box.style.top=point.y*100+'%';
     box.classList.toggle('is-left',kind!=='text'&&point.x>.6);box.classList.toggle('is-above',kind!=='text'&&point.y>.72);
     const mark=options.mark||null;
     box.innerHTML=kind==='text'?'<textarea rows="1" maxlength="5000" aria-label="Text to add to the page" placeholder="Type here" spellcheck="true"></textarea>'
-      :`<textarea rows="3" maxlength="20000" aria-label="Comment" placeholder="${options.placeholder||'Add a comment…'}"></textarea><div class="pdf-inline-actions">${mark?'<button type="button" data-pdf-delete>Delete</button>':''}<span></span><button type="button" data-pdf-cancel>Cancel</button><button type="button" data-pdf-post>${mark?'Save':'Post'}</button></div>`;
+      :`<div class="pdf-inline-header"><span class="pdf-inline-drag-handle" title="Drag comment">Comment</span><button type="button" class="pdf-inline-close-btn" aria-label="Close">×</button></div><textarea rows="3" maxlength="20000" aria-label="Comment" placeholder="${options.placeholder||'Add a comment…'}"></textarea><div class="pdf-inline-actions">${mark?'<button type="button" data-pdf-delete>Delete</button>':''}<span></span><button type="button" data-pdf-cancel>Cancel</button><button type="button" data-pdf-post>${mark?'Save':'Post'}</button></div>`;
     const area=box.querySelector('textarea');area.value=mark?.memo||'';
     page.el.append(box);inline={kind,page,point,box,mark,commit:options.commit};styleInline();
+    const header = box.querySelector('.pdf-inline-header');
+    if (header) {
+      let dragStart = null;
+      header.addEventListener('pointerdown', e => {
+        if (e.button !== 0 || e.target.closest('button')) return;
+        e.stopPropagation();
+        header.setPointerCapture(e.pointerId);
+        header.classList.add('is-dragging');
+        dragStart = { pointerId: e.pointerId };
+      });
+      header.addEventListener('pointermove', e => {
+        if (!dragStart || dragStart.pointerId !== e.pointerId) return;
+        e.preventDefault();
+        const p = pagePoint(e, page.el);
+        inline.point = p;
+        box.style.left = (p.x * 100) + '%';
+        box.style.top = (p.y * 100) + '%';
+        box.classList.toggle('is-left', p.x > .6);
+        box.classList.toggle('is-above', p.y > .72);
+        if (mark) {
+          const pin = page.el.querySelector(`[data-mark-id="${mark.id}"]`);
+          if (pin) { pin.style.left = (p.x * 100) + '%'; pin.style.top = (p.y * 100) + '%'; }
+        }
+      });
+      const endHeaderDrag = e => {
+        if (!dragStart || dragStart.pointerId !== e.pointerId) return;
+        try { header.releasePointerCapture(e.pointerId); } catch {}
+        header.classList.remove('is-dragging');
+        dragStart = null;
+        if (mark) {
+          checkpoint();
+          mark.point = canonicalPoint(inline.point, page.rotation);
+          changed();
+          status('Comment moved.');
+        }
+      };
+      header.addEventListener('pointerup', endHeaderDrag);
+      header.addEventListener('pointercancel', endHeaderDrag);
+      box.querySelector('.pdf-inline-close-btn')?.addEventListener('click', () => closeInline(true));
+    }
     area.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeInline(false);}else if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();event.stopPropagation();closeInline(true);}});
     area.addEventListener('input',styleInline);
     if(kind==='text')area.addEventListener('blur',()=>setTimeout(()=>{if(inline?.box===box)closeInline(true);},0));
@@ -135,9 +224,57 @@ const PulsePDFEditor=(()=>{
     for(const mark of c.paper?.pdfAnnotations||[]){if(mark.pdfId!==c.attachmentId||mark.page!==page.source)continue;
       const color=palette[mark.color]||palette.blue;
       if(mark.kind==='ink'){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 1000 1000');svg.setAttribute('preserveAspectRatio','none');const line=document.createElementNS(svg.namespaceURI,'polyline');line.setAttribute('points',mark.points.map(p=>viewPoint(p,angle)).map(p=>`${p.x*1000},${p.y*1000}`).join(' '));line.setAttribute('fill','none');line.setAttribute('stroke',color);line.setAttribute('stroke-width',String((mark.strokeWidth||2)*1000/data.width));svg.append(line);layer.append(svg);}
-      else if(mark.kind==='note'){const point=viewPoint(mark.point,angle),note=document.createElement('button');note.type='button';note.className='pdf-note-pin';note.dataset.markId=mark.id;note.style.left=point.x*100+'%';note.style.top=point.y*100+'%';note.title=mark.memo;note.setAttribute('aria-label','Comment: '+mark.memo);note.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${toolIcons.note}"/></svg>`;layer.append(note);}
+      else if(mark.kind==='note'){const point=viewPoint(mark.point,angle),note=document.createElement('button');note.type='button';note.className='pdf-note-pin';note.dataset.markId=mark.id;note.style.left=point.x*100+'%';note.style.top=point.y*100+'%';note.title=mark.memo;note.setAttribute('aria-label','Comment: '+mark.memo);note.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${toolIcons.note}"/></svg>`;note.addEventListener('pointerdown',onPinPointerDown);note.addEventListener('pointermove',onPinPointerMove);note.addEventListener('pointerup',onPinPointerUp);note.addEventListener('pointercancel',onPinPointerUp);layer.append(note);}
       else if(mark.rect){const rect=viewRect(mark.rect,angle),box=document.createElement('span');box.className='pdf-edit-'+mark.kind;box.style.cssText=`left:${rect.x*100}%;top:${rect.y*100}%;width:${rect.width*100}%;height:${rect.height*100}%;color:${color};--edit-stroke:${mark.strokeWidth||2}px`;
         if(mark.kind==='text'){const inner=document.createElement('span'),w=rect.width*surface.clientWidth,h=rect.height*surface.clientHeight;inner.textContent=mark.text;inner.style.width=(angle%180?h:w)+'px';inner.style.height=(angle%180?w:h)+'px';inner.style.transform=angle===90?`translateX(${w}px) rotate(90deg)`:angle===180?`translate(${w}px,${h}px) rotate(180deg)`:angle===270?`translateY(${h}px) rotate(270deg)`:'none';box.append(inner);box.style.fontSize=(mark.fontSize||12)*surface.clientWidth/data.width+'px';}layer.append(box);}
+    }
+    const notePins=[...layer.querySelectorAll('.pdf-note-pin')];
+    if(notePins.length>1){
+      const pinPoints=notePins.map(pin=>{
+        const mark=(c.paper?.pdfAnnotations||[]).find(r=>r.id===pin.dataset.markId);
+        return {pin,point:mark?viewPoint(mark.point,angle):{x:0,y:0}};
+      });
+      const clusters=[];const visited=new Set();
+      for(let i=0;i<pinPoints.length;i++){
+        if(visited.has(i))continue;
+        const cluster=[pinPoints[i]];visited.add(i);
+        for(let j=i+1;j<pinPoints.length;j++){
+          if(visited.has(j))continue;
+          if(Math.hypot(pinPoints[i].point.x-pinPoints[j].point.x,pinPoints[i].point.y-pinPoints[j].point.y)<0.038){cluster.push(pinPoints[j]);visited.add(j);}
+        }
+        if(cluster.length>1)clusters.push(cluster);
+      }
+      clusters.forEach(cluster=>{
+        const k=cluster.length,fanRadius=Math.min(28,16+k*4);
+        cluster.forEach(({pin},index)=>{
+          const theta=(2*Math.PI*index)/k-Math.PI/2;
+          pin.dataset.fanX=Math.round(Math.cos(theta)*fanRadius);
+          pin.dataset.fanY=Math.round(Math.sin(theta)*fanRadius);
+        });
+        const openCluster=()=>{
+          cluster.forEach(({pin})=>{
+            if(!pin.classList.contains('is-dragging')){
+              pin.style.setProperty('--fan-x',`${pin.dataset.fanX}px`);
+              pin.style.setProperty('--fan-y',`${pin.dataset.fanY}px`);
+              pin.classList.add('is-fanned');
+            }
+          });
+        };
+        const closeCluster=()=>{
+          cluster.forEach(({pin})=>{
+            pin.style.removeProperty('--fan-x');
+            pin.style.removeProperty('--fan-y');
+            pin.classList.remove('is-fanned');
+          });
+        };
+        cluster.forEach(({pin})=>{
+          pin.addEventListener('mouseenter',openCluster);
+          pin.addEventListener('mouseleave',e=>{
+            const to=e.relatedTarget;
+            if(!cluster.some(({pin:p})=>p===to||p.contains(to)))closeCluster();
+          });
+        });
+      });
     }
     if(drawing?.page===page){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 1000 1000');svg.setAttribute('preserveAspectRatio','none');const shape=document.createElementNS(svg.namespaceURI,drawing.tool==='ink'?'polyline':'rect');
       if(drawing.tool==='ink')shape.setAttribute('points',drawing.points.map(p=>`${p.x*1000},${p.y*1000}`).join(' '));
@@ -208,7 +345,7 @@ const PulsePDFEditor=(()=>{
     const gap='<span class="pdf-dock-gap" aria-hidden="true"></span>';
     const tools=document.createElement('div');tools.id='pdfDock';tools.className='pdf-context-tools';tools.innerHTML=`<div id="pdfToolOptions" class="pdf-tool-options" hidden><div class="pdf-swatches" role="radiogroup" aria-label="Colour">${Object.entries(palette).map(([name,hex])=>`<button type="button" role="radio" class="pdf-swatch" data-pdf-color="${name}" style="--swatch:${hex}" aria-label="${name[0].toUpperCase()+name.slice(1)}" title="${name[0].toUpperCase()+name.slice(1)}"></button>`).join('')}</div><div class="pdf-size"><button type="button" data-pdf-size="-1" aria-label="Smaller">−</button><span id="pdfToolSize"></span><button type="button" data-pdf-size="1" aria-label="Larger">+</button></div></div>`
       +`<div id="pdfPageMenu" class="pdf-page-menu" role="toolbar" aria-label="Page tools" hidden>${bubble('page-edit','rotate-left','Rotate page left')}${bubble('page-edit','rotate-right','Rotate page right')}${bubble('page-edit','earlier','Move page earlier')}${bubble('page-edit','later','Move page later')}${bubble('page-edit','remove','Remove page')}</div>`
-      +`<div class="pdf-dock" role="toolbar" aria-label="PDF tools">${bubble('tool','select','Select text',false)}${gap}${bubble('tool','highlight','Highlighter')}${bubble('tool','underline','Underline')}${bubble('tool','note','Comment')}${gap}${bubble('tool','text','Add text')}${bubble('tool','ink','Pen')}${bubble('tool','rectangle','Rectangle')}${gap}<button type="button" id="pdfPageMenuButton" class="pdf-bubble" data-pdf-edit aria-label="Page tools" aria-haspopup="true" aria-expanded="false" aria-controls="pdfPageMenu" title="Page tools"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${toolIcons.page}"/></svg></button></div>`;
+      +`<div class="pdf-dock" role="toolbar" aria-label="PDF tools">${bubble('tool','select','Select text',false)}${gap}${bubble('tool','highlight','Highlighter')}${bubble('tool','note','Comment')}${gap}${bubble('tool','text','Add text')}${bubble('tool','ink','Pen')}${bubble('tool','rectangle','Rectangle')}${gap}<button type="button" id="pdfPageMenuButton" class="pdf-bubble" data-pdf-edit aria-label="Page tools" aria-haspopup="true" aria-expanded="false" aria-controls="pdfPageMenu" title="Page tools"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${toolIcons.page}"/></svg></button></div>`;
     const selectionTools=document.createElement('div');selectionTools.id='pdfSelectionBar';selectionTools.className='pdf-selection-bar';selectionTools.setAttribute('role','toolbar');selectionTools.setAttribute('aria-label','Selected text');selectionTools.hidden=true;
     selectionTools.innerHTML=bubble('selection','highlight','Highlight')+bubble('selection','underline','Underline')+bubble('selection','strikeout','Strikethrough')+bubble('selection','comment','Comment on selection')+bubble('selection','notes','Quote to Notes',true,'quote')+bubble('selection','copy','Copy',false);
     const stage=document.createElement('div');stage.className='pdf-stage';el('pdfViewport').before(stage);stage.append(el('pdfViewport'),tools,selectionTools);
@@ -234,7 +371,7 @@ const PulsePDFEditor=(()=>{
     el('pdfReadMode').parentElement.insertBefore(dialog.querySelector('.pdf-toolbar'),el('pdfDownloadCopy'));
     dialog.append(el('pdfReaderStatus'));el('pdfReaderStatus').classList.add('pdf-status-bar');
     const stack=el('pdfPageStack');stack.addEventListener('pointerdown',pointerDown);
-    stack.addEventListener('click',event=>{const pin=event.target.closest('.pdf-note-pin');if(!pin||!editable())return;const mark=ctx().paper?.pdfAnnotations?.find(row=>row.id===pin.dataset.markId),page=PulsePDF.pageFor(pin);if(mark&&page)openInline('note',page,viewPoint(mark.point,page.rotation),{mark});});
+    stack.addEventListener('click',event=>{const pin=event.target.closest('.pdf-note-pin');if(!pin||!editable()||pin.__justDragged)return;const mark=ctx().paper?.pdfAnnotations?.find(row=>row.id===pin.dataset.markId),page=PulsePDF.pageFor(pin);if(mark&&page)openInline('note',page,viewPoint(mark.point,page.rotation),{mark});});
     document.addEventListener('selectionchange',()=>{const selection=window.getSelection();if(!el('pdfSelectionBar').hidden&&(!selection?.rangeCount||selection.isCollapsed))hideSelectionBar();});
     el('pdfViewport').addEventListener('scroll',hideSelectionBar,{passive:true});
     document.addEventListener('pointerdown',event=>{if(!el('pdfPageMenu').hidden&&!event.target.closest('#pdfPageMenu,#pdfPageMenuButton'))showPageMenu(false);});stack.addEventListener('pointermove',pointerMove);stack.addEventListener('pointerup',pointerUp);stack.addEventListener('pointercancel',()=>{const page=drawing?.page;drawing=null;if(page)paintPage(page);});
