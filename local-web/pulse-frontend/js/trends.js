@@ -1,6 +1,6 @@
 /* Publication patterns in the saved library, with traceable paper drill-downs. */
 // One selection drives the map, the year chart and the list: group ('*' = all papers), concept and period.
-const trendsUi = { group: '', topic: '', period: '', sort: 'count', groupTarget: 10, topicLimit: 10, paperLimit: 10, playing: false, model: null };
+const trendsUi = { group: '', topic: '', period: '', sort: 'count', groupTarget: 10, topicLimit: 10, paperLimit: 10, playing: false, visualsOpen: false, conceptsOpen: false, model: null };
 const trendsCache = { entries: new Map(), key: '', model: null, builds: 0, renderedKey: '', root: null };
 
 function trendsPublicationYear(paper) {

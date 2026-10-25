@@ -85,12 +85,12 @@ assert.equal((view.innerHTML.match(/data-trends-paper="/g) || []).length, 10);
 assert.equal((view.innerHTML.match(/data-trends-topic="/g) || []).length, 10);
 assert.equal((view.innerHTML.match(/data-trends-group="/g) || []).length, 1);
 assert(view.innerHTML.includes('Topic groups appear once'));
-assert(view.innerHTML.includes('Show more papers')); assert(view.innerHTML.includes('Show more concepts'));
+assert(view.innerHTML.includes('Show more papers')); assert(view.innerHTML.includes('Show more keywords'));
 assert(view.innerHTML.includes('aria-pressed="false"')); assert(view.innerHTML.includes('current publication year is incomplete'));
 assert.equal(view.scrollTop, 73);
 vm.runInContext("trendsUi.topic = 'shared'; trendsUi.period = 'years:2025:2029';", context);
 context.renderTrends({ refresh: false }); assert.equal(termReads, 1000);
-assert(view.innerHTML.includes('match your filters')); assert(view.innerHTML.includes('Reset filters'));
+assert(view.innerHTML.includes('match your filters')); assert(view.innerHTML.includes('Clear filters'));
 vm.runInContext("trendsUi.topic = ''; trendsUi.period = '';", context);
 
 // Reopening and selection/layout changes reuse both the aggregate and DOM.
@@ -114,7 +114,7 @@ context.state.clusters = [large.slice(0,500).map(p => p.id), large.slice(500).ma
 context.renderTrends();
 assert.equal(termReads, 1002, 'Accepted graph keywords invalidate only the affected record');
 assert.equal(vm.runInContext('trendsUi.model.groups.length', context), 2);
-assert(view.innerHTML.includes('Topic groups'));
+assert(view.innerHTML.includes('topic groups'));
 assert.equal(vm.runInContext("trendsUi.model.topicMap.has('fresh analysis concept')", context), true);
 
 // Share changes are only called trends when clear at 95%; small samples are marked as possibly chance.
@@ -142,7 +142,9 @@ assert.equal(groupData.groups.length, 3, 'Three distinct themes make three group
 assert.equal(groupData.groups.reduce((sum, item) => sum + item.papers.length, 0), 60, 'Every paper is in exactly one group');
 assert.deepEqual(groupData.groups.map(item => item.label.split(' · ')[0].toLowerCase()).sort(), themes.map(theme => `${theme} theme`).sort());
 assert.equal((view.innerHTML.match(/data-trends-group="/g) || []).length, 4, 'All papers plus three groups');
-assert.equal((view.innerHTML.match(/data-trends-paper="/g) || []).length, 0, 'Groups start closed');
+assert.equal((view.innerHTML.match(/data-trends-paper="/g) || []).length, 10, 'All papers are visible without opening a topic');
+assert(view.innerHTML.includes('data-trends-keywords>'),'Keyword filters start collapsed');
+assert(view.innerHTML.includes('data-trends-visuals>'),'Visual exploration starts collapsed');
 assert(view.innerHTML.includes('data-trends-map'));
 const mapModel = vm.runInContext('trendsUi.model', context);
 const mapData = context.trendsMapData(mapModel, groupData, context.trendsGroupStats(mapModel, groupData, null), null);
@@ -152,7 +154,7 @@ assert(mapData.groups.every(item => item.papers.every(paper => paper.ring >= 0 &
 const first = groupData.groups[0];
 context.trendsSelect({ group: first.id });
 assert.equal((view.innerHTML.match(/data-trends-paper="/g) || []).length, 10);
-assert(view.innerHTML.includes('aria-expanded="true"'));
+assert(view.innerHTML.includes('aria-pressed="true"'),'The current topic is visibly selected');
 const inGroup = [...view.innerHTML.matchAll(/data-trends-paper="([^"]+)"/g)].map(match => match[1]);
 assert(inGroup.every(id => groupData.members.get(first.id).has(id)), 'An open group lists only its own papers');
 const bin = vm.runInContext('trendsUi.model.bins[0]', context);
