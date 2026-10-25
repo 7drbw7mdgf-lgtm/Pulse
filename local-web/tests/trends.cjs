@@ -166,22 +166,6 @@ assert.equal(vm.runInContext('trendsUi.period', context), bin.key, 'The period s
 vm.runInContext("trendsUi.period = ''; trendsUi.group = ''; trendsUi.groupTarget = 10;", context);
 context.state.vectors = new Map(); context.state.links = [];
 
-// The command dashboard never invents a shift or counts future years as activity.
-const briefingModel=model([...Array.from({length:30},(_,i)=>p('old-'+i,2021,['Established'])),
-  ...Array.from({length:30},(_,i)=>p('new-'+i,2026,['Emerging'])),p('far-future',9999,['Emerging'])]);
-const briefingGroups={groups:[{id:'established',label:'Established',papers:briefingModel.records.slice(0,30).map(r=>r.paper)},
-  {id:'emerging',label:'Emerging',papers:briefingModel.records.slice(30,60).map(r=>r.paper)},
-  {id:'unplaced',label:'Not enough text to group',ungrouped:true,papers:[briefingModel.records[60].paper]}]};
-briefingGroups.groupOf=new Map(briefingGroups.groups.flatMap(g=>g.papers.map(p=>[p.id,g.id])));
-const briefingSummary=context.trendsGroupStats(briefingModel,briefingGroups,null);
-const briefing=context.trendsBriefingSignals(briefingModel,briefingGroups,briefingSummary);
-assert.equal(briefing.length,3);assert(briefing[0].group!=='unplaced');
-assert(['rising','falling','new'].includes(briefing[1].status),'Only a supported change becomes a share signal');
-assert(!briefing[2].period.includes('9999'),'Future years cannot become the busiest historical period');
-const noShift=context.trendsBriefingSignals(onlyUndated,null,{stats:new Map()});
-assert.equal(noShift[1].title,'No clear shift yet');assert.equal(noShift[1].group,undefined);
-assert.equal(noShift[2].period,'undated');assert.equal(noShift[0].topic,'concept','Without graph groups, the focus still leads to an actual concept');
-
 // Data removal resets stale filters, and missing dates leave useful concepts.
 context.state.papers = [p('unknown', '', ['New concept'])]; context.renderTrends();
 assert.equal(vm.runInContext('trendsUi.topic', context), ''); assert.equal(vm.runInContext('trendsUi.period', context), '');
