@@ -11,9 +11,9 @@ const TrendsMap = (() => {
   let fit = 1, last = 0, running = false;
 
   function readPalette() {
-    const style = getComputedStyle(document.documentElement);
+    const style = getComputedStyle(wrap.isConnected ? wrap : document.documentElement);
     const read = name => style.getPropertyValue(name).trim();
-    Object.assign(palette, { rising: read('--ok'), falling: read('--danger'), new: read('--warn'), unclear: read('--muted'),
+    Object.assign(palette, { rising: read('--ok'), falling: read('--danger'), new: read('--warn'), unclear: read('--trends-map-neutral') || read('--muted'),
       paper: read('--ink-2'), ink: read('--ink'), line: read('--line-strong') || read('--line'), accent: read('--accent') });
   }
   new MutationObserver(readPalette).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
@@ -80,30 +80,30 @@ const TrendsMap = (() => {
 
   const font = (weight, size) => `${weight} ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`;
   function wrapText(text, width) {
-    const lines = [];
-    let line = '';
-    for (const word of text.split(/\s+/)) {
-      const trial = line ? line + ' ' + word : word;
-      if (ctx.measureText(trial).width > width && line) { lines.push(line); line = word; } else line = trial;
+    const shorten=value=>{let result=value;while(result.length>1&&ctx.measureText(result+'…').width>width)result=result.slice(0,-1);return result+'…';};
+    const lines=[];
+    let line='';
+    for(const word of text.split(/\s+/)){
+      const token=ctx.measureText(word).width>width?shorten(word):word;
+      const trial=line?line+' '+token:token;
+      if(ctx.measureText(trial).width>width&&line){lines.push(line);line=token;}else line=trial;
     }
-    if (line) lines.push(line);
-    return lines.length > 3 ? [...lines.slice(0, 2), lines.slice(2).join(' ').slice(0, 14) + '…'] : lines;
+    if(line)lines.push(line);
+    if(lines.length>3)return [...lines.slice(0,2),shorten(lines[2])];
+    return lines;
   }
   function drawLabel(node, r) {
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = palette.ink;
-    // Type shrinks until the longest word fits; a bubble too small to hold it gets its label underneath.
-    let size = Math.min(13, r / 3.4);
-    const fits = value => { ctx.font = font(600, value); return Math.max(...node.label.split(/\s+/).map(word => ctx.measureText(word).width)) <= r * 1.75; };
-    while (size > 7.5 && !fits(size)) size -= .5;
-    if (!fits(size)) {
-      ctx.font = font(600, 10);
-      ctx.fillText(node.label.length > 28 ? node.label.slice(0, 27) + '…' : node.label, node.x, node.y + r + 10);
-      return;
-    }
-    const lines = wrapText(node.label, r * 1.75), height = size * 1.15, showStats = r > 28;
-    const top = node.y - (lines.length * height) / 2 - (showStats ? size * .45 : 0);
-    lines.forEach((line, index) => ctx.fillText(line, node.x, top + height * index + height / 2));
-    if (showStats) { ctx.font = font(500, size * .82); ctx.fillStyle = palette.paper; ctx.fillText(node.stats, node.x, top + height * lines.length + size * .6); }
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=palette.ink;
+    // Small clusters show their count; full names remain in the tooltip and list.
+    // Larger labels stay inside their bubble instead of colliding with neighbours.
+    if(r<20){ctx.font=font(600,10);ctx.fillText(node.stats.split(' · ')[0],node.x,node.y);return;}
+    const size=Math.max(9,Math.min(12,r/3.2));
+    ctx.font=font(600,size);
+    const lines=wrapText(node.label,r*1.65),height=size*1.2;
+    const top=node.y-(lines.length*height+size)/2;
+    lines.forEach((line,index)=>ctx.fillText(line,node.x,top+height*index+height/2));
+    ctx.font=font(500,Math.max(8,size*.8));ctx.fillStyle=palette.paper;
+    ctx.fillText(node.stats,node.x,top+height*lines.length+size*.6);
   }
 
   function draw() {
@@ -140,9 +140,11 @@ const TrendsMap = (() => {
       const r = radius(node);
       if (r < 2) continue;
       const alpha = dimmed(node) ? .35 : 1, colour = palette[node.status] || palette.unclear;
-      ctx.globalAlpha = alpha * .16; ctx.fillStyle = colour;
+      ctx.shadowColor = colour; ctx.shadowBlur = node === selected || node === hoverNode ? 16 : 6;
+      ctx.globalAlpha = alpha * .13; ctx.fillStyle = colour;
       ctx.beginPath(); ctx.arc(node.x, node.y, r * (node === hoverNode ? 1.04 : 1), 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = alpha; ctx.strokeStyle = colour; ctx.lineWidth = node === selected ? 2.5 : 1.5; ctx.stroke();
+      ctx.shadowBlur = 0;
       if (r >= 10) drawLabel(node, r);
     }
     ctx.globalAlpha = 1;
@@ -168,7 +170,7 @@ const TrendsMap = (() => {
   function mount(slot, data) {
     if (wrap.parentNode !== slot) slot.append(wrap);
     tip.classList.remove('show');
-    if (!palette.ink) readPalette();
+    readPalette();
     scene.data = data;
     resize();
     const seen = new Set();
