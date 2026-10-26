@@ -4,7 +4,7 @@ const {chromium}=require('playwright');
 (async()=>{
  const profile=fs.mkdtempSync(path.join(os.tmpdir(),'pulse-research-workflow-'));
  const fixture={papers:[
-  {id:'one',title:'Outer membrane vesicles and biofilm formation',doi:'10.1000/one',authors:['Example One'],year:'2024',abstract:'Vesicles support biofilm formation.',userTags:['Immunity'],paperKeywords:['biofilm'],readingStatus:'to-read',text:'Private synthetic full text',selected:false},
+  {id:'one',addedAt:'2024-06-03T12:30:00.000Z',title:'Outer membrane vesicles and biofilm formation',doi:'10.1000/one',authors:['Example One'],year:'2024',abstract:'Vesicles support biofilm formation.',userTags:['Immunity'],paperKeywords:['biofilm'],readingStatus:'to-read',text:'Private synthetic full text',selected:false},
   {id:'two',title:'Transport systems in bacteria',doi:'10.1000/two',authors:['Example Two'],year:'2023',abstract:'Cellular transport mechanisms.',userTags:['Transport'],paperKeywords:['transport'],readingStatus:'read',selected:false}
  ],threshold:.75};
  fs.writeFileSync(path.join(profile,'library.json'),JSON.stringify(fixture));
@@ -33,6 +33,14 @@ const {chromium}=require('playwright');
   await setSearchOption('searchScopeSelect','library');await page.fill('#discoveryResearchQuestion','vesicles, biofilm');await page.click('#unifiedSearchButton');
   await page.waitForFunction(()=>libraryDisplayPapers().length===1);
   assert.equal(await page.locator('#searchOptionsState').innerText(),'Library · All');
+  assert.equal(await page.locator('.library-table .library-map-column').count(),0,'There is no On map checkbox column');
+  assert.equal(await page.locator('.library-table th').last().innerText(),'Date added');
+  assert.equal(await page.locator('.library-addedAt-cell time').getAttribute('datetime'),'2024-06-03T12:30:00.000Z');
+  assert((await page.locator('.table-map-tab-select').boundingBox()).width<=72,'Map assignment stays compact');
+  await page.selectOption('.table-map-tab-select','map-1');assert(await page.evaluate(()=>state.papers.find(p=>p.id==='one').mapIds.includes('map-1')));
+  await page.selectOption('.table-map-tab-select','none');
+  await page.click('[data-table-sort="addedAt"]');
+
   assert.equal(await page.locator('#libraryBulkBar').isVisible(),false,'No empty bulk toolbar');
   const geometry=await page.evaluate(()=>({header:document.querySelector('.col-library-header').getBoundingClientRect().height,tools:document.querySelector('.library-compact-toolbar').getBoundingClientRect().height,first:document.querySelector('#paperList tbody [data-paper]').getBoundingClientRect().top,head:document.querySelector('#paperList thead').getBoundingClientRect().bottom}));
   assert(geometry.header+geometry.tools<120,'Compact library heading and filters');
@@ -70,6 +78,10 @@ const {chromium}=require('playwright');
   await page.evaluate(async()=>{closeDiscoveryModal();await saveLibrary();});await page.reload();
   await page.waitForFunction(()=>state.autosaveReady&&state.savedSearches?.[0]?.seenKeys?.length===2);
   assert.equal(await page.evaluate(()=>state.papers[0].text),'Private synthetic full text');
+  assert.equal(await page.evaluate(()=>state.papers.find(p=>p.id==='one').addedAt),'2024-06-03T12:30:00.000Z','Added dates survive save and reload');
+  assert.equal(await page.evaluate(()=>state.papers.find(p=>p.id==='two').addedAt),'','Unknown dates stay unknown after reload');
+  assert.equal(await page.evaluate(()=>state.librarySortKey),'addedAt','The chosen date sort persists');
+
   await toggleSearchMenu('savedSearchesMenu');await page.click('[data-saved-remove]');assert.equal(await page.locator('[data-saved-load]').count(),0);
   await page.click('[data-saved-restore]');assert.equal(await page.locator('[data-saved-load]').count(),1);
   await page.fill('#discoveryResearchQuestion','"unfinished');await page.click('#unifiedSearchButton');assert.match(await page.locator('#toast').innerText(),/Close the quotation/);

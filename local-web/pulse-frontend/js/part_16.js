@@ -129,6 +129,7 @@ function bindInspectorSections() {
         <div class="insp-head">
           <h2 class="insp-title">${escapeHtml(paper.title || 'Untitled paper')}</h2>
           <p class="insp-meta">${meta}</p>
+          <p class="insp-added-date">Date added: ${libraryAddedDateMarkup(paper)}</p>
           ${typeof publicationMarkup==='function'?publicationMarkup(paper):''}
           <div class="insp-status">
             ${paper.doi

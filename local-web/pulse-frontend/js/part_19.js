@@ -92,6 +92,7 @@
         threshold: state.threshold,
         mode: state.mode,
         paperView: state.paperView,
+        librarySortKey: state.librarySortKey, librarySortAsc: Boolean(state.librarySortAsc),
         filterTags: state.filterTags || [],
         filterMode: state.filterMode || 'all',
         recommendationSteerKeywords: state.recommendationSteerKeywords,
@@ -119,6 +120,7 @@
         areas: state.areas.map(area => ({ ...area })),
         papers: state.papers.map(paper => ({
           id: paper.id,
+          addedAt: paper.addedAt || '',
           syncId: paper.syncId || '',
           selected: paper.selected !== false,
           title: paper.title,
@@ -212,6 +214,8 @@
       els.threshold.value = Math.round(state.threshold * 100);
       state.mode = data.mode || 'network';
       state.paperView = data.paperView || state.paperView || 'compact';
+      if (['title','group','authors','year','addedAt','journal','citations'].includes(data.librarySortKey)) state.librarySortKey=data.librarySortKey;
+      if (typeof data.librarySortAsc==='boolean') state.librarySortAsc=data.librarySortAsc;
       state.filterTags = Array.isArray(data.filterTags) ? data.filterTags : [];
       state.filterMode = data.filterMode || 'all';
       state.recommendationSteerKeywords = parseSteerKeywords(listText(data.recommendationSteerKeywords));
@@ -267,7 +271,7 @@
         ...paper,
         paperKeywords: paper.paperKeywords || paper.keywords || [],
         text: paper.text || paper.fullText || paper.abstract || ''
-      }, source));
+      }, source, { existing: true }));
       if (Array.isArray(data.maps) && data.maps.length > 0) {
         state.maps = data.maps.map((m, i) => ({ id: m.id || `map-${i+1}`, name: m.name || `Map ${i+1}` }));
         state.activeMapId = data.activeMapId && state.maps.some(m => m.id === data.activeMapId) ? data.activeMapId : state.maps[0].id;

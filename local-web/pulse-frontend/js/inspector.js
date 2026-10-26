@@ -123,6 +123,7 @@ function normalizedRelevance(value) {
 function libraryDisplayPapers({clusterByPaper} = {}) {
   const sortKey = state.librarySortKey || 'year';
   const direction = state.librarySortAsc ? 1 : -1;
+  const numeric = sortKey === 'citations' || sortKey === 'addedAt';
   if (sortKey === 'group' && !clusterByPaper) {
     clusterByPaper = new Map();
     (state.clusters || []).forEach((cluster,index) => cluster.forEach(id => clusterByPaper.set(id,index)));
@@ -133,10 +134,14 @@ function libraryDisplayPapers({clusterByPaper} = {}) {
     let value = paper[sortKey] || '';
     if (sortKey === 'authors') value = paperAuthors(paper)[0] || '';
     else if (sortKey === 'citations') value = paperCitationCount(paper) ?? -1;
+    else if (sortKey === 'addedAt') value = Date.parse(paper.addedAt || '');
     else if (sortKey === 'group') value = typeof paperGroupInfo === 'function' ? paperGroupInfo(paper,clusterByPaper).name : '';
-    if (sortKey !== 'citations') value = String(value).toLowerCase();
+    if (!numeric) value = String(value).toLowerCase();
     return {paper,index,value};
   });
-  rows.sort((a,b) => direction * (sortKey === 'citations' ? a.value - b.value : a.value.localeCompare(b.value)) || a.index - b.index);
+  rows.sort((a,b) => {
+    if (sortKey === 'addedAt' && Number.isFinite(a.value) !== Number.isFinite(b.value)) return Number.isFinite(a.value) ? -1 : 1;
+    return direction * (numeric ? a.value - b.value : a.value.localeCompare(b.value)) || a.index - b.index;
+  });
   return rows.map(row => row.paper);
 }

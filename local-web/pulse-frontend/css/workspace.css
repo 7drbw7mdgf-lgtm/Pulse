@@ -137,12 +137,12 @@ button:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
 .library-table th.library-col-citations { width:76px; }
 .library-table th.library-col-doi { width:13%; }
 .library-table th.library-col-tags { width:16%; }
-.library-table th.library-maptab-column { width:110px; }
+.library-table th.library-maptab-column { width:68px; }
 .library-table .library-authors-cell, .library-table .library-journal-cell { overflow-wrap:normal; word-break:normal; }
 .library-table .library-doi-cell { overflow-wrap:anywhere; }
 .library-table .library-select-column { width:35px; text-align:center; }
 .library-table td { padding:15px 10px; vertical-align:top; border-bottom:1px solid var(--line); line-height:1.6; color:var(--ink-2); overflow-wrap:anywhere; }
-.library-table .library-map-column { width:48px; text-align:center; }
+
 .library-table input[type=checkbox] { accent-color:var(--accent); cursor:pointer; }
 .library-table-row { cursor:pointer; }
 .library-table-row:hover { background:var(--surface-2); }
@@ -374,3 +374,13 @@ html[data-theme="dark"] .theme-switch .theme-moon { display:block; }
 .library-table .library-title-cell .paper-swatch { float:left; margin:0.55em 7px 0 0 !important; }
 .library-table .library-title-cell .library-title-button { display:block; overflow:hidden; }
 .library-fullscreen .pulse-paper-list.is-table { scroll-padding-top: 52px; }
+
+/* Keep map assignment compact and the added date visible at the table's right edge. */
+.library-table .library-maptab-column { padding-left:6px; padding-right:6px; }
+.library-table .table-map-tab-select { width:68px; max-width:68px; padding-left:5px; padding-right:16px; }
+.library-table th.library-col-addedAt { width:112px; z-index:3; }
+.library-table :is(.library-col-addedAt,.library-addedAt-cell) { position:sticky; right:0; white-space:nowrap; background:var(--surface); box-shadow:-1px 0 0 var(--line); }
+.library-table .library-addedAt-cell { font-size:11px; }
+.library-table-row:hover .library-addedAt-cell { background:var(--surface-2); }
+.library-table-row.is-selected .library-addedAt-cell { background:color-mix(in srgb,var(--accent) 9%,var(--surface)); }
+.insp-added-date { margin:0 0 10px; color:var(--muted); font-size:11px; }

@@ -1,7 +1,7 @@
 // Paper inspector 1.7: compact metadata, citation text, library links, personal fields and saving.
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
 const helpers = fs.readFileSync('pulse-frontend/js/inspector.js', 'utf8');
-const normalizeSource = fs.readFileSync('pulse-frontend/js/part_08.js', 'utf8').split('    function normalizeImportedPaper(paper, source) {')[1].split('    function normalizeOpenAlexId')[0];
+const normalizeSource = fs.readFileSync('pulse-frontend/js/part_08.js', 'utf8').split('    function normalizeImportedPaper(')[1].split('    function normalizeOpenAlexId')[0];
 
 function context(papers = [], links = []) {
   const stored = {};
@@ -117,12 +117,18 @@ const tiku = { id: 'tiku', title: 'Host immunity and cellular responses to bacte
     uid: () => 'generated', paperAuthors: paper => paper.authors || [], normalizeDoi: value => value, findPrimaryDoi: () => '',
     safeHref: value => value, cleanAbstract: value => value, dedupeList: values => [...new Set(values)], normalizeOpenAlexId: value => value
   });
-  vm.runInContext('function normalizeImportedPaper(paper, source) {' + normalizeSource, ctx);
+  vm.runInContext('function normalizeImportedPaper(' + normalizeSource, ctx);
   const restored = ctx.normalizeImportedPaper({ title: 'Saved paper', readingStatus: 'read', relevance: 'relevant', notes: 'Check figure 3.', userTags: ['methods', ' review '] }, 'test');
   assert.equal(restored.readingStatus, 'read');
   assert.equal(restored.relevance, 'relevant');
   assert.equal(restored.notes, 'Check figure 3.');
   assert.deepEqual([...restored.userTags], ['methods', 'review']);
+  assert(Number.isFinite(Date.parse(restored.addedAt)),'New papers record when they are added');
+  const original='2024-06-03T12:30:00.000Z';
+  assert.equal(ctx.normalizeImportedPaper({addedAt:original},'test',{existing:true}).addedAt,original);
+  assert.equal(ctx.normalizeImportedPaper({dateAdded:original},'test',{existing:true}).addedAt,original);
+  assert.equal(ctx.normalizeImportedPaper({},'test',{existing:true}).addedAt,'','Legacy papers must not receive a fabricated import date');
+  assert.equal(ctx.normalizeImportedPaper({addedAt:'not a date'},'test',{existing:true}).addedAt,'');
   const cleaned = ctx.normalizeImportedPaper({ title: 'Imported', readingStatus: 'maybe', relevance: 'yes', notes: 'x'.repeat(25000), userTags: 'a; b' }, 'test');
   assert.equal(cleaned.readingStatus, '');
   assert.equal(cleaned.relevance, '');
@@ -136,4 +142,13 @@ const tiku = { id: 'tiku', title: 'Host immunity and cellular responses to bacte
   assert.equal(synced.syncId, 'ab'.repeat(16));
   assert.equal(ctx.normalizeImportedPaper({ title: 'Bad id', syncId: '../x' }, 'test').syncId, '');
   console.log('PASS: reading status, relevance, notes and tags survive saving and restoring, and invalid values are cleaned.');
+}
+
+{
+  const ctx=context([{id:'older',addedAt:'2024-01-01T12:00:00Z'},{id:'unknown'},{id:'newer',addedAt:'2026-01-01T12:00:00Z'},{id:'bad',addedAt:'bad'}]);
+  ctx.state.librarySortKey='addedAt';
+  assert.deepEqual(ctx.libraryDisplayPapers().map(p=>p.id),['newer','older','unknown','bad']);
+  ctx.state.librarySortAsc=true;
+  assert.deepEqual(ctx.libraryDisplayPapers().map(p=>p.id),['older','newer','unknown','bad']);
+  console.log('PASS: Date added sorts chronologically with unknown dates last in both directions.');
 }

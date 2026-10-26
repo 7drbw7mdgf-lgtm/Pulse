@@ -78,16 +78,16 @@
 
   function mapTabOptionsMarkup(paper) {
     initMapState();
-    if (!state.maps || state.maps.length <= 1) return '';
+    if (!state.maps || !state.maps.length) return '';
     const currentMaps = state.maps.filter(m => isPaperOnMap(paper, m.id));
-    const isAll = currentMaps.length === state.maps.length && state.maps.length > 0;
+    const isAll = currentMaps.length === state.maps.length && state.maps.length > 1;
     const isNone = currentMaps.length === 0;
     const options = [];
     for (const m of state.maps) {
       const isSelected = isPaperOnMap(paper, m.id) && !isAll;
       options.push(`<option value="${m.id}" ${isSelected ? 'selected' : ''}>${escapeHtml(m.name)}</option>`);
     }
-    options.push(`<option value="all" ${isAll ? 'selected' : ''}>All maps</option>`);
+    if (state.maps.length>1) options.push(`<option value="all" ${isAll ? 'selected' : ''}>All maps</option>`);
     options.push(`<option value="none" ${isNone ? 'selected' : ''}>Not on any map</option>`);
     return options.join('');
   }

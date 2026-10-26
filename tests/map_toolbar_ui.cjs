@@ -95,6 +95,7 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     assert.equal(await page.locator('#settingsPanel').isVisible(),true);
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#settingsPanel').isVisible(),false);
+    await page.locator('#railSettingsBtn').focus();
     const chooserReady = page.waitForEvent('filechooser');
     await page.keyboard.press('Control+i');
     assert.equal((await chooserReady).isMultiple(),true,'Import shortcut still opens the file chooser without rail buttons');
