@@ -167,7 +167,7 @@ function updateManagers() {
   const usePulse=document.getElementById('mendeleyUsePulseSignIn');
   if(usePulse) {usePulse.hidden=Boolean(mendeley?.connected || !mendeley?.defaultSignInAvailable || mendeley?.sharedRegistration);usePulse.disabled=Boolean(managerUi.connecting);}
   const method=document.getElementById('mendeleyConnectionMethod');
-  if(method) method.textContent=mendeley?.sharedRegistration ? 'Connection method: Pulse sign-in. No developer credentials are needed on this Mac.' : mendeley?.configured ? 'Connection method: your custom Mendeley application. If Mendeley reports an invalid third-party app, use Pulse sign-in instead.' : '';
+  if(method) method.textContent=mendeley?.connectionMigrated ? 'An older Pulse connection was updated. Sign in again; no developer credentials are needed.' : mendeley?.sharedRegistration ? 'Connection method: Pulse sign-in. No developer credentials are needed on this computer.' : mendeley?.configured ? 'Connection method: your custom Mendeley application. If Mendeley reports an invalid third-party app, use Pulse sign-in instead.' : '';
   document.getElementById('mendeleyDisconnect').hidden=!managerUi.status?.mendeley?.connected;
   document.getElementById('mendeleySyncBox').hidden=!mendeley?.connected;
   document.getElementById('mendeleyAutomaticSync').checked=mendeley?.automaticSync !== false && !state.mendeleySyncPaused;

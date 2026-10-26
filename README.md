@@ -2,14 +2,16 @@
 
 A private, local-first desktop workspace for scientific literature discovery and synthesis.
 
-[![Release](https://img.shields.io/badge/release-v2.1.6-blue.svg)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v2.1.6)
+[![Release](https://img.shields.io/github/v/release/7drbw7mdgf-lgtm/Pulse)](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Download Pulse 2.1.6
+## Download Pulse
 
-- **[Mac — Apple Silicon](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.6/Pulse-2.1.6.dmg)** — macOS 11+, with Python, PDF tools, OCR and the offline search ranker included. [Installation guide](docs/MACOS-INSTALL.md).
-- **[Windows — x64](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.6/Pulse-2.1.6-Windows-x64-Setup.exe)** — Windows 10/11. Python, PDF extraction, OCR and the offline search ranker are bundled. [Installation guide](docs/WINDOWS-INSTALL.md).
-- [Checksums](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.6/Pulse-2.1.6-SHA256SUMS.txt) · [Release notes](docs/releases/2.1.6.md) · [Previous releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases).
+Use the [latest published release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest) for the current installers. The direct links below are for 2.1.11.
+
+- **[Mac — Apple Silicon](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.11/Pulse-2.1.11.dmg)** — macOS 11+, with Python, PDF tools, OCR and the offline search ranker included. [Installation guide](docs/MACOS-INSTALL.md).
+- **[Windows — x64](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.11/Pulse-2.1.11-Windows-x64-Setup.exe)** — Windows 10/11. Python, PDF extraction, OCR and the offline search ranker are bundled. [Installation guide](docs/WINDOWS-INSTALL.md).
+- [Checksums](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.11/Pulse-2.1.11-SHA256SUMS.txt) · [Release notes](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v2.1.11) · [Previous releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases).
 
 Both installers use the same application source and version. The Mac app is ad hoc signed and not Apple-notarized; the Windows installer is unsigned.
 
@@ -36,7 +38,7 @@ Multi-keyword/tag search, Fast/Enhanced ranking, saved searches, a reading queue
 
 - Import PDFs, citation files, DOIs or text into a persistent local library. Keep notes, tags, reading status and relevance labels.
 - Explore relationship maps, a scrolling Timeline, a full library table and a Trends dashboard. Filter publication periods and open their papers directly.
-- Discover related literature across scholarly sources, review why results match, and add selected papers. Optional Semantic Scholar and OpenAlex keys are managed in Settings.
+- Discover related literature across scholarly sources, review why results match, and add selected papers. Paste a DOI, DOI link or public article-page link into the search bar and press Enter to look up that specific paper. Choose My library to match saved DOI/link fields locally. Optional Semantic Scholar and OpenAlex keys are managed in Settings.
 - Connect Mendeley through Pulse sign-in, sync citations while preserving local edits, or transfer citations to Zotero Desktop. If this computer has old Mendeley developer settings, choose **Use Pulse sign-in**. [Connection guide](docs/MENDELEY-ACTIVATION.md).
 - Use an optional local Ollama installation for paper reports. Ollama and its model weights are installed separately.
 

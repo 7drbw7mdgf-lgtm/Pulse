@@ -18,7 +18,7 @@ const PulseSearch = (() => {
     const info=state.discoverySearching?.job||discoveryRunInfoForModal(),rows=discoverySourceRows(),problems=rows.filter(r=>['warn','fail'].includes(r.status));
     button.hidden=!problems.some(r=>info.errors?.[r.key]);button.disabled=!!state.discoveryLoading||!!state.discoverySearching;
     const label=document.getElementById('searchCompleteness');
-    label.textContent=state.discoveryLoading?'Search in progress. Source coverage is still being checked.':info.retryNotice||(!rows.length?'':problems.length?`Limited coverage: ${problems.map(r=>r.name).join(', ')}. Returned results are retained.`:'Selected sources completed. Indexed coverage and result limits still apply.');
+    label.textContent=state.discoveryLoading?'Search in progress. Source coverage is still being checked.':info.searchMode==='paper'?'Paper located from the DOI or article link.':info.retryNotice||(!rows.length?'':problems.length?`Limited coverage: ${problems.map(r=>r.name).join(', ')}. Returned results are retained.`:'Selected sources completed. Indexed coverage and result limits still apply.');
     const detail=document.getElementById('discoverySearchDetailsContent');
     detail?.querySelectorAll('[data-ranking-detail]').forEach(node=>node.remove());
     if(detail&&info.structuralPolicy?.mode==='adaptive-experimental'){

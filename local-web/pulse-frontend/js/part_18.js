@@ -106,7 +106,8 @@
       if (state.discoveryLoading) return;
       const conceptMode=request.searchMode==='concept';
       const query=String(request.query||'').trim() || (typeof parseSearchQuery==='function'?parseSearchQuery(state.discoveryResearchQuestion).tags.join(', '):'');
-      const queryError=!request.retryBranches&&typeof parseSearchQuery==='function'?parseSearchQuery(state.discoveryResearchQuestion).error:'';
+      const paperMode=conceptMode&&typeof paperSearchReference==='function'&&Boolean(paperSearchReference(query));
+      const queryError=!paperMode&&!request.retryBranches&&typeof parseSearchQuery==='function'?parseSearchQuery(state.discoveryResearchQuestion).error:'';
       if(queryError){showToast(queryError);return;}
       const seeds = conceptMode?[]:(request.seedPapers||selectedPapersForRecommendation());
       if (conceptMode&&!query) {showToast('Enter a concept or key phrase to search.');document.getElementById('discoveryResearchQuestion')?.focus();return;}
@@ -120,24 +121,24 @@
       if(options.bridgeMode && seeds.length>8){showToast('Select up to eight seed papers for one bridge search.');return;}
       if(options.bridgeMode && new Set(seeds.map(discoveryPaperKey)).size<2){showToast('Select at least two different seed papers to find bridges.');return;}
       if (!Object.values(options.branches).some(Boolean) && !options.fullTextSearch) { showToast('Choose at least one discovery method.'); return; }
-      if (options.branches.lexicalSearch && !Object.values(options.searchSources).some(Boolean) && !options.fullTextSearch && !['citationGraph','citationNetwork','citationCoCitation','semanticSearch'].some(method=>options.branches[method])) { showToast('Choose at least one search source.'); return; }
+      if (!paperMode && options.branches.lexicalSearch && !Object.values(options.searchSources).some(Boolean) && !options.fullTextSearch && !['citationGraph','citationNetwork','citationCoCitation','semanticSearch'].some(method=>options.branches[method])) { showToast('Choose at least one search source.'); return; }
       const key = request.resultKey || (conceptMode?'concept::'+JSON.stringify(options):recommendationKey(seeds));
       const retryBase=request.retryBranches?{records:[...(state.discoveryResultKey===key?state.discoveryResults:state.recommendations.get(key)||[])],info:state.discoveryRunInfo?.get(key)||{}}:null;
       if(request.retryBranches)options.retryBranches=request.retryBranches;
-      const displaySeed=conceptMode?{title:query,isConceptQuery:true}:seeds[0];
+      const displaySeed=conceptMode?{title:query,isConceptQuery:true,isPaperLookup:paperMode}:seeds[0];
       const runContext={researchQuestion:options.researchQuestion,seedPapers:seeds.map(citationPaperPayload),searchMode:conceptMode?'concept':'related',bridgeMode:Boolean(!conceptMode&&options.bridgeMode&&seeds.length>1),configuration:{...options}};
       delete runContext.configuration.retryBranches;
       state.discoveryLoading = true;
       if(typeof PulseSearch!=='undefined')PulseSearch.render();
       state.recommendationLoadingKey = key;
-      state.discoveryJobId=null;state.discoveryCancelRequested=false;state.discoveryStopReview=false;state.discoveryProgressText=conceptMode?'Preparing search keywords…':'Searching your selected sources…';state.discoveryProgressPercent=0;
+      state.discoveryJobId=null;state.discoveryCancelRequested=false;state.discoveryStopReview=false;state.discoveryProgressText=paperMode?'Looking up this paper…':conceptMode?'Preparing search keywords…':'Searching your selected sources…';state.discoveryProgressPercent=0;
       state.discoveryRunContext=runContext;
       renderDetails();syncDiscoveryControls();
       // Show progress (and the first results) while the slower sources are still searching.
       if(!retryBase&&typeof openDiscoverySearching==='function')openDiscoverySearching(displaySeed,key,options);
       let partial=null;
       try {
-        const response = await fetch(backendUrl('/api/discovery/start'), {
+        const response = await fetch(backendUrl(paperMode?'/api/search/paper':'/api/discovery/start'), {
           method: 'POST',
           headers: apiHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({

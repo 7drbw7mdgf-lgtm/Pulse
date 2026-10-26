@@ -44,7 +44,7 @@ def start_oauth(payload=None):
     global _PENDING
     cancel_oauth()
     with config_lock():
-        config = read_config()
+        config = read_config(for_sign_in=True)
         flow = config.get('authFlow', 'code')
         exchange = flow == 'exchange'
         public_pkce = flow == 'pkce' and config.get('pkceVerified') is True

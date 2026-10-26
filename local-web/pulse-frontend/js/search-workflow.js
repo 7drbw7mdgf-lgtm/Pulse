@@ -27,8 +27,22 @@ function searchRequestOptions() {
   return {rankingMode:state.discoveryRankingMode==='enhanced'?'enhanced':'fast',
     ...(terms.structured?{queryKeywords:terms.keywords,queryTags:terms.tags,queryMatch:terms.match}:{})};
 }
+function paperSearchReference(value) {
+  const text=String(value||'').trim();
+  if(/^https?:\/\/\S+$/i.test(text))return text;
+  if(/^(?:www\.|(?:dx\.)?doi\.org\/)\S+$/i.test(text))return 'https://'+text;
+  return /^(?:doi\s*:?\s*)?10\.\d{4,9}\//i.test(text)?text:'';
+}
 function localSearchMatches(paper,terms) {
   if(!terms)return true;
+  if(terms.reference) {
+    const reference=paperSearchReference(terms.reference);
+    let decoded=reference;try{decoded=decodeURIComponent(reference);}catch{}
+    const doi=normalizeDoi(decoded);
+    if(doi)return normalizeDoi(paper.doi||'').toLowerCase()===doi.toLowerCase();
+    const canonical=value=>{try{const url=new URL(value);url.hash='';for(const key of [...url.searchParams.keys()])if(/^utm_/i.test(key)||['fbclid','gclid'].includes(key))url.searchParams.delete(key);url.searchParams.sort();return url.href.replace(/\/$/,'');}catch{return '';}};
+    return Boolean(canonical(reference))&&[paper.url,paper.fullTextUrl,...(paper.fullTextLinks||[]).map(link=>link.url)].some(value=>canonical(value)===canonical(reference));
+  }
   const normalize=value=>' '+(String(value||'').normalize('NFKC').toLocaleLowerCase().match(/[\p{L}\p{N}_]+/gu)||[]).join(' ')+' ';
   const haystack=normalize([paper.title,paper.abstract,paper.notes,...(paper.authors||[]),...(paper.paperKeywords||[]),...(paper.gemmaKeywords||[])].filter(Boolean).join(' '));
   const words=terms.keywords.length?terms.keywords:terms.plain?[terms.plain]:[];
@@ -47,15 +61,16 @@ function clearLibrarySearch() {
 function runUnifiedSearch() {
   const input=document.getElementById('discoveryResearchQuestion');
   if(input)state.discoveryResearchQuestion=input.value.slice(0,1000);
-  const terms=parseSearchQuery(state.discoveryResearchQuestion);
+  const reference=paperSearchReference(state.discoveryResearchQuestion);
+  const terms=reference?{keywords:[],tags:[],match:state.discoveryQueryMatch,structured:false}:parseSearchQuery(state.discoveryResearchQuestion);
   if(terms.error){showToast(terms.error);return;}
   state.discoveryQueryMatch=terms.match;renderResearchWorkflow();
   if(state.discoverySearchScope==='library') {
-    state.librarySearchTerms={...terms,plain:terms.structured?'':state.discoveryResearchQuestion.trim()};
+    state.librarySearchTerms={...terms,reference,plain:terms.structured?'':state.discoveryResearchQuestion.trim()};
     if(typeof setLibraryFullscreen==='function')setLibraryFullscreen(true);
     renderPapers();renderResearchWorkflow();scheduleAutosave();return;
   }
-  return runConceptSearch();
+  return reference?runConceptSearch(reference):runConceptSearch();
 }
 function savedSearchConfig() {
   return {query:state.discoveryResearchQuestion.trim(),tags:[...(state.discoverySearchTags||[])],match:state.discoveryQueryMatch,
@@ -103,7 +118,7 @@ function restoreResearchWorkflow(data) {
   state.librarySearchTerms=data.librarySearchTerms&&typeof data.librarySearchTerms==='object'?{
     keywords:Array.isArray(data.librarySearchTerms.keywords)?data.librarySearchTerms.keywords.filter(x=>typeof x==='string').slice(0,12):[],
     tags:Array.isArray(data.librarySearchTerms.tags)?data.librarySearchTerms.tags.filter(x=>typeof x==='string').slice(0,12):[],
-    plain:String(data.librarySearchTerms.plain||'').slice(0,1000),match:data.librarySearchTerms.match==='any'?'any':'all'}:null;
+    plain:String(data.librarySearchTerms.plain||'').slice(0,1000),reference:String(data.librarySearchTerms.reference||'').slice(0,1000),match:data.librarySearchTerms.match==='any'?'any':'all'}:null;
   state.savedSearches=(Array.isArray(data.savedSearches)?data.savedSearches:[]).filter(item=>item&&typeof item.id==='string'&&item.config&&typeof item.config==='object').slice(0,50).map(item=>({
     id:item.id.slice(0,80),name:String(item.name||'Saved search').slice(0,80),createdAt:item.createdAt,lastChecked:item.lastChecked,
     watching:Boolean(item.watching),archived:Boolean(item.archived),baseline:Boolean(item.baseline),newCount:Number(item.newCount)||0,

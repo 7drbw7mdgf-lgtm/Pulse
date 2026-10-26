@@ -46,6 +46,59 @@ class ExchangeTests(unittest.TestCase):
         l.write_config({'clientId': 'mine', 'clientSecret': 'secret', 'redirectUri': 'http://127.0.0.1:8765/mendeley/callback', 'authFlow': 'code'})
         self.assertEqual(l.read_config()['authFlow'], 'code')
 
+    def legacy_registration(self):
+        self.registration.write_text(json.dumps({'exchangeUrl':'https://pulse-mendeley.example.workers.dev','legacyClientIds':['26261']}))
+
+    def test_legacy_pulse_application_recovers_without_local_secret_or_library_changes(self):
+        self.legacy_registration()
+        l.write_config({'clientId':'26261','clientSecret':'obsolete-secret','authFlow':'code',
+                        'redirectUri':'http://127.0.0.1:8765/mendeley/callback','authGeneration':4,
+                        'mendeleyAutomaticSync':False,'mendeleyLastSyncedAt':'2026-10-14T10:00:00Z'})
+        library=Path(self.temp.name)/'library.json';library.write_text('{"papers":[{"notes":"Keep my work"}]}')
+        before=library.read_bytes()
+        config=l.read_config()
+        self.assertEqual(config['authFlow'],'exchange');self.assertTrue(config['sharedRegistration'])
+        self.assertTrue(l.public_config()['connectionMigrated']);self.assertTrue(l.public_config()['configured'])
+        self.assertEqual(config['authGeneration'],5)
+        for key in ['clientId','clientSecret','redirectUri']:self.assertNotIn(key,config)
+        self.assertFalse(config['mendeleyAutomaticSync']);self.assertEqual(library.read_bytes(),before)
+        # The first normal config write persists recovery, rather than migrating repeatedly.
+        l.write_config(config)
+        self.assertEqual(l.read_config()['authGeneration'],5)
+
+    def test_working_legacy_grants_and_explicit_custom_applications_are_preserved(self):
+        self.legacy_registration()
+        for extra in ({'accessToken':'working','expiresAt':9999999999},{'refreshToken':'working-refresh'},{'customApplication':True}):
+            l.write_config({'clientId':'26261','clientSecret':'keep-secret','authFlow':'code',**extra})
+            config=l.read_config()
+            self.assertEqual(config['authFlow'],'code');self.assertEqual(config['clientSecret'],'keep-secret')
+            self.assertNotIn('legacyRegistrationMigrated',config)
+
+    def test_new_custom_setup_is_explicit_even_for_old_pulse_id(self):
+        self.legacy_registration()
+        l.configure_mendeley({'clientId':'26261','clientSecret':'intentional-custom-secret'})
+        config=l.read_config()
+        self.assertTrue(config['customApplication']);self.assertEqual(config['authFlow'],'code')
+
+    def test_explicit_reconnect_recovers_legacy_tokens_but_not_an_intentional_custom_app(self):
+        self.legacy_registration()
+        l.write_config({'clientId':'26261','clientSecret':'obsolete','authFlow':'code',
+                        'accessToken':'expired','refreshToken':'stale','expiresAt':1})
+        self.assertEqual(l.read_config()['authFlow'],'code')
+        config=l.read_config(for_sign_in=True)
+        self.assertEqual(config['authFlow'],'exchange')
+        for key in ['clientSecret','accessToken','refreshToken']:self.assertNotIn(key,config)
+        l.configure_mendeley({'clientId':'26261','clientSecret':'custom'})
+        self.assertEqual(l.read_config(for_sign_in=True)['authFlow'],'code')
+
+    def test_explicit_exchange_service_is_not_overwritten_by_shipped_default(self):
+        l.write_config({'exchangeUrl':'https://custom.example','authFlow':'exchange'})
+        self.assertEqual(l.read_config()['exchangeUrl'],'https://custom.example')
+
+    def test_shared_service_follows_shipped_registration_updates(self):
+        l.write_config({'exchangeUrl':'https://old-pulse.example','authFlow':'exchange','sharedRegistration':True})
+        self.assertEqual(l.read_config()['exchangeUrl'],'https://pulse-mendeley.example.workers.dev')
+
     def test_recover_from_invalid_custom_application_without_changing_library(self):
         l.write_config({'clientId':'obsolete-app','clientSecret':'obsolete-secret','authFlow':'code',
                         'redirectUri':'http://127.0.0.1:8767/mendeley/callback','authGeneration':4,
@@ -135,6 +188,13 @@ class ExchangeTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which('node'), 'Node.js is needed to run the worker')
     def test_end_to_end_with_the_worker(self):
+        self.check_end_to_end_with_the_worker()
+
+    @unittest.skipUnless(shutil.which('node'), 'Node.js is needed to run the worker')
+    def test_legacy_reconnect_end_to_end_with_the_worker(self):
+        self.check_end_to_end_with_the_worker(legacy=True)
+
+    def check_end_to_end_with_the_worker(self, legacy=False):
         harness = subprocess.Popen(['node', str(ROOT / 'auth-service/cloudflare/test/serve-local.mjs')], stdout=subprocess.PIPE, text=True)
         def stop_harness():
             if harness.poll() is None: harness.terminate()
@@ -145,7 +205,9 @@ class ExchangeTests(unittest.TestCase):
         self.addCleanup(stop_harness)
         port = int(harness.stdout.readline())
         service = f'http://127.0.0.1:{port}'
-        self.registration.write_text(json.dumps({'exchangeUrl': 'https://placeholder.example'}))
+        self.registration.write_text(json.dumps({'exchangeUrl': 'https://placeholder.example','legacyClientIds':['26261']}))
+        if legacy:
+            l.write_config({'clientId':'26261','clientSecret':'obsolete-pulse-secret','authFlow':'code','redirectUri':'http://127.0.0.1:8765/mendeley/callback','accessToken':'expired','refreshToken':'stale','expiresAt':1})
         real_origin = broker.origin
         def loopback_origin(value):  # The real service is HTTPS; the harness is plain local HTTP.
             return service if value in ('https://placeholder.example', service) else real_origin(value)
@@ -163,6 +225,8 @@ class ExchangeTests(unittest.TestCase):
             self.assertEqual(query['client_id'], ['harness-client'])
             self.assertEqual(query['redirect_uri'], [service + '/callback'])
             self.assertNotIn('harness-secret', started['authorizationUrl'])
+            self.assertEqual(l.read_config()['authFlow'],'exchange')
+            self.assertNotIn('clientSecret',l.read_config())
             # Mendeley sends the browser to the service; the service sends it to Pulse on this computer.
             with self.assertRaises(urllib.error.HTTPError) as hop:
                 no_redirects.open(service + '/callback?' + urllib.parse.urlencode({'code': 'good-code', 'state': query['state'][0]}), timeout=5)

@@ -8,6 +8,8 @@ The service's application credentials were repaired on 17 October 2026. Direct a
 
 In Pulse, choose **Connect Mendeley**. If a Mac still uses old custom developer settings, choose **Use Pulse sign-in** first. No developer credentials are needed on each Mac.
 
+The current source also detects older Pulse application 26261 settings with a local callback. Disconnected installations recover automatically; pressing **Connect Mendeley** also replaces stale legacy tokens. Working sessions and explicitly saved custom applications are preserved. This recovery requires an installer built from the updated source.
+
 A successful `/health` response confirms configuration presence; it does not validate the application credentials. If Mendeley later reports application authentication HTTP 401, the service owner should follow the repair procedure below.
 
 ## Owner repair

@@ -43,6 +43,7 @@ from pulse_core.metadata_scanner import (
     scan_file_for_metadata,
 )
 from pulse_core.metadata_resolution import resolve_metadata
+from pulse_core.paper_lookup import lookup_paper
 from pulse_core.citation_lookup import lookup_in_text_citations
 from pulse_core.citation_identity import verify_citation_selection
 from pulse_core.publication_status import publication_status
@@ -273,6 +274,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
             "/api/citations/verify-context",
             "/api/reviews",
             "/api/search/cache",
+            "/api/search/paper",
             "/api/search/ranking",
             "/api/analyze",
             "/api/settings",
@@ -345,6 +347,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
                 "/api/reader/export": pdf_editor.export,
                 "/api/library/recovery/restore": restore_recovery,
                 "/api/metadata/doi": lookup_doi_metadata,
+                "/api/search/paper": lookup_paper,
                 "/api/metadata/resolve": resolve_metadata,
                 "/api/metadata/citation": lookup_in_text_citations,
                 "/api/metadata/citation/verify": verify_citation_selection,

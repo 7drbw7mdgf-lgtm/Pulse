@@ -36,7 +36,8 @@ def shared_mendeley_registration():
     public = json.loads(registration.read_text())
     from pulse_core.mendeley_broker import origin
     if public.get('exchangeUrl'):
-        return dict(exchangeUrl=origin(public['exchangeUrl']), authFlow='exchange', sharedRegistration=True)
+        return dict(exchangeUrl=origin(public['exchangeUrl']), authFlow='exchange', sharedRegistration=True,
+                    legacyClientIds=[value for value in public.get('legacyClientIds', []) if isinstance(value, str)])
     if public.get('brokerUrl'):
         return dict(brokerUrl=origin(public['brokerUrl']), authFlow='broker', sharedRegistration=True)
     if public.get('clientId'):
@@ -44,15 +45,29 @@ def shared_mendeley_registration():
                     authFlow='pkce', pkceVerified=public.get('pkceVerified') is True, sharedRegistration=True)
     return {}
 
-def read_config():
+def read_config(for_sign_in=False):
     path = CONFIG_DIR / 'library-managers.json'
     data = json.loads(path.read_text()) if path.exists() else {}
     for key in SECRETS:
         if data.get(key): data[key] = decrypt_secret(data[key])
-    # Public application registration ships only an ID and redirect URL, never a secret.
-    # Only a Mac without its own application or service settings uses the shipped registration.
-    if not data.get('clientId') and not data.get('brokerUrl'):
-        data.update(shared_mendeley_registration())
+    registration = shared_mendeley_registration()
+    # Older Pulse builds saved Pulse's own confidential registration as if it were
+    # a custom application. Its callback now belongs to the shared service, so
+    # those disconnected installations otherwise keep failing after an update.
+    # Preserve working grants and applications explicitly configured by the user.
+    legacy = (data.get('clientId') in registration.get('legacyClientIds', [])
+              and not data.get('customApplication') and not data.get('brokerUrl')
+              and data.get('authFlow', 'code') in {'code', 'implicit', 'pkce'}
+              and (for_sign_in or not any(data.get(key) for key in ('accessToken', 'refreshToken', 'brokerSession'))))
+    if legacy:
+        for key in ('clientId', 'clientSecret', 'redirectUri', 'authFlow', 'pkceVerified',
+                    'accessToken', 'refreshToken', 'brokerSession', 'expiresAt', 'profile', 'mendeleyAccountId', 'mendeleyReceipts'):
+            data.pop(key, None)
+        data['authGeneration'] = data.get('authGeneration', 0) + 1
+        data['legacyRegistrationMigrated'] = True
+        data.update(registration)
+    elif not data.get('clientId') and not data.get('brokerUrl') and (not data.get('exchangeUrl') or data.get('sharedRegistration') is True):
+        data.update(registration)
     return data
 
 def write_config(data):
@@ -157,7 +172,7 @@ def configure_mendeley(payload):
         config = read_config()
         if config.get('clientId') != client_id or config.get('redirectUri') != redirect or payload.get('clientSecret'):
             for key in ('accessToken', 'refreshToken', 'expiresAt', 'profile', 'mendeleyReceipts', 'brokerSession', 'mendeleyAccountId'): config.pop(key, None)
-        config.update(clientId=client_id, redirectUri=redirect, authFlow='code', sharedRegistration=False)
+        config.update(clientId=client_id, redirectUri=redirect, authFlow='code', sharedRegistration=False, customApplication=True)
         config['authGeneration'] = config.get('authGeneration', 0) + 1
         if payload.get('clientSecret'): config['clientSecret'] = str(payload['clientSecret']).strip()
         if not config.get('clientSecret'):
@@ -176,7 +191,7 @@ def use_pulse_mendeley_sign_in():
         config['authGeneration'] = config.get('authGeneration', 0) + 1
         for key in ('clientId', 'clientSecret', 'redirectUri', 'brokerUrl', 'exchangeUrl', 'authFlow',
                     'pkceVerified', 'sharedRegistration', 'accessToken', 'refreshToken', 'expiresAt',
-                    'profile', 'brokerSession', 'mendeleyReceipts', 'mendeleyAccountId'):
+                    'profile', 'brokerSession', 'mendeleyReceipts', 'mendeleyAccountId', 'customApplication', 'legacyRegistrationMigrated'):
             config.pop(key, None)
         config.update(registration)
         write_config(config)
@@ -190,6 +205,7 @@ def public_config():
             'hasClientSecret': bool(config.get('clientSecret')), 'configured': bool((config.get('authFlow')=='broker' and config.get('brokerUrl')) or (config.get('authFlow')=='exchange' and config.get('exchangeUrl')) or config.get('clientId') and ((config.get('authFlow', 'code') == 'code' and config.get('clientSecret')) or (config.get('authFlow') == 'pkce' and config.get('pkceVerified') is True))),
             'sharedRegistration': bool(config.get('sharedRegistration')), 'authFlow': config.get('authFlow', 'code'),
             'defaultSignInAvailable': default_available,
+            'connectionMigrated': bool(config.get('legacyRegistrationMigrated')),
             'developerSettingsAvailable': os.environ.get('PULSE_MENDELEY_ADMIN')=='1' or not bool(config.get('sharedRegistration'))}
 
 def token_exchange(config, fields):
@@ -235,6 +251,7 @@ def token_exchange(config, fields):
             raise ClientError(409, 'Mendeley configuration changed. Connect again.')
         current.update(accessToken=result['access_token'], refreshToken=result.get('refresh_token') or config.get('refreshToken', ''),
                        expiresAt=time.time() + lifetime)
+        current.pop('legacyRegistrationMigrated', None)
         write_config(current)
     return result['access_token']
 

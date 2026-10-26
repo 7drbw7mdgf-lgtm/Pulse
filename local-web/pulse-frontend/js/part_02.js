@@ -38,6 +38,11 @@ const discoveryBoundCheckboxes=new WeakSet();
       if(typeof warmDiscoveryFeedbackFeatures==='function')warmDiscoveryFeedbackFeatures(state.discoveryResults);
       state.discoveryFocusKey=keepFocus;state.discoveryFocusExplicit=Boolean(keepFocus);
       const valid=new Set(state.discoveryResults.map(discoveryPaperKey));state.discoverySelectedKeys=new Set([...keepSelected].filter(key=>valid.has(key)));
+      if(seedPaper?.isPaperLookup&&state.discoveryResults.length){
+        // An exact lookup must remain visible even when it is already saved or reviewed.
+        state.discoveryQueue=discoveryQueueOf(state.discoveryResults[0]);
+        state.discoveryHideLibrary=false;
+      }
       if(els.discoveryModal)els.discoveryModal.hidden=false;
       renderDiscoveryModal({preservePosition:continuing});
       if(!continuing&&typeof els.discoveryModal?.querySelector==='function')els.discoveryModal.querySelector('.dv-card')?.focus();
@@ -225,7 +230,7 @@ const discoveryBoundCheckboxes=new WeakSet();
     // ─── Discovery review workspace (1.7.1) ───
     const DISCOVERY_SOURCE_LABELS = {
       citationGraph: 'Citations', citationCoCitation: 'Co-citation', citationNetwork: 'DBEF', authorTrajectory: 'Author trajectory', semanticSearch: 'Semantic',
-      lexicalConceptual: 'Semantic Scholar', europePmc: 'Europe PMC', core: 'CORE', fullText: 'Full-text'
+      lexicalConceptual: 'Semantic Scholar', europePmc: 'Europe PMC', core: 'CORE', fullText: 'Full-text', paperLookup: 'Paper lookup'
     };
     const DISCOVERY_WHY_GROUPS = {
       authors: 'authors', 'senior-author': 'author-trajectory', 'first-author': 'author-trajectory', 'cites-seed': 'citations', 'cited-by-seed': 'citations', 'two-steps': 'citations',
@@ -235,6 +240,7 @@ const discoveryBoundCheckboxes=new WeakSet();
     const DISCOVERY_STRENGTHS = [['strong', 'Strong matches'], ['related', 'Related'], ['explore', 'Worth exploring']];
 
     function discoveryStrength(item) {
+      if(item.paperLookup)return 'strong';
       const rawLabel = item._initialMatchLabel !== undefined ? item._initialMatchLabel : item.matchLabel;
       const label = String(rawLabel || '').toLowerCase();
       if (label === 'not relevant') return 'explore';
@@ -574,12 +580,13 @@ const discoveryBoundCheckboxes=new WeakSet();
       const seed = searching?.seed || state.discoverySeed;
       const seedTitle = cleanDiscoveryTitle(seed?.title || 'Selected seed paper');
       const conceptMode=Boolean(seed?.isConceptQuery);
+      const paperMode=Boolean(seed?.isPaperLookup);
       const strengthCount = id => totalItems.filter(item => discoveryStrength(item) === id).length;
 
       const title = document.getElementById('discoveryModalTitle');
-      if (title) title.textContent = conceptMode?'Concept search':'Literature discovery';
+      if (title) title.textContent = paperMode?'Paper lookup':conceptMode?'Concept search':'Literature discovery';
       const bridgeSeeds=!conceptMode&&state.discoveryRunContext?.bridgeMode?(state.discoveryRunContext.seedPapers||[]):[];
-      const eyebrow=document.getElementById('discoveryModalEyebrow');if(eyebrow)eyebrow.textContent=conceptMode?'Papers matching your concept':bridgeSeeds.length>1?`Bridging ${bridgeSeeds.length} selected papers`:'Related to your seed paper';
+      const eyebrow=document.getElementById('discoveryModalEyebrow');if(eyebrow)eyebrow.textContent=paperMode?'Found by DOI or article link':conceptMode?'Papers matching your concept':bridgeSeeds.length>1?`Bridging ${bridgeSeeds.length} selected papers`:'Related to your seed paper';
       const bridgeTitle=bridgeSeeds.slice(0,3).map(paper=>cleanDiscoveryTitle(paper.title||'Untitled')).join(' ↔ ')+(bridgeSeeds.length>3?` + ${bridgeSeeds.length-3} more`:'');
       if (els.discoveryModalSubtitle) els.discoveryModalSubtitle.textContent = bridgeSeeds.length>1?bridgeTitle:seedTitle;
       if (els.discoveryModal.dataset) {
@@ -591,11 +598,12 @@ const discoveryBoundCheckboxes=new WeakSet();
         const movedNote = !searching && state.discoveryMovedUpNote ? ` · <span class="dv-moved-note" role="status">${escapeHtml(state.discoveryMovedUpNote)}</span>` : '';
         els.discoveryCountSummary.innerHTML = searching
           ? `<strong>${totalItems.length} candidates so far</strong>`
+          : paperMode?`<strong>${totalItems.length} paper${totalItems.length===1?'':'s'} found</strong> · Exact lookup`
           : `<strong>${totalItems.length} papers</strong> · <span>${strengthCount('strong')} strong</span> · <span>${strengthCount('related')} related</span> · <span>${strengthCount('explore')} to explore</span>${movedNote}`;
       }
       const footerNote = document.getElementById('discoveryFooterNote');
       if (footerNote) {
-        footerNote.textContent = state.discoveryMovedUpNote
+        footerNote.textContent = paperMode?'Open the paper, or add it to your library or map.':state.discoveryMovedUpNote
           ? `${state.discoveryMovedUpNote} below · refine or rerun this question to search with your feedback.`
           : 'Mark results, then refine or rerun this question to use your feedback.';
       }

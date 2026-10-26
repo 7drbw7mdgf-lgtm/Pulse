@@ -25,6 +25,8 @@ To change or rotate the application secret later: `bash auth-service/cloudflare/
 
 Pulse's live service is `https://pulse-mendeley.7drbw7mdgf.workers.dev` (Mendeley application 26261). Your own application settings (Settings → Mendeley & Zotero) still take priority on a Mac where you entered them.
 
+Older Pulse versions saved application 26261 with a local callback. Updating the app used to leave those settings in place, producing invalid-client sign-in errors. Pulse now moves that legacy setup to the shared service when disconnected or when **Connect Mendeley** is pressed. Existing working sessions remain active; newly saved custom application settings remain explicit. Papers and sync preferences are preserved. On an older installed build, choose **Reference managers → Mendeley → Use Pulse sign-in** to reset the connection manually.
+
 ## Tests
 
 `node --test auth-service/cloudflare/test/worker.test.mjs` tests the service with Mendeley faked. `local-web/tests/test_mendeley_exchange.py` runs the real service code (in Node) together with Pulse's sign-in, callback, token storage and refresh.
