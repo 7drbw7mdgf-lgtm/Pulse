@@ -16,14 +16,14 @@ function fixture() {
 }
 const test=fixture();test.context.inspectPaper('two');
 assert.equal(test.state.selectedId,'two'); assert.equal(test.state.selectedLinkId,null);
-assert.equal(test.state.inspectorVisible,true); assert.equal(test.state.libraryFullscreen,false);
+assert.equal(test.state.inspectorVisible,true); assert.equal(test.state.libraryFullscreen,true);assert(!test.calls.includes('exit-fullscreen'),'Paper inspection must preserve Bibliography and its previous view');
 assert.equal(test.state.detailsAbstractExpanded,false); assert.equal(test.els.detailsContent.scrollTop,0);
 assert.equal(test.els.aiPanel.hidden,true);
 assert.deepEqual(test.calls.find(Array.isArray),['details','two',null,true]);
 assert(test.calls.includes('selection')&&test.calls.includes('agent-context'));
 const missing=fixture();missing.context.inspectPaper('missing');assert.equal(missing.calls.length,0);assert.equal(missing.state.selectedId,'one');
 const keepAgent=fixture();keepAgent.context.inspectPaper('two',{closeAgent:false});assert.equal(keepAgent.els.aiPanel.hidden,false);
-console.log('PASS: paper selection replaces linkage details, reopens the inspector, exits full screen, resets scroll, updates the agent context, and ignores missing records.');
+console.log('PASS: paper selection replaces linkage details, reopens the inspector within Bibliography, resets scroll, updates the agent context, and ignores missing records.');
 
 const graphSource=fs.readFileSync(require('path').join(__dirname,'../pulse-frontend/js/part_20.js'),'utf8');
 const graphHandler=graphSource.slice(graphSource.indexOf('    function handleGraphBackgroundClick'),graphSource.indexOf("    els.map?.addEventListener('click', handleGraphBackgroundClick)"));

@@ -5,13 +5,15 @@
   const footer = menu?.closest('.map-controls-footer');
   const dock = menu?.closest('.canvas-dock-modern');
   const mapViewport = workspace?.querySelector('.map-viewport');
+  const library = workspace?.querySelector('#colLibrary');
   if (!menu || !summary || !workspace || !footer || !dock || !mapViewport) return;
 
   function sizeMenu() {
     const workspaceBox = workspace.getBoundingClientRect();
     const mapBox = mapViewport.getBoundingClientRect();
     // Full-width Bibliography hides the map; keep its navigation available.
-    const bounds = mapBox.width > 0 ? mapBox : workspaceBox;
+    const libraryBox = library?.getBoundingClientRect();
+    const bounds = mapBox.width > 0 ? mapBox : libraryBox?.width > 0 ? libraryBox : workspaceBox;
     footer.style.setProperty('--map-dock-left', `${bounds.left - workspaceBox.left}px`);
     footer.style.setProperty('--map-dock-width', `${bounds.width}px`);
     const dockBox = dock.getBoundingClientRect();
@@ -45,6 +47,7 @@
     observer.observe(dock);
     observer.observe(workspace);
     observer.observe(mapViewport);
+    if (library) observer.observe(library);
   }
   sizeMenu();
   document.addEventListener('pointerdown', event => {

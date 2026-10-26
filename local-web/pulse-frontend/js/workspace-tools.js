@@ -72,7 +72,8 @@ const PulseMapTools = (() => {
     function set(value){
       const other=document.getElementById(side==='library'?'details':'colLibrary');
       const hidden=other.hidden||other.classList.contains('is-swiped-hidden');
-      const available=document.querySelector('.pulse-workspace-cols').clientWidth-(hidden?0:other.getBoundingClientRect().width)-250;
+      const workspaceWidth=document.querySelector('.pulse-workspace-cols').clientWidth;
+      const available=side==='inspector'&&state.libraryFullscreen?workspaceWidth-300:workspaceWidth-(hidden?0:other.getBoundingClientRect().width)-250;
       const min=side==='library'?220:260,width=Math.max(min,Math.min(650,Math.max(min,available),value));
       els.app.style.setProperty(property,width+'px');bar.setAttribute('aria-valuenow',String(Math.round(width)));return width;
     }

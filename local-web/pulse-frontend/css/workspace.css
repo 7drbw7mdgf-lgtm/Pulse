@@ -69,7 +69,7 @@ button:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
 .library-density-toggle:hover { border-color: var(--accent-line); color: var(--accent); }
 .library-density-toggle[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line); }
 .library-fullscreen .pulse-col-library { width: 100%; flex: 1 1 100%; min-width: 0; border-right: 0; margin-left: 0; transform: none; opacity: 1; pointer-events: auto; }
-.library-fullscreen .pulse-col-canvas, .library-fullscreen #details { display: none !important; }
+.library-fullscreen .pulse-col-canvas { display: none !important; }
 .library-fullscreen .col-library-header { padding: 20px 24px 12px; }
 .library-fullscreen .col-header-left h3 { font-size: 22px; letter-spacing: -.5px; }
 .library-fullscreen .col-header-actions { gap: 10px; }

@@ -59,8 +59,38 @@ const {spawn} = require('node:child_process'), {chromium} = require('playwright'
     await page.click('#railBibliographyBtn');
     assert.equal(await page.locator('#app').evaluate(el=>el.classList.contains('library-fullscreen')),true);
     assert.equal(await navigation.isVisible(),true,'Bottom navigation remains usable in full-width Bibliography');
+    for(const origin of ['trends','timeline','network']){
+      await navigation.locator(`[data-rail="${origin}"]`).click();
+      await page.click('#railBibliographyBtn');
+      await page.locator('[data-paper="a"] .library-title-button').click();
+      assert.equal(await page.evaluate(()=>state.libraryFullscreen),true,'Inspecting a paper keeps Bibliography open from '+origin);
+      assert.equal(await page.locator('[data-rail="bibliography"]').getAttribute('aria-current'),'page');
+      assert.equal(await page.locator('.pulse-col-canvas').isVisible(),false,'Paper inspection must not return to '+origin);
+      assert.equal(await page.locator('#details').isVisible(),true);
+      assert.equal(await page.locator('#detailsContent .insp-title').innerText(),'Bacterial stress responses');
+      await page.click('#inspectorNext');
+      assert.equal(await page.evaluate(()=>state.selectedId),'b');assert.equal(await page.evaluate(()=>state.libraryFullscreen),true,'Next paper also stays in Bibliography');
+      const resizer=page.locator('.workspace-resizer[data-panel="inspector"]');
+      const width=(await page.locator('#details').boundingBox()).width;
+      await resizer.press('ArrowLeft');
+      assert((await page.locator('#details').boundingBox()).width>width,'Details can be resized alongside the table');
+      const details=await page.locator('#details').boundingBox(),dock=await page.locator('.canvas-dock-modern').boundingBox();
+      assert(dock.x+dock.width<=details.x+1,'Navigation stays over the table rather than covering paper details');
+      await page.setViewportSize({width:600,height:900});
+      const compact=await page.locator('#details').boundingBox();
+      assert(compact.x>=0&&compact.x+compact.width<=600,'Details fit in a small Bibliography window');
+      assert.equal(await page.locator('#paperList').isVisible(),true);
+      await page.click('#inspectorToggle');
+      assert.equal(await page.locator('#details').isVisible(),false);assert.equal(await page.evaluate(()=>state.libraryFullscreen),true);
+      assert.equal(await page.locator('[data-paper="b"] .library-title-button').evaluate(el=>el===document.activeElement),true,'Closing returns keyboard focus to the selected paper');
+      await page.setViewportSize({width:1440,height:1031});
+      await page.waitForFunction(()=>document.querySelector('.map-controls-footer').getBoundingClientRect().width>1000);
+    }
     await navigation.locator('[data-rail="network"]').click();
+    await page.waitForFunction(()=>!state.libraryFullscreen);
+    await page.locator('.pulse-col-canvas').waitFor({state:'visible'});
     assert.equal(await page.locator('.pulse-col-canvas').isVisible(),true);
+    await page.click('#inspectorReopen');
     await page.click('#railSettingsBtn');
     assert.equal(await page.locator('#settingsPanel').isVisible(),true);
     await page.keyboard.press('Escape');

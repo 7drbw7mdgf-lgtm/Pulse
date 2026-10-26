@@ -91,7 +91,6 @@
       state.selectedId = id;
       state.selectedLinkId = null;
       state.detailsAbstractExpanded = false;
-      if (state.libraryFullscreen) setLibraryFullscreen(false);
       if (!state.inspectorVisible) setInspectorVisible(true);
       if (closeAgent && !els.aiPanel.hidden) setAiPanelOpen(false);
       renderSelection();

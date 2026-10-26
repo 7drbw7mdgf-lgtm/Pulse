@@ -362,7 +362,10 @@
     }
     inspectorToggle.addEventListener('click', () => {
       setInspectorVisible(false);
-      inspectorReopen.focus();
+      if (state.libraryFullscreen) {
+        const title = els.paperList.querySelector(`[data-paper="${CSS.escape(String(state.selectedId))}"] .library-title-button`);
+        (title || document.getElementById('tagFilterSearchInput'))?.focus({ preventScroll: true });
+      } else inspectorReopen.focus();
     });
     inspectorReopen.addEventListener('click', () => {
       setInspectorVisible(true);
