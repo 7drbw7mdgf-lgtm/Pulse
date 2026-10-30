@@ -7,15 +7,15 @@ A private, local-first desktop workspace for scientific literature discovery and
 
 ## Download Pulse
 
-Use the [latest published release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest) for the current installers. The direct links below are for 2.1.11.
+Use the [latest published release](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/latest) for the current installers. The direct links below are for 2.1.12.
 
-- **[Mac — Apple Silicon](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.11/Pulse-2.1.11.dmg)** — macOS 11+, with Python, PDF tools, OCR and the offline search ranker included. [Installation guide](docs/MACOS-INSTALL.md).
-- **[Windows — x64](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.11/Pulse-2.1.11-Windows-x64-Setup.exe)** — Windows 10/11. Python, PDF extraction, OCR and the offline search ranker are bundled. [Installation guide](docs/WINDOWS-INSTALL.md).
-- [Checksums](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.11/Pulse-2.1.11-SHA256SUMS.txt) · [Release notes](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v2.1.11) · [Previous releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases).
+- **[Mac — Apple Silicon](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.12/Pulse-2.1.12.dmg)** — macOS 11+, with Python, PDF tools, OCR and the offline search ranker included. [Installation guide](docs/MACOS-INSTALL.md).
+- **[Windows — x64](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.12/Pulse-2.1.12-Windows-x64-Setup.exe)** — Windows 10/11. Python, PDF extraction, OCR and the offline search ranker are bundled. [Installation guide](docs/WINDOWS-INSTALL.md).
+- [Checksums](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/download/v2.1.12/Pulse-2.1.12-SHA256SUMS.txt) · [Release notes](https://github.com/7drbw7mdgf-lgtm/Pulse/releases/tag/v2.1.12) · [Previous releases](https://github.com/7drbw7mdgf-lgtm/Pulse/releases).
 
 Both installers use the same application source and version. The Mac app is ad hoc signed and not Apple-notarized; the Windows installer is unsigned.
 
-Version 2.1.6 upgrades the [PDF reader](docs/PDF-ACCESS.md): continuous scrolling with sharp rendering at any zoom, fit-page and 50–300% zoom with pinch and keyboard control, a contents panel from bookmarks or section headings, working citation and web links, keyboard paging and remembered reading positions. Annotation now works directly on the page, as in Acrobat, from a floating tool dock and a bar above selected text. Multi-column papers import with the right reading order, unlabelled abstracts and whole reference lists. Clicking a map link opens its details.
+Version 2.1.12 recovers legacy Mendeley sign-in settings, adds exact paper lookup from a DOI or article link, simplifies Trends and the search controls, and keeps Bibliography open beside the paper inspector. Bibliography now has a narrow Map selector and a sortable Date added column. Existing records without a known added date show a dash.
 
 This release includes [focus maps, resizable panels, network match navigation, typed paths, smart collections, duplicate review, PDF reading and scheduled watchlists](docs/WORKSPACE-TOOLS.md). It also includes [full-text evidence, citation verification and formal screening](docs/search/RESEARCH-WORKFLOWS.md), plus [searchable settings and five themes](docs/SETTINGS.md).
 
