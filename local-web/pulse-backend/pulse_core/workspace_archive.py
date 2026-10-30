@@ -3,6 +3,7 @@
 Packages SQLite databases, attached PDFs, screening projects and saved searches
 into a self-contained archive with pre-restoration inspection and conflict reporting.
 """
+import contextlib
 import json
 import os
 from pathlib import Path
@@ -88,7 +89,7 @@ def _extract_bounded_file(zf, name, dest_path, max_bytes, required_magic=None, v
             os.fsync(out_file.fileno())
         if verify_sqlite:
             try:
-                with sqlite3.connect(tmp_path, timeout=5) as conn:
+                with contextlib.closing(sqlite3.connect(tmp_path, timeout=5)) as conn:
                     check = conn.execute("PRAGMA quick_check(1)").fetchone()
                     if not check or check[0] != "ok":
                         raise ClientError(400, f"Integrity check failed for SQLite archive entry '{name}'.")
@@ -145,7 +146,7 @@ def export_workspace_archive(output_path=None, directory=None, include_pdfs=True
         for db_path in (lib_path, screening_path):
             if db_path.exists():
                 try:
-                    with sqlite3.connect(db_path, timeout=5) as conn:
+                    with contextlib.closing(sqlite3.connect(db_path, timeout=5)) as conn:
                         conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
                 except Exception:
                     pass
@@ -156,7 +157,7 @@ def export_workspace_archive(output_path=None, directory=None, include_pdfs=True
         saved_searches = []
         if lib_path.exists():
             try:
-                with sqlite3.connect(lib_path, timeout=5) as conn:
+                with contextlib.closing(sqlite3.connect(lib_path, timeout=5)) as conn:
                     paper_count = conn.execute("SELECT COUNT(*) FROM papers").fetchone()[0]
                     tags = {row[0] for row in conn.execute("SELECT DISTINCT tag FROM paper_tags")}
                     searches_row = conn.execute("SELECT value FROM workspace WHERE key='savedSearches'").fetchone()
@@ -168,7 +169,7 @@ def export_workspace_archive(output_path=None, directory=None, include_pdfs=True
         screening_count = 0
         if screening_path.exists():
             try:
-                with sqlite3.connect(screening_path, timeout=5) as conn:
+                with contextlib.closing(sqlite3.connect(screening_path, timeout=5)) as conn:
                     screening_count = conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
             except Exception:
                 pass
@@ -252,7 +253,7 @@ def restore_workspace_archive(archive_path, directory=None, mode="replace"):
             db_path = root / db_name
             if db_path.exists():
                 try:
-                    with sqlite3.connect(db_path, timeout=5) as conn:
+                    with contextlib.closing(sqlite3.connect(db_path, timeout=5)) as conn:
                         conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
                 except Exception:
                     pass
@@ -305,7 +306,7 @@ def restore_workspace_archive(archive_path, directory=None, mode="replace"):
                             zf, "library.sqlite3", tmp_lib, MAX_SQLITE_BYTES,
                             required_magic=SQLITE_MAGIC, verify_sqlite=True
                         )
-                        with sqlite3.connect(tmp_lib, timeout=5) as incoming_conn:
+                        with contextlib.closing(sqlite3.connect(tmp_lib, timeout=5)) as incoming_conn:
                             has_content_table = bool(
                                 incoming_conn.execute(
                                     "SELECT 1 FROM sqlite_master WHERE type='table' AND name='papers_content'"
