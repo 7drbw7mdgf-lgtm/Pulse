@@ -1,8 +1,8 @@
-# Install Pulse 2.1.12 on Mac
+# Install Pulse 2.1.13 on Mac
 
-Pulse 2.1.12 targets Apple Silicon and includes its Python interpreter, PDF/OCR dependencies and offline search ranker. You do not need to install Python. Ollama and optional local AI models are installed separately.
+Pulse 2.1.13 targets Apple Silicon and includes its Python interpreter, PDF/OCR dependencies and offline search ranker. You do not need to install Python. Ollama and optional local AI models are installed separately.
 
-1. Open the Pulse 2.1.12 DMG and drag Pulse into Applications.
+1. Open the Pulse 2.1.13 DMG and drag Pulse into Applications.
 2. Quit older Pulse instances before opening the upgraded app so they do not write to the same profile.
 3. Open Pulse from Applications. Its library remains in `~/Library/Application Support/pulse`.
 4. On first use, Pulse imports the existing JSON library into SQLite. It retains the original JSON and a migration checkpoint in `backups`; notes, tags, local full text and map assignments are preserved.

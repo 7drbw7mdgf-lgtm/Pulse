@@ -1,38 +1,27 @@
-@import url("css/part_01.css");
-@import url("css/part_02.css");
-@import url("css/part_03.css");
-@import url("css/part_04.css?v=ui-20261010-2");
-@import url("css/part_05.css");
-@import url("css/part_06.css");
-@import url("css/part_07.css");
-@import url("css/part_08.css");
-@import url("css/part_09.css");
-@import url("css/part_10.css");
-@import url("css/part_11.css");
-@import url("css/part_12.css");
-@import url("css/part_13.css");
-@import url("css/part_14.css?v=ui-20261011-9");
-@import url("css/part_15.css?v=ui-20261011-6");
-@import url("css/part_16.css");
-@import url("css/part_17.css?v=ui-20261010-2");
-@import url("css/part_18.css?v=ui-20261010-2");
+/* Consolidated Core UI Styles (formerly part_01.css–part_18.css) */
+@import url("css/core-ui.css?v=2.1.13");
 
+/* Domain & Feature Stylesheets */
 @import url("css/workspace.css?v=bib-columns1");
-
 @import url("css/paper-agent.css?v=ui-20261010-2");
-
 @import url("css/library-connections.css?v=ui-20261010-2");
-
 @import url("css/timeline.css?v=ui-1.8.9");
 @import url("css/inspector.css?v=pdf-preview-1");
 @import url("css/discovery-workspace.css?v=ui-2.0.1");
-
 @import url("css/citation-lookup.css?v=ui-20261012-reliability");
 @import url("css/map-interactions.css?v=ui-1.8.9-clear");
-
 @import url("css/trends.css?v=simple-1");
-
 @import url("css/performance.css?v=ui-1.8.9");
-
 @import url("css/sync.css?v=ui-2.0.1");
 @import url("css/app-updates.css?v=2.1.6");
+@import url("css/search-workflow.css?v=2.1.6-layout3");
+@import url("css/discovery-options.css?v=1");
+@import url("css/research-tools.css?v=1");
+@import url("css/settings-options.css?v=1");
+@import url("css/network-search.css?v=1");
+@import url("css/workspace-tools.css?v=bib-details1");
+@import url("css/library-tools.css?v=1");
+@import url("css/pdf-reader.css?v=viewer-2");
+@import url("css/pdf-editor.css?v=viewer-9");
+@import url("css/map-toolbar.css?v=inside-map-7");
+@import url("css/compact-workspace.css?v=1");

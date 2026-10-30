@@ -147,6 +147,14 @@ class HttpSecurityTests(unittest.TestCase):
         with self.fetch('/index.html', {'Cookie': 'pulse_session=' + self.token}) as authenticated:
             self.assertIn(self.token, authenticated.read().decode())
 
+    def test_authenticated_tauri_launch_consumes_bootstrap_token(self):
+        with self.fetch('/index.html?token=' + self.token) as tauri_launch:
+            self.assertIn(self.token, tauri_launch.read().decode())
+            self.assertIn('HttpOnly', tauri_launch.headers['Set-Cookie'])
+        with self.fetch('/') as anonymous:
+            self.assertNotIn(self.token, anonymous.read().decode())
+            self.assertIsNone(anonymous.headers.get('Set-Cookie'))
+
     def test_cross_site_origins_referers_and_hosts_cannot_get_a_session(self):
         for headers in [{'Origin': 'https://untrusted.invalid'}, {'Referer': 'https://untrusted.invalid/page'},
                         {'Sec-Fetch-Site': 'cross-site'}, {'Host': 'untrusted.invalid'}]:

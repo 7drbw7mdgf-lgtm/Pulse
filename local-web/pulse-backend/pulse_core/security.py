@@ -28,27 +28,52 @@ def get_encryption_key():
         pass
     return k
 
+_CIPHER_TAG_AESGCM = b"\x01"
+_CIPHER_TAG_HMAC_STREAM = b"\x02"
+
+
+def _hmac_stream_encrypt(key, raw):
+    nonce = secrets.token_bytes(16)
+    stream_key = hashlib.sha256(key + nonce).digest()
+    blocks = (hashlib.sha256(stream_key + i.to_bytes(4, "big")).digest() for i in range((len(raw) // 32) + 1))
+    keystream = b"".join(blocks)[:len(raw)]
+    encrypted = bytes(a ^ b for a, b in zip(raw, keystream))
+    tag = hmac.new(key, nonce + encrypted, hashlib.sha256).digest()[:16]
+    return nonce + tag + encrypted
+
+
+def _hmac_stream_decrypt(key, payload):
+    if len(payload) < 32:
+        return None
+    nonce = payload[:16]
+    tag = payload[16:32]
+    encrypted = payload[32:]
+    expected_tag = hmac.new(key, nonce + encrypted, hashlib.sha256).digest()[:16]
+    if not hmac.compare_digest(tag, expected_tag):
+        return None
+    stream_key = hashlib.sha256(key + nonce).digest()
+    blocks = (hashlib.sha256(stream_key + i.to_bytes(4, "big")).digest() for i in range((len(encrypted) // 32) + 1))
+    keystream = b"".join(blocks)[:len(encrypted)]
+    decrypted = bytes(a ^ b for a, b in zip(encrypted, keystream))
+    return decrypted.decode("utf-8")
+
+
 def encrypt_secret(plaintext):
     if not plaintext or not isinstance(plaintext, str):
         return ""
     if plaintext.startswith("enc:v1:"):
         return plaintext
     key = get_encryption_key()
+    raw = plaintext.encode("utf-8")
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         aesgcm = AESGCM(key)
         nonce = secrets.token_bytes(12)
-        ct = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), None)
-        return "enc:v1:" + base64.b64encode(nonce + ct).decode("utf-8")
+        ct = aesgcm.encrypt(nonce, raw, None)
+        return "enc:v1:" + base64.b64encode(_CIPHER_TAG_AESGCM + nonce + ct).decode("utf-8")
     except Exception:
-        nonce = secrets.token_bytes(16)
-        raw = plaintext.encode("utf-8")
-        stream_key = hashlib.sha256(key + nonce).digest()
-        blocks = (hashlib.sha256(stream_key + i.to_bytes(4, "big")).digest() for i in range((len(raw) // 32) + 1))
-        keystream = b"".join(blocks)[:len(raw)]
-        encrypted = bytes(a ^ b for a, b in zip(raw, keystream))
-        tag = hmac.new(key, nonce + encrypted, hashlib.sha256).digest()[:16]
-        return "enc:v1:" + base64.b64encode(nonce + tag + encrypted).decode("utf-8")
+        return "enc:v1:" + base64.b64encode(_CIPHER_TAG_HMAC_STREAM + _hmac_stream_encrypt(key, raw)).decode("utf-8")
+
 
 def decrypt_secret(ciphertext):
     if not ciphertext or not isinstance(ciphertext, str):
@@ -60,26 +85,35 @@ def decrypt_secret(ciphertext):
         raw = base64.b64decode(payload_b64)
     except Exception:
         return ""
+    if not raw:
+        return ""
     key = get_encryption_key()
+    # Tagged v1 format: explicit cipher identifier byte prevents silent cross-cipher fallback
+    if raw[:1] == _CIPHER_TAG_AESGCM and len(raw) > 13:
+        try:
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+            nonce = raw[1:13]
+            ct = raw[13:]
+            return AESGCM(key).decrypt(nonce, ct, None).decode("utf-8")
+        except Exception:
+            pass
+    elif raw[:1] == _CIPHER_TAG_HMAC_STREAM and len(raw) >= 33:
+        try:
+            res = _hmac_stream_decrypt(key, raw[1:])
+            if res is not None:
+                return res
+        except Exception:
+            pass
+    # Legacy untagged enc:v1: compatibility
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         nonce = raw[:12]
         ct = raw[12:]
-        aesgcm = AESGCM(key)
-        return aesgcm.decrypt(nonce, ct, None).decode("utf-8")
+        return AESGCM(key).decrypt(nonce, ct, None).decode("utf-8")
     except Exception:
         try:
-            nonce = raw[:16]
-            tag = raw[16:32]
-            encrypted = raw[32:]
-            expected_tag = hmac.new(key, nonce + encrypted, hashlib.sha256).digest()[:16]
-            if not hmac.compare_digest(tag, expected_tag):
-                return ""
-            stream_key = hashlib.sha256(key + nonce).digest()
-            blocks = (hashlib.sha256(stream_key + i.to_bytes(4, "big")).digest() for i in range((len(encrypted) // 32) + 1))
-            keystream = b"".join(blocks)[:len(encrypted)]
-            decrypted = bytes(a ^ b for a, b in zip(encrypted, keystream))
-            return decrypted.decode("utf-8")
+            res = _hmac_stream_decrypt(key, raw)
+            return res if res is not None else ""
         except Exception:
             return ""
 

@@ -60,13 +60,20 @@ test('malformed input and oversized uploads are refused', async () => {
 test('a push racing another Mac fails cleanly and can be retried', async () => {
   const env = { DB: fakeD1() };
   const vault = hex(), auth = token(), device = hex();
+  const winningId = hex(), losingId = hex();
   await call(env, '/sync/v1/register', { vault, auth });
   const realBatch = env.DB.batch;
-  env.DB.batch = async statements => { env.DB.raw.prepare('UPDATE vaults SET head = head + 5').run(); return realBatch(statements); };
-  const raced = await call(env, '/sync/v1/push', { vault, auth, device, records: [{ id: hex(), blob: 'x' }] });
+  env.DB.batch = async statements => {
+    env.DB.raw.prepare('INSERT INTO records (vault_id, record_id, seq, device, blob) VALUES (?, ?, 5, ?, ?)').run(vault, winningId, hex(), 'winner');
+    env.DB.raw.prepare('UPDATE vaults SET head = head + 5').run();
+    return realBatch(statements);
+  };
+  const raced = await call(env, '/sync/v1/push', { vault, auth, device, records: [{ id: losingId, blob: 'x' }, { id: winningId, blob: 'stale' }] });
   assert.equal(raced.status, 409);
+  assert.equal(env.DB.raw.prepare('SELECT count(*) AS n FROM records WHERE record_id = ?').get(losingId).n, 0, 'losing push does not commit new records on 409');
+  assert.deepEqual({ ...env.DB.raw.prepare('SELECT seq, blob FROM records WHERE record_id = ?').get(winningId) }, { seq: 5, blob: 'winner' }, 'losing push does not overwrite winning record seq or blob on 409');
   env.DB.batch = realBatch;
-  const retried = await call(env, '/sync/v1/push', { vault, auth, device, records: [{ id: hex(), blob: 'x' }] });
+  const retried = await call(env, '/sync/v1/push', { vault, auth, device, records: [{ id: losingId, blob: 'x' }] });
   assert.equal((await retried.json()).head, 6);
 });
 

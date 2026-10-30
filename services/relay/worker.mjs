@@ -89,8 +89,8 @@ async function push(env, body) {
   if (bytes > MAX_VAULT_BYTES) return json({ error: 'Sync storage limit reached.' }, 413);
   const head = Number(row.head);
   const statements = records.map((record, index) => env.DB.prepare(
-    'INSERT INTO records (vault_id, record_id, seq, device, blob) VALUES (?, ?, ?, ?, ?) ON CONFLICT (vault_id, record_id) DO UPDATE SET seq = excluded.seq, device = excluded.device, blob = excluded.blob'
-  ).bind(row.vault_id, record.id, head + index + 1, device, record.blob));
+    'INSERT INTO records (vault_id, record_id, seq, device, blob) SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM vaults WHERE vault_id = ? AND head = ?) ON CONFLICT (vault_id, record_id) DO UPDATE SET seq = excluded.seq, device = excluded.device, blob = excluded.blob'
+  ).bind(row.vault_id, record.id, head + index + 1, device, record.blob, row.vault_id, head));
   // Guarded head update: a concurrent push from another Mac makes this batch fail and retry.
   statements.push(env.DB.prepare('UPDATE vaults SET head = ?, bytes = ?, touched = ? WHERE vault_id = ? AND head = ?')
     .bind(head + records.length, bytes, Date.now(), row.vault_id, head));

@@ -433,12 +433,5 @@ def public_settings(settings):
                 "endpoint": "https://api.openalex.org",
                 "note": "Optional. Public searches work keyless (10 req/s); an API key enables 100 req/s.",
             },
-            "openAlex": {
-                "configured": bool(openalex_key),
-                "preview": preview_key(openalex_key),
-                "contactEmail": contact_email,
-                "endpoint": "https://api.openalex.org",
-                "note": "Optional. Public searches work keyless (10 req/s); an API key enables 100 req/s.",
-            },
         },
     }

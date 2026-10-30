@@ -20,6 +20,7 @@ installer/**/obj/
 .search-runtime
 
 benchmarks/data/
+benchmarks/headtohead-frozen-pool.json
 
 # Windows installers and temporary packaging outputs
 outputs/

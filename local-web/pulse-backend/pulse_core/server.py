@@ -473,6 +473,7 @@ class PulseHandler(SimpleHTTPRequestHandler):
         is_authenticated = bool(supplied and hmac.compare_digest(str(supplied), str(API_TOKEN)))
         allow_token_injection = False
         if is_authenticated:
+            BOOTSTRAP_CONSUMED = True
             allow_token_injection = True
         elif not BOOTSTRAP_CONSUMED:
             BOOTSTRAP_CONSUMED = True
@@ -541,7 +542,7 @@ def start_parent_watchdog():
     t.start()
 
 def main():
-    global SERVER_INSTANCE
+    global SERVER_INSTANCE, BOOTSTRAP_CONSUMED
     crash_reports.install_hooks()
     port = int(os.environ.get("PULSE_PORT") or os.environ.get("IRATXE_PORT") or "8000")
     server = None
@@ -576,6 +577,7 @@ def main():
             print(f"Warning: could not write port file: {e}", file=sys.stderr)
     launch_file = os.environ.get("PULSE_LAUNCH_FILE")
     if launch_file:
+        BOOTSTRAP_CONSUMED = True
         descriptor = os.open(launch_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(descriptor, "w") as output:
             json.dump({"port": bound_port, "token": API_TOKEN}, output)

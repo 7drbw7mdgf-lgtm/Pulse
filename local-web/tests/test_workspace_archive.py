@@ -8,12 +8,16 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'pulse-backend'))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from pulse_core.constants import ClientError
 from pulse_core.library_store import LibraryStore
 from pulse_core.workspace_archive import (
     export_workspace_archive,
     inspect_workspace_archive,
     restore_workspace_archive,
 )
+import pulse_core.workspace_archive as workspace_archive
+from unittest.mock import patch
+import zipfile
 
 
 class WorkspaceStorageTests(unittest.TestCase):
@@ -101,6 +105,61 @@ class WorkspaceStorageTests(unittest.TestCase):
             self.assertTrue((fresh_root / 'pdfs' / 'test-paper.pdf').exists())
         finally:
             shutil.rmtree(fresh_root, ignore_errors=True)
+
+    def test_workspace_archive_merge_preserves_two_tier_content(self):
+        store = LibraryStore(self.legacy_path, lambda: {}, lambda data, r: None)
+        store.write({
+            'papers': [{
+                'id': 'p-merge-1',
+                'title': 'Merged Paper',
+                'fullText': 'Full text body for merged paper',
+                'ocrText': 'OCR body for merged paper',
+            }]
+        })
+        archive_path = self.root / 'merge.pulse-workspace'
+        export_workspace_archive(output_path=archive_path, directory=self.root, include_pdfs=False)
+
+        dest_root = Path(tempfile.mkdtemp())
+        try:
+            dest_store = LibraryStore(dest_root / 'library.json', lambda: {}, lambda data, r: None)
+            dest_store.write({'papers': [{'id': 'p-existing', 'title': 'Existing Paper'}]})
+            res = restore_workspace_archive(archive_path, directory=dest_root, mode='merge')
+            self.assertTrue(res['ok'])
+            self.assertEqual(res['restored']['papers'], 1)
+            full_read = dest_store.read(include_content=True)
+            by_id = {p['id']: p for p in full_read['papers']}
+            self.assertIn('p-existing', by_id)
+            self.assertIn('p-merge-1', by_id)
+            self.assertEqual(by_id['p-merge-1'].get('fullText'), 'Full text body for merged paper')
+            self.assertEqual(by_id['p-merge-1'].get('ocrText'), 'OCR body for merged paper')
+        finally:
+            shutil.rmtree(dest_root, ignore_errors=True)
+
+    def test_workspace_archive_rejects_invalid_sqlite_pdf_and_traversal(self):
+        bad_sqlite_zip = self.root / 'bad-sqlite.pulse-workspace'
+        with zipfile.ZipFile(bad_sqlite_zip, 'w') as zf:
+            zf.writestr('manifest.json', json.dumps({'format': 'pulse-workspace', 'version': 1}))
+            zf.writestr('library.sqlite3', b'not-an-sqlite-database-at-all')
+        with self.assertRaises(ClientError) as ctx:
+            inspect_workspace_archive(bad_sqlite_zip)
+        self.assertEqual(ctx.exception.status, 400)
+
+        traversal_zip = self.root / 'traversal.pulse-workspace'
+        with zipfile.ZipFile(traversal_zip, 'w') as zf:
+            zf.writestr('manifest.json', json.dumps({'format': 'pulse-workspace', 'version': 1}))
+            zf.writestr('pdfs/../evil.pdf', b'%PDF-1.4 evil')
+        with self.assertRaises(ClientError) as ctx:
+            inspect_workspace_archive(traversal_zip)
+        self.assertEqual(ctx.exception.status, 400)
+
+        oversized_zip = self.root / 'oversized.pulse-workspace'
+        with zipfile.ZipFile(oversized_zip, 'w') as zf:
+            zf.writestr('manifest.json', json.dumps({'format': 'pulse-workspace', 'version': 1}))
+            zf.writestr('pdfs/large.pdf', b'%PDF-1.4 ' + (b'0' * 2048))
+        with patch.object(workspace_archive, 'MAX_PDF_ENTRY_BYTES', 512):
+            with self.assertRaises(ClientError) as ctx:
+                inspect_workspace_archive(oversized_zip)
+            self.assertEqual(ctx.exception.status, 413)
 
 
 if __name__ == '__main__':
